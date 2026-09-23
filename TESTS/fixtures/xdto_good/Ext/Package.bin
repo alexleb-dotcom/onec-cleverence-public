@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://v8.1c.ru/8.1/xdto-package" xmlns:tns="urn:test" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:test">
+  <valueType name="Code" base="xs:string"/>
+  <objectType name="Item">
+    <property name="Code" type="tns:Code"/>
+  </objectType>
+</package>

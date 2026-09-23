@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "package_id": "<stable-change-package-id>",
+  "source_evidence": {
+    "baseline_fingerprint": "<same-baseline-fingerprint-or-null>",
+    "bindings": [
+      {
+        "kind": "PROJECT_SNAPSHOT_PACKAGE",
+        "id": "<stable-evidence-binding-id>",
+        "request_id": "<project-snapshot-request-id-or-null>",
+        "sha256": "<package-or-source-sha256>",
+        "scope": [
+          "<logical-item-or-artifact-scope>"
+        ]
+      }
+    ]
+  },
+  "result_modes": {
+    "primary": "MANUAL_TRANSFER_INSTRUCTION",
+    "supporting": []
+  },
+  "change_items": [
+    {
+      "id": "<change-id>",
+      "action": "MODIFY",
+      "target": "<logical-object-or-artifact>",
+      "instruction_refs": [
+        "<section-or-step-id>"
+      ],
+      "payload_refs": [
+        "<relative-code-or-artifact-path>"
+      ],
+      "depends_on": [],
+      "verification_hooks": [
+        "<static-or-future-post-transfer-check>"
+      ]
+    }
+  ],
+  "proof_boundary": {
+    "delivery_artifact_validated": false,
+    "applied_target_observed": false,
+    "deployment_or_import_observed": false,
+    "runtime_behavior_observed": false
+  },
+  "post_transfer_verification": {
+    "policy": "OPTIONAL",
+    "status": "NOT_REQUESTED",
+    "expected_snapshot_scope": "CHANGED_OBJECTS_AND_MATERIAL_DEPENDENCIES",
+    "verification_hooks_retained": true
+  }
+}

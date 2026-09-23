@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "inventory_id": "public-safe-ci-v1",
+  "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+  "phases": [
+    "FAST",
+    "FULL"
+  ],
+  "checks": [
+    {
+      "id": "public_ci_inventory_contract",
+      "order": 10,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TOOLS/validate_public_ci_inventory.py"
+      ]
+    },
+    {
+      "id": "compile",
+      "order": 20,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "-m",
+        "compileall",
+        "-q",
+        "TOOLS",
+        "TESTS"
+      ]
+    },
+    {
+      "id": "generated_registry_views",
+      "order": 30,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TOOLS/generate_registry_views.py",
+        "--check"
+      ]
+    },
+    {
+      "id": "cold_start",
+      "order": 40,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_cold_start_regression.py"
+      ]
+    },
+    {
+      "id": "distribution_privacy",
+      "order": 50,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_distribution_privacy_regression.py"
+      ]
+    },
+    {
+      "id": "distribution_privacy_redaction",
+      "order": 60,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_distribution_privacy_redaction_regression.py"
+      ]
+    },
+    {
+      "id": "distribution_binary_policy",
+      "order": 70,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_distribution_binary_policy_regression.py"
+      ]
+    },
+    {
+      "id": "distribution_snapshot_path_collision",
+      "order": 80,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_distribution_snapshot_path_collision_regression.py"
+      ]
+    },
+    {
+      "id": "distribution_snapshot_workflow_contract",
+      "order": 90,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_distribution_snapshot_workflow_contract_regression.py"
+      ]
+    },
+    {
+      "id": "collector_unavailable_capability",
+      "order": 95,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_collector_unavailable_capability_regression.py"
+      ]
+    },
+    {
+      "id": "public_execution_receipt_contract",
+      "order": 97,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_public_execution_receipt_regression.py"
+      ]
+    },
+    {
+      "id": "project_context_lifecycle",
+      "order": 100,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_project_context_lifecycle_regression.py"
+      ]
+    },
+    {
+      "id": "semantic_behavior",
+      "order": 110,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_semantic_behavior_regression.py"
+      ]
+    },
+    {
+      "id": "llm_anti_bypass",
+      "order": 120,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_llm_bypass_regression.py"
+      ]
+    },
+    {
+      "id": "context_efficiency",
+      "order": 130,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_context_efficiency_regression.py"
+      ]
+    },
+    {
+      "id": "result_delivery",
+      "order": 140,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_result_delivery_contract_regression.py"
+      ]
+    },
+    {
+      "id": "proof_contract",
+      "order": 150,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_proof_contract_regression.py"
+      ]
+    },
+    {
+      "id": "semantic_proof_phase1",
+      "order": 160,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_semantic_proof_phase1_regression.py"
+      ]
+    },
+    {
+      "id": "review",
+      "order": 170,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_review_regression.py"
+      ]
+    },
+    {
+      "id": "release_trust_boundary",
+      "order": 180,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_release_trust_boundary_phase2.py"
+      ]
+    },
+    {
+      "id": "evidence_source_policy",
+      "order": 190,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_evidence_source_policy_regression.py"
+      ]
+    },
+    {
+      "id": "bootstrap_capability",
+      "order": 200,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_bootstrap_capability_regression.py"
+      ]
+    },
+    {
+      "id": "shareable_profile",
+      "order": 205,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TOOLS/validate_distribution_profile.py",
+        "--profile",
+        "SHAREABLE_CORE"
+      ]
+    },
+    {
+      "id": "skill_freshness",
+      "order": 210,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_skill_freshness_regression.py"
+      ]
+    },
+    {
+      "id": "pattern_regression",
+      "order": 220,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_pattern_regression.py"
+      ]
+    },
+    {
+      "id": "reference_discovery",
+      "order": 230,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_reference_discovery_regression.py"
+      ]
+    },
+    {
+      "id": "context_scaling_benchmark",
+      "order": 240,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/benchmark_context_efficiency.py"
+      ]
+    },
+    {
+      "id": "artifact_bootstrap",
+      "order": 250,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_artifact_bootstrap_regression.py"
+      ]
+    },
+    {
+      "id": "external_source",
+      "order": 260,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_external_source_regression.py"
+      ]
+    },
+    {
+      "id": "public_ci_contract",
+      "order": 270,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_public_ci_regression.py"
+      ]
+    },
+    {
+      "id": "public_ci_inventory_regression",
+      "order": 280,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_public_ci_inventory_regression.py"
+      ]
+    }
+  ],
+  "rule": "FAST is the ordered bounded prefix of the canonical public-safe inventory. FULL executes the complete ordered inventory. Every check is public-only and must resolve to a file present in SHAREABLE_CORE."
+}

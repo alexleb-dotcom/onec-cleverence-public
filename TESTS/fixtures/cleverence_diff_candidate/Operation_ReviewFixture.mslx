@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Operation name="ReviewFixture">
+  <Actions>
+    <AssignAction id="action-a" name="start" nextDirection="" expression="Value = 1;" />
+    <AssignAction id="action-inserted" name="check" nextDirection="" expression="Value = 15;" />
+    <AssignAction id="action-b" name="finish" nextDirection="return" expression="Value = 2;" />
+  </Actions>
+</Operation>

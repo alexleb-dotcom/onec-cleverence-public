@@ -1,0 +1,1327 @@
+{
+  "version": 8,
+  "generated": true,
+  "generated_from": "RULES/rule_registry.json",
+  "principle": "A rule is not implemented merely because it exists in Markdown. Requirements and technical rules require activation, evidence/check structure, regression coverage and fail-closed gate disposition.",
+  "statuses": [
+    "PASS",
+    "NOT_APPLICABLE",
+    "EVIDENCE_REQUIRED",
+    "BLOCKING_DEFECT",
+    "NEEDS_REVISION",
+    "RUNTIME_PENDING",
+    "NEEDS_PROFILING"
+  ],
+  "profiles": {
+    "BSP_REUSE": {
+      "detect": [],
+      "detect_paths": [],
+      "standards": [
+        "std467",
+        "BSP_USAGE_POLICY"
+      ],
+      "checks": [
+        "search actual target corpus first and use the BSP DISCOVERY_ONLY locator by intent/domain to identify candidate modules; a locator hit is not API proof",
+        "acquire and inspect the exact exported declaration from target/user-authorized BSP source before use; build a LOCAL_EXACT_SOURCE_INDEX when useful",
+        "public interface vs internal/service module",
+        "client/server placement and serialization",
+        "transitive I/O and side effects",
+        "loop/hot-path cost",
+        "explicit BSP_REUSED / BSP_NOT_APPLICABLE / BSP_EXCEPTION_JUSTIFIED status",
+        "prebuilt/internal derived API indexes are treated only as diagnostic caches; exact target/authorized source and a reproducible local index win on contradiction",
+        "For a non-trivial 1C change, was BSP searched by intent using target evidence/locator, then was exact target or user-authorized source inspected before custom infrastructure/helper code was accepted?"
+      ],
+      "rule_id": "BSP_REUSE",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CALL_CONTRACT": {
+      "detect": [
+        "\\b[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]*\\.[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]*\\s*\\(",
+        "(?im)^\\s*(?:Процедура|Функция)\\s+\\w+\\s*\\([^\\n]*\\)\\s*Экспорт"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "BSP_USAGE_POLICY",
+        "VALIDATION_ENGINE"
+      ],
+      "checks": [
+        "actual exported declaration resolved from exact target/BSP/vendor source",
+        "required/optional parameter count and order",
+        "parameter semantic meaning and native types",
+        "client/server execution context and serialization",
+        "return/mutation/out-parameter contract",
+        "all deployed-baseline callers included when signature contract changes",
+        "For every changed qualified cross-module call, does actual declaration evidence prove parameter count/order/optional parameters, execution context and return/mutation contract?"
+      ],
+      "rule_id": "CALL_CONTRACT",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "IMPLEMENTATION_REACHABILITY": {
+      "detect": [
+        "(?im)^\\s*(?:Процедура|Функция)\\s+[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]*\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE"
+      ],
+      "checks": [
+        "For every new/meaningfully changed executable routine, classify it as runtime entrypoint, external API/callback, or helper and identify the intended business scenario it implements.",
+        "For every helper/new routine that is intended to affect existing behavior, prove a concrete path entrypoint → callers → routine using exact candidate source/call graph; Export alone is not evidence of invocation.",
+        "If dispatch is dynamic/platform/vendor-driven and cannot be statically resolved, first request the smallest missing subscription/callback/metadata/handler artifacts that could prove the route. Only when such source is genuinely unavailable or the contract is runtime-only may the route remain explicit EVIDENCE_REQUIRED/RUNTIME_PENDING; never mark it reachable by assumption.",
+        "Does every newly introduced routine that is meant to change runtime behavior connect to a pre-existing/recognized entrypoint rather than forming dead code or an orphan new subgraph?"
+      ],
+      "rule_id": "IMPLEMENTATION_REACHABILITY",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "BUSINESS_IDENTITY": {
+      "detect": [
+        "CurrentItems|DeclaredItems|BindedLine",
+        "(?:Дедупликац|Группиров|Сопоставлен|Идентичност|merge[_ -]?key|dedup)",
+        "(?:Ключ|Индекс|Соответствие)[^\\n]{0,180}(?:Упаковк|Единиц|Коэффициент|Штрихкод|Представлен)",
+        "Новый\\s+Структура\\s*\\([^\\n]{0,240}(?:Упаковк|Единиц|Коэффициент|Штрихкод|Представлен)",
+        "(?s)(?:Ключ|Идентификатор)[А-Яа-яA-Za-z0-9_]*\\s*=.{0,800}\\.(?:Добавить|Вставить|Записать)\\s*\\(",
+        "business[_ -]?identity"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE",
+        "CLEVERENCE_RUNTIME_INTEGRATION"
+      ],
+      "checks": [
+        "smallest stable business identity is stated",
+        "identity is separated from presentation and quantity normalization",
+        "each included field changes business sameness",
+        "excluded intrinsic fields cannot merge distinct entities",
+        "producer/mapping/storage/grouping/consumer use the same key",
+        "packaging/unit/barcode variation and equal-presentation counterexamples",
+        "one-plan-many-fact and split/merge quantity invariants",
+        "Every derived identity/key is fully calculated and validated for type, domain, completeness and required uniqueness before the first Add/Insert/Write or other result mutation.",
+        "Is the deduplication/grouping/search/merge key the smallest stable business identity, with packaging, unit, coefficient, barcode and presentation excluded unless domain evidence proves they change sameness?",
+        "When CurrentItems/DeclaredItems/BindedLine or writer/grouping logic changes, are one-plan-many-fact identity, quantity, marks/SN/SSCC and re-entry semantics preserved?",
+        "When a result row, index entry, register record, object or fact distribution depends on a derived key, are all key components validated before the first mutation so invalid input cannot leave partial state?",
+        "When trade-item, individual marking/serial, warehouse fact, internal container, logistics/SSCC or regulatory aggregation identifiers meet in one flow, is each identifier classified by domain role and is every claimed equivalence backed by an explicit end-to-end mapping/lifecycle contract rather than assumed from co-location?",
+        "When a new business classifier/predicate is introduced, are coverage, mutual exclusion, precedence and unchanged neighboring scenarios proven as a partition of the relevant domain rather than as isolated happy-path IF branches?"
+      ],
+      "rule_id": "BUSINESS_IDENTITY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "QUERY": {
+      "detect": [
+        "\\bНовый\\s+Запрос\\b",
+        "Запрос\\s*\\.\\s*Текст",
+        "СхемаЗапроса"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std436",
+        "std438",
+        "std437",
+        "std496",
+        "std654",
+        "std728",
+        "std729",
+        "std777",
+        "std658",
+        "std652",
+        "query_methodical"
+      ],
+      "checks": [
+        "transitive DB round trips",
+        "query inside loop",
+        "For every empty/default/sentinel query parameter, state its meaning, caller authorization and whether it disables a predicate or changes result cardinality.",
+        "TOP/FIRST determinism",
+        "UNION/DISTINCT/GROUP semantics",
+        "ORDER BY necessity",
+        "JOIN cardinality",
+        "LEFT JOIN null-rejection by WHERE",
+        "For every reference-dot dereference, prove implicit-join cardinality/index cost and prefer an already joined source when it owns the value.",
+        "subquery joins",
+        "virtual-table joins",
+        "virtual-table filter parameters",
+        "OR in critical predicates",
+        "functions around parameters/sargability",
+        "index evidence for WHERE/ON/virtual-table parameters/HAVING",
+        "temporary-table size/index need",
+        "RLS/cardinality sensitivity",
+        "Sentinel/default parameter behavior is covered by normal, empty/Undefined, nonexistent and other-valid-context cases with expected cardinality; bulk mode uses an explicit API/branch unless the sentinel contract is intentional and proven.",
+        "Can EmptyRef/0/empty string used as a sentinel be a legitimate stored domain value and therefore broaden/change query semantics?",
+        "Can an empty/default/Undefined query parameter disable a filter or broaden a point lookup, and is that cardinality-changing mode explicitly authorized by the current caller rather than hidden in a sentinel value?",
+        "Does WHERE on right-side fields null-reject rows and unintentionally turn LEFT JOIN behavior into INNER?",
+        "For joins where either side may contain multiple rows per business key, is the target grain plus expected pre/post-join cardinality and every material additive measure proven, with each many-side reduced to that grain or joined by a complete correlation tuple so accidental N×M fan-out cannot change quantity, sum or count?",
+        "When DISTINCT, GROUP BY or aggregate functions follow a join, is the underlying row correlation already correct, rather than using aggregation merely to collapse duplicates produced by an under-specified join; are target-grain semantics and additive-measure preservation proven?",
+        "For queries combining current, periodic, historical, slice/virtual-table or cached/projected data, is the intended effective timestamp/version defined and applied consistently to each source, with any deliberate temporal mismatch explicitly justified by the business contract?",
+        "When a temporary table, cached value, staged/intermediate query/package result or other materialized dataflow state is described as a snapshot or consistent checked state, is transaction-wide consistency against concurrent changes proven independently by transaction/isolation/locking/version semantics rather than inferred from materialization itself?",
+        "When numeric facts from different sources/representations are compared, joined, summed or substituted, is a common proven measure basis used (unit/currency/scale/sign), with conversion coefficients applied in the correct direction exactly once?",
+        "When rounding/precision changes are present, is the required rounding mode and stage (per row, per package/unit conversion, after aggregation, at persistence/output boundary) proven so early/double rounding cannot alter material totals?",
+        "When NULL/missing joined rows or missing source facts are replaced with 0/false/empty reference/empty string/other fallback, is semantic equivalence proven for the downstream business decision, rather than using defaulting merely to simplify query shape or arithmetic?",
+        "Across INNER/LEFT joins, WHERE/HAVING predicates, subqueries, virtual-table filters, pre-aggregation and DISTINCT/GROUP stages, is retention of every required business-grain fact proven with expected input/output coverage, and are all dropped facts attributable to an explicit intended exclusion rule?",
+        "When СтрЗаменить modifies query text, is the source a complete readable template and is the replacement marker unique/stable enough not to alter unrelated occurrences?",
+        "Do repeated physical sources use role-specific aliases and fully-qualified fields so generated variants cannot become ambiguous?",
+        "Can optional fragment boundaries accidentally add/remove separators, UNION, semicolons or malformed query syntax?",
+        "When FIRST/TOP has no ORDER BY, is the result consumed only as an existence predicate, or does returned business value require deterministic ordering/uniqueness proof?",
+        "Does every stored/default/intermediate query text expected to be ordinary query language remain openable by the 1C query constructor, without custom invalid placeholders?",
+        "Do exact final BSL query-text bytes avoid literal \\\\t, \\\\r and \\\\n pairs in query-language token/whitespace positions, with quoted query data and comments excluded?",
+        "Does the solution avoid inferring arbitrary SELECT/FROM/JOIN/package topology through string-position surgery unless an exact supported typical/vendor analog proves that approach?",
+        "When Query.Execute() has no directly consumed result, is an exact side effect traced (for example temporary-table creation/change through the same temporary-table manager and a proven downstream reader) instead of assuming every unread Execute() is either useless or valid?",
+        "When a query/data-access change is described as faster or more optimal, is that claim backed by relevant cost evidence (plan/index/cardinality/representative volume/profiler/benchmark) rather than inferred only from fewer queries, fewer result materializations, one package, one temporary table or fewer server calls?"
+      ],
+      "rule_id": "QUERY",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DYNAMIC_LIST": {
+      "detect": [
+        "Динамическ(?:ий|ого)Список",
+        "УстановитьСвойстваДинамическогоСписка",
+        "ТекстЗапроса"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std768",
+        "std732",
+        "std437",
+        "std489",
+        "std729"
+      ],
+      "checks": [
+        "default query usable",
+        "main table correctness",
+        "query/main-table set before settings or parameters",
+        "BSP УстановитьСвойстваДинамическогоСписка when available",
+        "required fields exist before PathToData",
+        "all UNION operators preserve result contract",
+        "group/search fields indexable for large lists",
+        "expensive online state is profiling-justified or replaced by a unique indexed projection with proven freshness/retry/rebuild",
+        "runtime open form",
+        "When BSP is available and DynamicList properties are changed, is ОбщегоНазначения.УстановитьСвойстваДинамическогоСписка called with the bound ТаблицаФормы element rather than direct DynamicList.ТекстЗапроса assignment?",
+        "If the final query/root/alias/replacement anchor is not uniquely proven, does the modifier leave the query unchanged instead of guessing a source or join?",
+        "If the requested field belongs to the proven root source, is it selected directly from that alias instead of adding a self-join by reference?",
+        "When a DynamicList query is extended, is the effective query obtained using the proven typical/BSP pattern and is target topology proved before narrow mutation rather than guessed?",
+        "When a large DynamicList needs sortable/filterable operational state, is expensive online recomputation avoided or profiling-justified, and does any state projection have proven identity, indexing, freshness, retry and rebuild behavior?",
+        "Is a single constant DynamicList query overridden in code only when a real runtime variant or proven extension/update-safety constraint prevents keeping the complete default query in the editor?"
+      ],
+      "rule_id": "DYNAMIC_LIST",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLIENT_SERVER_FORM": {
+      "detect": [
+        "&НаКлиенте",
+        "&НаСервере",
+        "&НаСервереБезКонтекста"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std487",
+        "std496",
+        "std628",
+        "std636"
+      ],
+      "checks": [
+        "server calls per real user action",
+        "implicit server calls",
+        "context vs no-context justification",
+        "traffic volume",
+        "Знач for call-server parameters where applicable",
+        "long operation threshold",
+        "mutation of form data after server call",
+        "no duplicated server business logic in form",
+        "Classify direct form-data access separately from nested paths: Форма.Объект.X / Объект.X in an existing form context is not itself a DB or client-server call; for X.Y prove X runtime type and, if it is a reference, account for DB-read/N+1 risk, especially in loops.",
+        "When a form collection can contain a material number of rows, is traversal/search performed on the server, and does a real user action avoid repeated explicit or implicit server transitions?",
+        "Before a user action performs a destructive or materially state-changing pre-action (for example clearing rows) and then continues to a downstream form/selection/action, are all known required capabilities that can be resolved up front checked early enough to fail before that mutation, while authoritative server-side authorization/business validation is still retained?"
+      ],
+      "rule_id": "CLIENT_SERVER_FORM",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "POST_WRITE_STANDARD_OVERWRITE": {
+      "detect": [],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE",
+        "ANALOG_BEFORE_INVENTION"
+      ],
+      "checks": [
+        "For every significant custom field assignment, identify later writers of exactly the same field on reachable execution paths; do not correlate unrelated routines merely because they share a module.",
+        "Name the authoritative owner of the final field value and prove call/event ordering; distinguish direct reachable overwrite, unresolved external lifecycle calls and unrelated writers.",
+        "Trace reset/default/re-entry/reselection paths that can restore or recompute the same field after the custom write; dynamic callbacks/dispatch remain EVIDENCE_REQUIRED until resolved.",
+        "Runtime acceptance verifies the final persisted/consumed value after the complete user and write lifecycle, not immediately after the custom assignment.",
+        "After a custom assignment to a meaningful object/form field, were all subsequent standard writers traced so selection, filling, recalculation or before-write logic cannot silently replace the intended value?"
+      ],
+      "rule_id": "POST_WRITE_STANDARD_OVERWRITE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "ONEC_XML_STRUCTURE": {
+      "detect": [
+        "https?://v8\\.1c\\.ru/",
+        "<MetaDataObject\\b",
+        "<package\\b[^>]*targetNamespace"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "classify each changed 1C XML artifact from exact final bytes/root namespace before reasoning about its structure",
+        "prove final XML is well-formed and run the structural analyzer on a corpus that preserves relevant companion files",
+        "separate machine-proven structural facts from semantic/platform/runtime claims not covered by the analyzer",
+        "when local coverage is insufficient, inspect actual target XML plus maintained structural/official evidence instead of inventing XML grammar",
+        "For changed 1C XML, was the real artifact classified and structurally validated from final bytes without extrapolating unsupported XML rules?"
+      ],
+      "rule_id": "ONEC_XML_STRUCTURE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "FORM_XML_STRUCTURE": {
+      "detect": [
+        "http://v8\\.1c\\.ru/8\\.3/xcf/logform",
+        "<Form\\b[^>]*version="
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "validate form elements, attributes, commands and columns in their correct separate identity/name scopes",
+        "for extension forms, do not mix BaseForm serialized IDs/content with the overlay when attributing structural changes",
+        "prove companion form metadata and base-form ownership/callType when extension event interception is involved",
+        "use structural summary before writing form-module code that depends on element/attribute/command names or DataPath contracts",
+        "Was Form.xml validated using its real ID/name scopes and BaseForm boundary rather than a naive global-XML heuristic?",
+        "When a Form.xml property changes only presentation or interaction affordance (for example a hyperlink-looking cell) to satisfy an action requirement such as open/navigate, is the actual executable action route proved separately through platform standard processing or a reachable handler/command, with runtime evidence when automatic platform behavior is uncertain?",
+        "When a form control/cell is ReadOnly or otherwise non-editable, is that restriction kept scoped to changing the local form value rather than treated as proof that a referenced object/card cannot be edited after opening; effective object mutation restrictions must be established by the access/action contract and runtime evidence as applicable?"
+      ],
+      "rule_id": "FORM_XML_STRUCTURE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "FORM_DATA_BINDING": {
+      "detect": [
+        "<(?:DataPath|TitleDataPath|FooterDataPath|HeaderDataPath|RowPictureDataPath)>",
+        "ПутьКДанным\\s*=",
+        "ИзменитьРеквизиты\\s*\\(",
+        "РеквизитФормы\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "For every changed DataPath, is the root resolved to the actual form data context (declared/inherited form attribute or a proven platform pseudo-root) instead of inferred from object metadata?",
+        "For a changed nested path A.B, is B proven to exist in the runtime value/shape of A at the binding point, especially for aggregate/provider-backed attributes whose members are selected or transformed at runtime?",
+        "If a DataPath targets ConstantsSet.Member, is Member proven to belong to that actual ConstantsSet composition; the mere existence of a Constant metadata object is not accepted as membership evidence?",
+        "If an own form attribute is used instead of an existing aggregate attribute, are both directions of its lifecycle proven (load/read and save/write) using the actual project/typical mechanism, without silently changing persistence semantics?",
+        "Does acceptance include opening the real form and exercising the changed binding through the relevant read/edit/save path when static evidence cannot prove runtime member availability?"
+      ],
+      "rule_id": "FORM_DATA_BINDING",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "METADATA_XML_STRUCTURE": {
+      "detect": [
+        "http://v8\\.1c\\.ru/8\\.3/MDClasses",
+        "<MetaDataObject\\b"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "identify actual metadata payload/type, Name, UUID and ChildObjects from source XML before architecture/code conclusions",
+        "validate metadata structural references/duplicate child declarations covered by the analyzer",
+        "combine XML structure with real modules/forms/call graph; do not treat metadata XML alone as business/runtime behavior",
+        "Were metadata-object facts read from the actual XML rather than guessed from object names or remembered configuration structure?"
+      ],
+      "rule_id": "METADATA_XML_STRUCTURE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "REFERENCE_SELECTION_CONTRACT": {
+      "detect": [
+        "ПараметрыВыбора",
+        "СвязиПараметровВыбора",
+        "(?im)^\\s*(?:Процедура|Функция)\\s+\\w*(?:НачалоВыбора|ОбработкаВыбора|ОкончаниеВводаТекста)"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std411",
+        "std638"
+      ],
+      "checks": [
+        "State the exact business admissibility rule and the form field/scenario where selection is restricted; do not substitute access/security or global visibility semantics unless required.",
+        "Inspect the actual target/typical supported selection mechanism (including ПараметрыВыбора/СвязиПараметровВыбора or an evidenced equivalent) before scattering custom query/form filters.",
+        "Prove every materially distinct active interactive route: selection form, input-by-string/autocomplete, pick/selection command, alternative selection form and custom selection handlers.",
+        "Define behavior for an already persisted value that later becomes inadmissible; historical display/open behavior is not silently changed by the new-selection restriction.",
+        "Identify programmatic assignment/import/fill/copy routes that bypass interactive selection and assign a separate business-validation owner when the invariant must hold there too.",
+        "Do not use RLS/global query hiding to satisfy a local 'cannot select' requirement unless the broader visibility/access restriction is explicitly required and proven.",
+        "Runtime acceptance covers at least one allowed and one forbidden value through every materially distinct active selection route.",
+        "Was 'must not be selectable here' implemented without unnecessarily making the object unreadable, globally invisible or unopenable, and are UI selection restrictions kept distinct from non-interactive business validation?"
+      ],
+      "rule_id": "REFERENCE_SELECTION_CONTRACT",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "ROLE_RIGHTS_STRUCTURE": {
+      "detect": [
+        "http://v8\\.1c\\.ru/8\\.2/roles",
+        "<Rights\\b[^>]*version=",
+        "(?:^|[/\\\\])Roles[/\\\\][^/\\\\]+[/\\\\]Ext[/\\\\]Rights\\.xml$"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "classify and structurally validate the exact Rights.xml, including required global flags, object/right blocks and RLS/template shape",
+        "bind Rights.xml to its companion Role metadata and actual role identity when companion source is available",
+        "interpret absent <right> elements using the actual Rights.xml format version and setForNewObjects; for 2.19+ absence is not evidence of an explicit false/denial because default-valued rights may be omitted from the dump",
+        "separate structural RLS presence/template references from semantic correctness of the restriction condition, access model and effective user permissions",
+        "for changed access behavior, require representative runtime/Configurator acceptance of effective permissions; XML structure alone is not authorization proof",
+        "Were missing role-right nodes interpreted with version/default semantics rather than converted into an inferred deny/absence-of-permission conclusion?",
+        "When access behavior changes, is effective behavior proven as a user-action matrix (data read, reference presentation, input-by-string/autocomplete, selection form, list view, value selection, object/card opening, edit as applicable) instead of inferring outcomes from human-readable right names?"
+      ],
+      "rule_id": "ROLE_RIGHTS_STRUCTURE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CFE_EXTENSION_STRUCTURE": {
+      "detect": [
+        "<ConfigurationExtensionPurpose>",
+        "<ObjectBelonging>\\s*Adopted\\s*</ObjectBelonging>",
+        "<ExtendedConfigurationObject>",
+        "<BaseForm\\b",
+        "callType\\s*="
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "classify extension-owned versus adopted metadata from actual extension XML",
+        "for adopted objects/subitems that require binding, validate ExtendedConfigurationObject and compare with actual base configuration when available",
+        "handle extension root/special metadata kinds with type-specific evidence instead of applying one adopted-object rule globally",
+        "for borrowed forms/interceptors, verify companion metadata, BaseForm, callType and actual base behavior",
+        "validate extension load/update or equivalent platform acceptance when structural extension XML changes",
+        "Were extension changes reviewed against actual base/deployed objects, distinguishing adopted/own content and BaseForm/interceptor contracts?"
+      ],
+      "rule_id": "CFE_EXTENSION_STRUCTURE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "XDTO_STRUCTURE": {
+      "detect": [
+        "<package\\b[^>]*targetNamespace",
+        "<XDTOPackage\\b",
+        "XDTOPackages[/\\\\]"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "prove targetNamespace, imports and local/external type references from actual Package.bin/XML",
+        "validate serialized declaration order, unique types/properties and legal property type/ref/inline-type structure",
+        "treat xs:anyType with foreign imports as review-required until intentionality vs unresolved-type degradation is proven",
+        "when companion files are supplied, verify XDTOPackage metadata Name/Namespace and Configuration.xml registration",
+        "before changing a contract, inspect used-by producer/consumer code and serialization expectations",
+        "when package bytes change, require configuration-update/model acceptance and representative serialization/deserialization runtime evidence",
+        "Was XDTO code designed from the actual package namespace/type/import graph, with unresolved/anyType degradation and registration explicitly checked?"
+      ],
+      "rule_id": "XDTO_STRUCTURE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "TRANSACTION_WRITE": {
+      "detect": [
+        "НачатьТранзакцию",
+        "ЗафиксироватьТранзакцию",
+        "БлокировкаДанных",
+        "НаборЗаписей",
+        "\\.Записать\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ОбработкаПроверкиЗаполнения\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ПередЗаписью\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ПриЗаписи\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ОбработкаПроведения\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std783",
+        "std792",
+        "std463",
+        "std464"
+      ],
+      "checks": [
+        "transaction pairing",
+        "same-method transaction ownership",
+        "try/catch placement",
+        "no DB access after failed transaction before rollback",
+        "transaction duration/scope",
+        "external resources outside transaction",
+        "responsible read/locking",
+        "TOCTOU between validation and write",
+        "write/register-set inside loop",
+        "batch size/idempotency/retry",
+        "For a rule that claims invalid state cannot be written/persisted/posted, are all required mutation channels explicitly enumerated (interactive write, programmatic write, posting, exchange/import/background when applicable) before selecting the validation event?",
+        "Does the selected object/document lifecycle event actually cover every required mutation channel? ОбработкаПроверкиЗаполнения is not accepted as a universal write guard because official 1C std463 states that it is not called for every write, in particular programmatic write; persistence-integrity checks require appropriate write-transaction events.",
+        "If both early user feedback and persistence integrity are required, is the material business predicate owned once and reused by the pre-validation adapter and transactional guard rather than duplicated into divergent rules?",
+        "Are exchange/loading semantics explicitly dispositioned, including any ОбменДанными.Загрузка early return, so a standard bypass is not silently retained when the business invariant must also hold for exchange/import writes?",
+        "Does runtime acceptance exercise invalid and valid cases for every material required mutation channel, including programmatic Object.Write() and posting when in scope, rather than proving only one interactive UI path or one breakpoint observation?"
+      ],
+      "rule_id": "TRANSACTION_WRITE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "EXCEPTION": {
+      "detect": [
+        "\\bПопытка\\b",
+        "\\bИсключение\\b",
+        "ВызватьИсключение"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std499",
+        "std783"
+      ],
+      "checks": [
+        "catch is necessary and local",
+        "exception not swallowed",
+        "original diagnostics preserved",
+        "no parsing of exception text",
+        "transaction rollback first",
+        "user vs admin diagnostics"
+      ],
+      "rule_id": "EXCEPTION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "STRUCTURED_CONTRACT": {
+      "detect": [
+        "Новый\\s+Структура",
+        "ТаблицаЗначений",
+        "Соответствие"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std693",
+        "std641",
+        "std453"
+      ],
+      "checks": [
+        "<=3 constructor values or explicit filling",
+        "fixed schema initialized once",
+        "no dynamic property drift",
+        "export API documents fields/types",
+        "caller/callee contract names match",
+        "service fields survive transformations"
+      ],
+      "rule_id": "STRUCTURED_CONTRACT",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "POLYMORPHIC_DOMAIN": {
+      "detect": [
+        "ТипЗнч",
+        "\\bССЫЛКА\\s+(?:Документ|Справочник)",
+        "Составн(?:ой|ого)Тип"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std654",
+        "std728"
+      ],
+      "checks": [
+        "validate allowed type before value enters downstream collection",
+        "explicit unsupported-type policy",
+        "no domain-contract leakage before branching",
+        "all supported types have equivalent semantics",
+        "unexpected type cannot partially execute",
+        "Can a value enter result/query/mutation before allowed polymorphic type is validated?"
+      ],
+      "rule_id": "POLYMORPHIC_DOMAIN",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DUPLICATION_INVARIANT": {
+      "detect": [
+        "Нормализ",
+        "Дедупликац",
+        "Повторн.*провер",
+        "Эквивалент"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std440"
+      ],
+      "checks": [
+        "single owner for business relation/invariant",
+        "caller postcondition vs callee repeated work",
+        "intentional duplication documented",
+        "optimized duplicate path covered by equivalence tests",
+        "Is the same business relation/rule independently implemented in form/common module/query path?",
+        "If an optimized SQL path duplicates a business relation for performance, are equivalence tests present for every supported source type?"
+      ],
+      "rule_id": "DUPLICATION_INVARIANT",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CROSS_OBJECT_DUPLICATION_REVIEW": {
+      "detect": [],
+      "detect_paths": [],
+      "standards": [
+        "std440"
+      ],
+      "checks": [
+        "Inventory all changed BSL objects/forms/modules and map each changed responsibility, business rule and invariant to its owner before judging local implementations independently.",
+        "Run the change-set analyzer and semantically compare related handlers, qualified-call sequences, fields, query/calculation blocks and adapters across distinct objects.",
+        "Classify every candidate as SAME_RESPONSIBILITY, SAME_BUSINESS_RULE, SAME_ALGORITHM, INCIDENTAL_SIMILARITY or INTENTIONAL_ADAPTER_DUPLICATION; similarity alone must not force refactoring.",
+        "For a shared invariant/business rule, is one owner established; for intentional duplication, is the distinct trust/runtime/client-server/vendor/performance boundary and drift control evidenced?",
+        "Was the whole-change-set semantic pass completed even when deterministic analyzers returned zero HIGH/MEDIUM findings or zero candidate pairs?",
+        "If analyzer routine/pair budgets were exceeded, was the scope narrowed to the actual changed dependency closure or the budget deliberately raised, with SCOPE_REVIEW_REQUIRED kept distinct from zero candidates?",
+        "Do two changed forms/modules independently implement the same responsibility or business rule without a proven boundary that makes a shared owner unsafe?",
+        "If the structural analyzer produced no candidates, was cross-object responsibility/owner mapping still performed instead of treating zero findings as architectural PASS?"
+      ],
+      "rule_id": "CROSS_OBJECT_DUPLICATION_REVIEW",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "SERVER_API_SECURITY": {
+      "detect": [
+        "Привилегирован",
+        "ВыполнитьБезПроверкиПрав",
+        "ServerCall\\s*=\\s*true"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std467"
+      ],
+      "checks": [
+        "minimal exported surface",
+        "no unnecessary ServerCall",
+        "no unnecessary privileged mode",
+        "authorization/trust-boundary validation",
+        "external identifiers do not select arbitrary methods/metadata",
+        "input size/domain constrained"
+      ],
+      "rule_id": "SERVER_API_SECURITY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "COLLECTION_ALGORITHM": {
+      "detect": [
+        "\\bДля\\s+Каждого\\b",
+        "НайтиСтроки",
+        "\\.Найти\\s*\\(",
+        "Соответствие",
+        "\\.Вставить\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std436",
+        "std729"
+      ],
+      "checks": [
+        "asymptotic complexity explicitly derived and justified; avoid avoidable multiplicative scans",
+        "nested scan replaceable with index",
+        "same data rescanned across phases",
+        "memory growth bounded",
+        "10x/100x scale challenge",
+        "transitive helper/vendor I/O inside loops",
+        "For every helper called inside a changed loop, has the actual callee/transitive callee source been inspected for DB/server/external I/O rather than assuming it is in-memory?",
+        "For hierarchy/tree traversal, is the intended complete-tree/forest/subtree boundary explicit and are cycle, multiple-parent, duplicate-edge, missing-parent and internal-start-node cases classified without treating an intentional subtree boundary as corruption?"
+      ],
+      "rule_id": "COLLECTION_ALGORITHM",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": {
+        "schema_version": 1,
+        "required_when_active": true,
+        "candidate_bound": true,
+        "not_applicable_policy": "VERIFIER_RECOMPUTED_TRIGGER_ABSENCE_ONLY",
+        "max_review_rows": 100000,
+        "measured_acceleration_requires": "RUNTIME_ADAPTER"
+      },
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLEVERENCE_CONFIGURATION": {
+      "detect": [
+        "<(?:\\w+:)?ContainerTypesBook\\b",
+        "<(?:\\w+:)?DocumentType\\b",
+        "<(?:\\w+:)?CommonFieldInfoCollection\\b"
+      ],
+      "detect_paths": [
+        "(?:^|/)Configuration/(?:Metadata|DocumentTypes)/",
+        "(?:^|/)WinClient/Configuration/(?:Metadata|DocumentTypes)/"
+      ],
+      "standards": [],
+      "checks": [
+        "exact configuration source layer/path, accepted baseline and changed metadata delta",
+        "exact field declarations: code-point name, native type, header/line/object scope, default/nullability and actual producer/consumer",
+        "container/barcode template set, changed overlaps and actual parser precedence/shadowing behavior",
+        "GS/control-character and GS1 parser semantics are proven from actual parser/runtime rather than visible text",
+        "field identity is traced exactly across declaration → mapping/script/writer → export/import; similar/transliterated/confusable names are not assumed equal",
+        "Configuration/WinClient mirror relationship is proven and synchronized when deployment requires both",
+        "runtime loader/parser acceptance covers the changed schema/template and a negative or competing-match scenario when material",
+        "When barcode/container templates overlap, was the actually selected template proven for representative full and prefix-only inputs instead of inferring precedence from file order or visual specificity?",
+        "For every changed Mobile SMARTS field, do declaration, expressions/mappings, writers, export/import and 1C consumers use the exact intended identifier/code points and native type, without treating NomerKoroba/НомерКороба or confusable variants as equivalent?"
+      ],
+      "rule_id": "CLEVERENCE_CONFIGURATION",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "cleverence_review": [
+          "EXECUTION_GRAPH",
+          "SCOPE_DIRECTIONS_REENTRY",
+          "SCAN_SESSION_STATE",
+          "WRITER_PATHS",
+          "PLAN_FACT_IDENTITY",
+          "EXACT_FIELDS_TYPES",
+          "PRODUCER_MAPPING_WRITER_CONSUMER"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLEVERENCE_MSLX": {
+      "detect": [
+        "<(?:\\w+:)?Operation\\b",
+        "<(?:\\w+:)?\\w+Action\\b",
+        "CurrentItems",
+        "DeclaredItems",
+        "BindedLine"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "baseline graph preservation",
+        "action ids/XML scope/serialized indent/physical order",
+        "explicit, implicit and scoped up: directions",
+        "former-END and ordered ButtonDirections/error/abort/Escape paths",
+        "standard writer/router reuse",
+        "Current/Declared/BindedLine identity",
+        "split/merge quantity invariants",
+        "marks/SN/SSCC/series/weight preservation",
+        "Configuration/WinClient mirror proof",
+        "runtime emulator/device path",
+        "fresh-scan/re-entry state ownership for SelectedProduct, ScannedBarcode and BarcodeData; continuation operations are not assumed to reset session state",
+        "quantity-control stage ownership: new picking vs mutation/reallocation is determined before the first standard quantity-control that can reject the path",
+        "writer-path inventory covers every applicable standard writer/AcceptInDocument/mark/SN/SSCC/weighted/buffer path for each changed fact field",
+        "mutable fact is rebound to a live CurrentItem by technical identity before mutation, with verify/rollback for multi-step source→target changes",
+        "Can a repeated/menu re-entry consume stale SelectedProduct/ScannedBarcode/BarcodeData or enter SearchProduct/another continuation stage without a fresh scan contract and cleanup?",
+        "Can reallocation/mutation of existing fact reach a standard quantity-control while still being classified as new picking, causing double counting or false over-pick rejection?",
+        "Does a changed CurrentItem field rely on one observed writer even though other applicable mark/SN/SSCC/weighted/buffer/AcceptInDocument writer paths can create fact without that field?",
+        "Is a UI/view/SelectedLine snapshot mutated as if it were the live Document.CurrentItems row, or is technical Uid rebind + state verification used before mutation?",
+        "For an MSLX edit, were physical order, parent/depth, explicit and implicit directions, former-END, button/error/abort/Escape paths proven before delivery?"
+      ],
+      "rule_id": "CLEVERENCE_MSLX",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "cleverence_review": [
+          "EXECUTION_GRAPH",
+          "SCOPE_DIRECTIONS_REENTRY",
+          "SCAN_SESSION_STATE",
+          "WRITER_PATHS",
+          "PLAN_FACT_IDENTITY",
+          "EXACT_FIELDS_TYPES",
+          "PRODUCER_MAPPING_WRITER_CONSUMER"
+        ],
+        "runtime_required_from": "R2_STATEFUL_RUNTIME"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DIFF_ATTRIBUTION": {
+      "detect": [
+        "baseline",
+        "candidate",
+        "changed vendor",
+        "заимствован"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std440",
+        "std453"
+      ],
+      "checks": [
+        "introduced vs baseline findings",
+        "regressions",
+        "transitive activation of baseline debt",
+        "changed-range mapping"
+      ],
+      "rule_id": "DIFF_ATTRIBUTION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DOCUMENTATION_CONTRACT": {
+      "detect": [
+        "(?m)^\\s*//",
+        "Экспорт"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std453",
+        "std641",
+        "COMMENTING_POLICY"
+      ],
+      "checks": [
+        "comment matches current responsibility",
+        "parameter/return schema current",
+        "no stale performance/ownership claims",
+        "Changed comments are classified as AUTHOR_MARKER, TECHNICAL_COMMENT or PUBLIC_INTERFACE_COMMENT; project marker syntax is not confused with technical intent.",
+        "Technical comments explain a reason, invariant, platform/vendor limitation or non-obvious contract instead of restating the next line of code.",
+        "Do comments/API docs still describe the current responsibility, parameters, return schema and ownership?",
+        "Does each changed comment explain non-obvious intent/invariant/constraint or an accurate public-interface contract, while project-specific author markers remain a separate evidenced convention?"
+      ],
+      "rule_id": "DOCUMENTATION_CONTRACT",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "REPRESENTATION_CONTRACT": {
+      "detect": [
+        "Строка\\s*\\(",
+        "Представлен",
+        "Сериализац"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std641"
+      ],
+      "checks": [
+        "native type preserved",
+        "conversion boundary justified",
+        "producer/consumer use same type",
+        "Is a technical native key converted to String/presentation and later consumed as a technical key without a serialization boundary?"
+      ],
+      "rule_id": "REPRESENTATION_CONTRACT",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLEVERENCE_INTEGRATION": {
+      "detect": [
+        "1C\\s*[↔<>=-]+\\s*Cleverence",
+        "Business Process",
+        "CurrentItems.*1C",
+        "Core/Integration"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "effective active BP proven",
+        "producer/consumer field contract uses the exact intended identifier/code points, native type and header/line scope end-to-end",
+        "Current/Declared/BindedLine identity",
+        "split/merge and one-plan-many-fact behavior",
+        "marks/SN/SSCC/service keys preserved",
+        "standard writer/router/Core hook reuse plus applicability coverage for every path that can create/export the changed fact field",
+        "retry/re-entry/partial failure",
+        "Configuration/WinClient mirror when applicable",
+        "runtime emulator/device scenarios",
+        "For 1C↔Cleverence changes, were both producer and consumer mappings, active BP grouping/search, types, retry/partial-failure and integration hook behavior reviewed?",
+        "Is the authoritative business applicability decision/source named separately from technical route identity, with BP/document/operation/action identity used as the business predicate only when exact requirement/target evidence proves equivalence and lifecycle?",
+        "When the same derived business decision is needed in 1C and Cleverence, is its authoritative owner/source named and either the decision/raw authoritative inputs transported, or independent recomputation proven semantically equivalent with input parity, boundary cases and dependency/revalidation triggers?",
+        "For cross-system/Cleverence classification changes, are the new class, each adjacent existing class and out-of-scope classes exercised so a correct new predicate cannot silently capture or bypass an existing route?"
+      ],
+      "rule_id": "CLEVERENCE_INTEGRATION",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "cleverence_review": [
+          "EXECUTION_GRAPH",
+          "SCOPE_DIRECTIONS_REENTRY",
+          "SCAN_SESSION_STATE",
+          "WRITER_PATHS",
+          "PLAN_FACT_IDENTITY",
+          "EXACT_FIELDS_TYPES",
+          "PRODUCER_MAPPING_WRITER_CONSUMER"
+        ],
+        "runtime_required_from": "R3_CROSS_SYSTEM"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DOMAIN_VALIDATION": {
+      "detect": [
+        "(?i)\\bЕсли\\b[^\\n]*(?:<=|>=|<>|=|<|>)",
+        "(?i)(?:Процент|Диапазон|Миним|Максим|Допустим|Заполнен|ПустаяСсылка|Неопределено)"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE"
+      ],
+      "checks": [
+        "state the complete domain already guaranteed by type/metadata/platform",
+        "identify bypassing external/legacy/migration/exchange/deserialization boundaries",
+        "separate defensive boundary validation from business validation",
+        "every condition corresponds to a reachable state or documented defensive boundary",
+        "multi-field or piecewise rules have an acceptance/rejection case matrix before code",
+        "boundary/default/zero/partial/joint-invalid cases are covered",
+        "the same invariant is not redundantly owned by several layers without different trust/time semantics",
+        "For a multi-field or piecewise business rule, was an explicit accepted/rejected case matrix written before code and checked against zero/default/partial/boundary combinations?"
+      ],
+      "rule_id": "DOMAIN_VALIDATION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "HOOK_ORCHESTRATION": {
+      "detect": [
+        "&(?:Перед|После|Вместо)\\s*\\(",
+        "(?im)^\\s*(?:Процедура|Функция)\\s+\\w*(?:ПриСоздании|ПередЗаписью|ПослеЗаписи|ОбработкаПроведения|ОбработкаПроверкиЗаполнения|ОбработкаРасшифровки|Команда)"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std440",
+        "std453",
+        "VALIDATION_ENGINE"
+      ],
+      "checks": [
+        "state the single responsibility of the hook",
+        "keep only event-specific applicability/routing/adaptation local",
+        "delegate reusable validation/calculation/query/persistence/mapping to a named owner API",
+        "avoid putting reusable business logic into borrowed typical modules when project-owned module can own it",
+        "verify hook name/owner and callee responsibility are cohesive",
+        "verify client/server context and Отказ/return/mutation/event-order semantics",
+        "compare with nearest project/typical hook pattern when placement is uncertain",
+        "Does each changed hook/event handler keep only event-specific routing/adaptation and delegate reusable business validation/calculation/query/persistence to a named owner API unless a proven typical/project pattern justifies local ownership?"
+      ],
+      "rule_id": "HOOK_ORCHESTRATION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "EXTERNAL_COMPONENT_LIFECYCLE": {
+      "detect": [
+        "ПодключитьВнешнююКомпоненту",
+        "НачатьПодключениеВнешнейКомпоненты",
+        "УстановитьВнешнююКомпоненту",
+        "НачатьУстановкуВнешнейКомпоненты",
+        "ЗагрузитьВнешнююКомпоненту",
+        "ТипВнешнейКомпоненты",
+        "\\bAddIn\\.",
+        "ОбработкаВнешнегоСобытия",
+        "РезультатАсинхВызоваВнешнейКомпоненты",
+        "ВнешниеКомпонентыКлиент\\.ПодключитьКомпоненту",
+        "ОбщегоНазначения(?:Клиент)?\\.ПодключитьКомпонентуИзМакета"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std669",
+        "std700",
+        "std794"
+      ],
+      "checks": [
+        "Is the production connection/install mechanism proven from the actual target and current 1C/BSP policy, with diagnostic file-path loading kept separate from the production delivery mechanism?",
+        "Is integration proved as separate stages: trusted artifact/storage → install/connect → object/instance creation → minimal health method → optional UI host → provider/network/business call, without allowing success at an earlier stage to prove a later stage?",
+        "Is the supported runtime matrix explicit for the actual platform/client type, OS, process architecture/bitness, component build/runtime dependencies and UI capability instead of extrapolating from one successful workstation/client?",
+        "For every external component instance, native runtime, window/host object, callback/event subscription or other external resource, is one lifecycle owner named with a symmetric create/attach → detach/close/destroy path?",
+        "When native UI is shown, are parent/owner window, embedded-vs-top-level behavior, activation/focus, resize/minimize and form/application close semantics proven in the actual client instead of accepting merely 'a window opened'?",
+        "For asynchronous component/event callbacks, are initiator, callback entrypoint, correlation/state owner, success/error completion, duplicate/re-entry behavior and late-callback handling after form/resource disposal explicit and proven?",
+        "Are repeated attach/open/close/reopen scenarios covered so stale component instances, duplicate subscriptions, leaked native windows or one-shot initialization cannot be mistaken for a stable integration?",
+        "Are failures classified by stage (artifact/path/trust, install/connect, instance, health call, host/window, callback, provider/network/business) with diagnostics preserved, rather than collapsing them into one generic 'component does not work' conclusion?",
+        "Are external/native/provider calls kept outside database transaction/lock ownership where applicable, or is any unavoidable coupling explicitly justified with timeout/recovery semantics?",
+        "Is every component state variable, constructor/call and callback/event handler placed in an execution context actually supported by the target platform/client and exact component API, with directives/signatures proven rather than guessed from a previous example?",
+        "Are external-code trust and installation rules satisfied: reliable source, required user/admin consent, controlled storage, and BSP external-component APIs when BSP is present; arbitrary filename/ProgID connection is not promoted from diagnostics into production without authoritative justification?",
+        "Does runtime acceptance independently cover production attach/install, minimal health call, host open/resize/close, reopen, normal callback, close with callback pending, clean client shutdown and provider/network failure without conflating these layers?",
+        "Before debugging or claiming success for provider/HTML/JavaScript/network/business behavior, was a minimal external-component health call independently proven after install/connect and instance creation?",
+        "Can an external component/native runtime/window/callback survive beyond the form/scenario that created it because destruction, unsubscribe or owner lifetime is not explicitly paired with creation?",
+        "Can an asynchronous/external callback arrive after its form or state owner is closed/disposed and still mutate UI/state or call a released native resource without a stale/disposed guard?",
+        "Was a native/embedded UI considered integrated only after parent/embedding, resize, close/destroy and reopen were proven, rather than from the first successful window display?",
+        "When host/component health is already proven, are downstream provider/network/auth/schema failures diagnosed as a separate layer rather than used to invalidate or rewrite the host integration?",
+        "Was a manual file picker/path or ProgID used only as a bounded diagnostic when appropriate, and not silently promoted to the production connection mechanism contrary to current 1C/BSP external-code policy?",
+        "Was native-window/UI support proved for the actual client/runtime instead of assuming that behavior observed in thick/thin desktop client is available in web/mobile/other execution environments?"
+      ],
+      "rule_id": "EXTERNAL_COMPONENT_LIFECYCLE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "VERSION_GATED_CAPABILITY": {
+      "detect": [
+        "(?:Верси[яи]|Релиз|release)\\b",
+        "\\b(?:8|11|3)\\.\\d+\\.\\d+(?:\\.\\d+)?\\b",
+        "Mobile\\s+SMARTS\\s*\\d",
+        "(?:поддержива\\w*|доступ\\w*|capabilit\\w*).{0,120}(?:верс|релиз|release|version)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "Is the exact target product/configuration/vendor version and execution environment named before a version-sensitive capability is accepted?",
+        "Is code or behavior from a newer/neighboring release treated as DISCOVERY_ONLY until the exact target source proves the same capability, signature, gate and semantics?",
+        "Is visible UI/status/configuration representation kept separate from runtime-effective capability, editability and business applicability?",
+        "Are target-version feature gates, settings, product-group predicates, migrations/defaults and disabled/read-only states traced before changing code?",
+        "If the capability is absent or materially different in the target version, is fallback/customization explicitly justified instead of back-porting remembered behavior by assumption?",
+        "Can a capability observed only in a newer/other release be projected into the target release without exact target evidence?",
+        "Can a displayed status/label or non-editable setting be treated as proof that the underlying capability is enabled and runtime-effective for the current business class?",
+        "When target behavior is version-sensitive, does missing exact target source remain EVIDENCE_REQUIRED rather than being closed by a newer-version analog?"
+      ],
+      "rule_id": "VERSION_GATED_CAPABILITY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "REFERENCE_DATA_FRESHNESS": {
+      "detect": [
+        "master\\s*data|reference\\s*data|\\bНСИ\\b",
+        "(?:выгруз|загруз|синхрониз|реплицир)\\w*.{0,100}справоч",
+        "справоч\\w*.{0,100}(?:выгруз|загруз|синхрониз|реплицир)",
+        "Cleverence.{0,100}справоч|справоч.{0,100}Cleverence",
+        "(?:кэш|cache).{0,80}(?:справоч|reference|master)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "For every replicated reference relation/value, is the authoritative owner named and is semantic validity distinguished from mere existence/type validity?",
+        "Is freshness observable through a timestamp/version/hash/export batch or another reproducible fingerprint instead of assumed from a successful previous sync?",
+        "Is the propagation chain traced end-to-end (authoritative source → exchange/export → server/base/cache → device/client consumer) with each independently stale boundary identified?",
+        "When observed behavior can be explained by stale replicated data, is a controlled refresh/re-export/reload diagnostic performed before modifying business code, while preserving evidence of the before/after state?",
+        "Can an existing but semantically incorrect mapping/reference be rejected or surfaced, rather than accepted merely because the record/reference is technically valid?",
+        "Does runtime acceptance cover current-data success and, where material, stale/invalid-data behavior plus propagation after source change?",
+        "Could stale or not-yet-propagated reference data be diagnosed as a code defect without first proving current source and downstream snapshots?",
+        "Can a technically valid reference/row be accepted as semantically correct without proving the business relation it represents?",
+        "Can source master data change while one downstream server/device/cache copy remains stale with no observable propagation contract?"
+      ],
+      "rule_id": "REFERENCE_DATA_FRESHNESS",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "BARCODE_INPUT_AND_CLASSIFICATION": {
+      "detect": [
+        "\\bGS1\\b|DataMatrix|\\bКИЗ\\b",
+        "(?:^|[^А-Яа-я])КМ(?:[^А-Яа-я]|$)",
+        "BarcodeData|ScannedBarcode|GroupSeparator",
+        "ASCII\\s*29|0x1D|\\\\x1[dD]|\\(01\\)|\\(21\\)|\\(91\\)|\\(92\\)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "Are raw scanner/input bytes or code points observed before parsing, including non-printable separators such as GS, rather than inferred from a displayed/logged string?",
+        "Is there exactly one named normalization owner, with every replacement/trim/escape/encoding transformation justified and testable before classification?",
+        "When multiple templates/classifiers can match the same prefix, is specificity/precedence explicit so a broad fallback cannot steal a more specific valid code?",
+        "Are full, shortened, transport and scanner-specific representations treated as equivalent only when the domain/parser contract explicitly proves that equivalence and information loss is acceptable?",
+        "Are trade-item GTIN, individual serial/mark, logistics SSCC/container and regulatory aggregation identities classified by domain role before business routing?",
+        "Does runtime acceptance distinguish emulator/manual paste from the actual scanner/device/keyboard-wedge path when control characters or encoding can differ?",
+        "When parsing fails, can diagnostics identify the raw/normalized/classified stage and competing matched pattern without exposing sensitive payload more broadly than necessary?",
+        "Can printable text such as '0029' or an escaped display representation be treated as the actual GS control character without byte/code-point evidence?",
+        "Can a broad prefix-only barcode pattern win before a more specific KM/GS1/SSCC classifier and silently change business routing?",
+        "Can a shortened/normalized code be treated as semantically identical to the full scanned code without proving which AI/data fields were removed and whether downstream validation needs them?",
+        "Can successful emulator/manual-input parsing be used as proof of physical scanner behavior when separators, prefix/suffix handling or encoding may differ?"
+      ],
+      "rule_id": "BARCODE_INPUT_AND_CLASSIFICATION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "STATEFUL_UI_MODE": {
+      "detect": [
+        "Режим(?:Скан|Выбор|Ожидан|Работ)",
+        "Ожида\\w*Скан|Состояни\\w*Форм",
+        "Переключ\\w*.{0,60}Режим|Сброс\\w*.{0,60}Режим",
+        "(?:Включ|Отключ|Активир|Деактивир)\\w*.{0,80}(?:режим|состояни)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "Is the mode represented as an explicit finite set of states/transitions (or an equivalent proven contract) rather than independent flags whose combinations can become invalid?",
+        "Is one owner named for mode state, selected row/object and transient input, with lifetime scoped to the correct form/session/scenario?",
+        "Are enter → consume/success → reset transitions explicit, including which business action consumes the temporary mode?",
+        "Do cancel, invalid input, no-data/empty-result, exception and user-abort paths reset or preserve state according to an explicit contract rather than only the happy path?",
+        "When selection/current row/object changes, is stale mode-bound data invalidated or rebound deliberately before the next action?",
+        "Are repeated command/re-entry semantics explicit so a second activation cannot stack, invert or reuse stale transient state accidentally?",
+        "Do form close/reopen and navigation away/back clear or restore only intentional state, with acceptance proving the next ordinary action is unaffected?",
+        "Can temporary UI mode be reset only after successful completion while error/cancel/no-data paths leave it armed for the next unrelated action?",
+        "Can the selected/current row change while a temporary mode still carries data or assumptions from the previous row?",
+        "Can close/reopen or repeated command entry consume transient state created by a previous attempt instead of starting from the documented initial state?"
+      ],
+      "rule_id": "STATEFUL_UI_MODE",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "EXTERNAL_SIDE_EFFECT_IDENTITY": {
+      "detect": [
+        "ОФД|Фискализац|Фискальн|\\bККМ\\b|эквайр",
+        "\\bЭДО\\b.{0,120}(?:Отправ|Подпис|Аннулир|Отозв)",
+        "(?:Отправ|Подпис|Провест|Фиксир|Зарегистрир)\\w*.{0,120}(?:HTTP|REST|SOAP|API|банк|сервис|провайдер|внешн)",
+        "HTTPЗапрос.{0,120}(?:POST|PUT|PATCH|DELETE)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "Is the business identity/projection that must exist immediately before the external side effect explicitly defined and validated?",
+        "Is the exact identity/data projection sent to or irreversibly observed by the external system proven independently from the object's later internal state?",
+        "Is there an exact success/acknowledgement boundary after which post-success internal identity transformation is allowed, rather than treating call initiation as success?",
+        "Can post-success mutation occur only after confirmed external success, with failure/exception paths leaving the retry identity and payload contract intact?",
+        "On retry/re-entry, is it explicit whether the original external payload identity or transformed internal identity must be reused, and is idempotency/correlation sufficient to prevent duplicate or inconsistent external effects?",
+        "Are downstream documents/reports/registers deliberately bound to the intended pre- or post-side-effect identity instead of assuming they are still the same?",
+        "When a reverse/refund/cancel pipeline exists, is its identity source and external/internal ordering independently traced and accepted rather than copied by analogy from the forward flow?",
+        "Is there an auditable correlation from the external receipt/message/result to the internal object before and after identity transformation so discrepancies can be reconstructed?",
+        "Can identity mutation after an external success be reviewed as an ordinary local write without proving what the external system already observed and the exact temporal boundary?",
+        "After external failure or ambiguous completion, can a retry accidentally use the post-mutation identity/payload even though the external contract expects the original pre-side-effect projection?",
+        "Can the external payload and later internal identity intentionally diverge without an explicit correlation/audit contract proving both representations belong to the same business event?"
+      ],
+      "rule_id": "EXTERNAL_SIDE_EFFECT_IDENTITY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DECISION_DEPENDENCY_INVALIDATION": {
+      "detect": [
+        "(?:ПриИзменении|OnChange)[A-Za-zА-Яа-я0-9_]*(?:Контрагент|Договор|Организац|Склад|Соглашен|Дисконт|Карта|Покупател)",
+        "(?:Перепровер|Повторн\\w*Проверк|Revalidat|DecisionDependency|InvalidateDecision)",
+        "(?:Контрагент|Договор|Организац|Склад|Соглашен|Дисконт\\w*Карт|Покупател).{0,160}(?:Пересчит|Перепровер|Переоцен|ОбновитьПровер)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "Is the derived decision/classification named together with every material dependency that can change its truth value?",
+        "For every mutable dependency, is the authoritative current value/source named rather than relying on a stale UI/cache snapshot?",
+        "Does every dependency change have an explicit invalidation/revalidation policy, including whether existing rows/results are rechecked immediately, lazily before use, or intentionally left unchanged?",
+        "Before a previously computed decision is consumed after context change/re-entry, is freshness proven or revalidation executed at a deterministic boundary?",
+        "Can cached/row-level validation state survive a counterparty, agreement, organization, warehouse, discount-card, role, date/status or other material context change without proof that the decision remains valid?",
+        "Runtime acceptance covers a decision before and after changing at least one material dependency, including the expected treatment of already existing rows/results.",
+        "Can the system reuse a decision that was valid under context A after a dependency changes to context B, without invalidation or revalidation?"
+      ],
+      "rule_id": "DECISION_DEPENDENCY_INVALIDATION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "BUSINESS_RELATION_CARDINALITY": {
+      "detect": [
+        "(?:Кардинальност|кратност|multiplicity|cardinality|0\\.\\.N|1:N|one[- ]to[- ]many)",
+        "(?:Связан\\w*|Основан\\w*|Заказ\\w*|Ордер\\w*|Поступлен\\w*|Реализац\\w*).{0,180}(?:ПЕРВЫЕ\\s+1|НайтиПерв|Первый\\s*\\(|FirstOrDefault|first\\s+related)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "For each material source→target business relation, is allowed cardinality explicitly stated as zero/one/many on both directions where relevant?",
+        "If implementation selects the first/only related object, is uniqueness proven by metadata/business invariant or is ambiguity handled explicitly instead of inferred from current data?",
+        "Are zero, exactly one and multiple related-object outcomes each assigned deterministic behavior: continue, aggregate, split, choose by an explicit rule, or block?",
+        "When several source objects may contribute to one target (or one source to several targets), are merge/split identity and duplication rules explicit?",
+        "Acceptance covers representative 0/1/N relation cases rather than only the singleton case present in one test database.",
+        "Can ВЫБРАТЬ ПЕРВЫЕ 1/first-found logic silently convert a potentially 1:N business relation into 1:1 without a proven uniqueness contract?",
+        "Is a 1:1 relation being inferred only because current sample/test data happened to contain one related object?"
+      ],
+      "rule_id": "BUSINESS_RELATION_CARDINALITY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "FACT_PRESERVING_REALLOCATION": {
+      "detect": [
+        "(?:Перераспредел|Переназнач|Reassign|Reallocation|УбратьИзКороб|НазначитьКороб|СменитьКороб).{0,180}(?:Количество|Факт|Quantity|CurrentItems|Короб|Контейнер|Аналитик)",
+        "(?:Количество|Факт|Quantity|CurrentItems).{0,180}(?:Перераспредел|Переназнач|Reassign|Reallocation|УбратьИзКороб|НазначитьКороб)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "checks": [
+        "Is the conserved business fact/measure named separately from the allocation dimension being changed (box/container/series/project/warehouse/other analytic)?",
+        "Does the operation mutate allocation ownership without accidentally changing the total fact unless the business operation explicitly adds/removes fact?",
+        "Is a conservation invariant explicit (for example Σ fact before = Σ fact after) with identity/quantity normalization defined?",
+        "If an intermediate UNASSIGNED/unallocated state is allowed, are its owner, lifetime and permitted next transitions explicit?",
+        "Does completion block when required fact remains unallocated, duplicated or over-allocated?",
+        "Are repeated move/re-entry/retry operations idempotent with respect to total fact and allocation identity?",
+        "Runtime acceptance proves conservation across move A→B, temporary unassignment when allowed, repeated move and final completion.",
+        "Can reassigning an existing fact between analytics/containers increase or decrease total fact even though the business action only changes allocation?",
+        "Can a document/process complete while conserved fact remains in a temporary unassigned state that the business contract requires to be fully allocated?"
+      ],
+      "rule_id": "FACT_PRESERVING_REALLOCATION",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    }
+  },
+  "blocking_rule": "Every activated profile/rule requires evidence-backed disposition; generated views cannot silently add/remove rules.",
+  "review_levels": [
+    "L1_CONSTRUCTION",
+    "L2_ROUTINE",
+    "L3_MODULE",
+    "L4_METADATA_OBJECT",
+    "L5_CROSS_OBJECT",
+    "L6_BUSINESS_RUNTIME"
+  ],
+  "reverse_coverage_required": true,
+  "reverse_coverage_rule": "Expand checks from RULES/rule_registry.json independently from code-driven findings."
+}

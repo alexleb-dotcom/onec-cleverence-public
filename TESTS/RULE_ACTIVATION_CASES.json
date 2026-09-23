@@ -1,0 +1,464 @@
+{
+  "version": 8,
+  "cases": [
+    {
+      "id": "qualified_call_routes_call_contract",
+      "inputs": [
+        "call_contract_nonexport_caller.bsl"
+      ],
+      "triggered_rules": [
+        "CALL_CONTRACT"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "representation_key_routes_business_identity",
+      "inputs": [
+        "business_identity_representation_key.bsl"
+      ],
+      "triggered_rules": [
+        "BUSINESS_IDENTITY",
+        "STRUCTURED_CONTRACT",
+        "COLLECTION_ALGORITHM"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "hook_validation_routes_domain_and_hook",
+      "inputs": [
+        "domain_hook_review.bsl"
+      ],
+      "triggered_rules": [
+        "DOMAIN_VALIDATION",
+        "HOOK_ORCHESTRATION"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "post_write_pipeline_routes_lifecycle_review",
+      "inputs": [
+        "post_write_standard_overwrite_review.bsl"
+      ],
+      "triggered_rules": [
+        "POST_WRITE_STANDARD_OVERWRITE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "post_write_compound_trigger_is_artifact_scoped",
+      "inputs": [
+        "post_write_assignment_only.bsl",
+        "post_write_fill_only.bsl"
+      ],
+      "triggered_rules": [],
+      "forbidden_rules": [
+        "POST_WRITE_STANDARD_OVERWRITE"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "derived_key_routes_pre_mutation_identity_review",
+      "inputs": [
+        "derived_key_before_mutation_review.bsl"
+      ],
+      "triggered_rules": [
+        "BUSINESS_IDENTITY"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "query_routes_query_and_bsp",
+      "inputs": [
+        "query_in_loop_bad.bsl"
+      ],
+      "triggered_rules": [
+        "QUERY",
+        "COLLECTION_ALGORITHM",
+        "BSP_REUSE"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "cleverence_routes_configuration_not_execution_graph",
+      "inputs": [
+        "cleverence_container_schema_good.mslx"
+      ],
+      "triggered_rules": [
+        "CLEVERENCE_CONFIGURATION"
+      ],
+      "forbidden_rules": [
+        "CLEVERENCE_MSLX",
+        "BARCODE_INPUT_AND_CLASSIFICATION",
+        "VERSION_GATED_CAPABILITY"
+      ],
+      "surface": "CLEVERENCE_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "cleverence_configuration_path_routes_without_operation_tokens",
+      "inputs": [
+        "cleverence_config_path_only"
+      ],
+      "triggered_rules": [
+        "CLEVERENCE_CONFIGURATION"
+      ],
+      "forbidden_rules": [
+        "CLEVERENCE_MSLX"
+      ],
+      "surface": "CLEVERENCE_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "cleverence_routes_graph",
+      "inputs": [
+        "cleverence_graph_good.mslx"
+      ],
+      "triggered_rules": [
+        "CLEVERENCE_MSLX"
+      ],
+      "surface": "CLEVERENCE_ONLY"
+    },
+    {
+      "id": "project_context_can_raise_cross_system",
+      "inputs": [
+        "call_contract_nonexport_caller.bsl"
+      ],
+      "project_context": "cross_system_project_context.md",
+      "triggered_rules": [
+        "CALL_CONTRACT",
+        "CLEVERENCE_INTEGRATION"
+      ],
+      "surface": "CROSS_SYSTEM",
+      "risk": "R3_CROSS_SYSTEM"
+    },
+    {
+      "id": "all_onec_profile_rules_route",
+      "inputs": [
+        "all_onec_profile_activation.bsl"
+      ],
+      "triggered_rules": [
+        "QUERY",
+        "DYNAMIC_LIST",
+        "CLIENT_SERVER_FORM",
+        "TRANSACTION_WRITE",
+        "EXCEPTION",
+        "STRUCTURED_CONTRACT",
+        "POLYMORPHIC_DOMAIN",
+        "DUPLICATION_INVARIANT",
+        "SERVER_API_SECURITY",
+        "COLLECTION_ALGORITHM",
+        "DIFF_ATTRIBUTION",
+        "DOCUMENTATION_CONTRACT",
+        "REPRESENTATION_CONTRACT",
+        "BUSINESS_IDENTITY",
+        "BSP_REUSE",
+        "CALL_CONTRACT",
+        "DOMAIN_VALIDATION",
+        "HOOK_ORCHESTRATION"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "onec_form_xml_routes_structural_rules",
+      "inputs": [
+        "onec_form_xml_good.xml"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "FORM_XML_STRUCTURE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "form_constants_set_binding_routes_data_contract",
+      "inputs": [
+        "form_constants_set_binding_review.xml"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "FORM_XML_STRUCTURE",
+        "FORM_DATA_BINDING"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "form_bsl_datapath_routes_data_contract",
+      "inputs": [
+        "form_dynamic_datapath_binding.bsl"
+      ],
+      "triggered_rules": [
+        "FORM_DATA_BINDING"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "onec_metadata_routes_structural_rules",
+      "inputs": [
+        "onec_metadata_name_bad.xml"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "METADATA_XML_STRUCTURE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "onec_adopted_metadata_routes_cfe",
+      "inputs": [
+        "onec_metadata_adopted_good.xml"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "METADATA_XML_STRUCTURE",
+        "CFE_EXTENSION_STRUCTURE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "onec_xdto_routes_structural_rules",
+      "inputs": [
+        "xdto_good"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "XDTO_STRUCTURE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "onec_role_rights_routes_structural_rules",
+      "inputs": [
+        "role_rights_good"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "METADATA_XML_STRUCTURE",
+        "ROLE_RIGHTS_STRUCTURE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "post_write_reachable_same_field_routes",
+      "inputs": [
+        "post_write_reachable_same_field_bad.bsl"
+      ],
+      "triggered_rules": [
+        "POST_WRITE_STANDARD_OVERWRITE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "post_write_unrelated_same_module_not_routed",
+      "inputs": [
+        "post_write_unrelated_same_module_good.bsl"
+      ],
+      "triggered_rules": [],
+      "forbidden_rules": [
+        "POST_WRITE_STANDARD_OVERWRITE"
+      ],
+      "surface": "ONEC_ONLY"
+    },
+    {
+      "id": "implementation_reachability_routes",
+      "inputs": [
+        "reachability_candidate_bad/TestCommon_Module.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "triggered_rules": [
+        "IMPLEMENTATION_REACHABILITY"
+      ]
+    },
+    {
+      "id": "multi_bsl_routes_cross_object_review",
+      "inputs": [
+        "cross_object_duplication_bad"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "triggered_rules": [
+        "CROSS_OBJECT_DUPLICATION_REVIEW"
+      ]
+    },
+    {
+      "id": "single_bsl_does_not_route_cross_object_review",
+      "inputs": [
+        "business_identity_representation_key.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "forbidden_rules": [
+        "CROSS_OBJECT_DUPLICATION_REVIEW"
+      ]
+    },
+    {
+      "id": "same_filename_bsl_objects_do_not_collapse",
+      "inputs": [
+        "cross_object_same_filename/A/Module.bsl",
+        "cross_object_same_filename/B/Module.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "triggered_rules": [
+        "CROSS_OBJECT_DUPLICATION_REVIEW"
+      ]
+    },
+    {
+      "id": "form_constants_set_unbound_does_not_route_data_contract",
+      "inputs": [
+        "form_constants_set_unbound.xml"
+      ],
+      "triggered_rules": [
+        "ONEC_XML_STRUCTURE",
+        "FORM_XML_STRUCTURE"
+      ],
+      "forbidden_rules": [
+        "FORM_DATA_BINDING"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "reference_selection_routes_contract",
+      "inputs": [
+        "reference_selection_contract_review.bsl"
+      ],
+      "triggered_rules": [
+        "REFERENCE_SELECTION_CONTRACT"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "external_component_routes_lifecycle_review",
+      "inputs": [
+        "external_component_lifecycle_review.bsl"
+      ],
+      "triggered_rules": [
+        "EXTERNAL_COMPONENT_LIFECYCLE",
+        "CLIENT_SERVER_FORM"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "version_routes_capability_review",
+      "inputs": [
+        "version_gated_capability_review.bsl"
+      ],
+      "triggered_rules": [
+        "VERSION_GATED_CAPABILITY"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "reference_data_routes_freshness_review",
+      "inputs": [
+        "reference_data_freshness_review.bsl"
+      ],
+      "triggered_rules": [
+        "REFERENCE_DATA_FRESHNESS"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "barcode_routes_input_classification_review",
+      "inputs": [
+        "barcode_input_classification_review.bsl"
+      ],
+      "triggered_rules": [
+        "BARCODE_INPUT_AND_CLASSIFICATION"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "stateful_ui_routes_mode_review",
+      "inputs": [
+        "stateful_ui_mode_review.bsl"
+      ],
+      "triggered_rules": [
+        "STATEFUL_UI_MODE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "external_side_effect_routes_identity_review",
+      "inputs": [
+        "external_side_effect_identity_review.bsl"
+      ],
+      "triggered_rules": [
+        "EXTERNAL_SIDE_EFFECT_IDENTITY"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R3_CROSS_SYSTEM"
+    },
+    {
+      "id": "decision_dependency_routes_revalidation_review",
+      "inputs": [
+        "decision_dependency_invalidation_review.bsl"
+      ],
+      "triggered_rules": [
+        "DECISION_DEPENDENCY_INVALIDATION"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "business_relation_routes_cardinality_review",
+      "inputs": [
+        "business_relation_cardinality_review.bsl"
+      ],
+      "triggered_rules": [
+        "BUSINESS_RELATION_CARDINALITY"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "fact_reallocation_routes_conservation_review",
+      "inputs": [
+        "fact_preserving_reallocation_review.bsl"
+      ],
+      "triggered_rules": [
+        "FACT_PRESERVING_REALLOCATION"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "fill_check_handler_routes_transaction_write",
+      "inputs": [
+        "onec_write_guard_fill_check_only_bad.bsl"
+      ],
+      "triggered_rules": [
+        "TRANSACTION_WRITE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "before_write_handler_routes_transaction_write",
+      "inputs": [
+        "onec_write_guard_before_write_good.bsl"
+      ],
+      "triggered_rules": [
+        "TRANSACTION_WRITE"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "single_active_decision_is_valid",
+      "decisions": [
+        {
+          "id": "D1",
+          "decision_key": "feature.applicability",
+          "claim": "Feature applies when explicit business flag is true.",
+          "status": "ACTIVE",
+          "scope": "current project",
+          "established_by": [{"kind": "USER_DECISION", "ref": "task"}],
+          "evidence_dependencies": [{"kind": "SOURCE", "id": "requirements", "fingerprint": "a1"}],
+          "decision_dependencies": [],
+          "supersedes": [],
+          "superseded_by": null,
+          "revalidation_triggers": []
+        }
+      ],
+      "expect_result": "PASS",
+      "expect_revalidation": []
+    },
+    {
+      "id": "conflicting_current_decisions_block",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.applicability", "claim": "Use route id.", "status": "ACTIVE", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []},
+        {"id": "D2", "decision_key": "feature.applicability", "claim": "Use business flag.", "status": "ACTIVE", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "expect_result": "FAIL",
+      "expect_error_types": ["CONFLICTING_CURRENT_DECISIONS"]
+    },
+    {
+      "id": "temporary_without_expiry_contract_blocks",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.proxy", "claim": "Temporarily use document type.", "status": "TEMPORARY", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "expect_result": "FAIL",
+      "expect_error_types": ["TEMPORARY_REASON_MISSING", "TEMPORARY_REPLACEMENT_CRITERION_MISSING", "TEMPORARY_REVALIDATION_TRIGGER_MISSING"]
+    },
+    {
+      "id": "temporary_with_expiry_contract_is_valid",
+      "decisions": [
+        {
+          "id": "D1",
+          "decision_key": "feature.proxy",
+          "claim": "Temporarily use document type while business flag is unavailable.",
+          "status": "TEMPORARY",
+          "temporary_reason": "Authoritative flag is not yet delivered to the mobile document.",
+          "replacement_criterion": "Replace proxy when explicit flag is mapped to the mobile document.",
+          "revalidation_triggers": ["mapping changes", "new document type enters the same route"],
+          "evidence_dependencies": [],
+          "decision_dependencies": [],
+          "supersedes": []
+        }
+      ],
+      "expect_result": "PASS"
+    },
+    {
+      "id": "supersession_requires_bidirectional_links",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.applicability", "claim": "Old proxy.", "status": "SUPERSEDED", "superseded_by": "D2", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []},
+        {"id": "D2", "decision_key": "feature.applicability", "claim": "New business flag.", "status": "ACTIVE", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "expect_result": "FAIL",
+      "expect_error_types": ["SUPERSESSION_LINK_NOT_BIDIRECTIONAL"]
+    },
+    {
+      "id": "proper_supersession_keeps_history_not_current",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.applicability", "claim": "Old proxy.", "status": "SUPERSEDED", "superseded_by": "D2", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []},
+        {"id": "D2", "decision_key": "feature.applicability", "claim": "New business flag.", "status": "ACTIVE", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": ["D1"], "revalidation_triggers": []}
+      ],
+      "expect_result": "PASS",
+      "expect_active": ["D2"],
+      "expect_stale": ["D1"]
+    },
+    {
+      "id": "changed_evidence_dependency_requires_targeted_revalidation",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.applicability", "claim": "Business flag is authoritative.", "status": "ACTIVE", "evidence_dependencies": [{"kind": "SOURCE", "id": "requirements", "fingerprint": "old"}], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []},
+        {"id": "D2", "decision_key": "delivery.layout", "claim": "Use legacy Documents.zip export.", "status": "ACTIVE", "evidence_dependencies": [{"kind": "SOURCE", "id": "delivery-export", "fingerprint": "stable"}], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "changed_dependencies": [{"kind": "SOURCE", "id": "requirements", "fingerprint": "new"}],
+      "expect_result": "PASS",
+      "expect_revalidation": ["D1"],
+      "expect_not_revalidation": ["D2"]
+    },
+    {
+      "id": "same_dependency_fingerprint_remains_valid",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.applicability", "claim": "Business flag is authoritative.", "status": "ACTIVE", "evidence_dependencies": [{"kind": "SOURCE", "id": "requirements", "fingerprint": "same"}], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "changed_dependencies": [{"kind": "SOURCE", "id": "requirements", "fingerprint": "same"}],
+      "expect_result": "PASS",
+      "expect_revalidation": []
+    },
+    {
+      "id": "current_decision_cannot_depend_on_invalidated_decision",
+      "decisions": [
+        {"id": "D1", "decision_key": "old.mapping", "claim": "Old mapping.", "status": "INVALIDATED", "status_reason": "Target source disproved it.", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []},
+        {"id": "D2", "decision_key": "feature.applicability", "claim": "Depends on old mapping.", "status": "ACTIVE", "evidence_dependencies": [], "decision_dependencies": ["D1"], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "expect_result": "FAIL",
+      "expect_error_types": ["CURRENT_DEPENDS_ON_STALE_DECISION"]
+    },
+    {
+      "id": "explicit_revalidation_state_is_not_current",
+      "decisions": [
+        {"id": "D1", "decision_key": "feature.applicability", "claim": "Needs recheck after baseline changed.", "status": "REVALIDATION_REQUIRED", "status_reason": "Target baseline changed.", "evidence_dependencies": [], "decision_dependencies": [], "supersedes": [], "revalidation_triggers": []}
+      ],
+      "expect_result": "PASS",
+      "expect_active": [],
+      "expect_revalidation_summary": ["D1"]
+    },
+    {
+      "id": "later_user_decision_supersedes_original_requirement",
+      "decisions": [
+        {
+          "id": "D1",
+          "decision_key": "receipt.goods_clearance",
+          "claim": "Original specification requires manual clearing only.",
+          "status": "SUPERSEDED",
+          "superseded_by": "D2",
+          "evidence_dependencies": [],
+          "decision_dependencies": [],
+          "supersedes": [],
+          "revalidation_triggers": []
+        },
+        {
+          "id": "D2",
+          "decision_key": "receipt.goods_clearance",
+          "claim": "Later explicit user decision allows automatic clearing after confirmation.",
+          "status": "ACTIVE",
+          "established_by": [
+            {
+              "kind": "USER_DECISION",
+              "ref": "later project chat"
+            }
+          ],
+          "evidence_dependencies": [],
+          "decision_dependencies": [],
+          "supersedes": [
+            "D1"
+          ],
+          "revalidation_triggers": []
+        }
+      ],
+      "expect_result": "PASS",
+      "expect_active": [
+        "D2"
+      ],
+      "expect_stale": [
+        "D1"
+      ]
+    }
+  ]
+}

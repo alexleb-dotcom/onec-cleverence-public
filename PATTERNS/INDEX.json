@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "contract": {
+    "role": "ILLUSTRATIVE_PATTERN",
+    "evidence_role": "NONE",
+    "copy_policy": "ADAPT_ONLY",
+    "proves_api": false,
+    "proves_runtime": false,
+    "requires_exact_source": true,
+    "rule": "Patterns teach implementation shape only. Exact target/user-authorized source must prove names, signatures, fields, lifecycle and runtime/vendor behavior."
+  },
+  "patterns": [
+    {
+      "id": "HOOK_ORCHESTRATION",
+      "platform": "ONEC",
+      "profiles": ["HOOK_ORCHESTRATION"],
+      "intent_terms": ["hook", "handler", "event", "extension", "orchestration", "обработчик", "расширение", "подписка", "оркестрация"],
+      "summary": "Keep hook/event handlers thin and delegate reusable business behavior to an evidenced owner.",
+      "good": "PATTERNS/ONEC/HOOK_ORCHESTRATION/good.bsl",
+      "bad": "PATTERNS/ONEC/HOOK_ORCHESTRATION/bad.bsl",
+      "exact_source_required_for": ["hook name and signature", "execution context", "owner module/method", "side effects"]
+    },
+    {
+      "id": "DERIVE_VALIDATE_MUTATE",
+      "platform": "ONEC",
+      "profiles": ["DOMAIN_VALIDATION", "BUSINESS_IDENTITY"],
+      "intent_terms": ["derive", "validate", "mutate", "key", "add row", "validate before write", "ключ", "проверить", "добавить строку", "до изменения"],
+      "summary": "Derive and validate mutation-controlling values before Add/Insert/Write creates partial state.",
+      "good": "PATTERNS/ONEC/DERIVE_VALIDATE_MUTATE/good.bsl",
+      "bad": "PATTERNS/ONEC/DERIVE_VALIDATE_MUTATE/bad.bsl",
+      "exact_source_required_for": ["key semantics", "required domain", "uniqueness rule", "mutation owner"]
+    },
+    {
+      "id": "QUERY_VARIANTS",
+      "platform": "ONEC",
+      "profiles": ["QUERY"],
+      "intent_terms": ["query", "variant", "dynamic query", "string surgery", "запрос", "вариант запроса", "динамический запрос", "строковая хирургия"],
+      "summary": "Choose complete constructor-valid query variants instead of positional/string surgery on query text.",
+      "good": "PATTERNS/ONEC/QUERY_VARIANTS/good.bsl",
+      "bad": "PATTERNS/ONEC/QUERY_VARIANTS/bad.bsl",
+      "exact_source_required_for": ["schema and fields", "filter semantics", "result contract", "BSP/native setter availability"]
+    },
+    {
+      "id": "QUERY_SENTINEL_EXPLICIT_BRANCH",
+      "platform": "ONEC",
+      "profiles": ["QUERY", "REFERENCE_SELECTION_CONTRACT"],
+      "intent_terms": ["sentinel", "empty reference", "bulk mode", "disable filter", "пустая ссылка", "сентинел", "массовый режим", "отключить отбор"],
+      "summary": "Represent point-vs-bulk semantics as an explicit authorized branch rather than a sentinel that silently broadens a filter.",
+      "good": "PATTERNS/ONEC/QUERY_SENTINEL_EXPLICIT_BRANCH/good.bsl",
+      "bad": "PATTERNS/ONEC/QUERY_SENTINEL_EXPLICIT_BRANCH/bad.bsl",
+      "exact_source_required_for": ["sentinel authorization", "expected cardinality", "caller contract", "empty/default semantics"]
+    },
+    {
+      "id": "CALL_CONTRACT_ADAPTER",
+      "platform": "ONEC",
+      "profiles": ["CALL_CONTRACT"],
+      "intent_terms": ["call contract", "signature", "callee", "adapter", "module call", "межмодульный вызов", "сигнатура", "адаптер", "параметры вызова"],
+      "summary": "Make semantic arguments explicit at a project adapter boundary after the exact exported callee contract is proven.",
+      "good": "PATTERNS/ONEC/CALL_CONTRACT_ADAPTER/good.bsl",
+      "bad": "PATTERNS/ONEC/CALL_CONTRACT_ADAPTER/bad.bsl",
+      "exact_source_required_for": ["exported declaration", "argument order/defaults", "client-server context", "return/mutation behavior", "caller closure"]
+    },
+    {
+      "id": "FORM_COLLECTION_SERVER",
+      "platform": "ONEC",
+      "profiles": ["CLIENT_SERVER_FORM"],
+      "intent_terms": ["form collection", "client loop", "server", "form data", "коллекция формы", "цикл на клиенте", "сервер", "данные формы"],
+      "summary": "Move material traversal of form collections to an evidenced server boundary instead of repeated client-side access.",
+      "good": "PATTERNS/ONEC/FORM_COLLECTION_SERVER/good.bsl",
+      "bad": "PATTERNS/ONEC/FORM_COLLECTION_SERVER/bad.bsl",
+      "exact_source_required_for": ["form attribute type", "execution directives", "delta-transfer behavior", "allowed server context"]
+    },
+    {
+      "id": "BUSINESS_IDENTITY",
+      "platform": "ONEC",
+      "profiles": ["BUSINESS_IDENTITY", "REPRESENTATION_CONTRACT"],
+      "intent_terms": ["business identity", "grouping key", "deduplicate", "representation", "бизнес идентичность", "ключ группировки", "дедупликация", "представление"],
+      "summary": "Build keys from evidenced intrinsic identity and keep representation/normalization attributes out unless the domain proves otherwise.",
+      "good": "PATTERNS/ONEC/BUSINESS_IDENTITY/good.bsl",
+      "bad": "PATTERNS/ONEC/BUSINESS_IDENTITY/bad.bsl",
+      "exact_source_required_for": ["intrinsic identity fields", "representation fields", "normalization semantics", "grouping cardinality"]
+    },
+    {
+      "id": "POST_WRITE_OWNER",
+      "platform": "ONEC",
+      "profiles": ["POST_WRITE_STANDARD_OVERWRITE"],
+      "intent_terms": ["post write", "overwrite", "later writer", "field owner", "перезапись", "поздний писатель", "владелец поля", "после заполнения"],
+      "summary": "Place the authoritative custom field assignment after proven later standard writers or move ownership to the actual final stage.",
+      "good": "PATTERNS/ONEC/POST_WRITE_OWNER/good.bsl",
+      "bad": "PATTERNS/ONEC/POST_WRITE_OWNER/bad.bsl",
+      "exact_source_required_for": ["reachable lifecycle order", "all later writers", "final persisted owner", "standard hook availability"]
+    },
+    {
+      "id": "IMPLEMENTATION_REACHABILITY",
+      "platform": "ONEC",
+      "profiles": ["IMPLEMENTATION_REACHABILITY"],
+      "intent_terms": ["reachability", "orphan helper", "entrypoint", "caller", "достижимость", "неиспользуемая функция", "точка входа", "вызов"],
+      "summary": "Connect every new helper to a proven entrypoint/caller path instead of shipping an orphan implementation.",
+      "good": "PATTERNS/ONEC/IMPLEMENTATION_REACHABILITY/good.bsl",
+      "bad": "PATTERNS/ONEC/IMPLEMENTATION_REACHABILITY/bad.bsl",
+      "exact_source_required_for": ["real entrypoint", "caller graph", "dynamic callback contract", "delivery closure"]
+    },
+    {
+      "id": "PLAN_FACT_IDENTITY",
+      "platform": "CLEVERENCE",
+      "profiles": ["CLEVERENCE_MSLX", "CLEVERENCE_INTEGRATION"],
+      "intent_terms": ["DeclaredItems", "CurrentItems", "plan fact", "BindedLine", "rebind", "план факт", "привязка строки", "перепривязать"],
+      "summary": "Separate plan from fact and rebind the live fact by technical identity before mutation when state may have moved.",
+      "good": "PATTERNS/CLEVERENCE/PLAN_FACT_IDENTITY/good.mslx",
+      "bad": "PATTERNS/CLEVERENCE/PLAN_FACT_IDENTITY/bad.mslx",
+      "exact_source_required_for": ["document field declarations", "writer paths", "technical identity", "BindedLine semantics", "operation/action runtime"]
+    },
+    {
+      "id": "SCAN_REENTRY",
+      "platform": "CLEVERENCE",
+      "profiles": ["CLEVERENCE_MSLX"],
+      "intent_terms": ["scan", "re-entry", "repeat", "state", "barcode", "сканирование", "повторный вход", "повтор", "состояние", "штрихкод"],
+      "summary": "Make per-scan state initialization and repeat/re-entry handling explicit before branching on stale scan values.",
+      "good": "PATTERNS/CLEVERENCE/SCAN_REENTRY/good.mslx",
+      "bad": "PATTERNS/CLEVERENCE/SCAN_REENTRY/bad.mslx",
+      "exact_source_required_for": ["scan-session variables", "parser behavior", "action graph", "repeat/cancel paths", "runtime state persistence"]
+    }
+  ]
+}

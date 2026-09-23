@@ -1,0 +1,101 @@
+{
+  "note": "Generate the executable version with TOOLS/build_requirements_contract.py. This file only shows the evidence statuses and question/assumption conventions.",
+  "task_input_note": "The generated contract stores the exact task text plus SHA-256/size; requirements_gate rejects inconsistent identity or a contract with neither task text nor source artifacts.",
+  "purpose_values": [
+    "IMPLEMENTATION_INPUT",
+    "REQUIREMENTS_ARTIFACT"
+  ],
+  "field_statuses": [
+    "KNOWN",
+    "DERIVED_WITH_EVIDENCE",
+    "ASSUMED",
+    "OPEN",
+    "NOT_APPLICABLE"
+  ],
+  "claim_provenance": [
+    "USER_CONFIRMED",
+    "SOURCE_OBSERVED",
+    "TYPICAL_RELEASE_PROVEN",
+    "DERIVED_WITH_EVIDENCE",
+    "PROPOSED_SOLUTION",
+    "OPEN"
+  ],
+  "field_example": {
+    "title": "Repeat semantics",
+    "blocking": true,
+    "status": "KNOWN",
+    "value": "Repeated import fully replaces the prior derived result.",
+    "evidence": [
+      {
+        "kind": "SOURCE_REQUIRED",
+        "ref": "user decision / project context"
+      }
+    ],
+    "claim_ids": [
+      "CLAIM:repeat-semantics"
+    ],
+    "reason": ""
+  },
+  "claim_example": {
+    "id": "CLAIM:repeat-semantics",
+    "statement": "Repeated import fully replaces the prior derived result.",
+    "provenance": "USER_CONFIRMED",
+    "disposition": "CONFIRMED_REQUIREMENT",
+    "blocking": true,
+    "evidence": [
+      {
+        "kind": "SOURCE_REQUIRED",
+        "ref": "current user/process-owner decision"
+      }
+    ],
+    "depends_on": [],
+    "reason": ""
+  },
+  "proposal_example": {
+    "id": "CLAIM:ui-proposal",
+    "statement": "Add a separate command for the operation.",
+    "provenance": "PROPOSED_SOLUTION",
+    "disposition": "PROPOSAL",
+    "blocking": false,
+    "evidence": [],
+    "depends_on": [],
+    "reason": "Design option; not an agreed requirement."
+  },
+  "open_question_example": {
+    "question": "Can the same fact be consumed by more than one target?",
+    "blocking": true,
+    "status": "OPEN",
+    "materiality": "QUANTITY",
+    "why_it_changes_design": "Determines duplicate-use prevention and acceptance semantics."
+  },
+  "requirements_adversarial_example": {
+    "id": "REQ-ADV-1",
+    "counterexample": "Two source rows match the same target key but lead to different commercial conditions.",
+    "expected_behavior": "The requirement defines deterministic ambiguity handling or remains blocked.",
+    "status": "PASS",
+    "evidence": [
+      {
+        "kind": "SEMANTIC",
+        "ref": "requirements review case matrix"
+      }
+    ]
+  },
+  "revision_event_example": {
+    "id": "REV-1",
+    "changed_claim_ids": [
+      "CLAIM:source-rule-old"
+    ],
+    "invalidated_claim_ids": [
+      "CLAIM:derived-mapping"
+    ],
+    "revalidated_claim_ids": [],
+    "reason": "User corrected the authoritative source rule.",
+    "evidence": []
+  },
+  "assumption_example": {
+    "statement": "Only one operator edits the draft during the pilot.",
+    "impact": "Concurrency conflict handling is out of initial runtime scope.",
+    "validation_plan": "Confirm with process owner before production rollout.",
+    "blocking_business_decision": false
+  }
+}

@@ -1,0 +1,464 @@
+{
+  "version": 9,
+  "algorithm": "bidirectional proof coverage: CODE_TO_STANDARDS from actual constructions + independent STANDARDS_TO_CODE from complete mechanism profiles; no silent skip",
+  "triggers": [
+    {
+      "id": "multiple_db_calls",
+      "detect": [
+        ">1 transitive Execute/ExecuteBatch in one public operation",
+        "Execute inside loop",
+        "query helper called from loop"
+      ],
+      "standards": [
+        "std436",
+        "std729"
+      ],
+      "alternatives": [
+        "single SELECT",
+        "IN (&Array)",
+        "ОБЪЕДИНИТЬ ВСЕ",
+        "ВыполнитьПакет",
+        "temporary tables",
+        "BSP bulk API"
+      ]
+    },
+    {
+      "id": "bsl_reference_dot",
+      "detect": [
+        "known Reference.Attribute",
+        "ПолучитьОбъект()",
+        "reference representation in hot path"
+      ],
+      "standards": [
+        "std496"
+      ],
+      "alternatives": [
+        "query",
+        "ЗначенияРеквизитовОбъекта",
+        "ЗначенияРеквизитовОбъектов"
+      ]
+    },
+    {
+      "id": "query_dereference",
+      "detect": [
+        "Alias.ReferenceField.Attribute"
+      ],
+      "standards": [
+        "std654",
+        "std728"
+      ],
+      "alternatives": [
+        "source field",
+        "explicit JOIN",
+        "ВЫРАЗИТЬ",
+        "denormalized hot-path field"
+      ]
+    },
+    {
+      "id": "query_complexity",
+      "detect": [
+        "many JOINs",
+        "complex WHERE/ON",
+        "large universal query"
+      ],
+      "standards": [
+        "std729",
+        "std658",
+        "std652"
+      ],
+      "alternatives": [
+        "specialized query branches",
+        "temporary tables",
+        "simpler conditions",
+        "plan inspection"
+      ]
+    },
+    {
+      "id": "temporary_tables",
+      "detect": [
+        "ПОМЕСТИТЬ",
+        "temporary table join",
+        "temporary table in В(...)"
+      ],
+      "standards": [
+        "std777",
+        "std652"
+      ],
+      "alternatives": [
+        "limit columns/rows",
+        "index if large/reused",
+        "do not index tiny table without evidence"
+      ]
+    },
+    {
+      "id": "empty_check",
+      "detect": [
+        "query executed only to test presence",
+        "Пустой followed by second execution"
+      ],
+      "standards": [
+        "std438"
+      ],
+      "alternatives": [
+        "Result.Пустой()",
+        "single execution and then consume result"
+      ]
+    },
+    {
+      "id": "query_alias_contract",
+      "detect": [
+        "automatic alias",
+        "query column renamed across layers",
+        "consumer field mismatch"
+      ],
+      "standards": [
+        "std437"
+      ],
+      "alternatives": [
+        "explicit КАК alias",
+        "single end-to-end field contract"
+      ]
+    },
+    {
+      "id": "union",
+      "detect": [
+        "ОБЪЕДИНИТЬ"
+      ],
+      "standards": [
+        "std436",
+        "std729"
+      ],
+      "alternatives": [
+        "ОБЪЕДИНИТЬ ВСЕ when DB-side dedup is not semantically required"
+      ]
+    },
+    {
+      "id": "order_group_distinct",
+      "detect": [
+        "ORDER BY",
+        "DISTINCT",
+        "GROUP BY"
+      ],
+      "standards": [
+        "std729"
+      ],
+      "alternatives": [
+        "prove semantic necessity",
+        "remove unnecessary sort/dedup/aggregation"
+      ]
+    },
+    {
+      "id": "custom_platform_mechanism",
+      "detect": [
+        "custom mechanism replaces documented platform/vendor mechanism"
+      ],
+      "standards": [
+        "std467"
+      ],
+      "alternatives": [
+        "reuse standard/vendor helper first"
+      ]
+    },
+    {
+      "id": "empty_domain_sentinel",
+      "detect": [
+        "EmptyReference/0/empty string inserted into parameter collection to avoid empty input",
+        "sentinel later used in IN/filter/join"
+      ],
+      "standards": [
+        "std729"
+      ],
+      "alternatives": [
+        "omit query branch",
+        "dynamic query text",
+        "prove sentinel is outside data domain"
+      ]
+    },
+    {
+      "id": "top_without_order",
+      "detect": [
+        "ВЫБРАТЬ ПЕРВЫЕ N without ORDER BY"
+      ],
+      "standards": [
+        "std438",
+        "std729"
+      ],
+      "alternatives": [
+        "existence predicate + QueryResult.Пустой()",
+        "deterministic ORDER BY when returned value matters"
+      ]
+    },
+    {
+      "id": "cross_module_duplicate_io",
+      "detect": [
+        "same bulk/query data read in prepare and apply phases of one entrypoint",
+        "I/O hidden across form/common-module boundary"
+      ],
+      "standards": [
+        "std436",
+        "std729"
+      ],
+      "alternatives": [
+        "pass immutable prepared data forward",
+        "one package/bulk read per business operation"
+      ]
+    },
+    {
+      "id": "polymorphic_fallthrough",
+      "detect": [
+        "TypeЗнч branches without explicit supported fallback for bounded contract"
+      ],
+      "standards": [
+        "std729"
+      ],
+      "alternatives": [
+        "explicit unsupported-type error",
+        "documented generic branch"
+      ]
+    },
+    {
+      "id": "structure_many_values",
+      "detect": [
+        "Новый Структура with >3 constructor values"
+      ],
+      "standards": [
+        "std693",
+        "std641"
+      ],
+      "alternatives": [
+        "explicit Вставить/assignment",
+        "constructor function for fixed structured contract"
+      ]
+    },
+    {
+      "id": "client_server_form",
+      "detect": [
+        "form client action invokes server method",
+        "context server call",
+        "nested form-data path may dereference a reference",
+        "client traversal/search of DataFormCollection"
+      ],
+      "standards": [
+        "std487",
+        "std496",
+        "std628",
+        "std636"
+      ],
+      "alternatives": [
+        "single consolidated server call",
+        "&НаСервереБезКонтекста with minimum args",
+        "justified context call for form collections",
+        "treat direct Форма.Объект.X as existing form data rather than a DB read",
+        "prove the runtime type of X before classifying Форма.Объект.X.Y as dereference/N+1"
+      ]
+    },
+    {
+      "id": "dynamic_list_override",
+      "detect": [
+        "ДинамическийСписок.ТекстЗапроса assignment",
+        "ОсновнаяТаблица mutation"
+      ],
+      "standards": [
+        "std768",
+        "std732"
+      ],
+      "alternatives": [
+        "keep the complete most-frequent/default query in the DynamicList editor",
+        "ОбщегоНазначения.УстановитьСвойстваДинамическогоСписка when BSP API available",
+        "set query/main table before settings/parameters"
+      ]
+    },
+    {
+      "id": "dynamic_list_expensive_online_state",
+      "detect": [
+        "DynamicList computes operational state through expensive joins/aggregation on every refresh",
+        "sorting/filtering requires a complex calculated status field"
+      ],
+      "standards": [
+        "std732",
+        "std652",
+        "std729"
+      ],
+      "alternatives": [
+        "transactionally maintained indexed information-register projection",
+        "prove freshness/rebuild and one-row-per-root identity",
+        "keep online calculation only with representative profiling evidence"
+      ]
+    },
+    {
+      "id": "transaction_write",
+      "detect": [
+        "НачатьТранзакцию",
+        "Записать in loop",
+        "register recordset write"
+      ],
+      "standards": [
+        "std783",
+        "std792"
+      ],
+      "alternatives": [
+        "short atomic transaction",
+        "batch recordset write",
+        "move calculations/external I/O outside transaction"
+      ]
+    },
+    {
+      "id": "exception_catch",
+      "detect": [
+        "Попытка/Исключение"
+      ],
+      "standards": [
+        "std499",
+        "std783"
+      ],
+      "alternatives": [
+        "do not catch",
+        "local catch + rethrow preserving original error",
+        "log detailed diagnostic when intentionally swallowed"
+      ]
+    },
+    {
+      "id": "subquery_virtual_join",
+      "detect": [
+        "JOIN (SELECT...)",
+        "JOIN virtual table"
+      ],
+      "standards": [
+        "std729",
+        "query_methodical"
+      ],
+      "alternatives": [
+        "temporary table in package",
+        "materialize virtual table when performance-sensitive"
+      ]
+    },
+    {
+      "id": "domain_contract_leakage",
+      "detect": [
+        "value added to downstream collection before supported type/domain validation"
+      ],
+      "standards": [
+        "std442",
+        "std453"
+      ],
+      "alternatives": [
+        "validate domain before mutation",
+        "explicit unsupported type branch"
+      ]
+    },
+    {
+      "id": "duplicated_business_rule",
+      "detect": [
+        "same relation/validation query in form and common module",
+        "copied business algorithm"
+      ],
+      "standards": [
+        "std440"
+      ],
+      "alternatives": [
+        "single common owner",
+        "shared pure helper",
+        "documented optimized duplicate path + equivalence tests"
+      ]
+    },
+    {
+      "id": "programmatic_query_text_mutation",
+      "detect": [
+        "query text contains variable field/table/source fragment",
+        "dynamic-list query text is transformed programmatically",
+        "СхемаЗапроса used to mutate dynamic-list query text"
+      ],
+      "standards": [
+        "std437",
+        "std768"
+      ],
+      "alternatives": [
+        "complete query/template + СтрЗаменить marker replacement",
+        "BSP УстановитьСвойстваДинамическогоСписка for applying the resulting text",
+        "explicit EXCEPTION_JUSTIFIED only when stable text anchors are not available"
+      ]
+    },
+    {
+      "id": "generated_query_fragment",
+      "detect": [
+        "query text concatenated with a variable fragment",
+        "conditional UNION/WHERE/package fragment",
+        "multiple generated query variants"
+      ],
+      "standards": [
+        "std437",
+        "std758"
+      ],
+      "alternatives": [
+        "complete template + СтрЗаменить",
+        "role-specific aliases",
+        "materialize and runtime-parse every final variant",
+        "СтрСоединить with explicit package separator when assembling independent whole queries"
+      ]
+    },
+    {
+      "id": "external_its_gap_discovery",
+      "detect": [
+        "any non-trivial changed 1C platform mechanism after internal review"
+      ],
+      "standards": [
+        "official ITS discovery, not a fixed std id"
+      ],
+      "alternatives": [
+        "mechanism search",
+        "wrong/right examples",
+        "restrictions/performance search",
+        "follow См. также",
+        "freshness/changed-standards check"
+      ],
+      "rule": "Independent from embedded trigger map; purpose is to discover unknown classes."
+    },
+    {
+      "id": "bsp_reuse_discovery",
+      "detect": [
+        "custom infrastructure/helper in 1C",
+        "platform-adjacent behavior with likely BSP equivalent",
+        "non-trivial form/file/user/printing/long-operation/property/update/exchange code"
+      ],
+      "standards": [
+        "std467",
+        "BSP_USAGE_POLICY"
+      ],
+      "alternatives": [
+        "public BSP API from exact target source",
+        "platform API when officially preferred",
+        "custom implementation only with documented non-applicability/exception"
+      ]
+    },
+    {
+      "id": "cleverence_execution_graph",
+      "detect": [
+        ".mslx Action added/moved/removed",
+        "Direction or ButtonDirection changed",
+        "OperationAction target changed"
+      ],
+      "standards": [],
+      "alternatives": [
+        "prove explicit + implicit successor paths",
+        "preserve former-END and error/abort/Escape behavior",
+        "runtime emulator/device verification"
+      ]
+    },
+    {
+      "id": "cleverence_plan_fact_contract",
+      "detect": [
+        "CurrentItems/DeclaredItems/BindedLine",
+        "writer/router change",
+        "1C ↔ Cleverence field mapping/grouping"
+      ],
+      "standards": [],
+      "alternatives": [
+        "preserve one-plan-many-fact identity",
+        "reuse standard writer/router",
+        "prove mark/SN/SSCC and quantity invariants"
+      ]
+    }
+  ],
+  "completion_rule": "Every triggered standard/check must have APPLICABLE_PASS with evidence, APPLICABLE_FINDING, or reasoned NOT_APPLICABLE. Unknown material behavior is EVIDENCE_REQUIRED/COVERAGE_GAP.",
+  "learning_rule": "Every confirmed reusable false negative updates trigger/profile/antipattern catalog and a machine or semantic regression before the review engine is considered improved."
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Operation name="ReviewFixtureBad">
+  <Actions>
+    <AssignAction id="duplicate-action" name="start" nextDirection="missing-target" expression="Value = 1;" />
+    <AssignAction id="duplicate-action" name="finish" nextDirection="return" expression="Value = 2;" />
+  </Actions>
+</Operation>

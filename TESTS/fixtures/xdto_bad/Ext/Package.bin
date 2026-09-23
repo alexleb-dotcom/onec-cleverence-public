@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://v8.1c.ru/8.1/xdto-package" xmlns:tns="urn:test" xmlns:foreign="urn:foreign" targetNamespace="urn:test">
+  <objectType name="Item">
+    <property name="External" type="foreign:ExternalType"/>
+  </objectType>
+  <import namespace="urn:other"/>
+  <valueType name="Code"/>
+</package>

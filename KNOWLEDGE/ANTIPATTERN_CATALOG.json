@@ -1,0 +1,844 @@
+{
+  "principle": "Store only reusable failure modes. Project-specific names and business decisions are forbidden here.",
+  "items": [
+    {
+      "id": "REVIEW_FALSE_PASS_BY_INCOMPLETE_COVERAGE",
+      "trigger": [
+        "review result has no blockers",
+        "separate later review discovers a blocker"
+      ],
+      "failure_mode": "A reviewer checks only remembered mechanisms and treats absence of findings as proof.",
+      "standards_or_contracts": [
+        "VALIDATION_ENGINE"
+      ],
+      "preferred_solution": "Mandatory CODE_TO_STANDARDS plus independent STANDARDS_TO_CODE ledger; NOT_APPLICABLE requires reason.",
+      "proof_method": "coverage ledger contains every detected mechanism/profile rule and all six review levels",
+      "regression": "semantic:coverage_completeness"
+    },
+    {
+      "id": "QUERY_PARAMETER_SENTINEL_BROADENING",
+      "trigger": [
+        "empty/default query parameter is used in an OR branch",
+        "sentinel value disables a point filter or changes result cardinality"
+      ],
+      "failure_mode": "A caller that passes EmptyRef/Undefined to a point-query API silently receives a broad result set, which can change calculations, writes or business decisions.",
+      "standards_or_contracts": [
+        "QUERY_PARAMETER_SENTINEL_SEMANTICS",
+        "std729"
+      ],
+      "preferred_solution": "State the sentinel contract and caller authorization explicitly. Prefer a separate bulk-mode API/query branch when filter removal is intentional; test normal, empty, nonexistent and other-context values with expected cardinality.",
+      "proof_method": "machine review for sentinel OR patterns plus caller/cardinality case matrix and representative runtime parse/result check",
+      "regression": "query_sentinel_broadening_bad.bsl"
+    },
+    {
+      "id": "CROSS_OBJECT_DUPLICATION_HIDDEN_BY_LOCAL_PASS",
+      "trigger": [
+        "multiple related forms/modules are changed",
+        "each artifact passes local review but repeats the same handler/call sequence/business rule"
+      ],
+      "failure_mode": "Per-file review misses two owners of one responsibility; clean local analyzers are incorrectly treated as change-set architecture proof.",
+      "standards_or_contracts": [
+        "CROSS_OBJECT_DUPLICATION_REVIEW",
+        "RESPONSIBILITY_COHESION",
+        "std440"
+      ],
+      "preferred_solution": "Route every multi-BSL change-set to whole-set responsibility/owner mapping and use structural similarity only to generate REVIEW candidates. Consolidate a shared owner or evidence the boundary and drift control.",
+      "proof_method": "change-set analyzer report plus semantic candidate classification and changed object → responsibility → owner map",
+      "regression": "changeset_architecture:cross_object_duplication_bad"
+    },
+    {
+      "id": "UNANCHORED_UNKNOWN_GAP_HYPOTHESIS",
+      "trigger": [
+        "review invents generic possible failures without an exact source observation",
+        "model novelty is treated as a defect or reusable rule"
+      ],
+      "failure_mode": "Unknown-gap discovery becomes hallucination amplification: speculative concerns consume review effort or force unsafe changes without falsifiable evidence.",
+      "standards_or_contracts": [
+        "GAP_DISCOVERY",
+        "VALIDATION_ENGINE"
+      ],
+      "preferred_solution": "Retain only hypotheses with source anchors, one concrete counterexample and a falsifier; unresolved hypotheses widen review, and promotion requires reproduced/authoritative evidence plus registry deduplication.",
+      "proof_method": "release-gate validation of gap_discovery lenses/hypotheses",
+      "regression": "release:unanchored_gap_hypothesis_blocks"
+    },
+    {
+      "id": "POST_WRITE_STANDARD_OVERWRITE",
+      "trigger": [
+        "custom code assigns a meaningful object/form field",
+        "later standard selection/fill/recalculation/write handlers can write the same field"
+      ],
+      "failure_mode": "The local assignment is correct when inspected in isolation but the effective lifecycle later replaces it, so the final persisted/consumed value violates the requirement.",
+      "standards_or_contracts": [
+        "POST_WRITE_STANDARD_OVERWRITE",
+        "ANALOG_BEFORE_INVENTION"
+      ],
+      "preferred_solution": "Build a writers-after-this-point timeline, name the final value owner and place/coordinate the customization at the proven lifecycle boundary. Validate the final value after the complete scenario.",
+      "proof_method": "target/typical call and event order plus runtime final-value scenario",
+      "regression": "activation:post_write_pipeline_routes_lifecycle_review"
+    },
+    {
+      "id": "PARALLEL_BUSINESS_PIPELINE_WITHOUT_SEMANTIC_LOSS_PROOF",
+      "trigger": [
+        "a separate document/calculation/row-building/write chain is proposed",
+        "a standard pipeline already owns the same business operation"
+      ],
+      "failure_mode": "A parallel implementation creates a second source of truth even though the standard pipeline already preserves the required entity as analytics, a reference or a row attribute.",
+      "standards_or_contracts": [
+        "STANDARD_PIPELINE_SEMANTIC_PRESERVATION",
+        "ANALOG_BEFORE_INVENTION",
+        "RESPONSIBILITY_COHESION"
+      ],
+      "preferred_solution": "Trace source business dimensions through the standard intermediate and target representations. Extend the existing owner unless actual evidence proves a required dimension is lost and cannot be added safely.",
+      "proof_method": "source dimension → standard intermediate → target mapping with preserved/lost classification",
+      "regression": "semantic:standard_pipeline_semantic_preservation"
+    },
+    {
+      "id": "MUTATION_BEFORE_DERIVED_KEY_VALIDATION",
+      "trigger": [
+        "a composite/derived identity key controls result creation",
+        "Add/Insert/Write occurs before key type/domain/completeness validation"
+      ],
+      "failure_mode": "Late key validation leaves a partial result row, index entry, register record or fact mutation after an invalid key component is discovered.",
+      "standards_or_contracts": [
+        "VALIDATE_DERIVED_KEY_BEFORE_MUTATION",
+        "BUSINESS_IDENTITY"
+      ],
+      "preferred_solution": "Use derive → validate type/domain/completeness/uniqueness → mutate ordering; on failure return before the first result mutation.",
+      "proof_method": "statement-order review plus invalid/empty/ambiguous key cases proving no partial state",
+      "regression": "activation:derived_key_routes_pre_mutation_identity_review"
+    },
+    {
+      "id": "LITERAL_COMMENT_RESTATES_CODE",
+      "trigger": [
+        "a changed comment merely narrates the next assignment/condition/call",
+        "author marker is used as a substitute for technical rationale or interface contract"
+      ],
+      "failure_mode": "Comments add maintenance noise while the non-obvious reason, invariant, limitation or public-interface contract remains undocumented and can drift unnoticed.",
+      "standards_or_contracts": [
+        "COMMENT_INTENT",
+        "std453",
+        "std641"
+      ],
+      "preferred_solution": "Separate AUTHOR_MARKER, TECHNICAL_COMMENT and PUBLIC_INTERFACE_COMMENT. Explain why/invariant/constraint/contract; use code naming and structure for obvious mechanics.",
+      "proof_method": "semantic comment-intent review against current code and project convention evidence",
+      "regression": "semantic:comment_intent"
+    },
+    {
+      "id": "DYNAMIC_LIST_QUERYSCHEMA_MUTATION",
+      "trigger": [
+        "dynamic-list TextQuery is programmatically changed",
+        "SchemaQuery is used to mutate the query"
+      ],
+      "failure_mode": "SchemaQuery may create or rearrange implicit joins and can hide the exact final query contract; a syntactically plausible mutation is not platform-semantics proof.",
+      "standards_or_contracts": [
+        "std437",
+        "std768"
+      ],
+      "preferred_solution": "Use a complete readable query/template with unique stable replacement markers and СтрЗаменить when stable anchors exist. When BSP is present, install TextQuery through ОбщегоНазначения.УстановитьСвойстваДинамическогоСписка using the bound ТаблицаФормы element.",
+      "exception": "SchemaQuery mutation requires explicit EXCEPTION_JUSTIFIED evidence that a stable textual anchor cannot be defined, plus final-query inspection and runtime form opening.",
+      "proof_method": "prove final-package root/anchor uniqueness; materialize final query text; open target form at runtime",
+      "regression": "dynamic_query_schema_mutation_bad.bsl"
+    },
+    {
+      "id": "DYNAMIC_LIST_EXPENSIVE_ONLINE_STATE",
+      "trigger": [
+        "DynamicList derives operational state through expensive joins or aggregation on every refresh",
+        "the derived field must support sorting or filtering on a large list"
+      ],
+      "failure_mode": "A locally correct query turns every scroll, sort, filter or refresh into a costly online recalculation and can make the form unusable under production volume.",
+      "standards_or_contracts": [
+        "std732",
+        "std652",
+        "std729"
+      ],
+      "preferred_solution": "When the business freshness contract permits it, maintain one indexed state row per root entity transactionally and join that projection in the DynamicList. Prove uniqueness, freshness, retry and rebuild behavior; otherwise keep the online query and require representative profiling.",
+      "exception": "Online calculation is acceptable when data volume and representative measurements prove the query meets the list latency target, or when no safe state-maintenance boundary exists.",
+      "proof_method": "query-plan/measurement evidence plus state-projection uniqueness, freshness and rebuild runtime cases",
+      "regression": "semantic:DYNAMIC_LIST_EXPENSIVE_ONLINE_STATE"
+    },
+    {
+      "id": "DYNAMIC_LIST_UNNECESSARY_STATIC_OVERRIDE",
+      "trigger": [
+        "one constant DynamicList query is replaced programmatically on every form open",
+        "no runtime branch or extension/update-safety constraint requires the override"
+      ],
+      "failure_mode": "A static query is hidden in form code, becomes harder to inspect in the query editor, and adds initialization/update risk without enabling any real variant.",
+      "standards_or_contracts": [
+        "std768",
+        "QUERY_CONSTRUCTOR_READABILITY"
+      ],
+      "preferred_solution": "Store the complete most-frequent/default query in the DynamicList editor. Use a programmatic full variant or narrow proven mutation only for an actual runtime branch or a documented extension/update-safety constraint.",
+      "exception": "A borrowed typical form or other proven extension boundary cannot safely carry the required default metadata query; record the constraint and apply the full valid query through the BSP setter before settings/parameters.",
+      "proof_method": "baseline form/query evidence plus variant/extension-constraint review row and runtime form opening",
+      "regression": "semantic:DYNAMIC_LIST_UNNECESSARY_STATIC_OVERRIDE"
+    },
+    {
+      "id": "GENERATED_QUERY_FRAGMENT_CONCATENATION",
+      "trigger": [
+        "optional UNION/WHERE/package fragment concatenated with +",
+        "same physical source participates in multiple roles"
+      ],
+      "failure_mode": "Fragment boundaries or aliases can generate invalid/ambiguous final query variants even though BSL source is syntactically valid.",
+      "standards_or_contracts": [
+        "std437",
+        "std758"
+      ],
+      "preferred_solution": "Complete template + explicit marker + СтрЗаменить; role-specific aliases; runtime-parse every final variant.",
+      "proof_method": "variant matrix with final generated text accepted by 1C query parser/runtime",
+      "regression": "query_fragment_concat_bad.bsl"
+    },
+    {
+      "id": "ORDER_BY_ALIAS_DRIFT",
+      "trigger": [
+        "query result field is explicitly aliased",
+        "ORDER BY uses a different bare identifier"
+      ],
+      "failure_mode": "A renamed result alias and stale ORDER BY identifier can make the final query invalid or order by an unintended source field.",
+      "standards_or_contracts": [
+        "std437",
+        "query_methodical"
+      ],
+      "preferred_solution": "Keep one end-to-end alias contract; after changing selected-field aliases review ORDER BY/GROUP BY/consumer field names together.",
+      "proof_method": "static alias-contract review plus query parser/runtime",
+      "regression": "order_by_alias_drift_bad.bsl"
+    },
+    {
+      "id": "REPRESENTATION_DRIFT_TECHNICAL_KEY",
+      "trigger": [
+        "Number/Reference/UUID converted to String",
+        "converted value later used as technical key"
+      ],
+      "failure_mode": "Formatting/presentation becomes part of identity and can create collisions or incompatible comparisons.",
+      "standards_or_contracts": [
+        "std641"
+      ],
+      "preferred_solution": "Preserve native technical type end-to-end; stringify only at a real presentation/serialization boundary.",
+      "proof_method": "producer/consumer contract lists identical native type",
+      "regression": "semantic:representation_roundtrip"
+    },
+    {
+      "id": "REPRESENTATIONAL_FIELD_AS_BUSINESS_IDENTITY",
+      "trigger": [
+        "packaging/unit/coefficient/barcode/display value is added to a deduplication, grouping, search or merge key",
+        "a representational difference is treated as a different business entity without an explicit domain invariant"
+      ],
+      "failure_mode": "The same business entity splits into duplicate lines when presentation changes, while unrelated entities may still collide when presentation happens to match.",
+      "standards_or_contracts": [
+        "BUSINESS_IDENTITY_INVARIANT",
+        "CLEVERENCE_PLAN_FACT_IDENTITY"
+      ],
+      "preferred_solution": "Define the smallest stable business identity separately from presentation and quantity normalization. Add a representational field only when domain evidence proves it changes sameness, then align producer, mapping, grouping and consumer.",
+      "proof_method": "identity-field classification plus counterexamples for changed representation/same entity and equal representation/distinct entities",
+      "regression": "semantic:business_identity_invariant"
+    },
+    {
+      "id": "DUPLICATE_INVARIANT_OWNER",
+      "trigger": [
+        "caller and callee deduplicate/normalize/validate same data",
+        "same business relation implemented in multiple layers"
+      ],
+      "failure_mode": "Rules diverge, produce redundant I/O, or one path is fixed while another remains stale.",
+      "standards_or_contracts": [
+        "std440"
+      ],
+      "preferred_solution": "One owner per invariant/business relation; duplicate optimized path only with explicit equivalence tests.",
+      "proof_method": "entrypoint call graph + invariant ownership table",
+      "regression": "semantic:redundant_invariant_owner"
+    },
+    {
+      "id": "TOP_WITHOUT_ORDER_FALSE_POSITIVE",
+      "trigger": [
+        "FIRST/TOP without ORDER BY"
+      ],
+      "failure_mode": "Static smell is incorrectly promoted to a defect when the result is consumed only as an existence predicate.",
+      "standards_or_contracts": [
+        "std438",
+        "std729"
+      ],
+      "preferred_solution": "Classify by consumer semantics: existence-only may be PASS; returned business value requires deterministic ordering or another uniqueness proof.",
+      "proof_method": "trace query result consumption",
+      "regression": "semantic:top_without_order_consumer_semantics"
+    },
+    {
+      "id": "TRANSITIVE_IO_HIDDEN_BEHIND_HELPER_IN_LOOP",
+      "trigger": [
+        "helper/vendor procedure called inside a loop",
+        "callee implementation not included in local analyzer scope"
+      ],
+      "failure_mode": "The caller appears in-memory-only, but the callee or a transitive callee performs a query/server/external call for every iteration, creating N+1 I/O that local-module review misses.",
+      "standards_or_contracts": [
+        "std436",
+        "std729",
+        "CROSS_OBJECT_IO_TOPOLOGY"
+      ],
+      "preferred_solution": "Expand the real call graph across project/vendor modules before judging the loop. Prefer bulk generation/read or one owner when an equivalent supported API exists; otherwise document the vendor-helper compromise and expected volume.",
+      "proof_method": "callee source inspection + transitive I/O count from real business entrypoint; benchmark if material",
+      "regression": "semantic:transitive_vendor_helper_io_in_loop"
+    },
+    {
+      "id": "ARCHIVE_FILENAME_ENCODING_DRIFT",
+      "trigger": [
+        "delivery archive contains Cyrillic/non-ASCII paths",
+        "archive built by platform-dependent zip utility"
+      ],
+      "failure_mode": "Worktree validation passes but archive stores mojibake filenames, so manifest paths/candidate coherence fail only on final bytes.",
+      "standards_or_contracts": [
+        "FINAL_BYTES_VALIDATION"
+      ],
+      "preferred_solution": "Build delivery archive with a UTF-8-safe pack builder and validate the archive itself against the manifest before delivery.",
+      "proof_method": "outer archive CRC + manifest path/hash validation on final archive bytes",
+      "regression": "TOOLS/validate_developer_pack.py package_manifest check"
+    },
+    {
+      "id": "DYNAMIC_LIST_DIRECT_TEXTQUERY_ASSIGNMENT_WITH_BSP",
+      "trigger": [
+        "managed-form DynamicList TextQuery is changed",
+        "BSP ОбщегоНазначения is available"
+      ],
+      "failure_mode": "Direct assignment to DynamicList.ТекстЗапроса bypasses the standard BSP dynamic-list property setter and its form/property handling contract.",
+      "standards_or_contracts": [
+        "std768",
+        "BSP DynamicList API"
+      ],
+      "preferred_solution": "Build СтруктураСвойствДинамическогоСписка, set only required properties, and call ОбщегоНазначения.УстановитьСвойстваДинамическогоСписка with the bound ТаблицаФормы element; then set required-use fields.",
+      "proof_method": "verify setter signature/source; static caller type review; runtime open target form",
+      "regression": "dynamic_list_direct_bad.bsl + semantic:dynamic_list_bsp_setter_contract"
+    },
+    {
+      "id": "REDUNDANT_DYNAMIC_LIST_SELF_JOIN",
+      "trigger": [
+        "dynamic-list query needs a field from its root table",
+        "implementation adds a self LEFT JOIN to the same table by Ссылка"
+      ],
+      "failure_mode": "A redundant self-join increases query complexity/cost and introduces extra alias/join semantics even though the root source already owns the field.",
+      "standards_or_contracts": [
+        "std437",
+        "std436",
+        "QUERY_ROOT_OWNERSHIP"
+      ],
+      "preferred_solution": "Prove the actual root source and select the field directly from its alias. Use an added join only for data owned by another source.",
+      "proof_method": "final query shows direct root-alias field and no self-join; runtime rows unchanged outside the new field",
+      "regression": "semantic:dynamic_list_root_field_no_self_join"
+    },
+    {
+      "id": "CUSTOM_IMPLEMENTATION_WITHOUT_BSP_DISCOVERY",
+      "trigger": [
+        "non-trivial 1C helper/infrastructure code is written",
+        "no evidence of search for relevant public BSP API"
+      ],
+      "failure_mode": "A correct-looking custom mechanism duplicates a supported BSP contract, increasing defects, maintenance and update risk.",
+      "standards_or_contracts": [
+        "std467",
+        "BSP_USAGE_POLICY"
+      ],
+      "preferred_solution": "Search the compact BSP API index by intent, inspect the exact exported source/signature, and reuse the public BSP API when semantically suitable.",
+      "exception": "BSP absent, unsuitable, version-incompatible, materially side-effectful, or officially superseded; record exact evidence.",
+      "proof_method": "BSP_REUSED / BSP_NOT_APPLICABLE / BSP_EXCEPTION_JUSTIFIED review row with source evidence.",
+      "regression": "semantic:BSP_REUSE_DISCOVERY"
+    },
+    {
+      "id": "CLEVERENCE_XML_ONLY_REVIEW",
+      "trigger": [
+        "MSLX parses successfully",
+        "review does not reconstruct execution graph and implicit fall-through"
+      ],
+      "failure_mode": "A syntactically valid MSLX edit changes physical successor, END, button, error or abort behavior.",
+      "standards_or_contracts": [
+        "CLEVERENCE_RUNTIME_INTEGRATION"
+      ],
+      "preferred_solution": "Review MSLX as an execution graph: physical order, parent/depth, explicit and implicit directions, button/error/abort/Escape paths.",
+      "proof_method": "before/after graph evidence plus runtime scenario.",
+      "regression": "semantic:CLEVERENCE_EXECUTION_GRAPH"
+    },
+    {
+      "id": "CLEVERENCE_PLAN_FACT_IDENTITY_COLLAPSE",
+      "trigger": [
+        "CurrentItems are merged by product/declared line only",
+        "writer/router identity fields are ignored"
+      ],
+      "failure_mode": "Several legitimate fact rows (boxes, marks, serials, lots, weights) collapse into one and lose traceability or exported identity.",
+      "standards_or_contracts": [
+        "CLEVERENCE_RUNTIME_INTEGRATION"
+      ],
+      "preferred_solution": "Treat Declared as plan and Current as fact; determine standard writer identity and preserve marks/SN/SSCC/series/weight/service keys.",
+      "proof_method": "one-plan-many-fact cases, quantity conservation, repeat scan/re-entry and export-back tests.",
+      "regression": "semantic:CLEVERENCE_PLAN_FACT_IDENTITY"
+    },
+    {
+      "id": "CLEVERENCE_CONFIGURATION_UNROUTED",
+      "trigger": [
+        "Configuration/Metadata or Configuration/DocumentTypes changed",
+        "review is limited to Operation/Action graph because the file suffix is .mslx"
+      ],
+      "failure_mode": "Parser, field or document-schema contracts change without a specialized review because metadata-only MSLX has no Operation/Action tokens.",
+      "standards_or_contracts": [
+        "CLEVERENCE_CONFIGURATION",
+        "CLEVERENCE_RUNTIME_INTEGRATION"
+      ],
+      "preferred_solution": "Route metadata/document-type files to CLEVERENCE_CONFIGURATION and run analyze_cleverence_configuration.py; keep execution-graph review separate.",
+      "proof_method": "review plan activates CLEVERENCE_CONFIGURATION and does not activate CLEVERENCE_MSLX for metadata-only fixture.",
+      "regression": "activation:cleverence_routes_configuration_not_execution_graph"
+    },
+    {
+      "id": "CLEVERENCE_BARCODE_PRECEDENCE_GUESS",
+      "trigger": [
+        "broad and specific barcode/container templates overlap",
+        "review assumes XML order, visual specificity or regex intuition defines precedence"
+      ],
+      "failure_mode": "A complete GS1/DataMatrix input is intercepted by a broader template and parsed with an incomplete contract even though every individual template looks valid.",
+      "standards_or_contracts": [
+        "CLEVERENCE_CONFIGURATION",
+        "CLEVERENCE_BARCODE_TEMPLATE_PRECEDENCE"
+      ],
+      "preferred_solution": "Inventory competing templates, compare changed overlaps to baseline, then prove actual parser selection on representative full and prefix-only inputs.",
+      "proof_method": "configuration analyzer overlap evidence + stock/parser/runtime acceptance.",
+      "regression": "machine:CLEVERENCE_BARCODE_TEMPLATE_OVERLAP_CHANGED"
+    },
+    {
+      "id": "CLEVERENCE_STALE_SCAN_CONTINUATION",
+      "trigger": [
+        "menu/re-entry flow starts from SearchProduct or another stock operation",
+        "SelectedProduct/ScannedBarcode/BarcodeData cleanup is assumed"
+      ],
+      "failure_mode": "A repeated entry consumes stale scan/session state or resumes a continuation stage instead of starting an independent scan.",
+      "standards_or_contracts": [
+        "CLEVERENCE_MSLX",
+        "CLEVERENCE_SCAN_STATE_REENTRY"
+      ],
+      "preferred_solution": "Prove fresh-entry contract, explicit cleanup when required, dedicated scan/processSessionBarcode path and retry/back/cancel cleanup.",
+      "proof_method": "stock operation trace + repeated-entry emulator/device scenario.",
+      "regression": "semantic:CLEVERENCE_SCAN_STATE_REENTRY"
+    },
+    {
+      "id": "CLEVERENCE_REALLOCATION_AFTER_QUANTITY_CONTROL",
+      "trigger": [
+        "existing fact is being moved/reallocated",
+        "mode is recognized only after a standard quantity-control has already run"
+      ],
+      "failure_mode": "Stock quantity control treats reallocation as new picking and can report over-pick/double count even though total fact should remain unchanged.",
+      "standards_or_contracts": [
+        "CLEVERENCE_MSLX",
+        "CLEVERENCE_QUANTITY_STAGE_OWNERSHIP"
+      ],
+      "preferred_solution": "Map the stock stage pipeline and classify new picking vs existing-fact mutation before the first quantity-control that can reject the path.",
+      "proof_method": "stock operation trace + quantity-conservation scenario for 0→M or source→target reallocation.",
+      "regression": "semantic:CLEVERENCE_QUANTITY_STAGE_OWNERSHIP"
+    },
+    {
+      "id": "CLEVERENCE_SINGLE_WRITER_PROOF",
+      "trigger": [
+        "a new CurrentItem field is populated in one discovered writer",
+        "other standard writer variants are not inventoried"
+      ],
+      "failure_mode": "Marked/SN/SSCC/weighted/buffer or AcceptInDocument paths create fact rows without the new field, producing path-dependent data loss.",
+      "standards_or_contracts": [
+        "CLEVERENCE_MSLX",
+        "CLEVERENCE_WRITER_PATH_COVERAGE"
+      ],
+      "preferred_solution": "Build an applicability matrix of all active writer paths and trace the field through each applicable path to export.",
+      "proof_method": "writer inventory + source trace + representative runtime cases.",
+      "regression": "semantic:CLEVERENCE_WRITER_PATH_COVERAGE"
+    },
+    {
+      "id": "CLEVERENCE_VIEW_ROW_AS_LIVE_FACT",
+      "trigger": [
+        "selected/view/SelectedLine object is mutated directly",
+        "no proof that it is the live Document.CurrentItems row"
+      ],
+      "failure_mode": "UI state changes while the persisted/live fact row remains unchanged or later overwrites the mutation; partial source→target moves can leave inconsistent quantity.",
+      "standards_or_contracts": [
+        "CLEVERENCE_MSLX",
+        "CLEVERENCE_LIVE_CURRENTITEM_MUTATION"
+      ],
+      "preferred_solution": "Resolve technical Uid, rebind the live CurrentItem, validate current state, mutate with reread/verify and rollback for multi-step changes.",
+      "proof_method": "source trace + quantity invariant + mutation/rollback runtime scenario.",
+      "regression": "semantic:CLEVERENCE_LIVE_CURRENTITEM_MUTATION"
+    },
+    {
+      "id": "INVENTED_PLATFORM_MECHANISM_WITHOUT_ANALOG",
+      "trigger": [
+        "platform/vendor behavior is not known exactly",
+        "custom implementation is written before inspecting similar typical/BSP/vendor source"
+      ],
+      "failure_mode": "Plausible syntax is mistaken for a proven platform contract. The implementation invents query/form/API/MSLX semantics and can fail on trivial runtime constraints that a typical analog already solves.",
+      "standards_or_contracts": [
+        "EVIDENCE_ESCALATION",
+        "BSP_USAGE_POLICY",
+        "VALIDATION_ENGINE"
+      ],
+      "preferred_solution": "If confidence is not exact, inspect target source, nearest typical implementation, BSP public source/call site, vendor/Cleverence stock pattern and official examples before designing custom code.",
+      "exception": "Custom implementation is allowed only after evidence shows no suitable supported analog and the platform contract is independently proven.",
+      "proof_method": "review ledger contains analog/source links or EVIDENCE_REQUIRED; custom design contains explicit exception evidence",
+      "regression": "semantic:TYPICAL_ANALOG_EVIDENCE_ESCALATION"
+    },
+    {
+      "id": "CALL_SIGNATURE_DRIFT",
+      "trigger": [
+        "qualified cross-module call is added or edited",
+        "actual exported declaration has different required/total argument count or semantic order"
+      ],
+      "failure_mode": "Caller compiles/looks plausible in isolation but cannot execute because the callee contract was guessed or changed.",
+      "standards_or_contracts": [
+        "CALL_CONTRACT_PROOF",
+        "BSP_USAGE_POLICY"
+      ],
+      "preferred_solution": "Resolve the exact exported declaration and verify required/optional count, order, execution context and return/mutation contract before delivery.",
+      "proof_method": "TOOLS/check_bsl_call_signatures.py plus semantic review of parameter meaning/context",
+      "regression": "signature:call_signature_bad.bsl"
+    },
+    {
+      "id": "QUERY_TEMPLATE_NOT_CONSTRUCTOR_READABLE",
+      "trigger": [
+        "programmatically modified/generated 1C query contains custom placeholders",
+        "stored/intermediate query cannot be opened by the query constructor"
+      ],
+      "failure_mode": "String replacement machinery creates text that is not valid query language at the review/editing boundary; constructor/runtime failures are hidden until execution.",
+      "standards_or_contracts": [
+        "std437",
+        "std768",
+        "QUERY_CONSTRUCTOR_READABILITY"
+      ],
+      "preferred_solution": "Keep complete constructor-readable query variants or replace a proven exact valid fragment. Do not place custom #Name tokens into query text expected to remain valid.",
+      "exception": "This is a project hard gate for constructor-expected query text, not a universal claim that # is forbidden in every possible 1C string/template use.",
+      "proof_method": "query opens in constructor before/after; final runtime variants parse; analyzer has no QUERY_TEMPLATE_CUSTOM_MARKER",
+      "regression": "query_custom_marker_bad.bsl"
+    },
+    {
+      "id": "HOMEGROWN_QUERY_GRAMMAR_PARSER",
+      "trigger": [
+        "code searches SELECT/FROM/JOIN/package keywords with СтрНайти/Сред/Лев",
+        "positions are used to splice arbitrary query topology"
+      ],
+      "failure_mode": "A partial parser silently assumes formatting/grammar/topology and breaks on valid query variants, packages, unions, comments or aliases even if it fails closed for some cases.",
+      "standards_or_contracts": [
+        "std437",
+        "QUERY_CONSTRUCTOR_READABILITY",
+        "EVIDENCE_ESCALATION"
+      ],
+      "preferred_solution": "Find the exact target/typical query and use complete known variants or an official extension hook. Do not repair an invented parser with more positional checks.",
+      "exception": "Only with an exact supported typical/vendor analog using the same technique, explicit justification, and parser/runtime tests for all supported variants.",
+      "proof_method": "analog evidence + constructor/runtime query tests; otherwise BLOCKING_DEFECT",
+      "regression": "query_homegrown_parser_bad.bsl"
+    },
+    {
+      "id": "DELIVERY_CALLER_CALLEE_CONTRACT_DRIFT",
+      "trigger": [
+        "exported procedure/function signature changes",
+        "delivery instructions replace callee but omit one or more affected callers",
+        "current candidate is internally coherent but deployed baseline still contains old call contract"
+      ],
+      "failure_mode": "Static validation of the candidate passes, but the user deploys only the changed callee. An older caller remaining in the database invokes the new API with the old parameter contract and fails at runtime.",
+      "standards_or_contracts": [
+        "CALL_SIGNATURE_CONTRACT",
+        "DIFF_ATTRIBUTION",
+        "FINAL_BYTES_VALIDATION"
+      ],
+      "preferred_solution": "When an exported signature changes or a previously inconsistent caller is corrected, compute the transitive affected-caller set against the actual deployment baseline and include every required caller in the transfer set. Never tell the user that only the callee is required unless caller compatibility with the deployed baseline is explicitly proven.",
+      "proof_method": "baseline-vs-candidate call-contract matrix + delivery manifest listing callee and every affected caller + signature checker on the exact delivery bytes",
+      "regression": "semantic:delivery_caller_callee_contract"
+    },
+    {
+      "id": "ACTIVE_PROFILE_REGISTRY_DRIFT",
+      "trigger": [
+        "mechanism exists in the compact profile index",
+        "ledger builder expands a separate detailed profile registry",
+        "the mechanism is absent from one registry"
+      ],
+      "failure_mode": "Routing detects a mechanism, but reverse validation silently omits its detailed checks because duplicated registries drifted apart.",
+      "standards_or_contracts": [
+        "VALIDATION_ENGINE",
+        "MECHANISM_COVERAGE"
+      ],
+      "preferred_solution": "Validate compact/detailed profile-key parity and referenced profile-file existence as part of skill validation; unknown/missing rows are COVERAGE_GAP.",
+      "proof_method": "TOOLS/validate_skill.py reports no profile_missing_detailed/profile_missing_index/profile_file_missing errors",
+      "regression": "skill-validator:profile-registry-parity"
+    },
+    {
+      "id": "ACTIVE_PIPELINE_HISTORICAL_STATE_COUPLING",
+      "trigger": [
+        "active workflow references AUTHORITATIVE_STATE/CURRENT_WORK/developer-pack validators",
+        "referenced artifacts exist only under an on-demand historical archive"
+      ],
+      "failure_mode": "A universal task pipeline cannot bootstrap without unrelated historical project state and may select a stale baseline or fail before reviewing the user's actual source.",
+      "standards_or_contracts": [
+        "BASELINE_IDENTITY",
+        "PROGRESSIVE_REFERENCE_LOADING"
+      ],
+      "preferred_solution": "Bind the active pipeline to the actual user-provided/deployed baseline and active skill files. Keep historical packs discoverable only through explicit on-demand archive routing.",
+      "proof_method": "all active workflow paths resolve outside ARCHIVE; baseline identity comes from task context and exact hashes",
+      "regression": "skill-validator:active-workflow-reference-integrity"
+    },
+    {
+      "id": "CLEVERENCE_STATIC_VALIDATION_GAP",
+      "trigger": [
+        "MSLX/XML candidate is delivered",
+        "only BSL/static 1C tools are executed",
+        "Action graph changes are reviewed manually without deterministic parse/delta inventory"
+      ],
+      "failure_mode": "Duplicate Action ids, unresolved local directions, mirror drift or implicit predecessor/successor changes can escape review even though the 1C regression suite is clean.",
+      "standards_or_contracts": [
+        "CLEVERENCE_EXECUTION_GRAPH",
+        "FINAL_ARTIFACT_VALIDATION"
+      ],
+      "preferred_solution": "Run baseline-aware TOOLS/analyze_cleverence_mslx.py, then semantically adjudicate every structural delta and execute runtime paths; never treat structural PASS as runtime proof.",
+      "proof_method": "Cleverence bad/good/delta fixtures pass and the accepted vendor baseline has no HIGH structural findings",
+      "regression": "cleverence:graph-fixtures-and-vendor-baseline"
+    },
+    {
+      "id": "REDUNDANT_DOMAIN_VALIDATION_WITHOUT_BOUNDARY",
+      "trigger": [
+        "BSL validates a value state already impossible under the proven type/metadata/platform contract",
+        "no external/legacy/exchange/deserialization/migration boundary is identified"
+      ],
+      "failure_mode": "Business code duplicates lower-level domain constraints, obscures the real business invariant, and can drift into contradictory conditions/messages.",
+      "standards_or_contracts": [
+        "DOMAIN_VALIDATION",
+        "VALIDATION_ENGINE"
+      ],
+      "preferred_solution": "State the guaranteed domain first. Validate only additional business constraints in the domain owner; keep duplicate defensive checks only at an explicit bypassing trust boundary.",
+      "exception": "A defensive check is valid when data can bypass or predate the normal metadata/platform constraint; document that boundary and its failure policy.",
+      "proof_method": "DOMAIN_VALIDATION ledger identifies guaranteed domain, bypass paths and owner; impossible-state condition either removed or boundary-justified.",
+      "regression": "semantic:TYPE_DOMAIN_OWNERSHIP"
+    },
+    {
+      "id": "BUSINESS_LOGIC_OWNED_BY_HOOK",
+      "trigger": [
+        "&Перед/&После/&Вместо or event handler contains reusable validation/calculation/query/persistence",
+        "hook mixes orchestration and a separately nameable domain responsibility"
+      ],
+      "failure_mode": "Extension/event glue becomes the business-rule owner, increasing coupling to vendor/event topology and making reuse, testing and updates harder.",
+      "standards_or_contracts": [
+        "HOOK_ORCHESTRATION",
+        "VALIDATION_ENGINE",
+        "TYPICAL_CODE_DISCOVERY"
+      ],
+      "preferred_solution": "Keep event-specific applicability/routing/adaptation in the hook and delegate reusable domain behavior to a named project-owned API/module.",
+      "exception": "Small event-specific logic may remain local when it has no reusable domain responsibility and extracting it would reduce clarity.",
+      "proof_method": "responsibility review names hook responsibility and domain owner; nearest project/typical hook pattern inspected when placement is uncertain.",
+      "regression": "semantic:HOOK_ORCHESTRATION_BOUNDARY"
+    },
+    {
+      "id": "INVENTED_PROJECT_CONVENTION",
+      "trigger": [
+        "generated code introduces author/date markers, prefixes, regions, comment tags or placement convention",
+        "the convention is not present in actual project source and was not supplied by the user"
+      ],
+      "failure_mode": "Assistant invents project style/process metadata and produces code inconsistent with the repository or customer conventions.",
+      "standards_or_contracts": [
+        "BOOTSTRAP_INTEGRITY",
+        "PROJECT_CONTEXT"
+      ],
+      "preferred_solution": "Infer conventions only from actual project source or explicit project context; otherwise omit decorative/process conventions and keep the diff minimal.",
+      "proof_method": "project-context/convention evidence points to actual source examples or the generated change contains no invented convention.",
+      "regression": "semantic:PROJECT_CONVENTION_INVENTION"
+    },
+    {
+      "id": "MULTI_FIELD_INVARIANT_WITHOUT_CASE_MATRIX",
+      "trigger": [
+        "business validity depends on a combination of two or more fields or piecewise/default cases",
+        "implementation is written without enumerating representative accepted/rejected combinations"
+      ],
+      "failure_mode": "Locally plausible conditions encode the wrong truth table, especially around zero/default, partial configuration and sum/range boundaries.",
+      "standards_or_contracts": [
+        "DOMAIN_VALIDATION",
+        "L6_BUSINESS_RUNTIME"
+      ],
+      "preferred_solution": "Write the acceptance/rejection matrix before implementation, derive the minimal conditions from it, then keep the matrix as semantic/runtime regression evidence.",
+      "proof_method": "review ledger contains explicit representative truth table and code is checked against each row.",
+      "regression": "semantic:BUSINESS_INVARIANT_CASE_MATRIX"
+    },
+    {
+      "id": "RULE_PRESENT_BUT_NOT_ROUTED",
+      "trigger": [
+        "reusable rule exists in profile/knowledge",
+        "router does not activate it for a representative source/context case"
+      ],
+      "failure_mode": "The model can know the rule yet omit it from task review.",
+      "preferred_solution": "Make rule activation executable in RULES/rule_registry.json and add activation regression coverage.",
+      "proof_method": "RULE_ACTIVATION_CASES + registry self-validation",
+      "regression": "activation routing"
+    },
+    {
+      "id": "PASS_WITHOUT_EVIDENCE",
+      "trigger": [
+        "rule/check/gate is marked PASS",
+        "no concrete source/machine/semantic/runtime evidence is attached"
+      ],
+      "failure_mode": "A status label substitutes for proof and lets forgotten checks escape release.",
+      "preferred_solution": "Release gate rejects PASS without evidence and enforces required evidence modes.",
+      "proof_method": "release gate regression: pass_without_evidence_blocks",
+      "regression": "release:pass_without_evidence_blocks"
+    },
+    {
+      "id": "DELIVERY_WITHOUT_RELEASE_GATE",
+      "trigger": [
+        "candidate is described as ready/proven",
+        "exact plan+ledger was not evaluated by release gate"
+      ],
+      "failure_mode": "Correct rules may exist but unresolved evidence is hidden by prose confidence.",
+      "preferred_solution": "Run TOOLS/release_gate.py on exact plan/ledger before readiness claims.",
+      "proof_method": "release outcome attached to final delivery",
+      "regression": "release:unresolved_blocks"
+    },
+    {
+      "id": "XML_STRUCTURE_INFERRED_FROM_MEMORY",
+      "trigger": [
+        "assistant reasons about exported 1C XML structure without reading the actual artifact",
+        "a metadata/form/CFE/XDTO path, scope or reference is assumed from memory"
+      ],
+      "failure_mode": "A plausible platform model is substituted for the actual serialized structure, so subsequent code or validation can target the wrong node, scope, identifier pool or reference contract.",
+      "standards_or_contracts": [
+        "ONEC_XML_STRUCTURE",
+        "ANALOG_BEFORE_INVENTION"
+      ],
+      "preferred_solution": "Read the exact exported artifact and run the routed structural analyzer first; use upstream/typical examples only as supporting evidence, then confirm any blocking invariant against actual source or an authoritative platform contract.",
+      "proof_method": "structural analyzer output plus exact XML evidence and, when changed, Configurator/runtime acceptance",
+      "regression": "semantic:ONEC_XML_STRUCTURE"
+    },
+    {
+      "id": "FORM_ID_SCOPE_COLLAPSE",
+      "trigger": [
+        "Form.xml duplicate-ID validation treats all IDs as one global pool",
+        "BaseForm IDs are mixed with extension overlay element/attribute/command/column IDs"
+      ],
+      "failure_mode": "A structurally valid form is falsely rejected because distinct identifier scopes are collapsed into one synthetic namespace.",
+      "standards_or_contracts": [
+        "FORM_XML_STRUCTURE"
+      ],
+      "preferred_solution": "Validate element, form-attribute, command and owner-column identifier scopes separately and keep BaseForm evidence distinct from the extension overlay. Calibrate structural rules on known-working exported forms before making them blocking.",
+      "proof_method": "known-good Form.xml corpus produces zero blocking findings while targeted duplicate-scope fixtures still fail",
+      "regression": "onec_form_xml_good.xml + onec_form_xml_bad.xml"
+    },
+    {
+      "id": "METADATA_EXISTENCE_AS_RUNTIME_MEMBER",
+      "trigger": [
+        "a changed form DataPath uses AggregateAttribute.Member",
+        "Member exists somewhere in configuration/extension metadata but membership in the runtime value of AggregateAttribute was not proven"
+      ],
+      "failure_mode": "The form binds to a syntactically plausible path that is absent from the actual runtime data shape; a common symptom is an invalid PathToData/DataPath value when the form opens or the field is created.",
+      "standards_or_contracts": [
+        "FORM_DATA_BINDING",
+        "EVIDENCE_ACQUISITION"
+      ],
+      "preferred_solution": "Prove the actual producer/composition of the form attribute. For ConstantsSet, prove that the target constant belongs to that concrete set; otherwise use a separately owned form attribute and prove its load/save lifecycle or another mechanism evidenced by the target/typical source.",
+      "proof_method": "exact Form.xml + companion/base form context + producer/initialization source and, when static membership is unavailable, a form-open/edit/save runtime oracle",
+      "regression": "form_constants_set_binding_routes_data_contract"
+    },
+    {
+      "id": "POST_WRITE_MODULE_LEVEL_CORRELATION",
+      "trigger": [
+        "field assignment exists in one routine",
+        "an unrelated routine in the same module has a fill/recalculate/select-like name"
+      ],
+      "failure_mode": "Artifact-level keyword correlation routes lifecycle overwrite review even when no reachable execution path can touch the written field.",
+      "standards_or_contracts": [
+        "POST_WRITE_STANDARD_OVERWRITE"
+      ],
+      "preferred_solution": "Route overwrite review from field-aware temporal flow: same field + reachable later call/writer; unresolved dynamic/external dispatch remains EVIDENCE_REQUIRED instead of treating same-module co-occurrence as proof.",
+      "proof_method": "TOOLS/analyze_onec_field_flow.py plus good/bad routing fixtures",
+      "regression": "post_write_unrelated_same_module_not_routed + post_write_reachable_same_field_routes"
+    },
+    {
+      "id": "IMPLEMENTATION_VERB_AS_REQUIREMENT",
+      "trigger": [
+        "requirement states only add/automate/implement/modify",
+        "target business/system outcome is absent"
+      ],
+      "failure_mode": "A technical action is treated as the need, allowing a technically plausible implementation that does not solve the actual problem.",
+      "standards_or_contracts": [
+        "REQUIREMENTS_TRACEABILITY"
+      ],
+      "preferred_solution": "Trace need/problem → observable target outcome → behavior/rules → acceptance before technical design.",
+      "proof_method": "requirements contract + traceability evidence",
+      "regression": "requirements:tier0_always"
+    },
+    {
+      "id": "API_FRAGMENT_AS_FUNCTIONAL_CONTRACT",
+      "trigger": [
+        "endpoint/method/API is named",
+        "only a few request/response fields are specified"
+      ],
+      "failure_mode": "The functional chain before/after transport is left to the implementer, so source data, mapping, retry, final state or acceptance can diverge.",
+      "standards_or_contracts": [
+        "INTEGRATION_FUNCTIONAL_CONTRACT"
+      ],
+      "preferred_solution": "Either state only target behavior and let design choose the method, or complete trigger→input→call→output→use→retry/errors→final-state→acceptance contract.",
+      "proof_method": "cross-system requirements ledger",
+      "regression": "requirements:cross_system_routes"
+    },
+    {
+      "id": "ANALOGY_AS_REQUIREMENT",
+      "trigger": [
+        "“по аналогии” / “сделать как” is the main requirement",
+        "transferable elements and differences are not stated"
+      ],
+      "failure_mode": "The reference is ambiguous and may depend on data/conditions unavailable in the current scenario.",
+      "standards_or_contracts": [
+        "ANALOGY_IS_NOT_REQUIREMENT"
+      ],
+      "preferred_solution": "Use analogy as supporting evidence only; specify input, transferable behavior/output, differences/adaptations and source-data availability.",
+      "proof_method": "requirements analogy rule evidence",
+      "regression": "requirements:analogy_routes"
+    },
+    {
+      "id": "ACCEPTANCE_WITHOUT_ORACLE",
+      "trigger": [
+        "acceptance says “works correctly” / only verifies action completed",
+        "no independent expected data/state/calculation is stated"
+      ],
+      "failure_mode": "A wrong business result can pass acceptance because only execution, not correctness, is observed.",
+      "standards_or_contracts": [
+        "ACCEPTANCE_ORACLE"
+      ],
+      "preferred_solution": "Define preconditions/test data, reproducible actions, observable result and independent correctness oracle; reuse as regression/runtime cases.",
+      "proof_method": "acceptance cases in requirements contract",
+      "regression": "requirements_gate:unresolved_blocks"
+    },
+    {
+      "id": "GENERIC_REQUIREMENTS_QUESTIONNAIRE",
+      "trigger": [
+        "assistant asks broad role/process/data questions before mining available evidence",
+        "many low-impact questions are asked at once"
+      ],
+      "failure_mode": "Discovery becomes slow and noisy while important concrete gaps are hidden among generic questions.",
+      "standards_or_contracts": [
+        "REQUIREMENTS_TRACEABILITY",
+        "SCOPE_ASSUMPTION_CONTRACT"
+      ],
+      "preferred_solution": "Infer from task/source/project evidence first and ask only unresolved questions that can materially change behavior, ownership, scope or acceptance.",
+      "proof_method": "functional contract OPEN fields/questions are minimal and impact-tagged",
+      "regression": "semantic requirements question policy"
+    },
+    {
+      "id": "NEW_ROUTINE_NOT_CONNECTED_TO_RUNTIME",
+      "trigger": [
+        "new helper/function/procedure is added to a common/form/object module",
+        "local code is correct but no intended entrypoint/caller reaches it"
+      ],
+      "failure_mode": "The implementation exists but has zero effect in the actual scenario; review of the routine in isolation produces a false sense of completion.",
+      "standards_or_contracts": [
+        "IMPLEMENTATION_REACHABILITY",
+        "CALL_CONTRACT",
+        "DELIVERY_COHERENCE"
+      ],
+      "preferred_solution": "Prove entrypoint → caller(s) → routine on exact candidate/baseline. Export alone is not invocation. Include caller/hook closure in delivered bytes.",
+      "proof_method": "baseline-aware static call graph + explicit platform/dynamic callback evidence + runtime scenario",
+      "regression": "reachability:new_helper_orphan_vs_connected"
+    },
+    {
+      "id": "ARTIFACT_SCOPE_INFERRED_FROM_FILENAME",
+      "trigger": [
+        "archive/folder name is treated as authoritative scope",
+        "analysis starts inside one named subsystem before enumerating supplied contents"
+      ],
+      "failure_mode": "Relevant modules/forms/metadata/integration artifacts present in the same corpus are silently ignored, producing incomplete architecture and false assumptions.",
+      "standards_or_contracts": [
+        "SOURCE_FIRST",
+        "ARTIFACT_SCOPE_DISCOVERY"
+      ],
+      "preferred_solution": "Build factual inventory first (roots/types/counts/mixed artifacts), then narrow relevance.",
+      "proof_method": "review plan artifact_inventory",
+      "regression": "source:artifact_scope_inventory"
+    }
+  ]
+}

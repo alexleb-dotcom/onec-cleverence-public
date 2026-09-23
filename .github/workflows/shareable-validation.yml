@@ -1,0 +1,134 @@
+name: Shareable core validation
+
+'on':
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  push:
+    branches:
+      - main
+  workflow_dispatch: null
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shareable-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-fast:
+    name: Public Fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Resolve exact shareable root
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f DISTRIBUTION_MANIFEST.json; then
+            echo "VALIDATION_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          else
+            snapshot_root="$(mktemp -d)"
+            python TOOLS/build_distribution_snapshot.py --output "$snapshot_root/shareable.zip"
+            mkdir "$snapshot_root/extracted"
+            unzip -q "$snapshot_root/shareable.zip" -d "$snapshot_root/extracted"
+            echo "VALIDATION_ROOT=$snapshot_root/extracted/onec-cleverence" >> "$GITHUB_ENV"
+          fi
+      - name: Validate exact snapshot before execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VALIDATION_ROOT"
+          python TOOLS/validate_distribution_snapshot.py --root .
+      - name: Run public Fast
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VALIDATION_ROOT"
+          python TOOLS/run_public_ci.py --mode FAST | tee "$RUNNER_TEMP/public-fast-report.json"
+      - name: Build and validate public Fast receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$VALIDATION_ROOT/TOOLS/public_execution_receipt.py" build \
+            --checkout-root "$GITHUB_WORKSPACE" \
+            --validation-root "$VALIDATION_ROOT" \
+            --run-report "$RUNNER_TEMP/public-fast-report.json" \
+            --mode FAST \
+            --output "$RUNNER_TEMP/public-fast-receipt.json"
+          python "$VALIDATION_ROOT/TOOLS/public_execution_receipt.py" validate \
+            --checkout-root "$GITHUB_WORKSPACE" \
+            --validation-root "$VALIDATION_ROOT" \
+            --run-report "$RUNNER_TEMP/public-fast-report.json" \
+            --mode FAST \
+            --receipt "$RUNNER_TEMP/public-fast-receipt.json"
+          cat "$RUNNER_TEMP/public-fast-receipt.json"
+
+  public-full:
+    name: Public Full
+    needs: public-fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Resolve exact shareable root
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f DISTRIBUTION_MANIFEST.json; then
+            echo "VALIDATION_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          else
+            snapshot_root="$(mktemp -d)"
+            python TOOLS/build_distribution_snapshot.py --output "$snapshot_root/shareable.zip"
+            mkdir "$snapshot_root/extracted"
+            unzip -q "$snapshot_root/shareable.zip" -d "$snapshot_root/extracted"
+            echo "VALIDATION_ROOT=$snapshot_root/extracted/onec-cleverence" >> "$GITHUB_ENV"
+          fi
+      - name: Validate exact snapshot before execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VALIDATION_ROOT"
+          python TOOLS/validate_distribution_snapshot.py --root .
+      - name: Run public Full
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VALIDATION_ROOT"
+          python TOOLS/run_public_ci.py --mode FULL | tee "$RUNNER_TEMP/public-full-report.json"
+      - name: Build and validate public Full receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$VALIDATION_ROOT/TOOLS/public_execution_receipt.py" build \
+            --checkout-root "$GITHUB_WORKSPACE" \
+            --validation-root "$VALIDATION_ROOT" \
+            --run-report "$RUNNER_TEMP/public-full-report.json" \
+            --mode FULL \
+            --output "$RUNNER_TEMP/public-full-receipt.json"
+          python "$VALIDATION_ROOT/TOOLS/public_execution_receipt.py" validate \
+            --checkout-root "$GITHUB_WORKSPACE" \
+            --validation-root "$VALIDATION_ROOT" \
+            --run-report "$RUNNER_TEMP/public-full-report.json" \
+            --mode FULL \
+            --receipt "$RUNNER_TEMP/public-full-receipt.json"
+          cat "$RUNNER_TEMP/public-full-receipt.json"

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "catalog_id": "TYPICAL_ONEC_DISCOVERY",
+  "role": "DISCOVERY_ONLY",
+  "source_family": "TYPICAL_ONEC",
+  "request_object_type": "CommonModule",
+  "rule": "This catalog contains typical-configuration locator hints only. Candidate module names identify source worth checking; they do not prove that the current target configuration/version contains the module, that a procedure exists, or that a retained analog is applicable.",
+  "coverage_note": "The entries preserve reusable DynamicList/query discovery vocabulary learned from an authorized typical-configuration analog corpus. They are intentionally mechanism-oriented and incomplete. Search the actual target configuration first and require exact target/user-authorized source before using any implementation detail.",
+  "request_path_template": "CommonModules/{module}/Ext/Module.bsl",
+  "entries": [
+    {
+      "id": "typical.dynamic_list.effective_query",
+      "intent_terms": [
+        "динамический список",
+        "эффективный запрос динамического списка",
+        "исполняемая схема компоновки данных",
+        "произвольный запрос",
+        "получить запрос динамического списка",
+        "dynamic list effective query"
+      ],
+      "candidate_modules": [
+        "КонтрольВеденияУчета",
+        "ОбщегоНазначения"
+      ]
+    },
+    {
+      "id": "typical.dynamic_list.choice_filter",
+      "intent_terms": [
+        "форма выбора",
+        "подбор товаров",
+        "отбор динамического списка",
+        "фильтр динамического списка",
+        "выбор номенклатуры",
+        "dynamic list filter",
+        "choice form"
+      ],
+      "candidate_modules": [
+        "ПодборТоваровСервер",
+        "НоменклатураПартнеровСервер",
+        "ПартнерыИКонтрагенты"
+      ]
+    },
+    {
+      "id": "typical.dynamic_list.query_variants",
+      "intent_terms": [
+        "текст запроса динамического списка",
+        "варианты запроса",
+        "стрзаменить запрос",
+        "стрсоединить запрос",
+        "полный текст запроса",
+        "dynamic list query variants"
+      ],
+      "candidate_modules": [
+        "ИнтеграцияИСУТ",
+        "НоменклатураПартнеровСервер",
+        "РаботаСНоменклатуройСлужебный"
+      ]
+    },
+    {
+      "id": "typical.dynamic_list.settings",
+      "intent_terms": [
+        "свойства динамического списка",
+        "настройки динамического списка",
+        "пользовательские настройки динамического списка",
+        "dynamic list settings",
+        "dynamic list properties"
+      ],
+      "candidate_modules": [
+        "РаботаСЖурналамиДокументов",
+        "ОбщегоНазначения",
+        "ОбщегоНазначенияУТ"
+      ]
+    }
+  ],
+  "proof_required_after_locator_match": [
+    "exact target or user-authorized typical-configuration module source",
+    "exact form/module context that owns the DynamicList when behavior depends on the form",
+    "exact exported declaration when a callable API is used",
+    "nearby implementation and real call site when applicability/side effects remain ambiguous",
+    "target version/runtime evidence when configuration differences can affect correctness"
+  ]
+}

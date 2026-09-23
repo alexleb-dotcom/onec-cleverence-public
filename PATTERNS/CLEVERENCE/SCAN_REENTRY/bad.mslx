@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ILLUSTRATIVE_PATTERN: NOT EVIDENCE. Scan variables and actions are placeholders. -->
+<Operation name="PatternScanReentryBad">
+  <Actions>
+    <!-- BAD: branch can consume stale state from a prior scan/re-entry. -->
+    <AssignAction id="classify" name="ClassifyExistingState" nextDirection="process" expression="IsMark = IsMarkingCode(BarcodeData);" />
+    <AssignAction id="process" name="Process" nextDirection="return" expression="LastProcessedBarcode = BarcodeData;" />
+  </Actions>
+</Operation>

@@ -1,0 +1,406 @@
+{
+  "version": 2,
+  "generated": true,
+  "generated_from": "RULES/rule_registry.json",
+  "principle": "Requirements rules are executable pre-code contracts. Missing evidence or blocking OPEN fields stop production-ready technical design; requirements artifacts additionally preserve claim provenance and cannot launder proposals into requirements.",
+  "claim_contract": {
+    "purposes": [
+      "IMPLEMENTATION_INPUT",
+      "REQUIREMENTS_ARTIFACT"
+    ],
+    "provenance": [
+      "USER_CONFIRMED",
+      "SOURCE_OBSERVED",
+      "TYPICAL_RELEASE_PROVEN",
+      "DERIVED_WITH_EVIDENCE",
+      "PROPOSED_SOLUTION",
+      "OPEN"
+    ],
+    "dispositions": [
+      "CONFIRMED_REQUIREMENT",
+      "DERIVED_REQUIREMENT",
+      "PROPOSAL",
+      "OPEN",
+      "REJECTED",
+      "SUPERSEDED"
+    ],
+    "hard_blocking_materiality": [
+      "QUANTITY",
+      "MONEY",
+      "TAX",
+      "IDENTITY",
+      "CARDINALITY",
+      "MATCH_KEY",
+      "SOURCE_OF_TRUTH",
+      "RIGHTS",
+      "STATE_TRANSITION",
+      "IRREVERSIBLE_SIDE_EFFECT",
+      "EXTERNAL_CONTRACT",
+      "COMPLIANCE"
+    ],
+    "nonblocking_materiality": [
+      "UX_PREFERENCE",
+      "WORDING",
+      "NONBEHAVIORAL_PRESENTATION",
+      "OTHER"
+    ],
+    "rule": "A material statement must preserve provenance. PROPOSED_SOLUTION is never an agreed requirement by wording alone; hard-materiality OPEN decisions stay blocking."
+  },
+  "rules": {
+    "REQUIREMENTS_TRACEABILITY": {
+      "tier": 0,
+      "surface": "ANY",
+      "risk_floor": "R0_LOCAL",
+      "activation": {
+        "mode": "ALWAYS",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "State the real need/problem and keep it distinct from implementation verbs such as add/automate/implement.",
+        "State an observable target business/system outcome and the target behavior that closes the need.",
+        "Trace each significant business rule/behavior to the need and to at least one acceptance case.",
+        "Resolve contradictions across task text, tables, screenshots, code/metadata facts and prior project constraints before design.",
+        "Do not demand internal code/module/query detail for an unchanged standard mechanism when its externally relevant behavior is already unambiguous.",
+        "When one requirement spans different artifact/mechanism obligations (for example metadata/subsystem membership, UI placement, form data binding and persistence), are they kept as separate traceable obligations with their own owning artifact/mechanism and acceptance evidence rather than collapsed into one generic “implemented” status?",
+        "Could two competent implementers produce materially different behavior because need/outcome/rules/acceptance are not traceable?",
+        "After mining available task/source/project evidence, are user questions limited to unresolved gaps that can materially change behavior, ownership, scope or acceptance rather than a generic questionnaire?",
+        "Can deleting an unresolved risk-required functional-contract field make the requirements gate pass instead of reporting the field as missing?"
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "ACCEPTANCE_ORACLE": {
+      "tier": 0,
+      "surface": "ANY",
+      "risk_floor": "R0_LOCAL",
+      "activation": {
+        "mode": "ALWAYS",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "Acceptance contains preconditions/test data and reproducible user/system actions.",
+        "Each significant action has an observable expected result rather than “works correctly”.",
+        "Correctness has an independent oracle: control values, expected state/data, cross-system payload/result or another reproducible proof.",
+        "Boundary/negative cases cover the business invariant where materially different behavior is possible.",
+        "Could the implementation pass the described steps while still returning a wrong business result?"
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "REQUIREMENTS_ARTIFACT_INTEGRITY": {
+      "tier": 0,
+      "surface": "ANY",
+      "risk_floor": "R0_LOCAL",
+      "activation": {
+        "mode": "ALWAYS",
+        "patterns": [],
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "For requirements-artifact work, does every material behavior/ownership/scope/acceptance statement preserve whether it is USER_CONFIRMED, SOURCE_OBSERVED, TYPICAL_RELEASE_PROVEN, DERIVED_WITH_EVIDENCE, PROPOSED_SOLUTION or OPEN?",
+        "Are model/analyst-proposed UI, metadata, data-model and technical choices kept as PROPOSED_SOLUTION until separately confirmed instead of being rewritten as mandatory requirements?",
+        "Is every unresolved decision that can change quantity, money, tax, identity, cardinality, match key, source of truth, rights, state transition, external/irreversible side effect or compliance kept blocking until resolved or explicitly accepted under the residual-risk contract?",
+        "When behavior depends on matching related rows/objects, is the exact match key plus 0/1/N behavior defined instead of vague phrases such as “other available analytics”, “available fields” or first-found selection?",
+        "After a material requirement correction, are all dependent claims/field mappings/restrictions/acceptance conclusions explicitly invalidated or revalidated instead of preserving conclusions derived from the old statement?",
+        "Before a non-trivial requirements artifact is declared ready, was at least one concrete counterexample attempted against the functional contract itself and dispositioned with evidence?",
+        "Is the requirements artifact kept BLOCKED/not-ready while any blocking OPEN, unresolved provenance, proposal laundering, correction fallout or required adversarial case remains?"
+      ],
+      "evidence_modes": [
+        "SEMANTIC"
+      ]
+    },
+    "PROCESS_ROLE_STATE_CONTRACT": {
+      "tier": 1,
+      "surface": "ANY",
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "activation": {
+        "mode": "RISK_FLOOR",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "Identify initiator/actors and the actions/rights each actor actually has.",
+        "State trigger/preconditions, relevant before/after states and system/user transition sequence.",
+        "State repeat/re-entry behavior and whether a second user/process may act concurrently.",
+        "Can the same input follow materially different state transitions because actor/trigger/state ownership is unspecified?",
+        "If an eligibility/permission/classification/price/routing decision depends on mutable context, list its dependencies and state exactly when prior results are invalidated or revalidated after context changes."
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "DATA_LIFECYCLE_SOURCE_OF_TRUTH": {
+      "tier": 1,
+      "surface": "ANY",
+      "risk_floor": "R1_CONTRACT",
+      "activation": {
+        "mode": "RISK_FLOOR",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "For every significant datum identify source, semantic meaning, authoritative owner and whether it is plan/fact/derived/representation.",
+        "Trace transformation, storage/transmission and final consumption; name the source of truth when duplicates/conflicts exist.",
+        "State behavior when source data changes or the operation is repeated/replayed.",
+        "Separate stable business identity from packaging/unit/barcode/display/normalization fields unless domain evidence proves otherwise.",
+        "Can two copies/representations disagree without a defined authoritative owner or conflict rule?",
+        "When significant reference/master data is replicated or cached, state authoritative ownership, semantic validity, freshness/version and propagation to every consumer; a technically valid stale copy is not sufficient source-of-truth evidence.",
+        "For composite target rows/objects, define authoritative source and calculation owner per material field; do not assume one upstream document owns quantity, identity, commercial conditions and derived totals simultaneously.",
+        "For a target row/object assembled from multiple related sources, are the target grain/stable identity, complete cross-source match tuple, allowed 0/1/N behavior and conservation/aggregation rule for material additive measures defined before implementation?",
+        "For each material field/source whose value can vary over time or lifecycle state, are the required effective moment/version, freshness tolerance and cross-source temporal consistency rule defined before implementation?",
+        "For every material quantity/amount/weight/price/other numeric fact, are its business measure, canonical unit/currency/scale, conversion coefficient direction, sign convention, precision and rounding stage defined before implementation?",
+        "For each material field/relation that may be missing, is the meaning of absence defined separately from explicit zero/false/empty/default values, including whether and where fallback substitution is allowed?",
+        "Is the required source-fact population/coverage defined at the business grain, including which facts must survive into the target, which may be excluded and the acceptance invariant proving there are no silent omissions?",
+        "When requirements move already-recorded fact between analytics/containers, identify the conserved fact, allowed temporary unassigned state and completion invariant so reallocation is not mistaken for creation/deletion."
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "INTEGRATION_FUNCTIONAL_CONTRACT": {
+      "tier": 1,
+      "surface": "CROSS_SYSTEM",
+      "risk_floor": "R3_CROSS_SYSTEM",
+      "activation": {
+        "mode": "SURFACE",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "State trigger, input source, input semantics and mapping into the selected method/message/API.",
+        "State response/output semantics, validation/transforms and exact persisted/consumed use.",
+        "Cover authorization, pagination/async/timeouts when material; retry, idempotency, partial failure and re-entry semantics are explicit.",
+        "State final observable state in every participating system and acceptance that proves data correctness, not only transport success.",
+        "Is only an endpoint/method/field list specified while the functional chain before/after the call remains ambiguous?"
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "ANALOGY_IS_NOT_REQUIREMENT": {
+      "tier": 1,
+      "surface": "ANY",
+      "risk_floor": "R1_CONTRACT",
+      "activation": {
+        "mode": "ANY_REGEX",
+        "patterns": [
+          "\\bпо\\s+аналогии\\b",
+          "\\bаналогично\\b",
+          "\\bсделать\\s+как\\b",
+          "\\bкак\\s+в\\s+[A-Za-zА-Яа-я0-9_]"
+        ],
+        "status_on_match": "CONDITIONAL_REVIEW"
+      },
+      "checks": [
+        "Name exactly what is reused from the analogy: input, rule/algorithm, UI, output/result, data contract or error behavior.",
+        "State differences/adaptations and prove the current source actually provides the data/conditions the analogy relies on.",
+        "Would removing the referenced analogy make the requested behavior impossible to reconstruct?"
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "ALTERNATIVE_SCENARIO_COVERAGE": {
+      "tier": 1,
+      "surface": "ANY",
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "activation": {
+        "mode": "RISK_FLOOR",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "State behavior for absent/invalid data, duplicates and source changes when they can alter the result.",
+        "State error/retry/re-entry/partial completion semantics and idempotency where relevant.",
+        "State rights/concurrency and later lifecycle overwrite paths where relevant rather than enumerating theoretical exceptions.",
+        "Is there a realistic materially different path that changes result/ownership but has no specified outcome?",
+        "When the requirement includes forward and reverse/refund/cancel flows, does each pipeline have its own trigger, data/identity trace, state transitions and acceptance oracle instead of assuming reverse behavior by analogy from the forward path?"
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    },
+    "SCOPE_ASSUMPTION_CONTRACT": {
+      "tier": 1,
+      "surface": "ANY",
+      "risk_floor": "R1_CONTRACT",
+      "activation": {
+        "mode": "RISK_FLOOR",
+        "status_on_match": "REQUIRED"
+      },
+      "checks": [
+        "State what is in scope and materially relevant exclusions/out-of-scope behavior.",
+        "State version/contour/external-system/NSI/equipment/access dependencies when they can change implementation or acceptance.",
+        "Every assumption has impact and validation plan; assumptions that decide business behavior remain blocking OPEN questions.",
+        "Has an unknown business rule been converted into a technical assumption without explicit owner/impact/validation?",
+        "When implementation/capability depends on product/vendor release, is the exact target version/contour and unsupported boundary explicit, and are newer-version examples kept as discovery evidence until target behavior is proven?",
+        "When reproducing behavior from a legacy/previous system or release, classify each material behavior as REQUIRED_AS_IS, INTENTIONAL_CHANGE, KNOWN_LIMITATION_ACCEPTED or UNKNOWN instead of treating AS-IS behavior as automatic TO-BE requirement.",
+        "For every consciously accepted limitation/residual risk, record trigger condition, consequence, acceptance owner, effect on acceptance criteria and whether the new change must preserve, mitigate or leave it explicitly unresolved."
+      ],
+      "evidence_modes": [
+        "SOURCE_REQUIRED",
+        "SEMANTIC"
+      ]
+    }
+  },
+  "contract_fields": [
+    {
+      "id": "need",
+      "title": "Need / problem / reason for change",
+      "min_risk": "R0_LOCAL",
+      "blocking": true,
+      "na_allowed": false
+    },
+    {
+      "id": "target_outcome",
+      "title": "Observable target business/system outcome",
+      "min_risk": "R0_LOCAL",
+      "blocking": true,
+      "na_allowed": false
+    },
+    {
+      "id": "target_behavior",
+      "title": "Target functional behavior",
+      "min_risk": "R0_LOCAL",
+      "blocking": true,
+      "na_allowed": false
+    },
+    {
+      "id": "acceptance_cases",
+      "title": "Reproducible acceptance cases and correctness oracle",
+      "min_risk": "R0_LOCAL",
+      "blocking": true,
+      "na_allowed": false
+    },
+    {
+      "id": "scope_in",
+      "title": "In-scope behavior/objects/systems",
+      "min_risk": "R1_CONTRACT",
+      "blocking": true
+    },
+    {
+      "id": "scope_out",
+      "title": "Explicit out-of-scope boundaries",
+      "min_risk": "R1_CONTRACT",
+      "blocking": false
+    },
+    {
+      "id": "business_invariants",
+      "title": "Business invariants / accepted and rejected cases",
+      "min_risk": "R1_CONTRACT",
+      "blocking": true
+    },
+    {
+      "id": "source_of_truth",
+      "title": "Authoritative data/source-of-truth ownership",
+      "min_risk": "R1_CONTRACT",
+      "blocking": true
+    },
+    {
+      "id": "business_identity",
+      "title": "Smallest stable business identity and representation separation",
+      "min_risk": "R1_CONTRACT",
+      "blocking": true
+    },
+    {
+      "id": "versions_environment",
+      "title": "Material product/version/contour/environment constraints",
+      "min_risk": "R1_CONTRACT",
+      "blocking": false
+    },
+    {
+      "id": "actors_roles",
+      "title": "Initiator, actors, rights and responsibilities",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": true
+    },
+    {
+      "id": "trigger_preconditions",
+      "title": "Trigger and preconditions",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": true
+    },
+    {
+      "id": "states_transitions",
+      "title": "Relevant states and transitions",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": true
+    },
+    {
+      "id": "repeat_semantics",
+      "title": "Repeat/re-entry semantics",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": true
+    },
+    {
+      "id": "concurrency",
+      "title": "Concurrency / second-user semantics",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": false
+    },
+    {
+      "id": "errors_alternatives",
+      "title": "Errors, absence, duplicates and alternative scenarios",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": true
+    },
+    {
+      "id": "data_lifecycle",
+      "title": "Data lifecycle: source, transform, store, transmit, consume, change",
+      "min_risk": "R2_STATEFUL_RUNTIME",
+      "blocking": true
+    },
+    {
+      "id": "integration_input_source",
+      "title": "Cross-system trigger and input source/semantics",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": true
+    },
+    {
+      "id": "integration_mapping",
+      "title": "Cross-system mapping/transform/validation contract",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": true
+    },
+    {
+      "id": "integration_output_use",
+      "title": "Response/output use and persisted/consumed result",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": true
+    },
+    {
+      "id": "retry_idempotency",
+      "title": "Retry/idempotency/re-entry contract",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": true
+    },
+    {
+      "id": "partial_failure",
+      "title": "Partial failure/recovery semantics",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": true
+    },
+    {
+      "id": "final_cross_system_state",
+      "title": "Final observable state in every participating system",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": true
+    },
+    {
+      "id": "security_auth",
+      "title": "Authorization/access/rights conditions relevant to functional correctness",
+      "min_risk": "R3_CROSS_SYSTEM",
+      "blocking": false
+    }
+  ],
+  "outcomes": [
+    "REQUIREMENTS_BLOCKED",
+    "REQUIREMENTS_READY_WITH_ASSUMPTIONS",
+    "REQUIREMENTS_READY"
+  ]
+}

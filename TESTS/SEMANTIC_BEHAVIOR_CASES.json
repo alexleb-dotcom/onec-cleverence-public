@@ -1,0 +1,431 @@
+{
+  "version": 1,
+  "principle": "Concrete positive/negative domain scenarios establish BEHAVIORALLY_SAMPLED only for the named failure mode. They do not constitute target-runtime proof or an LLM-provider/model smoke test.",
+  "cases": [
+    {
+      "id": "COARSE_JOIN_KEY_MULTIPLIES_FACT",
+      "oracle": "sum_conservation",
+      "expected_total": 30,
+      "bad": {
+        "values": [
+          10,
+          10,
+          20,
+          20
+        ]
+      },
+      "good": {
+        "values": [
+          10,
+          20
+        ]
+      }
+    },
+    {
+      "id": "GROUP_BY_HIDES_JOIN_FANOUT",
+      "oracle": "numeric_expected",
+      "expected": 30,
+      "bad": {
+        "actual": 60
+      },
+      "good": {
+        "actual": 30
+      }
+    },
+    {
+      "id": "FIELD_SOURCES_WITHOUT_SHARED_ROW_IDENTITY",
+      "oracle": "correlation_pairs",
+      "allowed_pairs": [
+        "A:1",
+        "B:2"
+      ],
+      "bad": {
+        "pairs": [
+          "A:1",
+          "A:2"
+        ]
+      },
+      "good": {
+        "pairs": [
+          "A:1",
+          "B:2"
+        ]
+      }
+    },
+    {
+      "id": "MIXED_EFFECTIVE_MOMENTS_IN_ONE_ROW",
+      "oracle": "temporal_alignment",
+      "bad": {
+        "effective_states": [
+          "2026-01-31",
+          "2026-02-15"
+        ],
+        "mismatch_authorized": false
+      },
+      "good": {
+        "effective_states": [
+          "2026-01-31",
+          "2026-01-31"
+        ],
+        "mismatch_authorized": false
+      }
+    },
+    {
+      "id": "CURRENT_AND_AS_OF_DATE_SOURCES_MIXED",
+      "oracle": "temporal_alignment",
+      "bad": {
+        "effective_states": [
+          "CURRENT",
+          "2026-01-31"
+        ],
+        "mismatch_authorized": false
+      },
+      "good": {
+        "effective_states": [
+          "2026-01-31",
+          "2026-01-31"
+        ],
+        "mismatch_authorized": false
+      }
+    },
+    {
+      "id": "MATERIALIZATION_AS_SNAPSHOT_PROOF",
+      "oracle": "snapshot_protection",
+      "bad": {
+        "start_version": 41,
+        "later_version": 42,
+        "consistency_proven": false
+      },
+      "good": {
+        "start_version": 41,
+        "later_version": 42,
+        "consistency_proven": true
+      }
+    },
+    {
+      "id": "NUMERIC_VALUE_WITHOUT_UNIT_SEMANTICS",
+      "oracle": "unit_basis",
+      "bad": {
+        "bases": [
+          "BOX",
+          "PIECE"
+        ],
+        "conversion_proven": false
+      },
+      "good": {
+        "bases": [
+          "PIECE",
+          "PIECE"
+        ],
+        "conversion_proven": true
+      }
+    },
+    {
+      "id": "CONVERSION_COEFFICIENT_DIRECTION_OR_DOUBLE_APPLY",
+      "oracle": "numeric_expected",
+      "expected": 20,
+      "bad": {
+        "actual": 200
+      },
+      "good": {
+        "actual": 20
+      }
+    },
+    {
+      "id": "EARLY_OR_DOUBLE_ROUNDING_CHANGES_TOTAL",
+      "oracle": "numeric_expected",
+      "expected": 101,
+      "bad": {
+        "actual": 102
+      },
+      "good": {
+        "actual": 101
+      }
+    },
+    {
+      "id": "MISSING_FACT_COLLAPSED_TO_ZERO_OR_FALSE",
+      "oracle": "absence_distinct",
+      "bad": {
+        "absent": 0,
+        "explicit_zero": 0
+      },
+      "good": {
+        "absent": "ABSENT",
+        "explicit_zero": 0
+      }
+    },
+    {
+      "id": "QUERY_NULL_DEFAULT_CREATES_FAKE_FACT",
+      "oracle": "absence_distinct",
+      "bad": {
+        "absent": "",
+        "explicit_empty": ""
+      },
+      "good": {
+        "absent": "ABSENT",
+        "explicit_empty": ""
+      }
+    },
+    {
+      "id": "INNER_JOIN_SILENTLY_DROPS_REQUIRED_FACTS",
+      "oracle": "fact_retention",
+      "required": [
+        "F1",
+        "F2"
+      ],
+      "bad": {
+        "output": [
+          "F1"
+        ]
+      },
+      "good": {
+        "output": [
+          "F1",
+          "F2"
+        ]
+      }
+    },
+    {
+      "id": "FILTER_OR_PREAGGREGATION_ERASES_REQUIRED_FACTS",
+      "oracle": "fact_retention",
+      "required": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "bad": {
+        "output": [
+          "L1",
+          "L3"
+        ]
+      },
+      "good": {
+        "output": [
+          "L1",
+          "L2",
+          "L3"
+        ]
+      }
+    },
+    {
+      "id": "VISUAL_HYPERLINK_AS_NAVIGATION",
+      "oracle": "interaction_route",
+      "bad": {
+        "presentation_affordance": true,
+        "action_required": true,
+        "action_route_proven": false
+      },
+      "good": {
+        "presentation_affordance": true,
+        "action_required": true,
+        "action_route_proven": true
+      }
+    },
+    {
+      "id": "READONLY_CONTROL_AS_OBJECT_PERMISSION",
+      "oracle": "scope_claim",
+      "bad": {
+        "local_ui_restriction": true,
+        "claims_object_restriction": true,
+        "object_permission_proven": false
+      },
+      "good": {
+        "local_ui_restriction": true,
+        "claims_object_restriction": false,
+        "object_permission_proven": false
+      }
+    },
+    {
+      "id": "DEPENDENCY_CHECK_AFTER_DESTRUCTIVE_PREACTION",
+      "oracle": "preaction_capability",
+      "bad": {
+        "meaningful_preaction": true,
+        "required_capabilities_checked_before": false,
+        "server_authorization_required": true,
+        "server_authorization_rechecked": true
+      },
+      "good": {
+        "meaningful_preaction": true,
+        "required_capabilities_checked_before": true,
+        "server_authorization_required": true,
+        "server_authorization_rechecked": true
+      }
+    },
+    {
+      "id": "UNRELATED_PROCESS_HOOK_AS_ORCHESTRATOR",
+      "oracle": "lifecycle_ownership",
+      "bad": {
+        "independent_process": true,
+        "reuses_existing_mechanism": true,
+        "shared_orchestrator_extension_point_proven": false,
+        "inherits_unrelated_trigger_or_schedule": true,
+        "process_owns_retry_state_error_policy": false,
+        "capability_boundary_explicit": false
+      },
+      "good": {
+        "independent_process": true,
+        "reuses_existing_mechanism": true,
+        "shared_orchestrator_extension_point_proven": false,
+        "inherits_unrelated_trigger_or_schedule": false,
+        "process_owns_retry_state_error_policy": true,
+        "capability_boundary_explicit": true
+      }
+    },
+    {
+      "id": "INCOMPLETE_MANUAL_TRANSFER_AS_COMPLETE_DELIVERY",
+      "oracle": "delivery_result_contract",
+      "bad": {
+        "mode": "MANUAL_TRANSFER_INSTRUCTION",
+        "applicable_material_elements": 9,
+        "documented_material_elements": 5,
+        "human_must_invent_material_details": true,
+        "applied_target_proven": false,
+        "claims_applied_target_proven": true
+      },
+      "good": {
+        "mode": "MANUAL_TRANSFER_INSTRUCTION",
+        "applicable_material_elements": 9,
+        "documented_material_elements": 9,
+        "human_must_invent_material_details": false,
+        "applied_target_proven": false,
+        "claims_applied_target_proven": false
+      }
+    },
+    {
+      "id": "PARTIAL_PROJECT_SNAPSHOT_AS_COMPLETE_CONTEXT",
+      "oracle": "snapshot_handoff_contract",
+      "bad": {
+        "narrower_closure_proven_possible": true,
+        "whole_configuration_requested_without_reason": true,
+        "required_item_count": 8,
+        "collected_required_item_count": 6,
+        "missing_required_reported": false,
+        "claims_snapshot_sufficient": true,
+        "snapshot_identity_bound": false,
+        "change_package_bound_to_snapshot": false,
+        "post_transfer_policy": "OPTIONAL",
+        "post_transfer_snapshot_present": false,
+        "claims_applied_target_proven": true,
+        "applied_target_observed": false
+      },
+      "good": {
+        "narrower_closure_proven_possible": true,
+        "whole_configuration_requested_without_reason": false,
+        "required_item_count": 8,
+        "collected_required_item_count": 8,
+        "missing_required_reported": true,
+        "claims_snapshot_sufficient": true,
+        "snapshot_identity_bound": true,
+        "change_package_bound_to_snapshot": true,
+        "post_transfer_policy": "OPTIONAL",
+        "post_transfer_snapshot_present": false,
+        "claims_applied_target_proven": false,
+        "applied_target_observed": false
+      }
+    },
+    {
+      "id": "ONEC_WRITE_GUARD_EVENT_COVERAGE",
+      "oracle": "write_guard_coverage",
+      "bad": {
+        "required_channels": [
+          "INTERACTIVE_WRITE",
+          "PROGRAMMATIC_WRITE",
+          "POSTING"
+        ],
+        "proven_guard_channels": [
+          "INTERACTIVE_PRECHECK"
+        ],
+        "fill_check_claimed_universal": true,
+        "duplicate_material_predicate": false,
+        "exchange_required": false,
+        "exchange_bypass_dispositioned": true
+      },
+      "good": {
+        "required_channels": [
+          "INTERACTIVE_WRITE",
+          "PROGRAMMATIC_WRITE",
+          "POSTING"
+        ],
+        "proven_guard_channels": [
+          "INTERACTIVE_WRITE",
+          "PROGRAMMATIC_WRITE",
+          "POSTING"
+        ],
+        "fill_check_claimed_universal": false,
+        "duplicate_material_predicate": false,
+        "exchange_required": false,
+        "exchange_bypass_dispositioned": true
+      }
+    },
+    {
+      "id": "minimality_existing_owner_vs_parallel_helper",
+      "oracle": "minimal_change_surface",
+      "bad": {
+        "existing_owner_satisfies_contract": true,
+        "new_parallel_helper_count": 1,
+        "unrelated_changed_artifacts": 0,
+        "loc_reduced": false,
+        "cohesion_lost": false
+      },
+      "good": {
+        "existing_owner_satisfies_contract": true,
+        "new_parallel_helper_count": 0,
+        "unrelated_changed_artifacts": 0,
+        "loc_reduced": false,
+        "cohesion_lost": false
+      }
+    },
+    {
+      "id": "minimality_opportunistic_refactor",
+      "oracle": "minimal_change_surface",
+      "bad": {
+        "existing_owner_satisfies_contract": false,
+        "new_parallel_helper_count": 0,
+        "unrelated_changed_artifacts": 2,
+        "loc_reduced": false,
+        "cohesion_lost": false
+      },
+      "good": {
+        "existing_owner_satisfies_contract": false,
+        "new_parallel_helper_count": 0,
+        "unrelated_changed_artifacts": 0,
+        "loc_reduced": false,
+        "cohesion_lost": false
+      }
+    },
+    {
+      "id": "minimality_loc_reduction_preserves_cohesion",
+      "oracle": "minimal_change_surface",
+      "bad": {
+        "existing_owner_satisfies_contract": false,
+        "new_parallel_helper_count": 0,
+        "unrelated_changed_artifacts": 0,
+        "loc_reduced": true,
+        "cohesion_lost": true
+      },
+      "good": {
+        "existing_owner_satisfies_contract": false,
+        "new_parallel_helper_count": 0,
+        "unrelated_changed_artifacts": 0,
+        "loc_reduced": true,
+        "cohesion_lost": false
+      }
+    },
+    {
+      "id": "cleverence_intent_end_to_end_path",
+      "oracle": "cleverence_contract_path",
+      "bad": {
+        "scenario_bound": true,
+        "writer_path_bound": false,
+        "state_reentry_dispositioned": true,
+        "producer_mapping_consumer_complete": false
+      },
+      "good": {
+        "scenario_bound": true,
+        "writer_path_bound": true,
+        "state_reentry_dispositioned": true,
+        "producer_mapping_consumer_complete": true
+      }
+    }
+  ]
+}

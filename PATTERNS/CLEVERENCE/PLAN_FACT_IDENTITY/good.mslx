@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ILLUSTRATIVE_PATTERN: NOT EVIDENCE. Action names/expressions/fields are placeholders. -->
+<Operation name="PatternPlanFactGood">
+  <Actions>
+    <AssignAction id="resolve-fact-key" name="ResolveFactIdentity" nextDirection="rebind" expression="FactKey = IntendedFactKey;" />
+    <AssignAction id="rebind" name="RebindLiveFact" nextDirection="verify" expression="CurrentItem = FindFactByTechnicalIdentity(FactKey);" />
+    <AssignAction id="verify" name="VerifyRebind" nextDirection="mutate" expression="RebindIsValid = CurrentItem != null;" />
+    <!-- GOOD SHAPE: mutation follows explicit identity resolution/rebind/verification. -->
+    <AssignAction id="mutate" name="MutateVerifiedFact" nextDirection="return" expression="CurrentItem.Quantity = CurrentItem.Quantity + 1;" />
+  </Actions>
+</Operation>

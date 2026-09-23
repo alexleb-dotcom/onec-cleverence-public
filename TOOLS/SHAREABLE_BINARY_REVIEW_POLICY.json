@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "policy_id": "shareable-binary-review-v1",
+  "reviewed_binary_files": [
+    {
+      "path": "TESTS/fixtures/artifact_scope_mixed/XDTOPackages/package.bin",
+      "sha256": "e9e8f12f38a7668741ad17d0462ce0ce605c228f9701e9511e8416582716c5ad",
+      "type_class": "onec-xdto-package-bin",
+      "reason": "Synthetic XDTO package fixture retained for artifact-scope structural regression.",
+      "policy_id": "shareable-binary-review-v1"
+    },
+    {
+      "path": "TESTS/fixtures/xdto_bad/Ext/Package.bin",
+      "sha256": "fe45bb92a29e5572a5e342c5561b73a8f689d21d02f8ce9bd06417d986a42fde",
+      "type_class": "onec-xdto-package-bin",
+      "reason": "Synthetic negative XDTO package fixture retained for public structural regression.",
+      "policy_id": "shareable-binary-review-v1"
+    },
+    {
+      "path": "TESTS/fixtures/xdto_good/Ext/Package.bin",
+      "sha256": "3255e1c5f744b5348e7f69feba63a8feaefc5bee5c61cc95a1fa487ee9a0f4cd",
+      "type_class": "onec-xdto-package-bin",
+      "reason": "Synthetic positive XDTO package fixture retained for public structural regression.",
+      "policy_id": "shareable-binary-review-v1"
+    }
+  ],
+  "third_party_attribution_files": [
+    {
+      "path": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
+      "sha256": "b80d5d3cb8861dbd2bbbd1e97bbf794b5b61a18ac76bb8ed40c8f26ebb324ab5",
+      "reason": "Exact upstream MIT license text retained as required attribution.",
+      "policy_id": "shareable-binary-review-v1"
+    },
+    {
+      "path": "THIRD_PARTY/cc-1c-skills/NOTICE.md",
+      "sha256": "4a9321f628555e49162e05020cc7a939a9f2adeebceae338b9acd6049937a14c",
+      "reason": "Exact public attribution notice for the reviewed upstream dependency.",
+      "policy_id": "shareable-binary-review-v1"
+    }
+  ]
+}

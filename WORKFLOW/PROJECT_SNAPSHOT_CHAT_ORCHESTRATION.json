@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "name": "ProjectSnapshot chat evidence acquisition orchestration",
+  "purpose": "Make bounded ProjectSnapshot acquisition a first-class continuation of ordinary 1C skill work when current evidence is insufficient.",
+  "normative_knowledge": "KNOWLEDGE/PROJECT_SNAPSHOT_CHAT_WORKFLOW.md",
+  "entry_contract": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
+  "request_template": "TEMPLATES/PROJECT_SNAPSHOT_REQUEST.json",
+  "planner": "TOOLS/plan_project_snapshot_collection.py",
+  "collector_source": "COLLECTOR/ONEC_RUNTIME/EPF_SOURCE",
+  "collector_distribution": {
+    "manifest": "COLLECTOR/ONEC_RUNTIME/DISTRIBUTION/ProjectSnapshotCollector.artifact.json",
+    "payload_dir": "COLLECTOR/ONEC_RUNTIME/DISTRIBUTION/PAYLOAD",
+    "materialized_filename": "ProjectSnapshotCollector.epf",
+    "integrity_tool": "TOOLS/materialize_project_snapshot_collector.py",
+    "normal_delivery": "CHAT_PROVIDES_VERIFIED_EPF_WITH_PLAN",
+    "repository_fetch_encoding": "text_base64_parts",
+    "source_change_policy": "INVALIDATE_STORED_BINARY_UNTIL_REBUILT_AND_RUNTIME_ACCEPTED",
+    "ordinary_developer_build_required": false,
+    "availability_guard": {
+      "required_before_project_snapshot_required": true,
+      "unavailable_disposition": "COLLECTOR_UNAVAILABLE",
+      "rule": "Collector-specific transitions, chat responsibilities, developer steps and definition-of-done clauses apply only when the repository-pinned manifest/payload are present and the integrity path succeeds. If the active distribution intentionally omits the Collector or integrity prerequisites are unavailable, do not synthesize/build it; use the existing COLLECTOR_UNAVAILABLE bounded manual fallback."
+    }
+  },
+  "package_validator": "TOOLS/validate_project_snapshot_package.py",
+  "artifacts": {
+    "request": "PROJECT_SNAPSHOT_REQUEST.json",
+    "collector": "ProjectSnapshotCollector.epf",
+    "plan": "PROJECT_SNAPSHOT_COLLECTION_PLAN.json",
+    "package": "ProjectSnapshot.zip"
+  },
+  "activation": {
+    "required_conditions": [
+      "a material active 1C claim remains evidence-required or runtime-pending after inspecting already supplied/authorized evidence",
+      "the missing evidence can be expressed as exact item/category/logical-target rows",
+      "at least one backend actually available in the customer contour can acquire useful evidence",
+      "ProjectSnapshot is a smaller deterministic acquisition path than broad/manual source hunting"
+    ],
+    "forbidden_shortcuts": [
+      "do not run the collector when existing evidence already closes the claim",
+      "do not request a whole configuration merely because one supported bounded item is missing",
+      "do not route an unsupported source-target shape to a different source item and call it equivalent",
+      "do not ask an ordinary developer to rebuild ProjectSnapshotCollector.epf when a READY repository artifact exists"
+    ]
+  },
+  "states": [
+    "EVIDENCE_SUFFICIENT",
+    "SNAPSHOT_REQUIRED",
+    "PLAN_READY",
+    "PACKAGE_RECEIVED",
+    "PACKAGE_REJECTED",
+    "PACKAGE_BOUND_PARTIAL",
+    "PACKAGE_BOUND_READY",
+    "SOURCE_INSPECTED",
+    "EVIDENCE_BOUND",
+    "DELTA_REQUIRED",
+    "TASK_RESUMED"
+  ],
+  "transitions": [
+    {
+      "from": "SNAPSHOT_REQUIRED",
+      "to": "PLAN_READY",
+      "requires": [
+        "stable request_id",
+        "baseline_expectation disposition",
+        "exact required item ids/categories/logical_targets",
+        "planner run against actually available backends",
+        "READY repository collector payload retrieved and integrity-verified",
+        "chat materializes ProjectSnapshotCollector.epf for the developer alongside the plan"
+      ]
+    },
+    {
+      "from": "PLAN_READY",
+      "to": "PACKAGE_RECEIVED",
+      "requires": [
+        "developer opens the chat-provided ProjectSnapshotCollector.epf in intended infobase",
+        "developer loads the chat-provided CollectionPlan",
+        "developer uploads returned ProjectSnapshot.zip"
+      ]
+    },
+    {
+      "from": "PACKAGE_RECEIVED",
+      "to": "PACKAGE_REJECTED",
+      "when": "package/request/baseline/archive-safety binding fails",
+      "effect": "no package observation may be used as proof"
+    },
+    {
+      "from": "PACKAGE_RECEIVED",
+      "to": "PACKAGE_BOUND_PARTIAL",
+      "when": "binding succeeds but at least one requested item is failed/unsupported/insufficient/unavailable"
+    },
+    {
+      "from": "PACKAGE_RECEIVED",
+      "to": "PACKAGE_BOUND_READY",
+      "when": "binding succeeds and requested automatic evidence is returned at required acquisition status"
+    },
+    {
+      "from": "PACKAGE_BOUND_PARTIAL",
+      "to": "SOURCE_INSPECTED",
+      "when": "one or more usable SOURCE_EXPORT items are present",
+      "requires": [
+        "read concrete packaged source bytes",
+        "match source_file/path/content to exact requested item"
+      ]
+    },
+    {
+      "from": "PACKAGE_BOUND_READY",
+      "to": "SOURCE_INSPECTED",
+      "when": "SOURCE_EXPORT items are present",
+      "requires": [
+        "read concrete packaged source bytes",
+        "match source_file/path/content to exact requested item"
+      ]
+    },
+    {
+      "from": "PACKAGE_BOUND_PARTIAL",
+      "to": "EVIDENCE_BOUND",
+      "when": "usable runtime-only evidence has been accepted or source inspection is complete for usable source items"
+    },
+    {
+      "from": "SOURCE_INSPECTED",
+      "to": "EVIDENCE_BOUND",
+      "requires": [
+        "item-level evidence refs/fidelity recorded",
+        "failed or insufficient items remain unresolved"
+      ]
+    },
+    {
+      "from": "EVIDENCE_BOUND",
+      "to": "DELTA_REQUIRED",
+      "when": "analysis discovers a new material dependency not covered by accepted evidence",
+      "effect": "request only newly required items for the same applicable baseline; reuse the same verified EPF unless its distribution identity changed"
+    },
+    {
+      "from": "EVIDENCE_BOUND",
+      "to": "TASK_RESUMED",
+      "when": "current evidence gap is sufficiently resolved",
+      "effect": "resume original requirements/review/design/implementation point without asking user to restate it"
+    }
+  ],
+  "chat_responsibilities": [
+    "derive request from active claim/gate",
+    "re-evaluate ProjectSnapshot immediately after a discovery bootstrap source inventory",
+    "split supported exact collector evidence from unsupported manual fallback instead of replacing the whole gap with a broad manual request",
+    "resolve ProjectSnapshot disposition before every manual current-1C source request",
+    "retrieve repository-pinned ProjectSnapshotCollector payload",
+    "verify collector artifact manifest, payload Git blob identities, reconstructed binary SHA-256/size/blob identity and build-input Git blob binding before delivery",
+    "materialize and provide ProjectSnapshotCollector.epf to the developer when collection is required",
+    "generate plan file when artifact creation is available",
+    "provide collector and plan together instead of making the developer build or locate the collector",
+    "explain only minimal collector/run steps required by the developer",
+    "recognize returned ProjectSnapshot evidence package automatically",
+    "validate package with expected active request_id",
+    "inspect manifest/runtime/designer diagnostics itself",
+    "inspect concrete SOURCE_EXPORT bytes before closing source claims",
+    "reuse valid partial evidence and preserve unresolved items",
+    "issue delta plan instead of broad repeat collection",
+    "resume original task automatically"
+  ],
+  "developer_responsibilities": [
+    "open the ProjectSnapshotCollector.epf provided by chat in intended infobase",
+    "enter Designer credentials locally when needed",
+    "load the CollectionPlan provided by chat",
+    "press Собрать пакет",
+    "upload ProjectSnapshot.zip"
+  ],
+  "developer_must_not_be_required_to": [
+    "clone the skill repository merely to obtain the collector",
+    "build ProjectSnapshotCollector.epf for ordinary collection",
+    "run build_epf.ps1 for ordinary collection",
+    "keep a local collector copy between unrelated tasks",
+    "understand or reconstruct repository payload encoding",
+    "edit generated CollectionPlan JSON",
+    "choose export metadata owners manually",
+    "interpret manifest/runtime JSON statuses",
+    "extract individual modules from a valid package",
+    "paste credentials into chat",
+    "repeat original task context after package upload",
+    "manually locate or export an exact current-1C module that the active ProjectSnapshot plan can collect",
+    "repeat a broad current-1C source export merely because ProjectSnapshot was not dispositioned"
+  ],
+  "collector_artifact_acceptance": {
+    "manifest_status_must_be": "READY",
+    "payload_git_blobs_must_match": true,
+    "reconstructed_binary_sha256_size_and_git_blob_must_match": true,
+    "declared_build_input_git_blobs_must_match": true,
+    "epf_build_open_acceptance_required": true,
+    "source_export_runtime_acceptance_required": true,
+    "stale_or_missing_artifact_policy": "SKILL_DISTRIBUTION_DEFECT_NOT_NORMAL_USER_BUILD_STEP"
+  },
+  "package_acceptance": {
+    "validator_required": true,
+    "expected_request_id_required_when_active_request_known": true,
+    "safe_archive_required": true,
+    "source_content_inspection_required": true,
+    "partial_package_reuse": true,
+    "wrong_baseline_policy": "REJECT_PACKAGE",
+    "source_failure_policy": "KEEP_BOUND_RUNTIME_EVIDENCE_AND_LEAVE_SOURCE_ITEMS_UNRESOLVED",
+    "machine_receipt_property": "EVIDENCE:PROJECT_SNAPSHOT_PACKAGE_BINDING",
+    "machine_receipt_scope": "PACKAGE_BINDING_ONLY_NOT_SOURCE_CONTENT"
+  },
+  "proof_boundaries": [
+    "repository payload present != reconstructed binary integrity accepted",
+    "collector binary integrity accepted != customer package proof",
+    "package produced != package bound",
+    "package bound != source bytes inspected",
+    "source bytes inspected != deployed runtime behavior",
+    "runtime item observation proves only its exact bound item at observed fidelity",
+    "collector implementation acceptance never promotes unrelated claims"
+  ],
+  "privacy_and_security": [
+    "read-only collection is the default",
+    "exclude runtime business data by default",
+    "Designer credentials are local inputs and not evidence-package fields",
+    "never execute returned package/source content",
+    "never accept an unverified/stale repository payload merely because the target filename matches"
+  ],
+  "definition_of_done": [
+    "verified current ProjectSnapshotCollector.epf and exact CollectionPlan are provided when collection is required",
+    "package is bound or explicitly rejected",
+    "every requested item has an explicit disposition",
+    "required returned source bytes are inspected and matched",
+    "unresolved items remain explicit",
+    "usable evidence is incorporated into the original task",
+    "original task is resumed or smallest delta request is issued"
+  ],
+  "canonical_contract": true,
+  "pre_manual_current_onec_gate": {
+    "required_before_manual_current_onec_request": true,
+    "manual_request_classes": [
+      "configuration_or_extension_source_export",
+      "current_onec_xml_or_bsl",
+      "individual_current_onec_module_or_metadata_fragment"
+    ],
+    "dispositions": [
+      "EVIDENCE_ALREADY_SUFFICIENT",
+      "PROJECT_SNAPSHOT_REQUIRED",
+      "SPLIT_ACQUISITION",
+      "DISCOVERY_BOOTSTRAP",
+      "MANUAL_FALLBACK_UNSUPPORTED",
+      "COLLECTOR_UNAVAILABLE",
+      "USER_DECLINED_COLLECTOR"
+    ],
+    "manual_request_allowed_for": [
+      "SPLIT_ACQUISITION_UNSUPPORTED_REMAINDER",
+      "DISCOVERY_BOOTSTRAP",
+      "MANUAL_FALLBACK_UNSUPPORTED",
+      "COLLECTOR_UNAVAILABLE",
+      "USER_DECLINED_COLLECTOR"
+    ],
+    "rules": [
+      "a broad audit or review is not by itself a reason to bypass ProjectSnapshot",
+      "when an exact supported item is missing and no independently required discovery artifact already subsumes it, ProjectSnapshot must be used instead of requesting that same evidence manually",
+      "when supported and unsupported gaps coexist, ProjectSnapshot collects the supported exact portion and manual acquisition is limited to the unsupported remainder unless one independently required discovery artifact already subsumes both",
+      "DISCOVERY_BOOTSTRAP is allowed only when exact target identities must first be discovered or a broad source artifact is independently required for unsupported form extension or changed-object inventory",
+      "after DISCOVERY_BOOTSTRAP is inventoried the gate must be re-run before any further current-1C evidence request",
+      "do not duplicate acquisition when supplied or bootstrap source already closes the supported claim",
+      "manual fallback must retain a concrete reason and must not imply that ProjectSnapshot is unavailable when it was merely deferred"
+    ],
+    "user_facing_policy": "do not expose internal disposition labels unless they materially clarify why a manual artifact is still required"
+  }
+}

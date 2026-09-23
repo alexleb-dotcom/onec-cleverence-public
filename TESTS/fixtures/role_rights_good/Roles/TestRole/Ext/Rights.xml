@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Rights xmlns="http://v8.1c.ru/8.2/roles" version="2.19">
+  <setForNewObjects>false</setForNewObjects>
+  <setForAttributesByDefault>true</setForAttributesByDefault>
+  <independentRightsOfChildObjects>false</independentRightsOfChildObjects>
+  <object>
+    <name>Catalog.Номенклатура</name>
+    <right><name>Read</name><value>true</value></right>
+  </object>
+</Rights>

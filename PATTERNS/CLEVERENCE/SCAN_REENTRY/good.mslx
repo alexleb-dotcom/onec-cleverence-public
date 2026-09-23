@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ILLUSTRATIVE_PATTERN: NOT EVIDENCE. Exact scan-session state must be proven from target source/runtime. -->
+<Operation name="PatternScanReentryGood">
+  <Actions>
+    <AssignAction id="reset" name="ResetPerScanState" nextDirection="capture" expression="IsMark = false; ParsedCode = null;" />
+    <AssignAction id="capture" name="CaptureCurrentScan" nextDirection="classify" expression="ParsedCode = BarcodeData;" />
+    <AssignAction id="classify" name="ClassifyCurrentScan" nextDirection="deduplicate" expression="IsMark = IsMarkingCode(ParsedCode);" />
+    <AssignAction id="deduplicate" name="CheckRepeat" nextDirection="process" expression="IsRepeat = ParsedCode == LastProcessedBarcode;" />
+    <!-- GOOD SHAPE: current scan state is initialized before classification/re-entry logic. -->
+    <AssignAction id="process" name="ProcessCurrentScan" nextDirection="return" expression="LastProcessedBarcode = ParsedCode;" />
+  </Actions>
+</Operation>

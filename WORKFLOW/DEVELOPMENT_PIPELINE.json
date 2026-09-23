@@ -1,0 +1,248 @@
+{
+  "name": "1C + Cleverence project-bootstrap + requirements-first registry-driven development pipeline",
+  "registry": "RULES/rule_registry.json",
+  "principle": "A new project is discovered before task implementation: inventory actual inputs, establish durable project conventions/delivery constraints from evidence, request only material gaps, then prove the task functional contract and technical rules. The reviewing LLM is itself an adversarial surface: every material protection must be challenged for shortcut/bypass paths. Gates never disappear. Tier-0 rules always require disposition. Final readiness is decided only by requirements_gate + release_gate.",
+  "pre_task_bootstrap": {
+    "knowledge": "KNOWLEDGE/PROJECT_BOOTSTRAP.md",
+    "cold_start": "README_FIRST.md",
+    "artifact_reader": "TOOLS/artifact_corpus.py",
+    "builder": "TOOLS/build_project_bootstrap.py",
+    "project_context_template": "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md",
+    "sequence": [
+      "when only the skill repository URL is available, identify it as UNIVERSAL_SKILL_REPOSITORY rather than target project/baseline",
+      "inventory every supplied target repository/archive/directory before source suffix filtering",
+      "classify artifact family/role/layout or keep it explicitly UNKNOWN/MIXED",
+      "inspect actual project source for conventions and modification policy before asking the user",
+      "request only unresolved material project facts/artifacts",
+      "persist durable evidence-backed facts in PROJECT_CONTEXT",
+      "do not treat repository access as proof of deployed baseline, runtime or delivery workflow",
+      "when customer configuration evidence is not already sufficient, derive TEMPLATES/PROJECT_SNAPSHOT_REQUEST.json from the accepted requirement and unresolved proof dependencies before asking for a broad configuration export"
+    ],
+    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER or delivery details are unresolved; final changed code requires the applicable project conventions, and exact delivery requires an authoritative baseline/layout."
+  },
+  "stages": [
+    {
+      "id": "BOOTSTRAP_INTEGRITY",
+      "actions": [
+        "read README_FIRST.md then the README/SKILL bootstrap kernel for a cold chat; do not load the full registry/reference/archive into LLM context for ordinary task work",
+        "run TOOLS/artifact_corpus.py and TOOLS/build_project_bootstrap.py for a new/unfamiliar target project or materially new artifact family",
+        "let executable tools consume RULES/rule_registry.json and load only routed profiles/references into model context",
+        "use build_review_plan --summary for compact LLM/human routing while preserving the full plan in --output",
+        "for skill maintenance run cold-start, LLM anti-bypass, artifact/bootstrap, provenance, review and validate_skill suites"
+      ]
+    },
+    {
+      "id": "BASELINE_IDENTITY",
+      "actions": [
+        "bind exact user/deployed baseline and candidate hashes",
+        "bind artifact family/role/layout and authoritative configuration root when delivery depends on physical shape",
+        "never substitute ARCHIVE/current-work history or bundled reference for target deployed baseline",
+        "when baseline is supplied, bind a deterministic file/tree SHA-256 snapshot into plan and ledger dependencies"
+      ]
+    },
+    {
+      "id": "REQUIREMENTS_AND_SCOPE",
+      "actions": [
+        "build TOOLS/build_requirements_contract.py from task/source/project evidence before non-trivial design",
+        "do not repeat durable project-bootstrap questions inside every task contract",
+        "infer known task facts first; ask only unresolved blocking gaps that can change behavior, ownership, scope or acceptance",
+        "run TOOLS/requirements_gate.py; REQUIREMENTS_BLOCKED forbids production-ready technical design",
+        "record need → target outcome → behavior/rules → acceptance traceability",
+        "scale depth by risk: R1 adds invariant/source-of-truth/scope, R2 adds process/state/repeat/errors, R3 adds full integration contract",
+        "when a material requirements gap can be resolved by a concrete missing artifact, request the smallest sufficient artifact and keep the affected gate blocked until it is provided or independently resolved"
+      ]
+    },
+    {
+      "id": "SURFACE_RISK_ROUTING",
+      "actions": [
+        "run TOOLS/build_review_plan.py with --requirements-contract for non-trivial change work",
+        "planner consumes the shared artifact corpus so nested containers and semantic Cleverence paths participate in routing",
+        "requirements/project context may widen surface/raise risk but never downgrade source detection",
+        "Tier-0 technical disposition remains mandatory",
+        "use the compact plan summary to decide which profiles/knowledge to load; do not manually read the complete registry for routine work"
+      ]
+    },
+    {
+      "id": "SOURCE_DISCOVERY",
+      "actions": [
+        "actual target first",
+        "physical inventory precedes analyzable-source filtering and includes nested containers/runtime artifacts",
+        "uncertain behavior => search the exact target first, then use public DISCOVERY_ONLY catalogs to locate the nearest typical/BSP/vendor source family and request the smallest exact source closure",
+        "build local exact-source indexes ephemerally from supplied target/user-authorized source; retained INTERNAL_FULL sources/indexes are optional maintenance oracles and never public-runtime dependencies",
+        "register source/version/hash and artifact-layout dependencies",
+        "for routed 1C XML artifacts run TOOLS/analyze_onec_xml.py on the smallest corpus that preserves companion metadata/form/XDTO context before inferring structure",
+        "for Cleverence distinguish semantic Operations/Metadata/DocumentTypes from their physical Configuration/Documents.zip/subset representation",
+        "missing decisive source => request the smallest dependency closure explicitly; do not guess, silently narrow scope, or stop at an unrequested evidence gap",
+        "for customer environments without a stable local contour, prefer request-driven ProjectSnapshot acquisition: entry objects + evidence categories + smallest sufficient dependency closure, then issue delta requests only when analysis discovers a new material dependency",
+        "treat collector backend capability as evidence scope: RUNTIME_METADATA cannot prove unavailable source text or exact configuration bytes; missing/unsupported requested items remain explicit EVIDENCE_REQUIRED",
+        "run TOOLS/plan_project_snapshot_collection.py against the explicit customer-contour backend set before collection; use PARTIAL/BLOCKED rows to request only the missing evidence class and never upgrade runtime visibility into unavailable source evidence",
+        "delegate ProjectSnapshot user interaction, collector delivery, package binding, source inspection and task resumption to WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json; do not maintain a second state machine in this pipeline"
+      ],
+      "description": "Build factual artifact inventory and artifact-role/layout evidence before narrowing scope from file/archive labels."
+    },
+    {
+      "id": "DESIGN_REVIEW",
+      "actions": [
+        "use the accepted functional contract as the business boundary for design",
+        "prove ownership, identity, I/O/call/data flow, trust boundaries and alternatives before code",
+        "apply evidenced project modification/attribution/comment conventions from PROJECT_CONTEXT",
+        "for multi-field invariants create case matrix and align it with acceptance cases",
+        "before a parallel business chain, map source dimensions through the standard pipeline and prove actual semantic loss",
+        "for each changed invariant name established_by, relied_on_by and justified defensive rechecks"
+      ]
+    },
+    {
+      "id": "MECHANISM_COVERAGE",
+      "actions": [
+        "create ledger from plan; generated proof rows start unresolved",
+        "copy artifact_model/artifact_delivery_state from the plan as intake dependencies",
+        "for change-work whose artifact cannot support exact delivery, seed a blocking request for the authoritative artifact and rebuild plan/ledger after it is provided",
+        "every routed rule/check needs evidence or reasoned NOT_APPLICABLE",
+        "treat proof-row IDs as unique identities; reject duplicate rows rather than collapsing them",
+        "use concrete {kind, ref} evidence; MACHINE/RUNTIME evidence must link named report/case records",
+        "resolve proof_policy only from RULES/rule_registry.json; ARCHITECTURE_SEMANTIC claims require verifier-confirmed EXACT_SOURCE plus content-bound INDEPENDENT_REVIEW",
+        "treat generic SOURCE/SEMANTIC receipts and self semantic reasoning as supporting-only for ARCHITECTURE_SEMANTIC; editable proof/trust/status fields cannot promote them",
+        "keep absent external reviewer provenance explicit: CONTENT_SESSION_SEPARATED reduces correlated self-review but is not cryptographic/external independence without a trusted adapter"
+      ]
+    },
+    {
+      "id": "GAP_DISCOVERY",
+      "actions": [
+        "read KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md and run the registry-defined lenses independently from active profiles and machine findings",
+        "retain only source-anchored falsifiable hypotheses with a concrete counterexample and falsifier",
+        "search the current registry for an owner before declaring COVERAGE_GAP",
+        "keep EVIDENCE_REQUIRED, CONFIRMED_DEFECT and COVERAGE_GAP blocking; machine zero cannot close discovery"
+      ]
+    },
+    {
+      "id": "IMPLEMENTATION",
+      "actions": [
+        "build and maintain the canonical Implementation Intent Map bound to exact baseline/candidate/requirements/review-plan identities",
+        "trace each material change requirement → design decision → artifact/fragment → entrypoint/caller → acceptance case → nearest smaller applicable alternative → verification hooks",
+        "for Cleverence trace MSLX Action scenario/writer/state and field producer → mapping → Mobile field → writer/router/Core → consumer; unknown Action/writer remains an evidence gap",
+        "minimal coherent diff",
+        "preserve encoding/style and evidenced PROJECT_CONTEXT conventions",
+        "do not refactor existing project/customer/third-party code or rewrite existing attribution/comments unless the task requires it and project policy permits it",
+        "when metadata attribution/author marker syntax is still OPEN, continue analysis but do not present final changed code as ready",
+        "select/confirm the primary development result mode before final assembly: DIRECT_SOURCE_CHANGESET, MANUAL_TRANSFER_INSTRUCTION, PATCH_DIFF, IMPORTABLE_ARTIFACT, FULL_COMPARE_SET, ANALYSIS_REPORT or justified OTHER; supporting modes may be combined without weakening completeness",
+        "bind development output to the accepted ProjectSnapshot identity/baseline and assemble it as a ChangePackage whose manifest traces every material change item to target, payload/instruction, dependencies and verification hooks"
+      ],
+      "description": "Prove every new behavior-affecting routine is connected to an intended runtime entrypoint/caller path; Export/existence alone is not integration."
+    },
+    {
+      "id": "BIDIRECTIONAL_STANDARDS_VALIDATION",
+      "actions": [
+        "independent CODE_TO_STANDARDS from meaningful changed constructions",
+        "independent STANDARDS_TO_CODE expanded from every routed registry rule/check",
+        "do not infer reverse-pass completion from local PASS labels; unresolved/missing reverse rows block release",
+        "after material fix logically rerun dependency closure and invalidate changed evidence dependencies",
+        "reuse prior evidence only through explicit {kind, id, fingerprint} dependencies; changed dependency identity invalidates reuse"
+      ]
+    },
+    {
+      "id": "ARCHITECTURE_PLATFORM_VALIDATION",
+      "actions": [
+        "review L1-L6",
+        "prove client/server, persistence, concurrency, security, update safety and platform/vendor semantics",
+        "for multi-BSL change-sets run TOOLS/analyze_changeset_architecture.py and complete semantic responsibility/owner mapping even when it reports zero candidates",
+        "for meaningful custom assignments run field-aware temporal review: same field + reachable later writers; same-module keyword co-occurrence is not evidence",
+        "enforce derive → validate → mutate for derived business keys",
+        "L4-L6 architecture claims use the registry-owned semantic proof policy and content-bound separated review; exact source proves bytes/provenance, not interpretation"
+      ]
+    },
+    {
+      "id": "ADVERSARIAL_VALIDATION",
+      "actions": [
+        "assume the implementation defect remains and construct empty/duplicate/retry/partial/concurrency/large-volume/out-of-scope counterexamples",
+        "treat the LLM/reviewer itself as a shortcut-seeking actor; read KNOWLEDGE/LLM_ADVERSARIAL_VALIDATION.md",
+        "for each material safeguard hypothesize how scope, risk, evidence, baseline, artifact role, N/A status or runtime proof could be laundered",
+        "maintain TESTS/LLM_BYPASS_MATRIX.json and run TESTS/run_llm_bypass_regression.py",
+        "attack each newly added defense through at least one second representation/path before calling it hardened"
+      ]
+    },
+    {
+      "id": "DYNAMIC_POST_VALIDATION",
+      "actions": [
+        "run routed BSL/field-flow/change-set/signature/1C-XML/Cleverence analyzers on exact final bytes",
+        "Cleverence analyzers and planner must consume the same bounded artifact corpus/layout normalization",
+        "machine PASS is not semantic/runtime PASS",
+        "treat external structural heuristics as supporting evidence; promote to blocking only after source/official-contract confirmation and calibration on a known-working corpus"
+      ]
+    },
+    {
+      "id": "EXTERNAL_ITS_DISCOVERY",
+      "actions": [
+        "for non-trivial 1C mechanisms independently verify current official standards and freshness",
+        "use KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json to preserve source roles: cc-1c-skills/v8std on demand, lt-review provenance archive only"
+      ]
+    },
+    {
+      "id": "FINAL_ARTIFACT_VALIDATION",
+      "actions": [
+        "validate exact transfer bytes, manifest/encoding and deployed caller/consumer closure",
+        "derive physical delivery shape from the accepted target baseline rather than a bundled reference or hardcoded Configuration/ layout",
+        "FULL_COMPARE preserves the exact authoritative baseline shape and changes only allowlisted bytes; never copy runtime DB wholesale into configuration delivery",
+        "UNKNOWN/MIXED/runtime-only intake cannot be relabeled merge-ready without resolving authoritative delivery and rebuilding the plan",
+        "when recorded origins are accessible, release gate rehashes current candidate/baseline bytes to detect post-plan drift",
+        "run release gate",
+        "validate the exact delivered artifact according to its selected result mode; result format changes packaging/handoff semantics, not implementation completeness",
+        "for MANUAL_TRANSFER_INSTRUCTION require an ordered object-by-object transfer specification with all applicable metadata properties, exact code, placement anchors, wiring/dependencies, one-time data steps and post-transfer verification; no material implementation choice may be silently delegated to the human implementer",
+        "keep artifact readiness separate from applied-target proof: an instruction, patch/diff, source set, compare set or importable package cannot by itself prove target bytes, deployment success or runtime behavior that was not observed",
+        "validate TEMPLATES/CHANGE_PACKAGE_MANIFEST.json semantics: exact source snapshot/baseline binding, result mode, change-item traceability and proof boundary",
+        "retain post-transfer verification hooks and changed-object snapshot scope in ChangePackage; default policy is OPTIONAL, so absence of PostTransferSnapshot does not block artifact readiness unless PROJECT_CONTEXT says REQUIRED_BY_PROJECT",
+        "project the validated result through WORKFLOW/RESULT_DELIVERY_CONTRACT.json; the user-facing presentation must not upgrade the canonical gate outcome, source proof, applied-target state, deployment/import state or runtime evidence",
+        "when COLLECTION_ALGORITHM is routed, project the canonical exact-candidate Performance Review through RESULT_DELIVERY_CONTRACT as supplementary output; STRUCTURAL_ONLY must say `Измеренное ускорение не доказано.`, MEASURED requires verifier-confirmed RUNTIME_ADAPTER evidence, and the projection must not alter implementation_readiness, release_outcome or the immutable Особенности реализации base format"
+      ]
+    },
+    {
+      "id": "RUNTIME_MATRIX",
+      "actions": [
+        "execute representative runtime cases when available",
+        "otherwise preserve RUNTIME_PENDING"
+      ]
+    },
+    {
+      "id": "KNOWLEDGE_EXTRACTION",
+      "actions": [
+        "classify project-only facts, proven reusable facts, new failure classes, validator opportunities and workflow changes",
+        "extend an existing owner rule instead of duplicating it",
+        "update durable PROJECT_CONTEXT when a project convention/source/delivery fact was established",
+        "record PROMOTED, PROJECT_ONLY, NO_REUSABLE_KNOWLEDGE or EVIDENCE_PENDING",
+        "for promoted lessons regenerate views and rerun complete validation"
+      ]
+    },
+    {
+      "id": "PROMOTION",
+      "actions": [
+        "only after accepted runtime evidence promote a maintained baseline"
+      ]
+    }
+  ],
+  "release_gate": "TOOLS/release_gate.py",
+  "review_planner": "TOOLS/build_review_plan.py",
+  "ledger_builder": "TOOLS/build_validation_ledger.py",
+  "project_bootstrap_builder": "TOOLS/build_project_bootstrap.py",
+  "artifact_reader": "TOOLS/artifact_corpus.py",
+  "llm_adversarial_protocol": "KNOWLEDGE/LLM_ADVERSARIAL_VALIDATION.md",
+  "llm_bypass_matrix": "TESTS/LLM_BYPASS_MATRIX.json",
+  "external_source_catalog": "KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json",
+  "generated_views": [
+    "PROFILES/INDEX.json",
+    "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
+    "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
+    "KNOWLEDGE/PROOF_POLICY_INDEX.json"
+  ],
+  "learning_definition_of_done": "Every substantive task receives a knowledge-extraction disposition. A reusable lesson is integrated only when it can be routed, reviewed, regression-tested and blocks unsupported release. Every new material safeguard is also challenged for an LLM shortcut/bypass path.",
+  "requirements_builder": "TOOLS/build_requirements_contract.py",
+  "requirements_gate": "TOOLS/requirements_gate.py",
+  "snapshot_collection_planner": "TOOLS/plan_project_snapshot_collection.py",
+  "snapshot_collector_capabilities": "KNOWLEDGE/PROJECT_SNAPSHOT_COLLECTOR_CAPABILITIES.json",
+  "snapshot_chat_orchestration": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
+  "snapshot_package_validator": "TOOLS/validate_project_snapshot_package.py",
+  "snapshot_collector_distribution_manifest": "COLLECTOR/ONEC_RUNTIME/DISTRIBUTION/ProjectSnapshotCollector.artifact.json",
+  "snapshot_collector_materializer": "TOOLS/materialize_project_snapshot_collector.py",
+  "result_delivery_contract": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
+  "semantic_review_verifier": "TOOLS/semantic_review.py",
+  "semantic_proof_verifier": "TOOLS/semantic_proof_verifier.py",
+  "implementation_intent_verifier": "TOOLS/implementation_intent.py"
+}
