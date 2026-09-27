@@ -81,6 +81,11 @@ skill=(ROOT/"SKILL.md").read_text(encoding="utf-8-sig")
 progressive=skill.split("## Progressive loading",1)[1] if "## Progressive loading" in skill else ""
 record("llm_does_not_load_full_registry","RULES/rule_registry.json\nrouted profile(s)" not in progressive and "LLM must not load the full registry" in skill)
 record(
+    "skill_workbench_ownership_boundary_is_always_loaded",
+    "Workbench, when present, is a mechanical source/index service only" in skill
+    and "must not become a second semantic routing, delivery or release authority" in skill,
+)
+record(
     "black_box_helper_discipline_is_always_loaded",
     "Treat deterministic helpers as **black boxes during normal task execution**" in progressive
     and "Read helper implementation source only when debugging/modifying that helper" in progressive,
