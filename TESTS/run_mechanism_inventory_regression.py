@@ -65,7 +65,7 @@ inactive_routes = [
 inactive = materialize_delivery_applicability(registry, inactive_routes, "ONEC_ONLY")
 require(len(inactive) == 9, "all_candidate_applicability_count", len(inactive))
 require(all(row["status"] in {"APPLICABLE", "NOT_APPLICABLE", "NOT_EVALUATED"} for row in inactive), "all_candidate_status_domain")
-missing_routes = inactive_routes[1:]
+missing_routes = [row for row in inactive_routes if row["id"] != "CALL_CONTRACT"]
 missing = materialize_delivery_applicability(registry, missing_routes, "ONEC_ONLY")
 require(any(row["status"] == "NOT_EVALUATED" for row in missing), "missing_owner_route_not_evaluated")
 require(all(row["status"] != "APPLICABLE" or row["capability_id"] for row in missing), "no_implicit_applicable")
