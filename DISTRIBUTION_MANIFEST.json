@@ -630,8 +630,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 45202,
-      "sha256": "e259216496f227ff2d9fcc5b9c79ca72010c42c7acfcaa4b223a8c85d223911f"
+      "size": 34769,
+      "sha256": "90d42714e76a7229403cfc7f84cb5ba2d50eeb3ebcf1e25270cfb1ecbd9fe52f"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -1700,8 +1700,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 41065,
-      "sha256": "6d05317e1f5d4029e0190bc01a132918afee7fecc2f4716d453ad101800a1079"
+      "size": 46426,
+      "sha256": "d56c885a87165a466f876d1cf5391a42faa797fb0658518112651eab099d41bc"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -2185,5 +2185,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "cbc31417b899803709a742dfec1448de2d0d0a290427ebe2b83f563e04f5191e"
+  "snapshot_digest": "ba501d56324f5fa83e92a882ef01d1cb9ff4450eb48267a2b536aaf05c822d49"
 }
