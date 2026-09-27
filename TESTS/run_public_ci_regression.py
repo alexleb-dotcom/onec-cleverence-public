@@ -97,6 +97,36 @@ with tempfile.TemporaryDirectory() as td:
         pass_report,
     )
 
+    metric_payload = {
+        "result": "PASS",
+        "efficiency_metrics": {
+            "skill_utf8_bytes": 100,
+            "skill_lines": 10,
+            "compact_plan_bytes": 20,
+            "work_queue_bytes": 30,
+            "combined_compact_bytes": 50,
+            "active_profile_count": 1,
+            "active_delivery_count": 2,
+            "active_support_reference_count": 3,
+        },
+    }
+    metric_report = execute_checks(
+        [
+            (
+                "context_efficiency",
+                [sys.executable, "-c", "import json; print(json.dumps(" + repr(metric_payload) + "))"],
+            ),
+        ],
+        cwd=root,
+    )
+    metric_row = metric_report["checks"][0]
+    record(
+        "context_efficiency_metrics_are_exposed_in_public_run_report",
+        metric_report["result"] == "PASS"
+        and metric_row.get("efficiency_metrics") == metric_payload["efficiency_metrics"],
+        metric_report,
+    )
+
     fail_report = execute_checks(
         [
             ("first", [sys.executable, "-c", "raise SystemExit(0)"]),
