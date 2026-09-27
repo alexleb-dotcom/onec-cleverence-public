@@ -2,7 +2,8 @@
 from __future__ import annotations
 from pathlib import Path
 import copy, json, re, subprocess, sys, tempfile, zipfile
-from rule_registry import validate_delivery_bindings
+from rule_registry import validate_delivery_bindings, validate_supporting_artifacts
+from mechanism_inventory import build_inventory
 
 root=Path(__file__).resolve().parents[1]
 errors=[]
@@ -24,7 +25,7 @@ required=[
  'TOOLS/analyze_onec_bsl.py','TOOLS/query_literal_escape_contract.py','TOOLS/analyze_onec_field_flow.py','TOOLS/analyze_onec_reachability.py','TOOLS/analyze_changeset_architecture.py','TOOLS/analyze_onec_xml.py','TOOLS/analyze_cleverence_mslx.py','TOOLS/analyze_cleverence_configuration.py','TOOLS/check_bsl_call_signatures.py',
  'TESTS/RULE_ACTIVATION_CASES.json','TESTS/REQUIREMENTS_ACTIVATION_CASES.json','TESTS/run_execution_checkpoint_regression.py','TESTS/run_execution_checkpoint_integration_regression.py','TESTS/SEMANTIC_BEHAVIOR_CASES.json','TESTS/run_semantic_behavior_regression.py','TESTS/run_result_delivery_contract_regression.py','TESTS/run_review_regression.py','TESTS/run_performance_review_regression.py','TESTS/run_proof_contract_regression.py','TESTS/run_semantic_proof_phase1_regression.py','WORKFLOW/DEVELOPMENT_PIPELINE.json','WORKFLOW/RESULT_DELIVERY_CONTRACT.json','PROFILES/CLEVERENCE_CONFIGURATION.md',
  'KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md','KNOWLEDGE/V8STD_SOURCE_POLICY.md','KNOWLEDGE/PROOF_POLICY_INDEX.json','THIRD_PARTY/cc-1c-skills/LICENSE.txt','THIRD_PARTY/cc-1c-skills/NOTICE.md',
- 'TEMPLATES/FUNCTIONAL_CONTRACT_TEMPLATE.json'
+ 'TEMPLATES/FUNCTIONAL_CONTRACT_TEMPLATE.json','TOOLS/mechanism_inventory.py','TESTS/run_mechanism_inventory_regression.py'
 ]
 for rel in required:
     if not (root/rel).is_file():errors.append(f'missing:{rel}')
@@ -38,6 +39,11 @@ for path in root.rglob('*.json'):
 try:
     registry=json.loads((root/'RULES/rule_registry.json').read_text(encoding='utf-8'))
     for _delivery_error in validate_delivery_bindings(registry):errors.append(f'registry_delivery:{_delivery_error}')
+    for _support_error in validate_supporting_artifacts(registry):errors.append(f'registry_support:{_support_error}')
+    _inventory=build_inventory(root)
+    if _inventory.get("result")!="PASS":
+        for _inventory_error in _inventory.get("errors",[]):errors.append(f'mechanism_inventory:{_inventory_error}')
+        for _orphan in _inventory.get("orphan_unknown_rows",[]):errors.append(f'mechanism_inventory_orphan:{_orphan}')
     allowed_modes={'MACHINE','SOURCE_REQUIRED','SEMANTIC','RUNTIME'}
     all_check_ids=[]
     machine_finding_owners={}
