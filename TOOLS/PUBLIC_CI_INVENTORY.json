@@ -203,6 +203,16 @@
       ]
     },
     {
+      "id": "capability_compliance_projection",
+      "order": 175,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_capability_compliance_projection_regression.py"
+      ]
+    },
+    {
       "id": "release_trust_boundary",
       "order": 180,
       "phase": "FAST",

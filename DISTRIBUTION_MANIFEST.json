@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 431,
+  "file_count": 433,
   "files": [
     {
       "path": ".gitattributes",
@@ -1679,6 +1679,11 @@
       "sha256": "b6a2f45c67ca6829dd91993917fe757e66a1355fda5dc3cdac0c7b2c63545eb7"
     },
     {
+      "path": "TESTS/run_capability_compliance_projection_regression.py",
+      "size": 8611,
+      "sha256": "5e1118e23b8e07a57eddde8b8bc30dfc1e3f6fb80115e7f164da503adfc39355"
+    },
+    {
       "path": "TESTS/run_cleverence_exact_contract_regression.py",
       "size": 10319,
       "sha256": "866cdd5e1a1f24b7978f082ce201f0715d720d7298608b25ff6e895ac212d4c5"
@@ -1870,8 +1875,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 7870,
-      "sha256": "a30cdaa0ea7d61cad2606e574b411f3ea488354879fe1177de44f02ea5859979"
+      "size": 8133,
+      "sha256": "9950c6dae0ebf461a25771ea0fa1c1c6cd4dbd0cf9a08c1e43946bcd7ac11f0a"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -1952,6 +1957,11 @@
       "path": "TOOLS/build_validation_ledger.py",
       "size": 17408,
       "sha256": "2c3a8490d81017ddbb96c7901c03e8ce4e13f20cf05ec7200ceb98466f7188d0"
+    },
+    {
+      "path": "TOOLS/capability_compliance_projection.py",
+      "size": 11910,
+      "sha256": "7d4631e9cc238a90d9c94796eb79cb5d4f90dafcd18667c8d5258aaebc3f76e8"
     },
     {
       "path": "TOOLS/check_bsl_call_signatures.py",
@@ -2165,5 +2175,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "762342af644395b8e8130d7f6b09d5682e7de3d163732eecb5fb740f494058fe"
+  "snapshot_digest": "602bb9fc6365c66bf6ac9b112de6b5db0d589a405c928eb9944d62ab4b5b723b"
 }
