@@ -3,13 +3,16 @@ from __future__ import annotations
 
 from pathlib import Path
 from copy import deepcopy
+import hashlib
 import json
+import shutil
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TOOLS"))
 
-from mechanism_inventory import build_inventory, build_classification_context, classify_candidate_path
+from mechanism_inventory import build_inventory, build_classification_context, classify_candidate_path, _internal_tool_closure
 from rule_registry import load_registry, materialize_delivery_applicability, materialize_supporting_artifacts
 from build_review_plan import build_plan, compact_summary
 
@@ -56,6 +59,103 @@ context = build_classification_context(ROOT, registry)
 for path in ("TOOLS/new_unclassified_analyzer.py", "KNOWLEDGE/NEW_TASK_GUIDE.md"):
     classification, _ = classify_candidate_path(path, context)
     require(classification == "ORPHAN_UNKNOWN", f"new_mechanism_fails_closed:{path}", classification)
+
+# A regression test must never legitimize the tool it tests.
+with tempfile.TemporaryDirectory() as td:
+    synthetic_root = Path(td)
+    (synthetic_root / "TOOLS").mkdir()
+    (synthetic_root / "TESTS").mkdir()
+    synthetic_tool = synthetic_root / "TOOLS" / "task_facing_new_analyzer.py"
+    synthetic_test = synthetic_root / "TESTS" / "run_task_facing_new_analyzer_regression.py"
+    synthetic_tool.write_text("def analyze():\n    return 'task-facing'\n", encoding="utf-8")
+    synthetic_test.write_text("import task_facing_new_analyzer\n", encoding="utf-8")
+
+    with_test_internal = _internal_tool_closure(synthetic_root, {})
+    with_test_class, _ = classify_candidate_path(
+        "TOOLS/task_facing_new_analyzer.py",
+        {"support_owners": {}, "internal_tools": with_test_internal},
+    )
+    require(
+        with_test_class == "ORPHAN_UNKNOWN",
+        "test_import_only_tool_fails_closed",
+        {"classification": with_test_class, "internal_tools": sorted(with_test_internal)},
+    )
+
+    synthetic_test.unlink()
+    without_test_internal = _internal_tool_closure(synthetic_root, {})
+    without_test_class, _ = classify_candidate_path(
+        "TOOLS/task_facing_new_analyzer.py",
+        {"support_owners": {}, "internal_tools": without_test_internal},
+    )
+    require(
+        without_test_class == "ORPHAN_UNKNOWN",
+        "unowned_tool_without_test_fails_closed",
+        {"classification": without_test_class, "internal_tools": sorted(without_test_internal)},
+    )
+    require(
+        with_test_class == without_test_class,
+        "test_presence_cannot_promote_unowned_tool",
+        {"with_test": with_test_class, "without_test": without_test_class},
+    )
+
+# Canonical pipeline ownership and transitive pipeline-helper reachability remain intact.
+for rel in (
+    "TOOLS/capability_compliance_projection.py",
+    "TOOLS/skill_freshness.py",
+):
+    classification, owner = classify_candidate_path(rel, context)
+    require(
+        classification == "PIPELINE_INTERNAL",
+        f"explicit_pipeline_internal_preserved:{rel}",
+        {"classification": classification, "owner": owner},
+    )
+
+transitive_rel = "TOOLS/validate_public_ci_inventory.py"
+transitive_class, transitive_owner = classify_candidate_path(transitive_rel, context)
+require(
+    transitive_class == "PIPELINE_INTERNAL" and transitive_owner == "PIPELINE_REACHABILITY",
+    "canonical_transitive_pipeline_helper_preserved",
+    {"path": transitive_rel, "classification": transitive_class, "owner": transitive_owner},
+)
+
+# The full inventory itself must fail closed when the test-import-only tool enters the governed surface.
+with tempfile.TemporaryDirectory() as td:
+    copied_root = Path(td) / "repo"
+    shutil.copytree(
+        ROOT,
+        copied_root,
+        ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+    )
+    synthetic_tool = copied_root / "TOOLS" / "task_facing_new_analyzer.py"
+    synthetic_test = copied_root / "TESTS" / "run_task_facing_new_analyzer_regression.py"
+    synthetic_tool.write_text("def analyze():\n    return 'task-facing'\n", encoding="utf-8")
+    synthetic_test.write_text("import task_facing_new_analyzer\n", encoding="utf-8")
+
+    manifest_path = copied_root / "DISTRIBUTION_MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for path in (synthetic_tool, synthetic_test):
+        rel = path.relative_to(copied_root).as_posix()
+        raw = path.read_bytes()
+        manifest["files"].append({
+            "path": rel,
+            "size": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    manifest["files"] = sorted(manifest["files"], key=lambda row: row["path"])
+    manifest["file_count"] = len(manifest["files"])
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    synthetic_report = build_inventory(copied_root)
+    require(
+        synthetic_report["result"] == "FAIL",
+        "inventory_check_fails_closed_for_test_import_only_tool",
+        synthetic_report,
+    )
+    require(
+        "TOOLS/task_facing_new_analyzer.py" in synthetic_report["orphan_unknown_rows"],
+        "inventory_reports_test_import_only_tool_as_orphan",
+        synthetic_report["orphan_unknown_rows"],
+    )
 
 # All-candidate applicability emits exactly one explicit disposition for all nine.
 inactive_routes = [
