@@ -34,6 +34,8 @@ Unknown technical behavior means `EVIDENCE_REQUIRED`. Unknown business behavior 
 
 `RULES/rule_registry.json` is the **single executable source of truth** for both requirements-rule and technical-rule activation, checks, evidence modes and gate behavior. **Executable tools read the registry; the LLM must not load the full registry during normal task execution.**
 
+The Skill owns semantic routing/applicability/proof through the Rule Registry and canonical gates. Workbench, when present, is a mechanical source/index service only; it must not become a second semantic routing, delivery or release authority.
+
 Do not independently maintain routing rules in `SKILL.md`, `PROFILES/INDEX.json`, `KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json` or semantic-class documentation. Those are generated/readable views or detailed explanations. The model works from compact builder summaries/work queues plus routed profile files. If exact wording for one Tier-0/check is needed, query only that rule through `TOOLS/rule_registry.py --rule <RULE_ID>` rather than reading the whole registry.
 
 The rule system has three layers:
