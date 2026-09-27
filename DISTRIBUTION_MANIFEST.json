@@ -1680,8 +1680,8 @@
     },
     {
       "path": "TESTS/run_capability_compliance_projection_regression.py",
-      "size": 9700,
-      "sha256": "2505502ec3a60757df473bbbe78b4cf53c40c76fab45e4781334e181ea5b6a10"
+      "size": 13144,
+      "sha256": "b7cc1ba3fcd4a1251335ed9ae01734d5d1524893d7a90e53e32cf964d52ec720"
     },
     {
       "path": "TESTS/run_cleverence_exact_contract_regression.py",
@@ -1960,8 +1960,8 @@
     },
     {
       "path": "TOOLS/capability_compliance_projection.py",
-      "size": 12370,
-      "sha256": "7ec6e8152d2d3026e680957dfc8eb462cc363f4f38b1833065f838e1acdd102c"
+      "size": 13866,
+      "sha256": "267dcec99957c8f20d040c7b4ba35cee6f1edd5cfa70c222aebbc4dee1282f41"
     },
     {
       "path": "TOOLS/check_bsl_call_signatures.py",
@@ -2175,5 +2175,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "c9bbe9162c06aa46c3c4a4e4fa6898ad8701e1e4ade6647e04981a39d0955d41"
+  "snapshot_digest": "83f2c3772e357f4a8162dec072be19d5c9bcf0bf312973821c39935431cddf4b"
 }

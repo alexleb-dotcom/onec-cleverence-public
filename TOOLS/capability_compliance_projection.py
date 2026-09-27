@@ -14,7 +14,7 @@ import json
 import re
 
 from machine_receipts import verify_receipt
-from release_gate_core import RESOLUTION_VERIFIER_ID, RESOLUTION_VERIFIER_VERSION
+from release_gate_core import RESOLUTION_VERIFIER_ID, RESOLUTION_VERIFIER_VERSION, evaluate as release_evaluate
 from release_intake import build_plan_from_intake, validate_plan_recomputation
 from rule_registry import load_registry
 
@@ -175,7 +175,21 @@ def _proof_verification(binding: dict, ledger: dict, release_report: dict) -> di
     }
 
 
-def _release_report_integrity(release_report: dict, plan: dict, ledger: dict) -> list[dict]:
+_RELEASE_CANONICAL_FIELDS = (
+    "input_identity",
+    "result",
+    "release_outcome",
+    "plan_recomputation",
+    "resolution_verifier",
+    "resolution_verdicts",
+)
+
+
+def _release_canonical_projection(report: dict) -> dict:
+    return {field: report.get(field) for field in _RELEASE_CANONICAL_FIELDS}
+
+
+def _release_report_integrity(release_report: dict, canonical_release: dict, plan: dict, ledger: dict) -> list[dict]:
     errors = []
     expected_identity = {
         "plan_sha256": _fingerprint(plan),
@@ -188,23 +202,42 @@ def _release_report_integrity(release_report: dict, plan: dict, ledger: dict) ->
             "expected": expected_identity,
             "actual": actual_identity,
         })
+    canonical_identity = canonical_release.get("input_identity")
+    if canonical_identity != expected_identity:
+        errors.append({
+            "type": "CAPABILITY_PROJECTION_CANONICAL_RELEASE_INPUT_IDENTITY_MISMATCH",
+            "expected": expected_identity,
+            "actual": canonical_identity,
+        })
+
     protocol = release_report.get("resolution_verifier")
     if not isinstance(protocol, dict):
-        return [{"type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_MISSING"}]
-    if protocol.get("status") != "AVAILABLE":
-        errors.append({"type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_UNAVAILABLE", "actual": protocol.get("status")})
-    if protocol.get("verifier") != RESOLUTION_VERIFIER_ID or protocol.get("version") != RESOLUTION_VERIFIER_VERSION:
-        errors.append(
-            {
-                "type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_IDENTITY_MISMATCH",
-                "expected": {"verifier": RESOLUTION_VERIFIER_ID, "version": RESOLUTION_VERIFIER_VERSION},
-                "actual": {"verifier": protocol.get("verifier"), "version": protocol.get("version")},
-            }
-        )
+        errors.append({"type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_MISSING"})
+    else:
+        if protocol.get("status") != "AVAILABLE":
+            errors.append({"type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_UNAVAILABLE", "actual": protocol.get("status")})
+        if protocol.get("verifier") != RESOLUTION_VERIFIER_ID or protocol.get("version") != RESOLUTION_VERIFIER_VERSION:
+            errors.append(
+                {
+                    "type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_IDENTITY_MISMATCH",
+                    "expected": {"verifier": RESOLUTION_VERIFIER_ID, "version": RESOLUTION_VERIFIER_VERSION},
+                    "actual": {"verifier": protocol.get("verifier"), "version": protocol.get("version")},
+                }
+            )
     if release_report.get("plan_recomputation") != "PASS":
         errors.append({"type": "CAPABILITY_PROJECTION_RELEASE_PLAN_RECOMPUTATION_NOT_PASS", "actual": release_report.get("plan_recomputation")})
     if not isinstance(release_report.get("resolution_verdicts"), list):
         errors.append({"type": "CAPABILITY_PROJECTION_RELEASE_VERDICTS_INVALID"})
+
+    supplied = _release_canonical_projection(release_report)
+    canonical = _release_canonical_projection(canonical_release)
+    if supplied != canonical:
+        errors.append({
+            "type": "CAPABILITY_PROJECTION_RELEASE_CANONICAL_DRIFT",
+            "changed_fields": [field for field in _RELEASE_CANONICAL_FIELDS if supplied.get(field) != canonical.get(field)],
+            "expected_sha256": _fingerprint(canonical),
+            "actual_sha256": _fingerprint(supplied),
+        })
     return errors
 
 
@@ -232,7 +265,11 @@ def build_projection(plan: dict, ledger: dict, release_report: dict, registry: d
 
     recompute = validate_plan_recomputation(plan)
     integrity_errors = list(recompute.get("errors") or [])
-    integrity_errors.extend(_release_report_integrity(release_report, plan, ledger))
+    canonical_release = None
+    if not integrity_errors:
+        canonical_release = release_evaluate(plan, ledger, registry)
+        source_identity["canonical_release_fingerprint_sha256"] = _fingerprint(canonical_release)
+        integrity_errors.extend(_release_report_integrity(release_report, canonical_release, plan, ledger))
     if integrity_errors:
         return {
             "schema_version": SCHEMA_VERSION,
@@ -258,7 +295,7 @@ def build_projection(plan: dict, ledger: dict, release_report: dict, registry: d
     for binding in expected_rows:
         capability_id = binding.get("capability_id")
         observations = _machine_usage_observations(binding, ledger, candidate_hashes)
-        verification = _proof_verification(binding, ledger, release_report)
+        verification = _proof_verification(binding, ledger, canonical_release)
         row = {
             "capability_id": capability_id,
             "owner_rule_id": binding.get("owner_rule_id"),
@@ -279,9 +316,9 @@ def build_projection(plan: dict, ledger: dict, release_report: dict, registry: d
         "projection_integrity": "PASS",
         "source_identity": source_identity,
         "release_context": {
-            "result": release_report.get("result"),
-            "release_outcome": release_report.get("release_outcome"),
-            "resolution_verifier": release_report.get("resolution_verifier"),
+            "result": canonical_release.get("result"),
+            "release_outcome": canonical_release.get("release_outcome"),
+            "resolution_verifier": canonical_release.get("resolution_verifier"),
         },
         "policy": policy,
         "capabilities": capabilities,

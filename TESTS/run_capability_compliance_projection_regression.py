@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "TESTS" / "fixtures"
 sys.path.insert(0, str(ROOT / "TOOLS"))
 
-import machine_receipts
+import capability_compliance_projection as capability_projection
 from build_review_plan import build_plan
 from build_validation_ledger import build_ledger
 from capability_compliance_projection import (
@@ -29,6 +29,9 @@ from release_gate_core import evaluate as release_evaluate
 def require(condition: bool, message: str, details=None) -> None:
     if not condition:
         raise AssertionError(f"{message}: {details!r}")
+
+
+scenario_ids: list[str] = []
 
 
 def by_capability(projection: dict) -> dict[str, dict]:
@@ -78,6 +81,7 @@ require(advisory["VERIFIED"] == VERIFIED_NOT_BOUND, "advisory verification must 
 gating_rows = [row for row in rows.values() if row.get("enforcement") == "GATING"]
 require(bool(gating_rows), "fixture must route at least one GATING capability", rows)
 require(all(row["VERIFIED"] in {"UNRESOLVED", "REJECTED", "ACCEPTED"} for row in gating_rows), "GATING verification must come from verifier verdict vocabulary", gating_rows)
+scenario_ids.append("canonical_projection")
 
 # ADVISORY omission is legal delivery behavior: it remains EXPECTED but not DELIVERED.
 omitted_plan = copy.deepcopy(plan)
@@ -94,6 +98,7 @@ omitted_projection = build_projection(omitted_plan, omitted_ledger, omitted_rele
 require(omitted_projection.get("projection_integrity") == "PASS", "canonical advisory omission must remain projectable", omitted_projection)
 omitted_row = by_capability(omitted_projection)["CAP.ONEC_BSL_ANALYSIS"]
 require(omitted_row["EXPECTED"] is True and omitted_row["DELIVERED"] is False, "EXPECTED and DELIVERED must stay distinct", omitted_row)
+scenario_ids.append("advisory_omission")
 
 # An existing identity-bound machine receipt may observe use. Projection must not replay it.
 with tempfile.TemporaryDirectory() as td:
@@ -119,20 +124,22 @@ with tempfile.TemporaryDirectory() as td:
     }]
     observed_release = release_evaluate(plan, observed_ledger)
 
-    original_run = machine_receipts._run
-    def forbidden_replay(*args, **kwargs):
-        raise AssertionError("P2 projection must not replay a machine receipt")
-    machine_receipts._run = forbidden_replay
+    original_verify_receipt = capability_projection.verify_receipt
+    def usage_observation_verify_receipt(path_value, replay=True):
+        require(replay is False, "P2 USED observation path must never request machine-receipt replay", {"path": str(path_value), "replay": replay})
+        return original_verify_receipt(path_value, replay=replay)
+    capability_projection.verify_receipt = usage_observation_verify_receipt
     try:
         observed_projection = build_projection(plan, observed_ledger, observed_release)
     finally:
-        machine_receipts._run = original_run
+        capability_projection.verify_receipt = original_verify_receipt
 
     observed_row = by_capability(observed_projection)["CAP.ONEC_BSL_ANALYSIS"]
     require(observed_row["USED"] == USED_OBSERVED, "existing receipt must yield observed use", observed_row)
     require(observed_row["VERIFIED"] == VERIFIED_NOT_BOUND, "observed advisory use must not invent verification", observed_row)
     observation = observed_row.get("usage_observations", [None])[0]
     require(observation and observation["receipt_sha256"] == receipt_sha, "usage observation must carry artifact identity", observation)
+    scenario_ids.append("existing_receipt_usage_observation")
 
     # A receipt for a different candidate identity is not usage observation for this task.
     other = root / "other.bsl"
@@ -160,17 +167,79 @@ with tempfile.TemporaryDirectory() as td:
     stale_projection = build_projection(plan, stale_ledger, stale_release)
     stale_row = by_capability(stale_projection)["CAP.ONEC_BSL_ANALYSIS"]
     require(stale_row["USED"] == USED_NOT_OBSERVABLE, "other candidate receipt cannot observe current task use", stale_row)
+    scenario_ids.append("stale_receipt_not_observed")
 
-# A stale/mutated verdict cannot be projected as current VERIFIED when it disagrees with the ledger row.
+# A supplied report whose disposition drifts from the canonical Release Gate is rejected.
 drift_release = copy.deepcopy(release)
 drift_target = next((row for row in drift_release.get("resolution_verdicts") or [] if row.get("scope") == "check" and row.get("rule_id") and row.get("id")), None)
 require(drift_target is not None, "release report must expose a check verdict")
 drift_target["disposition"] = "PASS" if drift_target.get("disposition") != "PASS" else "NOT_APPLICABLE"
 drift_projection = build_projection(plan, ledger, drift_release)
-drift_rows = by_capability(drift_projection)
-drift_gating = next((row for row in drift_rows.values() if row.get("proof_owner") == f"CHECK:{drift_target['rule_id']}:{drift_target['id']}"), None)
-if drift_gating is not None:
-    require(drift_gating["VERIFIED"] == "UNRESOLVED" and drift_gating.get("reason") == "VERDICT_LEDGER_DRIFT", "verdict/ledger drift must not project VERIFIED", drift_gating)
+require(
+    drift_projection.get("projection_integrity") == "FAIL"
+    and any(row.get("type") == "CAPABILITY_PROJECTION_RELEASE_CANONICAL_DRIFT" for row in drift_projection.get("errors") or []),
+    "disposition-mutated release report must fail canonical release comparison",
+    drift_projection,
+)
+scenario_ids.append("release_disposition_drift_rejected")
+
+# Review remediation P2-01: mutate only one GATING proof-owner verdict value while
+# preserving exact plan/ledger identity, claim, disposition and verifier metadata.
+gating_owner = next(
+    (
+        (row.get("proof_binding") or {}).get("owner")
+        for row in plan.get("active_deliveries") or []
+        if row.get("enforcement") == "GATING" and (row.get("proof_binding") or {}).get("owner")
+    ),
+    None,
+)
+require(gating_owner and gating_owner.startswith("CHECK:"), "fixture must expose a GATING check proof owner", gating_owner)
+_, bound_rule_id, bound_check_id = gating_owner.split(":", 2)
+verdict_only_release = copy.deepcopy(release)
+verdict_only_target = next(
+    (
+        row for row in verdict_only_release.get("resolution_verdicts") or []
+        if row.get("scope") == "check" and row.get("rule_id") == bound_rule_id and row.get("id") == bound_check_id
+    ),
+    None,
+)
+require(verdict_only_target is not None, "canonical release report must contain the GATING proof-owner verdict", gating_owner)
+preserved = {
+    "scope": verdict_only_target.get("scope"),
+    "rule_id": verdict_only_target.get("rule_id"),
+    "id": verdict_only_target.get("id"),
+    "claim_id": verdict_only_target.get("claim_id"),
+    "disposition": verdict_only_target.get("disposition"),
+    "input_identity": copy.deepcopy(verdict_only_release.get("input_identity")),
+    "resolution_verifier": copy.deepcopy(verdict_only_release.get("resolution_verifier")),
+    "plan_recomputation": verdict_only_release.get("plan_recomputation"),
+}
+verdict_only_target["verdict"] = "ACCEPTED" if verdict_only_target.get("verdict") != "ACCEPTED" else "REJECTED"
+require(
+    {
+        "scope": verdict_only_target.get("scope"),
+        "rule_id": verdict_only_target.get("rule_id"),
+        "id": verdict_only_target.get("id"),
+        "claim_id": verdict_only_target.get("claim_id"),
+        "disposition": verdict_only_target.get("disposition"),
+        "input_identity": verdict_only_release.get("input_identity"),
+        "resolution_verifier": verdict_only_release.get("resolution_verifier"),
+        "plan_recomputation": verdict_only_release.get("plan_recomputation"),
+    } == preserved,
+    "P2-01 regression must mutate only verdict value",
+)
+verdict_only_projection = build_projection(plan, ledger, verdict_only_release)
+require(
+    verdict_only_projection.get("projection_integrity") == "FAIL"
+    and any(
+        row.get("type") == "CAPABILITY_PROJECTION_RELEASE_CANONICAL_DRIFT"
+        and "resolution_verdicts" in (row.get("changed_fields") or [])
+        for row in verdict_only_projection.get("errors") or []
+    ),
+    "verdict-only mutation must fail against recomputed canonical Release Gate verdicts",
+    verdict_only_projection,
+)
+scenario_ids.append("release_verdict_only_drift_rejected")
 
 # A release report for a different ledger cannot supply VERIFIED for the current task.
 stale_ledger = copy.deepcopy(ledger)
@@ -182,16 +251,19 @@ require(
     "release report must be identity-bound to the exact current ledger",
     stale_report_projection,
 )
+scenario_ids.append("stale_ledger_release_report_rejected")
 
 # Release-verifier identity/protocol drift makes the projection itself invalid, not release-blocking.
 bad_release = copy.deepcopy(release)
 bad_release["resolution_verifier"]["version"] = int(bad_release["resolution_verifier"]["version"]) + 1
 bad_projection = build_projection(plan, ledger, bad_release)
 require(bad_projection.get("projection_integrity") == "FAIL", "verifier protocol drift must fail projection integrity", bad_projection)
+scenario_ids.append("release_verifier_protocol_drift_rejected")
 
 print(json.dumps({
     "result": "PASS",
-    "cases": 11,
+    "scenario_count": len(scenario_ids),
+    "scenario_ids": scenario_ids,
     "projection_kind": KIND,
     "policy": projection["policy"],
 }, ensure_ascii=False, indent=2))
