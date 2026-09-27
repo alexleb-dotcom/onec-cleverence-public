@@ -84,6 +84,14 @@ def execute_checks(checks: list[tuple[str, list[str]]], cwd: Path = ROOT) -> dic
             "returncode": process.returncode,
             "elapsed_ms": round((time.perf_counter() - check_started) * 1000, 2),
         }
+        if check_id == "context_efficiency" and process.returncode == 0:
+            try:
+                payload = json.loads(process.stdout)
+            except json.JSONDecodeError:
+                payload = {}
+            metrics = payload.get("efficiency_metrics") if isinstance(payload, dict) else None
+            if isinstance(metrics, dict):
+                row["efficiency_metrics"] = metrics
         rows.append(row)
         if process.returncode != 0:
             return {
