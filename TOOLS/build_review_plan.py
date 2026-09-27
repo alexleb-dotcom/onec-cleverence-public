@@ -10,7 +10,7 @@ from pathlib import Path
 import argparse, hashlib, json, re, sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rule_registry import ROOT, load_registry, max_risk, regex_hits, RISK_RANK, proof_policy_for, materialize_delivery_bindings
+from rule_registry import ROOT, load_registry, max_risk, regex_hits, RISK_RANK, proof_policy_for, materialize_delivery_bindings, materialize_delivery_applicability, materialize_supporting_artifacts
 from analyze_onec_field_flow import analyze_sources as analyze_field_flow_sources
 from requirements_gate import evaluate as evaluate_requirements
 from artifact_corpus import inventory_paths, analyzable_entries, summarize as summarize_corpus
@@ -329,11 +329,18 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
             continue
         active_profiles.append({"name":row["profile"],"rule_id":row["id"],"file":f"PROFILES/{row['profile']}.md","detected_by":row["detected_by"],"status":row["activation_status"]})
     active_deliveries=materialize_delivery_bindings(registry,rule_rows,surface)
+    delivery_applicability=materialize_delivery_applicability(registry,rule_rows,surface)
+    applicable_ids={row["capability_id"] for row in delivery_applicability if row["status"]=="APPLICABLE"}
+    active_delivery_ids={row["capability_id"] for row in active_deliveries}
+    if applicable_ids!=active_delivery_ids:
+        raise ValueError(f"Delivery applicability drift: applicable={sorted(applicable_ids)} active={sorted(active_delivery_ids)}")
+    gate_plan=_gate_plan(registry,surface,risk,analysis_only)
+    active_support=materialize_supporting_artifacts(registry,rule_rows,gate_plan)
     commands=list(dict.fromkeys(
         row["executor_payload"]["value"] for row in active_deliveries
         if row.get("executor_payload",{}).get("kind")=="INSTRUCTION"
     ))
-    active_references=list(dict.fromkeys(ref for row in active_deliveries for ref in row.get("references",[])))
+    active_references=list(dict.fromkeys([*(ref for row in active_deliveries for ref in row.get("references",[])),*(row["path"] for row in active_support)]))
     runtime_focus=[]
     active_ids={r["id"] for r in rule_rows if r["active"] and (r["detected_by"] or r["tier"]>0 or r["reason"].startswith("derived"))}
     if active_ids & {"QUERY","DYNAMIC_LIST"}:runtime_focus += ["1C query parser/final variants","representative list/query cardinality/performance"]
@@ -361,6 +368,8 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
         "baseline":_dependency_snapshot(baseline),
         "rules":rule_rows,
         "active_deliveries":active_deliveries,
+        "delivery_applicability":delivery_applicability,
+        "active_supporting_artifacts":active_support,
         "active_profiles":active_profiles,
         "context_load_plan":{
             "profiles":[x["file"] for x in active_profiles],
@@ -382,7 +391,7 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
             "gate_outcome":requirements.get("gate",{}).get("requirements_outcome"),
             "gate_errors":requirements.get("gate",{}).get("errors",[]),
         },
-        "gate_plan":_gate_plan(registry,surface,risk,analysis_only),
+        "gate_plan":gate_plan,
         "deterministic_tools":commands,
         "runtime_focus":list(dict.fromkeys(runtime_focus)),
         "evidence_dependencies":["artifact-model/layout/authoritative-root","requirements-contract hash/gate outcome","candidate/baseline hashes","declaration/caller hashes","reference archive/vendor/BSP/configuration version","active Cleverence Business Process","runtime environment for version-sensitive/measured claims"]
@@ -406,6 +415,7 @@ def compact_summary(plan):
         },
         "active_profiles":[{k:profile.get(k) for k in ("name","rule_id","file","status")} for profile in plan.get("active_profiles",[])],
         "active_deliveries":[{k:row.get(k) for k in ("capability_id","enforcement")} | ({"proof_owner":(row.get("proof_binding") or {}).get("owner")} if row.get("proof_binding") else {}) for row in plan.get("active_deliveries",[])],
+        "delivery_applicability_summary":{status:sum(1 for row in plan.get("delivery_applicability",[]) if row.get("status")==status) for status in ("APPLICABLE","NOT_APPLICABLE","NOT_EVALUATED")},
         "deterministic_tools":plan.get("deterministic_tools"),
         "runtime_focus":plan.get("runtime_focus"),
         "context_load_plan":plan.get("context_load_plan"),
