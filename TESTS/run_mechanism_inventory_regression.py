@@ -76,7 +76,7 @@ plan = build_plan([str(fixture)], analysis_only=True, surface_override="ONEC_ONL
 applicable = {row["capability_id"] for row in plan["delivery_applicability"] if row["status"] == "APPLICABLE"}
 active = {row["capability_id"] for row in plan["active_deliveries"]}
 require(applicable == active, "applicable_equals_active_delivery", {"applicable": sorted(applicable), "active": sorted(active)})
-refs = set((plan.get("context_load_plan") or {}).get("references") or [])
+refs = {row["path"] for row in plan.get("active_supporting_artifacts") or []}
 for rel in (
     "KNOWLEDGE/QUERY_LANGUAGE_GUIDE.md",
     "KNOWLEDGE/QUERY_TOPOLOGY_REVIEW.md",
