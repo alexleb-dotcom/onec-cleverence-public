@@ -1695,8 +1695,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 38752,
-      "sha256": "1f98df82cb5a6cd714e08e0c2be49df1074786d5152a0ab173860e86d9b90dee"
+      "size": 39818,
+      "sha256": "999c8d43f809873dcd6bd5616e41eabbfa3807fbc6fb4e3393e0fd96a4220bac"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1945,8 +1945,8 @@
     },
     {
       "path": "TOOLS/build_review_plan.py",
-      "size": 26877,
-      "sha256": "207cacf325c8a795680e90d8b88d2634b9c063e334a914974848a089d52548ff"
+      "size": 27006,
+      "sha256": "aca1f9b21adb1f7ad84889b92064731f1225e2bcaadb154206c31a99a18cd0b4"
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
@@ -2165,5 +2165,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "bf571e38bb2ea164178f0aa73157c2ff6370eabe43c6f16b1daff37a55498675"
+  "snapshot_digest": "0515cbf08655a4e1933acd3af9d97f6b920b6beab784569b5acec5058541113c"
 }
