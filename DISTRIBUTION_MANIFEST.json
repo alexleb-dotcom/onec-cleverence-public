@@ -625,8 +625,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 285163,
-      "sha256": "ea445865996ce5f83f6672d420f613f0ff7824437e1d5bd47ebbfb8b5313bacd"
+      "size": 291414,
+      "sha256": "aad1d71893c75ac91222969dd9d8d09e2baf624951ce905d08f8bad6107b0ca4"
     },
     {
       "path": "SKILL.md",
@@ -1695,8 +1695,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 38130,
-      "sha256": "8ee03458f58bbe37b7c97ac64a957529130b675ca57c18f3aa94280615588992"
+      "size": 39818,
+      "sha256": "999c8d43f809873dcd6bd5616e41eabbfa3807fbc6fb4e3393e0fd96a4220bac"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1840,8 +1840,8 @@
     },
     {
       "path": "TESTS/run_review_regression.py",
-      "size": 115923,
-      "sha256": "b6cb17f96217d2d1b3d0f343d840647241b231b20ba679069cdaee5900d613e9"
+      "size": 139439,
+      "sha256": "95bf6d52ddf5eab958c8a5894890f4f8d52ef9104db7151a0da6758f042cbfc7"
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
@@ -1945,8 +1945,8 @@
     },
     {
       "path": "TOOLS/build_review_plan.py",
-      "size": 28599,
-      "sha256": "413c28d89c0eaae3e3e6a0b093e5a3cd91650d29c8b6eb4f31486dc0d215feee"
+      "size": 27006,
+      "sha256": "aca1f9b21adb1f7ad84889b92064731f1225e2bcaadb154206c31a99a18cd0b4"
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
@@ -2050,8 +2050,8 @@
     },
     {
       "path": "TOOLS/release_gate_core.py",
-      "size": 85555,
-      "sha256": "5854d9071da50384135601c6e6fbac7579d1234adb1351056291454b972b961b"
+      "size": 88588,
+      "sha256": "f32a36c608b87461542afbb30bada84129cb4678fff21916d8b30e315effb43c"
     },
     {
       "path": "TOOLS/release_gate_hardening.py",
@@ -2060,8 +2060,8 @@
     },
     {
       "path": "TOOLS/release_intake.py",
-      "size": 7092,
-      "sha256": "2fc9bce87662e9ddb02fb31eccba5022f1690b44e178c62f63a04fc5b15df4c2"
+      "size": 10999,
+      "sha256": "58af26caa66689294f7dfb7340366fa16dd31122be5f0b615bbe265cd51937c8"
     },
     {
       "path": "TOOLS/requirements_gate.py",
@@ -2070,8 +2070,8 @@
     },
     {
       "path": "TOOLS/rule_registry.py",
-      "size": 9437,
-      "sha256": "b998f171115d73163e9f23a6227469602b38d0c13efd517f5c490dc53e0ed392"
+      "size": 16406,
+      "sha256": "502c101ff16e7647970c1de45089b495306b3618b15839a717fe7f48155a6507"
     },
     {
       "path": "TOOLS/run_public_ci.py",
@@ -2130,8 +2130,8 @@
     },
     {
       "path": "TOOLS/validate_skill.py",
-      "size": 30558,
-      "sha256": "086bb3bfbf1f50003019f2e065c5138143ff389bedded44c85cea79a0c0e4651"
+      "size": 31402,
+      "sha256": "38e2504f975bb03ad097f77a0b7483714d9910ab4732335e549adbaf1fb18557"
     },
     {
       "path": "TOOLS/validation_work_queue.py",
@@ -2165,5 +2165,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "731613480ef7f5d1888d641ff472ff43ed1f484cfa3794fe21722c5b48b519ae"
+  "snapshot_digest": "95d3bc04cd062205f9ec14f9f217a72e444aaf17b41374db81411f7c08ac456b"
 }

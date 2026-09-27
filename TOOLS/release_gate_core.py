@@ -1042,6 +1042,36 @@ def _validate_query_literal_escape_gate(plan,ledger,machine_reports,registry,err
     return expected
 
 
+def _active_gating_check_bindings(plan):
+    result={}
+    for binding in plan.get("active_deliveries") or []:
+        if not isinstance(binding,dict) or binding.get("enforcement")!="GATING":continue
+        proof=binding.get("proof_binding") or {}; owner=proof.get("owner")
+        if _has_text(owner) and owner.startswith("CHECK:"):result[owner]=binding
+    return result
+
+
+def _validate_capability_proof_bindings(plan,ledger_rules,errors):
+    """GATING delivery is complete only through its existing canonical check proof."""
+    for owner,binding in _active_gating_check_bindings(plan).items():
+        capability=binding.get("capability_id"); proof=binding.get("proof_binding") or {}
+        parts=owner.split(":",2)
+        if len(parts)!=3:
+            errors.append({"type":"CAPABILITY_PROOF_BINDING_INVALID","capability_id":capability,"owner":owner});continue
+        _,rule_id,check_id=parts
+        rule_row=ledger_rules.get(rule_id)
+        check=next((x for x in (rule_row or {}).get("checks") or [] if isinstance(x,dict) and x.get("id")==check_id),None)
+        if check is None:
+            errors.append({"type":"CAPABILITY_PROOF_OWNER_MISSING","scope":"check","id":f"{rule_id}:{check_id}","rule":rule_id,"capability_id":capability});continue
+        status=check.get("status")
+        if status not in {"PASS","NOT_APPLICABLE"}:
+            errors.append({"type":"CAPABILITY_PROOF_BINDING_UNRESOLVED","scope":"check","id":f"{rule_id}:{check_id}","rule":rule_id,"capability_id":capability,"status":status});continue
+        accepted=set(proof.get("accepted_evidence") or [])
+        actual=_evidence_kinds(check.get("evidence") or [])
+        if not accepted or not (actual & accepted):
+            errors.append({"type":"CAPABILITY_PROOF_EVIDENCE_NOT_ACCEPTED","scope":"check","id":f"{rule_id}:{check_id}","rule":rule_id,"capability_id":capability,"status":status,"accepted":sorted(accepted),"actual":sorted(actual)})
+
+
 def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:dict|None=None)->dict:
     registry=registry or load_registry(); rules=rule_map(registry); sm=registry["status_model"]
     blocking=set(sm["blocking_statuses"]); pending=set(sm["pending_statuses"])
@@ -1122,6 +1152,7 @@ def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:di
             errors.append({'type':'PLAN_PROOF_POLICY_DRIFT','id':rid,'expected':expected_route_policy,'actual':route.get('proof_policy')})
         if rule.get('tier')==0 or route.get('active'):expected.append(rid)
     expected_checks={rid:[x['id'] for x in rules[rid].get('checks',[])] for rid in expected}
+    gating_check_bindings=_active_gating_check_bindings(plan)
     risk=(plan.get('routing') or {}).get('risk')
 
     expected_machine_findings=_verified_machine_finding_expectations(machine_reports,p_art,registry,errors)
@@ -1226,7 +1257,16 @@ def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:di
             elif cs=="NOT_APPLICABLE":
                 if not is_substantive_reason(c.get("reason")):
                     errors.append({"type":"NA_REASON_NOT_SUBSTANTIVE","scope":"check","rule":rid,"id":cid,"reason":c.get("reason")})
-                if status!="NOT_APPLICABLE":
+                gating_binding=gating_check_bindings.get(expected_check_claim)
+                if gating_binding is not None:
+                    proof=gating_binding.get("proof_binding") or {}
+                    allowed_kinds=proof.get("accepted_evidence") or []
+                    if not c.get("evidence"):
+                        errors.append({"type":"CAPABILITY_BOUND_CHECK_NA_WITHOUT_PROOF","scope":"check","rule":rid,"id":cid,"capability_id":gating_binding.get("capability_id")})
+                    else:
+                        verified=_validate_evidence(c.get('evidence'),errors,'check',f'{rid}:{cid}',machine_reports,runtime_cases,expected_claim_id=expected_check_claim,allowed_kinds=allowed_kinds,require_primary=True,plan=plan,receipt_provenance=receipt_provenance,proof_policy=expected_policy)
+                        validate_claim_policy(expected_policy,verified,independent_reviews,expected_check_claim,errors,'check',f'{rid}:{cid}',risk=risk)
+                elif status!="NOT_APPLICABLE":
                     verified=_validate_evidence(c.get('evidence'),errors,'check',f'{rid}:{cid}',machine_reports,runtime_cases,expected_claim_id=expected_check_claim,allowed_kinds=rule.get('evidence_modes',[]),require_primary=True,plan=plan,receipt_provenance=receipt_provenance,proof_policy=expected_policy)
                     validate_claim_policy(expected_policy,verified,independent_reviews,expected_check_claim,errors,'check',f'{rid}:{cid}',risk=risk)
             else:
@@ -1238,6 +1278,8 @@ def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:di
         if status=="PASS" and child_pending:errors.append({"type":"RULE_STATUS_INCONSISTENT","id":rid,"status":"PASS","child":"PENDING"})
         if status in pending and not child_pending and "RUNTIME" not in rule.get("evidence_modes",[]):errors.append({"type":"RULE_STATUS_INCONSISTENT","id":rid,"status":status,"reason":"rule has no pending child and no runtime evidence mode"})
         if parent_terminal:coverage.append(rid)
+
+    _validate_capability_proof_bindings(plan,ledger_rules,errors)
 
     levels=_index_rows(ledger.get('review_levels') or [],'id','review_level',errors)
     for lid in sorted(set(levels)-set(REVIEW_LEVELS)):errors.append({'type':'UNKNOWN_REVIEW_LEVEL','id':lid})

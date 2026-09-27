@@ -90,6 +90,16 @@ with tempfile.TemporaryDirectory() as td:
     queue=vwq.build_work_queue(ledger,ledger_sha)
     compact_bytes=len((json.dumps(compact_plan(plan),ensure_ascii=False,separators=(",",":"))+"\n"+json.dumps(queue,ensure_ascii=False,separators=(",",":"))+"\n").encode("utf-8"))
     record("small_r1_compact_plan_plus_ledger_within_12kb",compact_bytes<=12*1024,{"bytes":compact_bytes,"limit":12*1024,"verifier":queue.get("verifier")})
+    all_capabilities={d.get("capability_id") for rule in load_registry().get("rules",[]) for d in rule.get("delivery",[]) if isinstance(d,dict)}
+    compact_capabilities={d.get("capability_id") for d in compact_plan(plan).get("active_deliveries",[]) if isinstance(d,dict)}
+    full_active_capabilities={d.get("capability_id") for d in plan.get("active_deliveries",[]) if isinstance(d,dict)}
+    record("compact_plan_contains_only_active_delivery_bindings",compact_capabilities==full_active_capabilities and compact_capabilities < all_capabilities,{"active":sorted(compact_capabilities),"all_count":len(all_capabilities)})
+    compact_by_capability={d["capability_id"]:d for d in compact_plan(plan).get("active_deliveries",[]) if isinstance(d,dict)}
+    full_by_capability={d["capability_id"]:d for d in plan.get("active_deliveries",[]) if isinstance(d,dict)}
+    routing_preserved=compact_capabilities==set(compact_by_capability) and all(compact_by_capability[c].get("enforcement")==full_by_capability[c].get("enforcement") for c in full_active_capabilities)
+    routing_preserved=routing_preserved and all(compact_by_capability[c].get("proof_owner")==full_by_capability[c]["proof_binding"].get("owner") for c in full_active_capabilities if full_by_capability[c].get("enforcement")=="GATING")
+    record("compact_delivery_projection_preserves_enforcement_and_gating_proof_owner",routing_preserved)
+    record("full_plan_preserves_canonical_delivery_proof_binding",all(full_by_capability[c].get("proof_binding")==next((d for rule in load_registry().get("rules",[]) for d in rule.get("delivery",[]) if d.get("capability_id")==c),{}).get("proof_binding") for c in full_active_capabilities))
 
     registry=load_registry(); registered=rule_map(registry)
     expected=[]

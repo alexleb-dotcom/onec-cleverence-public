@@ -28,7 +28,8 @@ from machine_receipts import create_receipt
 from runtime_evidence import create_adapter_observation
 from semantic_review import write_review_receipt
 from implementation_intent import build_skeleton as build_intent_skeleton
-from rule_registry import load_registry
+from rule_registry import load_registry, validate_delivery_bindings
+from release_gate_hardening import route_fingerprint
 from generate_registry_views import render as render_generated_views
 from validation_work_queue import build_work_queue
 from evidence_source_policy import classify_non_proof_ref, validate_evidence_items
@@ -657,6 +658,21 @@ for case in manifest.get('cleverence_config_diff_cases',[]):
     key=f"cleverence_config:{case['candidate']}<-{case['baseline']}"; results[key]={'types':sorted(types),'expected':case['expected'],'pass':not missing}
     if missing:errors.append({'case':key,'missing':missing})
 
+def _legacy_delivery_commands(plan):
+    rows=plan.get('rules') or []; surface=(plan.get('routing') or {}).get('surface'); commands=[]
+    if surface in {'ONEC_ONLY','CROSS_SYSTEM'}:commands.append('Run TOOLS/analyze_onec_bsl.py for each changed BSL final byte-set')
+    structural_ids={'ONEC_XML_STRUCTURE','FORM_XML_STRUCTURE','METADATA_XML_STRUCTURE','CFE_EXTENSION_STRUCTURE','XDTO_STRUCTURE'}
+    if any(r.get('id') in structural_ids and r.get('active') and r.get('detected_by') for r in rows):commands.append('Run TOOLS/analyze_onec_xml.py on the smallest supplied directory/ZIP that preserves companion XML context')
+    if any(r.get('id')=='FORM_DATA_BINDING' and r.get('active') and r.get('detected_by') for r in rows):commands.append('Resolve each changed form DataPath against the actual form runtime data source/composition; for ConstantsSet.Member prove concrete set membership instead of inferring it from Constant metadata')
+    if any(r.get('id')=='CALL_CONTRACT' and r.get('detected_by') for r in rows):commands.append('Resolve qualified-call boundaries; run TOOLS/check_bsl_call_signatures.py for cross-module calls with exact declarations')
+    if any(r.get('id')=='IMPLEMENTATION_REACHABILITY' and r.get('detected_by') for r in rows):commands.append('Run TOOLS/analyze_onec_reachability.py on exact candidate + baseline; prove intended entrypoint → caller(s) → new/changed routine. Export alone is not invocation evidence')
+    if any(r.get('id')=='POST_WRITE_STANDARD_OVERWRITE' and r.get('active') and r.get('detected_by') for r in rows):commands.append('Run TOOLS/analyze_onec_field_flow.py on exact changed BSL and resolve same-field reachable writers/unresolved lifecycle calls')
+    if any(r.get('id')=='CROSS_OBJECT_DUPLICATION_REVIEW' and r.get('active') for r in rows):commands.append('Run TOOLS/analyze_changeset_architecture.py on the complete changed BSL set; classify REVIEW candidates semantically and perform whole-change-set owner mapping even when candidate count is zero')
+    if any(r.get('id')=='CLEVERENCE_MSLX' and r.get('active') and r.get('detected_by') for r in rows):commands.append('Run TOOLS/analyze_cleverence_mslx.py with accepted baseline for Operation/Action graph delta proof')
+    if any(r.get('id')=='CLEVERENCE_CONFIGURATION' and r.get('active') and r.get('detected_by') for r in rows):commands.append('Run TOOLS/analyze_cleverence_configuration.py on changed Metadata/DocumentTypes with accepted baseline when available; prove barcode precedence and exact field contracts semantically/runtime')
+    return commands
+
+
 # Backward-compatible routing regressions.
 for case in manifest.get('review_plan_cases',[]):
     r=build_plan([fixtures/item for item in case['inputs']],analysis_only=case.get('analysis_only',False),surface_override=case.get('surface_override'),risk_override=case.get('risk_override'),project_context=fixtures/case['project_context'] if case.get('project_context') else None)
@@ -666,8 +682,9 @@ for case in manifest.get('review_plan_cases',[]):
     expected_profiles=set(case.get('profiles',[])); forbidden_profiles=set(case.get('forbidden_profiles',[])); actual_profiles={x['name'] for x in r.get('active_profiles',[])}
     missing_profiles=sorted(expected_profiles-actual_profiles); unexpected_profiles=sorted(forbidden_profiles&actual_profiles)
     statuses={x['name']:x['status'] for x in r.get('active_profiles',[])}; wrong={name:{'expected':status,'actual':statuses.get(name)} for name,status in case.get('profile_statuses',{}).items() if statuses.get(name)!=status}
-    ok=ok and not missing_profiles and not unexpected_profiles and not wrong
-    results[key]={'routing':actual,'missing_profiles':missing_profiles,'unexpected_profiles':unexpected_profiles,'wrong_statuses':wrong,'pass':ok}
+    expected_tools=_legacy_delivery_commands(r); tool_drift=(r.get('deterministic_tools') or [])!=expected_tools
+    ok=ok and not missing_profiles and not unexpected_profiles and not wrong and not tool_drift
+    results[key]={'routing':actual,'missing_profiles':missing_profiles,'unexpected_profiles':unexpected_profiles,'wrong_statuses':wrong,'expected_tools':expected_tools,'actual_tools':r.get('deterministic_tools') or [],'tool_drift':tool_drift,'pass':ok}
     if not ok:errors.append({'case':key,'details':results[key]})
 
 # New activation regressions: rule existence is useless unless its trigger actually routes it.
@@ -684,8 +701,9 @@ for case in activation_manifest['cases']:
         row=routes.get(rid)
         triggered=bool(row and row.get('active') and (row.get('detected_by') or row.get('reason','').startswith('derived')))
         if triggered:unexpected.append(rid)
-    ok=not missing and not unexpected and r['routing']['surface']==case['surface'] and (not case.get('risk') or r['routing']['risk']==case['risk'])
-    key='activation:'+case['id']; results[key]={'missing':missing,'unexpected':unexpected,'routing':r['routing'],'pass':ok}
+    expected_tools=_legacy_delivery_commands(r); tool_drift=(r.get('deterministic_tools') or [])!=expected_tools
+    ok=not missing and not unexpected and not tool_drift and r['routing']['surface']==case['surface'] and (not case.get('risk') or r['routing']['risk']==case['risk'])
+    key='activation:'+case['id']; results[key]={'missing':missing,'unexpected':unexpected,'routing':r['routing'],'expected_tools':expected_tools,'actual_tools':r.get('deterministic_tools') or [],'tool_drift':tool_drift,'pass':ok}
     if not ok:errors.append({'case':key,'details':results[key]})
 
 # Requirements activation: pre-code rules must route by risk/surface/text without generic questionnaires.
@@ -984,6 +1002,216 @@ for level in proved['review_levels']:
 proved['knowledge_extraction']={'outcome':'NO_REUSABLE_KNOWLEDGE','reason':'synthetic release-mechanics fixture','project_context_updates':[],'items':[]}
 r=release_evaluate(plan,proved,registry); key='release:evidence_allows_proven'; ok=(r['result']=='PASS' and r['release_outcome']=='PROVEN'); results[key]={'outcome':r['release_outcome'],'errors':r['errors'],'pass':ok}
 if not ok:errors.append({'case':key,'details':r})
+
+# P1 delivery/proof binding regressions.
+_gating=[x for x in plan.get('active_deliveries',[]) if x.get('enforcement')=='GATING']
+_advisory=[x for x in plan.get('active_deliveries',[]) if x.get('enforcement')=='ADVISORY']
+key='delivery_binding:positive_control_has_gating'; ok=bool(_gating); results[key]={'gating':[x.get('capability_id') for x in _gating],'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+if _gating:
+    removed=_gating[0]; defective=copy.deepcopy(plan); defective['active_deliveries']=[x for x in defective.get('active_deliveries',[]) if x.get('capability_id')!=removed.get('capability_id')]
+    removed_payload=(removed.get('executor_payload') or {}).get('value'); defective['deterministic_tools']=[x for x in defective.get('deterministic_tools',[]) if x!=removed_payload]
+    dr=release_evaluate(defective,proved,registry); key='delivery_binding:mandatory_delivery_removed_blocks'; ok=(dr['result']=='FAIL' and any(x.get('type')=='RELEASE_PLAN_RECOMPUTE_DRIFT' for x in dr.get('errors',[])))
+    results[key]={'capability':removed.get('capability_id'),'errors':dr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':dr})
+key='delivery_binding:positive_control_has_advisory'; ok=bool(_advisory); results[key]={'advisory':[x.get('capability_id') for x in _advisory],'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+def _rebind_plan_bound_proofs(target_plan,target_ledger,label):
+    intent=build_intent_skeleton(target_plan)
+    intent['rows']=copy.deepcopy((target_ledger.get('implementation_intent_map') or {}).get('rows') or [])
+    target_ledger['implementation_intent_map']=intent
+    for index,review in enumerate(target_ledger.get('independent_reviews') or []):
+        old_payload=json.loads(Path(review['receipt_ref']).read_text(encoding='utf-8-sig'))
+        digest=hashlib.sha256(review['claim_id'].encode('utf-8')).hexdigest()[:16]
+        receipt_path=_receipt_dir/f'{label}-review-{index:03d}-{digest}.json'
+        write_review_receipt(receipt_path,target_plan,
+            author_execution_id=old_payload['author_execution_id'],
+            reviewer_execution_id=old_payload['reviewer_execution_id'],
+            claim_id=old_payload['claim_id'],rule_id=old_payload['rule_id'],check_id=old_payload.get('check_id'),
+            source_anchors=old_payload['source_anchors'],reviewer_verdict=old_payload['reviewer_verdict'],
+            defects=old_payload.get('defects') or [],limitations=old_payload.get('limitations') or [],
+            external_reviewer_status=old_payload.get('external_reviewer_status'))
+        review['receipt_ref']=str(receipt_path)
+        review['receipt_sha256']=hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+
+if _advisory:
+    omitted=_advisory[0]
+    if omitted.get('enforcement')!='ADVISORY':raise AssertionError('advisory omission fixture selected a non-ADVISORY row')
+    advisory_plan=copy.deepcopy(plan)
+    advisory_plan['active_deliveries']=[x for x in advisory_plan.get('active_deliveries',[]) if x.get('capability_id')!=omitted.get('capability_id')]
+    remaining=advisory_plan['active_deliveries']
+    expected_tools=[]; expected_references=[]
+    for delivery in remaining:
+        payload=delivery.get('executor_payload') or {}
+        value=payload.get('value')
+        if payload.get('kind')=='INSTRUCTION' and isinstance(value,str) and value.strip() and value not in expected_tools:expected_tools.append(value)
+        for reference in delivery.get('references') or []:
+            if reference not in expected_references:expected_references.append(reference)
+    advisory_plan['deterministic_tools']=expected_tools
+    advisory_plan.setdefault('context_load_plan',{})['references']=expected_references
+    advisory_proved=copy.deepcopy(proved)
+    _rebind_plan_bound_proofs(advisory_plan,advisory_proved,'advisory-omission')
+    expected_remaining=[x for x in plan.get('active_deliveries',[]) if x.get('capability_id')!=omitted.get('capability_id')]
+    gating_preserved=[x for x in remaining if x.get('enforcement')=='GATING']==[x for x in plan.get('active_deliveries',[]) if x.get('enforcement')=='GATING']
+    ar=release_evaluate(advisory_plan,advisory_proved,registry); key='delivery_binding:advisory_omission_nonblocking'; ok=(remaining==expected_remaining and gating_preserved and ar['result']=='PASS' and ar['release_outcome']=='PROVEN' and not any(x.get('type')=='RELEASE_PLAN_RECOMPUTE_DRIFT' for x in ar.get('errors',[])))
+    results[key]={'capability':omitted.get('capability_id'),'remaining':[x.get('capability_id') for x in remaining],'tools':expected_tools,'references':expected_references,'errors':ar.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':ar})
+
+_bad_registry=copy.deepcopy(registry)
+_bad_binding=next(x for rule in _bad_registry.get('rules',[]) for x in rule.get('delivery',[]) if x.get('enforcement')=='GATING')
+_bad_binding['proof_binding']=None
+_schema_errors=validate_delivery_bindings(_bad_registry); key='delivery_binding:gating_without_proof_route_rejected'; ok=any(x.startswith('delivery_gating_proof_binding_missing:') for x in _schema_errors)
+results[key]={'schema_errors':_schema_errors,'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+def _binding_ref(registry_doc,capability_id):
+    for _rule in registry_doc.get('rules',[]):
+        for _binding in _rule.get('delivery',[]):
+            if _binding.get('capability_id')==capability_id:return _rule,_binding
+    raise AssertionError(f'missing delivery binding {capability_id}')
+
+# Focused registry mutations: fail closed without a second schema/test framework.
+_mut=copy.deepcopy(registry); _,_a=_binding_ref(_mut,'CAP.CALL_SIGNATURE_ANALYSIS'); _,_b=_binding_ref(_mut,'CAP.REACHABILITY_ANALYSIS'); _b['capability_id']=_a['capability_id']
+_mut_errors=validate_delivery_bindings(_mut); key='delivery_binding:duplicate_capability_owner_rejected'; ok=any(x.startswith('delivery_duplicate_capability_owner:') for x in _mut_errors); results[key]={'errors':_mut_errors,'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+_mut=copy.deepcopy(registry); _,_a=_binding_ref(_mut,'CAP.CALL_SIGNATURE_ANALYSIS'); _,_b=_binding_ref(_mut,'CAP.REACHABILITY_ANALYSIS'); _b['sequence']=_a['sequence']
+_mut_errors=validate_delivery_bindings(_mut); key='delivery_binding:duplicate_sequence_rejected'; ok=any(x.startswith('delivery_duplicate_sequence:') for x in _mut_errors); results[key]={'errors':_mut_errors,'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+_mut=copy.deepcopy(registry); _,_a=_binding_ref(_mut,'CAP.CALL_SIGNATURE_ANALYSIS'); _a['proof_binding']['owner']='CHECK:SOURCE_FIRST:SOURCE_FIRST_T01'
+_mut_errors=validate_delivery_bindings(_mut); key='delivery_binding:foreign_proof_owner_rejected'; ok=any(x.startswith('delivery_proof_owner_invalid:') for x in _mut_errors); results[key]={'errors':_mut_errors,'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+_mut=copy.deepcopy(registry); _,_a=_binding_ref(_mut,'CAP.CALL_SIGNATURE_ANALYSIS'); _a['proof_binding']['accepted_evidence'].append('RUNTIME')
+_mut_errors=validate_delivery_bindings(_mut); key='delivery_binding:evidence_mode_escalation_rejected'; ok=any(x.startswith('delivery_proof_evidence_outside_rule:') for x in _mut_errors); results[key]={'errors':_mut_errors,'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+# Release recomputation tamper matrix: exact canonical present subset + derived outputs.
+if _gating:
+    _base_gating=_gating[0]; _base_cap=_base_gating.get('capability_id')
+
+    _tampered=copy.deepcopy(plan)
+    next(x for x in _tampered['active_deliveries'] if x.get('capability_id')==_base_cap)['sequence']+=1
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:sequence_tamper_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_BINDING_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+    _tampered=copy.deepcopy(plan)
+    _tampered['active_deliveries']=[x for x in _tampered['active_deliveries'] if x.get('capability_id')!=_base_cap]
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:command_only_without_gating_binding_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_GATING_MISSING' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+    _tampered=copy.deepcopy(plan)
+    _payload=(_base_gating.get('executor_payload') or {}).get('value')
+    _tampered['deterministic_tools']=[x for x in _tampered.get('deterministic_tools',[]) if x!=_payload]
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:gating_binding_without_command_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_TOOL_PROJECTION_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+    _tampered=copy.deepcopy(plan)
+    _row=next(x for x in _tampered['active_deliveries'] if x.get('capability_id')==_base_cap)
+    _row['proof_binding']=copy.deepcopy(_row.get('proof_binding') or {}); _row['proof_binding']['owner']='CHECK:SOURCE_FIRST:SOURCE_FIRST_T01'
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:proof_owner_rewrite_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_BINDING_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+    _tampered=copy.deepcopy(plan)
+    _row=next(x for x in _tampered['active_deliveries'] if x.get('capability_id')==_base_cap); _row['enforcement']='ADVISORY'
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:gating_enforcement_downgrade_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_BINDING_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+if len(plan.get('deterministic_tools') or [])>1:
+    _tampered=copy.deepcopy(plan); _tampered['deterministic_tools']=list(reversed(_tampered['deterministic_tools']))
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:command_order_tamper_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_TOOL_PROJECTION_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+if len(plan.get('active_deliveries') or [])>1:
+    _tampered=copy.deepcopy(plan); _tampered['active_deliveries']=list(reversed(_tampered['active_deliveries']))
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:active_delivery_order_tamper_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_ORDER_OR_SUBSET_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+_tampered=copy.deepcopy(plan); _tampered['context_load_plan']=copy.deepcopy(_tampered.get('context_load_plan') or {}); _tampered['context_load_plan']['references']=['REFERENCE/SYNTHETIC-TAMPER']
+_rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:reference_projection_tamper_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_REFERENCE_PROJECTION_DRIFT' for x in _rr.get('errors',[])))
+results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+if not ok:errors.append({'case':key,'details':_rr})
+
+if _advisory:
+    _tampered=copy.deepcopy(plan); _adv=_advisory[0]; _adv_cap=_adv.get('capability_id')
+    _row=next(x for x in _tampered['active_deliveries'] if x.get('capability_id')==_adv_cap)
+    _old_value=(_row.get('executor_payload') or {}).get('value'); _new_value=_old_value+' [tampered]'
+    _row['executor_payload']=copy.deepcopy(_row.get('executor_payload') or {}); _row['executor_payload']['value']=_new_value
+    _tampered['deterministic_tools']=[_new_value if x==_old_value else x for x in _tampered.get('deterministic_tools',[])]
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:mutated_advisory_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_BINDING_DRIFT' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+    _tampered=copy.deepcopy(plan)
+    _unknown={'capability_id':'CAP.UNKNOWN_ADVISORY','sequence':999,'owner_rule_id':'BIDIRECTIONAL_STANDARDS','enforcement':'ADVISORY','executor_payload':{'kind':'INSTRUCTION','value':'synthetic unknown advisory'},'references':[],'proof_binding':None}
+    _tampered['active_deliveries'].append(_unknown); _tampered['deterministic_tools'].append('synthetic unknown advisory')
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:unknown_advisory_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_UNKNOWN_CAPABILITY' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+    _tampered=copy.deepcopy(plan)
+    _row=next(x for x in _tampered['active_deliveries'] if x.get('capability_id')==_adv_cap)
+    _tampered['active_deliveries'].append(copy.deepcopy(_row))
+    _rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:duplicate_advisory_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type')=='RELEASE_DELIVERY_DUPLICATE_CAPABILITY' for x in _rr.get('errors',[])))
+    results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_rr})
+
+_tampered=copy.deepcopy(plan); _tampered['registry']=copy.deepcopy(_tampered['registry']); _tampered['registry']['sha256']='0'*64
+_rr=release_evaluate(_tampered,proved,registry); key='delivery_binding:stale_registry_plan_blocks'; ok=(_rr['result']=='FAIL' and any(x.get('type') in {'REGISTRY_DEPENDENCY_DRIFT','RELEASE_PLAN_RECOMPUTE_DRIFT'} for x in _rr.get('errors',[])))
+results[key]={'errors':_rr.get('errors',[]),'pass':ok}
+if not ok:errors.append({'case':key,'details':_rr})
+
+# Conditional GATING N/A is not a prose-only escape hatch.
+_call_route=next(x for x in plan.get('rules',[]) if x.get('id')=='CALL_CONTRACT')
+_call_binding=next(x for x in plan.get('active_deliveries',[]) if x.get('capability_id')=='CAP.CALL_SIGNATURE_ANALYSIS')
+_call_owner=(_call_binding.get('proof_binding') or {}).get('owner'); _call_check_id=_call_owner.split(':',2)[2]
+_na=copy.deepcopy(proved); _call_rule=next(x for x in _na['rules'] if x.get('id')=='CALL_CONTRACT')
+_call_rule['status']='NOT_APPLICABLE'; _call_rule['reason']='Exact candidate review concludes that no applicable cross-module call contract remains for this disposition.'; _call_rule['evidence']=[]
+for _check in _call_rule.get('checks',[]):
+    _check['status']='NOT_APPLICABLE'; _check['reason']='Exact candidate review concludes this check is not applicable to the accepted disposition.'; _check['evidence']=[]
+_s2c=next(x for x in _na['standards_to_code'] if x.get('rule_id')=='CALL_CONTRACT'); _s2c['status']='NOT_APPLICABLE'; _s2c['reason']='Owner rule is not applicable in this synthetic disposition.'; _s2c['evidence']=[]
+_route_rebuttal_evidence=synthetic_evidence('SOURCE_REQUIRED','synthetic exact-source false-positive routing adjudication',_call_rule['claim_id'])
+_call_rule['applicability_rebuttal']={
+    'status':'FALSE_POSITIVE',
+    'route_fingerprint':route_fingerprint(_call_route),
+    'rebutted_signals':list(_call_route.get('detected_by') or []),
+    'reason':'This synthetic fixture isolates an external member-call routing signal without a changed exported declaration contract; the route is rebutted for this disposition only.',
+    'evidence':[_route_rebuttal_evidence],
+}
+_bound_na_types={'CAPABILITY_BOUND_CHECK_NA_WITHOUT_PROOF','CAPABILITY_PROOF_EVIDENCE_NOT_ACCEPTED'}
+_rr=release_evaluate(plan,_na,registry); _bound_na_errors=[x for x in _rr.get('errors',[]) if x.get('type') in _bound_na_types]; key='delivery_binding:conditional_gating_na_without_proof_blocks'; ok=(_call_route.get('activation_status')=='CONDITIONAL_REVIEW' and _rr['result']=='FAIL' and len(_rr.get('errors',[]))==2 and {x.get('type') for x in _bound_na_errors}==_bound_na_types and any(x.get('type')=='CAPABILITY_BOUND_CHECK_NA_WITHOUT_PROOF' and x.get('id')==_call_check_id and x.get('capability_id')==_call_binding.get('capability_id') for x in _bound_na_errors) and all(x.get('capability_id')==_call_binding.get('capability_id') for x in _bound_na_errors) and not any(x.get('type')=='ROUTED_RULE_NA_WITHOUT_REBUTTAL' and x.get('id')=='CALL_CONTRACT' for x in _rr.get('errors',[])))
+results[key]={'route_status':_call_route.get('activation_status'),'errors':_rr.get('errors',[]),'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+_na_proved=copy.deepcopy(_na); _call_rule=next(x for x in _na_proved['rules'] if x.get('id')=='CALL_CONTRACT'); _bound=next(x for x in _call_rule['checks'] if x.get('id')==_call_check_id)
+_bound['evidence']=[synthetic_evidence('SOURCE_REQUIRED','synthetic capability N/A exact-source evidence',_bound['claim_id'])]
+_rr=release_evaluate(plan,_na_proved,registry); _validated_rebuttal=_call_rule.get('applicability_rebuttal') or {}; key='delivery_binding:conditional_gating_na_with_verified_proof_allowed'; ok=(_call_route.get('activation_status')=='CONDITIONAL_REVIEW' and _validated_rebuttal.get('route_fingerprint')==route_fingerprint(_call_route) and set(_validated_rebuttal.get('rebutted_signals') or [])==set(_call_route.get('detected_by') or []) and bool(_validated_rebuttal.get('evidence')) and bool(_validated_rebuttal['evidence'][0].get('source_provenance')) and _rr['result']=='PASS' and _rr['release_outcome']=='PROVEN')
+results[key]={'errors':_rr.get('errors',[]),'outcome':_rr.get('release_outcome'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_rr})
+
+_field_source=fixtures/'post_write_reachable_same_field_bad.bsl'
+_field_plan=build_plan([_field_source],analysis_only=True)
+_field_binding=next((x for x in _field_plan.get('active_deliveries',[]) if x.get('capability_id')=='CAP.FIELD_FLOW_ANALYSIS'),None)
+_field_ledger=build_ledger(_field_plan,registry)
+_field_receipt_path=_receipt_dir/'field-flow-delivered.json'
+_field_receipt=create_receipt('TOOLS/analyze_onec_field_flow.py',[str(_field_source)],[str(_field_source)],['STATIC:FIELD_FLOW'],_field_receipt_path)
+_field_ledger['machine_reports']=[{'id':'MACHINE:FIELD_FLOW:DELIVERED','tool':'TOOLS/analyze_onec_field_flow.py','ref':str(_field_receipt_path),'receipt_ref':str(_field_receipt_path),'receipt_sha256':hashlib.sha256(_field_receipt_path.read_bytes()).hexdigest(),'result':_field_receipt['derived_result'],'supersedes':[]}]
+_field_release=release_evaluate(_field_plan,_field_ledger,registry); key='delivery_binding:tool_run_without_bound_proof_blocks'; ok=bool(_field_binding) and _field_receipt['derived_result']=='PASS' and _field_release['result']=='FAIL' and any(x.get('type')=='CAPABILITY_PROOF_BINDING_UNRESOLVED' and x.get('capability_id')=='CAP.FIELD_FLOW_ANALYSIS' for x in _field_release.get('errors',[]))
+results[key]={'binding':_field_binding,'machine_result':_field_receipt['derived_result'],'errors':_field_release.get('errors',[]),'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+_builder_text=(root/'TOOLS/build_review_plan.py').read_text(encoding='utf-8')
+_migrated_tool_literals=['TOOLS/analyze_onec_bsl.py','TOOLS/analyze_onec_xml.py','TOOLS/check_bsl_call_signatures.py','TOOLS/analyze_onec_reachability.py','TOOLS/analyze_onec_field_flow.py','TOOLS/analyze_changeset_architecture.py','TOOLS/analyze_cleverence_mslx.py','TOOLS/analyze_cleverence_configuration.py']
+key='delivery_binding:builder_has_no_migrated_tool_authority'; ok=not any(x in _builder_text for x in _migrated_tool_literals); results[key]={'present':[x for x in _migrated_tool_literals if x in _builder_text],'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
 
 
 # FR-PRP-02 remediation: machine finding identity must propagate through the

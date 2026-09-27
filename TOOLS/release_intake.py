@@ -103,6 +103,83 @@ def _candidate_projection(rows):
     return [{k:row.get(k) for k in keep} for row in (rows or [])]
 
 
+def _delivery_row_projection(row):
+    if not isinstance(row,dict):return None
+    return {
+        "capability_id":row.get("capability_id"),
+        "sequence":row.get("sequence"),
+        "owner_rule_id":row.get("owner_rule_id"),
+        "enforcement":row.get("enforcement"),
+        "executor_payload":row.get("executor_payload"),
+        "references":row.get("references") or [],
+        "proof_binding":row.get("proof_binding"),
+    }
+
+
+def _derived_delivery_outputs(rows):
+    tools=[]; references=[]
+    for row in rows:
+        payload=row.get("executor_payload") or {}
+        if payload.get("kind")=="INSTRUCTION":
+            value=payload.get("value")
+            if _has_text(value) and value not in tools:tools.append(value)
+        for ref in row.get("references") or []:
+            if ref not in references:references.append(ref)
+    return tools,references
+
+
+def _validate_delivery_projection(plan, recomputed):
+    """Validate exact canonical present subset; ADVISORY omission alone remains nonblocking."""
+    errors=[]
+    expected_rows=[_delivery_row_projection(x) for x in (recomputed.get("active_deliveries") or [])]
+    if any(x is None for x in expected_rows):
+        return [{"type":"RELEASE_DELIVERY_RECOMPUTE_INVALID"}]
+    expected_by={row["capability_id"]:row for row in expected_rows}
+    actual_raw=plan.get("active_deliveries")
+    if not isinstance(actual_raw,list):
+        return [{"type":"RELEASE_DELIVERY_PROJECTION_INVALID","actual_type":type(actual_raw).__name__}]
+    actual_rows=[]
+    seen=set()
+    for index,raw in enumerate(actual_raw):
+        row=_delivery_row_projection(raw)
+        if row is None:
+            errors.append({"type":"RELEASE_DELIVERY_ROW_INVALID","index":index});continue
+        capability=row.get("capability_id")
+        if capability in seen:
+            errors.append({"type":"RELEASE_DELIVERY_DUPLICATE_CAPABILITY","capability_id":capability,"index":index})
+        seen.add(capability)
+        expected=expected_by.get(capability)
+        if expected is None:
+            errors.append({"type":"RELEASE_DELIVERY_UNKNOWN_CAPABILITY","capability_id":capability,"index":index})
+        elif row!=expected:
+            errors.append({"type":"RELEASE_DELIVERY_BINDING_DRIFT","capability_id":capability,"index":index})
+        actual_rows.append(row)
+
+    actual_capabilities={row.get("capability_id") for row in actual_rows}
+    for row in expected_rows:
+        if row.get("enforcement")=="GATING" and row.get("capability_id") not in actual_capabilities:
+            errors.append({"type":"RELEASE_DELIVERY_GATING_MISSING","capability_id":row.get("capability_id")})
+
+    # Canonical expected order is sequence-owned by the registry. The actual plan may
+    # omit ADVISORY rows, but every row that remains must preserve that canonical order.
+    expected_subset=[row for row in expected_rows if row.get("capability_id") in actual_capabilities]
+    if actual_rows!=expected_subset:
+        errors.append({
+            "type":"RELEASE_DELIVERY_ORDER_OR_SUBSET_DRIFT",
+            "expected":[x.get("capability_id") for x in expected_subset],
+            "actual":[x.get("capability_id") for x in actual_rows],
+        })
+
+    expected_tools,expected_refs=_derived_delivery_outputs(expected_subset)
+    actual_tools=plan.get("deterministic_tools")
+    if actual_tools!=expected_tools:
+        errors.append({"type":"RELEASE_DELIVERY_TOOL_PROJECTION_DRIFT","expected":expected_tools,"actual":actual_tools})
+    actual_refs=(plan.get("context_load_plan") or {}).get("references")
+    if actual_refs!=expected_refs:
+        errors.append({"type":"RELEASE_DELIVERY_REFERENCE_PROJECTION_DRIFT","expected":expected_refs,"actual":actual_refs})
+    return errors
+
+
 def plan_trust_projection(plan):
     """Only fields that can change final obligations belong to this comparison."""
     return {
@@ -147,11 +224,16 @@ def validate_plan_recomputation(plan, external_intake=None):
         errors.append({"type":"RELEASE_PLAN_RECOMPUTE_FAILED","error":str(exc)})
         return {"result":"FAIL","errors":errors,"intake_sha256":current_sha}
 
+    delivery_errors=_validate_delivery_projection(plan,recomputed)
+    errors.extend(delivery_errors)
+
     expected=plan_trust_projection(recomputed)
     actual=plan_trust_projection(plan)
-    if actual!=expected:
-        changed=[key for key in expected if actual.get(key)!=expected.get(key)]
-        errors.append({"type":"RELEASE_PLAN_RECOMPUTE_DRIFT","changed":changed})
+    changed=[key for key in expected if actual.get(key)!=expected.get(key)]
+    if delivery_errors:
+        changed.append("delivery_projection")
+    if changed:
+        errors.append({"type":"RELEASE_PLAN_RECOMPUTE_DRIFT","changed":list(dict.fromkeys(changed))})
     return {
         "result":"PASS" if not errors else "FAIL",
         "errors":errors,
