@@ -670,8 +670,8 @@
     },
     {
       "path": "TESTS/LLM_BYPASS_MATRIX.json",
-      "size": 78015,
-      "sha256": "19b864220107b1514d91383dceb11964b6bc5eff1b913311899487ba697eedbd"
+      "size": 81493,
+      "sha256": "de4e7fd99759146fc7c82ab7436669b942788fb7caab9e4a73548bdb4d788d79"
     },
     {
       "path": "TESTS/PROJECT_CONTEXT_LIFECYCLE_CASES.json",
@@ -1745,8 +1745,8 @@
     },
     {
       "path": "TESTS/run_llm_bypass_regression.py",
-      "size": 20419,
-      "sha256": "cf28cbe74be23ec231f4e8ff4c690f2764bcce4a706af792983fc132cb60888d"
+      "size": 20420,
+      "sha256": "5d6a66a45e09ba674bdf84a1950eec3eb4a7cdef5d5f423111c6d1d16208b1ed"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2165,5 +2165,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "95d3bc04cd062205f9ec14f9f217a72e444aaf17b41374db81411f7c08ac456b"
+  "snapshot_digest": "762342af644395b8e8130d7f6b09d5682e7de3d163732eecb5fb740f494058fe"
 }
