@@ -100,6 +100,14 @@ OWNER_SEED_FILES = {
     ".github/workflows/shareable-validation.yml",
     "TOOLS/PUBLIC_CI_INVENTORY.json",
 }
+ROOT_TASK_ENTRYPOINT_FILE = "SKILL.md"
+INDEPENDENT_PIPELINE_SEED_FILES = {
+    "WORKFLOW/DEVELOPMENT_PIPELINE.json",
+    "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
+    "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
+    ".github/workflows/shareable-validation.yml",
+    "TOOLS/PUBLIC_CI_INVENTORY.json",
+}
 PATH_REF_RE = re.compile(
     r"(?<![A-Za-z0-9_.-])"
     r"((?:KNOWLEDGE|TEMPLATES|TOOLS|PROFILES|PATTERNS|REFERENCE|RULES|REQUIREMENTS|WORKFLOW|TESTS)/"
@@ -277,8 +285,13 @@ def _reference_support_closure(root: Path, registry_owners: dict[str, str], work
     return owners
 
 
-def _internal_tool_closure(root: Path, support_tools: dict[str, str]) -> set[str]:
-    """Find existing pipeline tools from CI/workflow/bootstrap roots and local imports."""
+def _tool_closure(
+    root: Path,
+    support_tools: dict[str, str],
+    seed_files: set[str],
+    seed_tools: set[str] | None = None,
+) -> set[str]:
+    """Resolve executable-tool reachability from an explicit structural seed set."""
     module_paths = {p.stem: p.relative_to(root).as_posix() for p in (root / "TOOLS").glob("*.py")}
     internal: set[str] = set()
     queue: deque[str] = deque()
@@ -290,7 +303,9 @@ def _internal_tool_closure(root: Path, support_tools: dict[str, str]) -> set[str
             internal.add(rel)
             queue.append(rel)
 
-    for seed in OWNER_SEED_FILES:
+    for rel in sorted(seed_tools or set()):
+        add(rel)
+    for seed in sorted(seed_files):
         path = root / seed
         if not path.is_file():
             continue
@@ -311,6 +326,46 @@ def _internal_tool_closure(root: Path, support_tools: dict[str, str]) -> set[str
             if mapped:
                 add(mapped)
     return internal
+
+
+def _internal_tool_closure(root: Path, support_tools: dict[str, str]) -> set[str]:
+    """Preserve the existing broad file-classification reachability model."""
+    return _tool_closure(root, support_tools, OWNER_SEED_FILES)
+
+
+def _independent_pipeline_tool_closure(root: Path, support_tools: dict[str, str]) -> set[str]:
+    """Pipeline ownership independent of SKILL/README/test prose reachability."""
+    explicit_tools = {
+        rel for rel in PIPELINE_INTERNAL_EXACT
+        if rel.startswith("TOOLS/") and rel.endswith(".py")
+    }
+    return _tool_closure(
+        root,
+        support_tools,
+        INDEPENDENT_PIPELINE_SEED_FILES,
+        explicit_tools,
+    )
+
+
+def _root_task_entrypoints(root: Path) -> list[str]:
+    path = root / ROOT_TASK_ENTRYPOINT_FILE
+    if not path.is_file():
+        return []
+    return sorted(
+        ref for ref in _extract_refs(path)
+        if ref.startswith("TOOLS/") and ref.endswith(".py")
+    )
+
+
+def _root_task_entrypoint_owner(rel: str, context: dict) -> str | None:
+    direct_owner = context.get("tool_owners", {}).get(rel)
+    if direct_owner:
+        return direct_owner
+    if rel in PIPELINE_INTERNAL_EXACT:
+        return "PIPELINE:STRUCTURAL_EXACT"
+    if rel in context.get("independent_pipeline_tools", set()):
+        return "PIPELINE:INDEPENDENT_REACHABILITY"
+    return None
 
 
 def _deprecated_metadata(root: Path, rel: str) -> tuple[bool, dict | None]:
@@ -337,9 +392,12 @@ def build_classification_context(root: Path, registry: dict) -> dict:
     for path in (root / "REFERENCE" / "CATALOGS").glob("*.json"):
         support_owners[path.relative_to(root).as_posix()] = "SKILL:REFERENCE_LOCATOR"
     internal_tools = _internal_tool_closure(root, tool_owners)
+    independent_pipeline_tools = _independent_pipeline_tool_closure(root, tool_owners)
     return {
         "support_owners": support_owners,
+        "tool_owners": tool_owners,
         "internal_tools": internal_tools,
+        "independent_pipeline_tools": independent_pipeline_tools,
         "registry_owner_errors": registry_owner_errors,
     }
 
@@ -394,6 +452,19 @@ def build_inventory(root: Path = ROOT) -> dict:
 
     context = build_classification_context(root, registry)
     errors.extend(context["registry_owner_errors"])
+
+    root_task_entrypoints = _root_task_entrypoints(root)
+    root_task_entrypoint_owners: dict[str, str] = {}
+    for rel in root_task_entrypoints:
+        owner = _root_task_entrypoint_owner(rel, context)
+        if owner:
+            root_task_entrypoint_owners[rel] = owner
+        else:
+            errors.append({
+                "type": "ROOT_TASK_ENTRYPOINT_WITHOUT_INDEPENDENT_OWNER",
+                "path": rel,
+                "declaration": ROOT_TASK_ENTRYPOINT_FILE,
+            })
 
     rows: list[dict] = []
     support_without_owner = 0
@@ -502,6 +573,11 @@ def build_inventory(root: Path = ROOT) -> dict:
         "supporting_without_owner": support_without_owner,
         "silent_drop_paths_remaining": silent_drop_paths,
         "all_candidate_applicability_complete": applicability_complete,
+        "root_task_entrypoints": root_task_entrypoints,
+        "root_task_entrypoint_owners": root_task_entrypoint_owners,
+        "root_task_entrypoints_all_independently_owned": (
+            len(root_task_entrypoint_owners) == len(root_task_entrypoints)
+        ),
         "errors": errors,
         "rows": rows,
     }
@@ -519,6 +595,9 @@ def compact(report: dict) -> dict:
         "supporting_without_owner",
         "silent_drop_paths_remaining",
         "all_candidate_applicability_complete",
+        "root_task_entrypoints",
+        "root_task_entrypoint_owners",
+        "root_task_entrypoints_all_independently_owned",
         "errors",
     )}
 
