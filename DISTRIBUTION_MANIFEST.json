@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 433,
+  "file_count": 435,
   "files": [
     {
       "path": ".gitattributes",
@@ -45,8 +45,8 @@
     },
     {
       "path": "KNOWLEDGE/CLEVERENCE_COVERAGE_AUDIT.json",
-      "size": 2810,
-      "sha256": "8e707151c8cc5f4bf2d941140690c71200ebb71ccea0a8404ad7d136d3bddf3c"
+      "size": 3301,
+      "sha256": "39216741f8cf6776eeda10e37b6bcb47b92fee6b981be258976756c3e697f9e0"
     },
     {
       "path": "KNOWLEDGE/CLEVERENCE_RUNTIME_INTEGRATION.md",
@@ -625,8 +625,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 291414,
-      "sha256": "aad1d71893c75ac91222969dd9d8d09e2baf624951ce905d08f8bad6107b0ca4"
+      "size": 291949,
+      "sha256": "f5b802b627f68ac31599eb9574304aa3a922f0cc0039ff1758a568bd70f0c269"
     },
     {
       "path": "SKILL.md",
@@ -655,8 +655,8 @@
     },
     {
       "path": "TEMPLATES/PROJECT_SNAPSHOT_MANIFEST.json",
-      "size": 1348,
-      "sha256": "0c8d2ada2710503ef3037df7857fd56db4c23ff6fdde399d2ede21b78abe7f09"
+      "size": 1764,
+      "sha256": "17454bffff6dbaa993a1e91712acfe59af79b731fc24b95e5b4f9d3590c7380d"
     },
     {
       "path": "TEMPLATES/PROJECT_SNAPSHOT_REQUEST.json",
@@ -1754,6 +1754,11 @@
       "sha256": "5d6a66a45e09ba674bdf84a1950eec3eb4a7cdef5d5f423111c6d1d16208b1ed"
     },
     {
+      "path": "TESTS/run_mechanism_inventory_regression.py",
+      "size": 7398,
+      "sha256": "dbe064e43d770b9db40b0c546163f85426a9b0919ecfea54af8fa990fa6d4f74"
+    },
+    {
       "path": "TESTS/run_pattern_regression.py",
       "size": 2313,
       "sha256": "52b2e6facfbaa734aaa9ed8697a86f209631cea62f21a032ffe03ca0d8c7c547"
@@ -1875,8 +1880,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 8133,
-      "sha256": "9950c6dae0ebf461a25771ea0fa1c1c6cd4dbd0cf9a08c1e43946bcd7ac11f0a"
+      "size": 8620,
+      "sha256": "6514d47ba1cc87565f0a221e224f7d7bc0bc9d7e01ecd39ec1fd8e2cb3614dad"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -1950,8 +1955,8 @@
     },
     {
       "path": "TOOLS/build_review_plan.py",
-      "size": 27006,
-      "sha256": "aca1f9b21adb1f7ad84889b92064731f1225e2bcaadb154206c31a99a18cd0b4"
+      "size": 27986,
+      "sha256": "181adbf434679cae332704bf34716291fa601d5dbe9b311d55112270705d64dc"
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
@@ -2002,6 +2007,11 @@
       "path": "TOOLS/materialize_project_snapshot_collector.py",
       "size": 6801,
       "sha256": "924d9c7bf74b754efbb7c0c002f1e5adfad216c548a7b776d028d65e4702da6f"
+    },
+    {
+      "path": "TOOLS/mechanism_inventory.py",
+      "size": 21473,
+      "sha256": "ce804396a0019a859eec6480dee433f06be80eca614bed5993e4a06dc9f9262b"
     },
     {
       "path": "TOOLS/pattern_locator.py",
@@ -2080,8 +2090,8 @@
     },
     {
       "path": "TOOLS/rule_registry.py",
-      "size": 16406,
-      "sha256": "502c101ff16e7647970c1de45089b495306b3618b15839a717fe7f48155a6507"
+      "size": 22339,
+      "sha256": "4626e798bc948a20a6af61768caf21493ac8fc58c6df41630f6fa7a86b7a032a"
     },
     {
       "path": "TOOLS/run_public_ci.py",
@@ -2140,8 +2150,8 @@
     },
     {
       "path": "TOOLS/validate_skill.py",
-      "size": 31402,
-      "sha256": "38e2504f975bb03ad097f77a0b7483714d9910ab4732335e549adbaf1fb18557"
+      "size": 31990,
+      "sha256": "5785eb6fd6f7f6bcf2cc92f82c1fcf27865a09f1ed834874f873e9dfaa069746"
     },
     {
       "path": "TOOLS/validation_work_queue.py",
@@ -2150,13 +2160,13 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 19910,
-      "sha256": "508ca1504d9271ab2eb1d7f1b4e6d83060b40df7c7ebd8e153ba4ae195745f15"
+      "size": 20135,
+      "sha256": "36de0ef9e35adec6aa0a0613ce948f7d2d340ea16bf8c7f7d9188e2e42e7b7b9"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
-      "size": 13064,
-      "sha256": "f12f32e592c1796ce0f838cd62d400a56adea52265fcfed8570bde6f57fcfd78"
+      "size": 13145,
+      "sha256": "15cafac4488dbdfaa14515ad255d92b164044438bcab3ee7aa76a01551cabe74"
     },
     {
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
@@ -2175,5 +2185,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "83f2c3772e357f4a8162dec072be19d5c9bcf0bf312973821c39935431cddf4b"
+  "snapshot_digest": "29d766525942e2bdff754106f749e9256b6e37feb967d54ab25154c1519620fb"
 }
