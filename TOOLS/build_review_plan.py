@@ -402,6 +402,11 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
 
 def compact_summary(plan):
     """Small projection for human/LLM routing; the full plan remains the proof artifact."""
+    compact_context_load=dict(plan.get("context_load_plan") or {})
+    compact_context_load["supporting_artifacts"]=[
+        {k:row.get(k) for k in ("path","owner_kind","owner_id")}
+        for row in plan.get("active_supporting_artifacts",[])
+    ]
     return {
         "result":plan.get("result"),
         "routing":plan.get("routing"),
@@ -417,7 +422,7 @@ def compact_summary(plan):
         "active_deliveries":[{k:row.get(k) for k in ("capability_id","enforcement")} | ({"proof_owner":(row.get("proof_binding") or {}).get("owner")} if row.get("proof_binding") else {}) for row in plan.get("active_deliveries",[])],
         "deterministic_tools":plan.get("deterministic_tools"),
         "runtime_focus":plan.get("runtime_focus"),
-        "context_load_plan":plan.get("context_load_plan"),
+        "context_load_plan":compact_context_load,
     }
 
 
