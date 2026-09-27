@@ -258,5 +258,6 @@
       "manual fallback must retain a concrete reason and must not imply that ProjectSnapshot is unavailable when it was merely deferred"
     ],
     "user_facing_policy": "do not expose internal disposition labels unless they materially clarify why a manual artifact is still required"
-  }
+  },
+  "collection_plan_template": "TEMPLATES/PROJECT_SNAPSHOT_COLLECTION_PLAN.json"
 }
