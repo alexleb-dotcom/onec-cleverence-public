@@ -80,6 +80,66 @@ def write_zip(path,rows):
 skill=(ROOT/"SKILL.md").read_text(encoding="utf-8-sig")
 progressive=skill.split("## Progressive loading",1)[1] if "## Progressive loading" in skill else ""
 record("llm_does_not_load_full_registry","RULES/rule_registry.json\nrouted profile(s)" not in progressive and "LLM must not load the full registry" in skill)
+record(
+    "black_box_helper_discipline_is_always_loaded",
+    "Treat deterministic helpers as **black boxes during normal task execution**" in progressive
+    and "Read helper implementation source only when debugging/modifying that helper" in progressive,
+)
+required_owner_paths=(
+    "KNOWLEDGE/REQUIREMENTS_DISCOVERY.md",
+    "KNOWLEDGE/REQUIREMENTS_ARTIFACT_INTEGRITY.md",
+    "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
+    "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
+    "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
+    "KNOWLEDGE/RESULT_DELIVERY.md",
+    "KNOWLEDGE/LEARNING_PROTOCOL.md",
+)
+record(
+    "deferred_phase_owners_remain_explicit_and_present",
+    all(path in skill and (ROOT/path).is_file() for path in required_owner_paths),
+    {"missing":[path for path in required_owner_paths if path not in skill or not (ROOT/path).is_file()]},
+)
+record(
+    "requirements_artifact_phase_still_loads_integrity_owner",
+    "For requirements-artifact work also read `KNOWLEDGE/REQUIREMENTS_ARTIFACT_INTEGRITY.md`" in skill
+    and "TOOLS/requirements_gate.py requirements-contract.json" in skill,
+)
+record(
+    "result_delivery_phase_still_loads_canonical_contract",
+    "Before final presentation, **load and obey** `WORKFLOW/RESULT_DELIVERY_CONTRACT.json`" in skill,
+)
+record(
+    "knowledge_extraction_phase_still_loads_learning_owner",
+    "Every substantive task ends with an explicit knowledge-extraction disposition" in skill
+    and "At that phase, load `KNOWLEDGE/LEARNING_PROTOCOL.md`" in skill,
+)
+baseline_root_tool_refs={
+    "TOOLS/analyze_changeset_architecture.py",
+    "TOOLS/analyze_cleverence_configuration.py",
+    "TOOLS/analyze_cleverence_mslx.py",
+    "TOOLS/analyze_onec_bsl.py",
+    "TOOLS/analyze_onec_field_flow.py",
+    "TOOLS/analyze_onec_reachability.py",
+    "TOOLS/analyze_onec_xml.py",
+    "TOOLS/build_local_bsl_reference_index.py",
+    "TOOLS/build_local_cleverence_reference_index.py",
+    "TOOLS/build_requirements_contract.py",
+    "TOOLS/build_review_plan.py",
+    "TOOLS/build_validation_ledger.py",
+    "TOOLS/check_bsl_call_signatures.py",
+    "TOOLS/evidence_receipt.py",
+    "TOOLS/execution_checkpoint.py",
+    "TOOLS/reference_locator.py",
+    "TOOLS/release_gate.py",
+    "TOOLS/requirements_gate.py",
+    "TOOLS/rule_registry.py",
+}
+current_root_tool_refs=set(__import__("re").findall(r"TOOLS/[A-Za-z0-9_./-]+\.py",skill))
+record(
+    "skill_slimming_preserves_root_tool_entrypoints",
+    current_root_tool_refs==baseline_root_tool_refs,
+    {"actual":sorted(current_root_tool_refs),"expected":sorted(baseline_root_tool_refs)},
+)
 
 with tempfile.TemporaryDirectory() as td:
     temp=Path(td)
@@ -486,6 +546,51 @@ with tempfile.TemporaryDirectory() as td:
     record("compact_queue_preserves_cleverence_semantic_claims",
         bool(routed_cleverence) and expected_cleverence_claims<=proof_claims,
         {"routed":sorted(routed_cleverence),"expected_claims":len(expected_cleverence_claims),"queued_claims":len(expected_cleverence_claims & proof_claims)})
+
+    def active_rule_ids(candidate_plan):
+        return {row.get("id") for row in candidate_plan.get("rules") or [] if row.get("active")}
+
+    def routed_profile_files(candidate_plan):
+        summary=compact_plan(candidate_plan)
+        active={row.get("file") for row in summary.get("active_profiles") or [] if row.get("file")}
+        loadable=set((summary.get("context_load_plan") or {}).get("profiles") or [])
+        return active,loadable
+
+    onec_query=temp/"routed-query.bsl"
+    onec_query.write_text('Процедура Выполнить()\n    Запрос = Новый Запрос("ВЫБРАТЬ 1");\nКонецПроцедуры\n',encoding="utf-8")
+    onec_plan=build_plan([str(onec_query)],analysis_only=True,risk_override="R1_CONTRACT")
+    onec_active=active_rule_ids(onec_plan); onec_profiles,onec_loadable=routed_profile_files(onec_plan)
+    record(
+        "representative_onec_only_still_routes_required_detail",
+        onec_plan.get("routing",{}).get("surface")=="ONEC_ONLY"
+        and "QUERY" in onec_active
+        and bool(onec_profiles)
+        and onec_profiles<=onec_loadable
+        and all((ROOT/path).is_file() for path in onec_profiles),
+        {"surface":onec_plan.get("routing",{}).get("surface"),"active":sorted(x for x in onec_active if x),"profiles":sorted(onec_profiles),"loadable":sorted(onec_loadable)},
+    )
+
+    clever_active=active_rule_ids(cleverence_plan); clever_profiles,clever_loadable=routed_profile_files(cleverence_plan)
+    record(
+        "representative_cleverence_only_still_routes_required_detail",
+        cleverence_plan.get("routing",{}).get("surface")=="CLEVERENCE_ONLY"
+        and "CLEVERENCE_MSLX" in clever_active
+        and bool(clever_profiles)
+        and clever_profiles<=clever_loadable
+        and all((ROOT/path).is_file() for path in clever_profiles),
+        {"surface":cleverence_plan.get("routing",{}).get("surface"),"active":sorted(x for x in clever_active if x),"profiles":sorted(clever_profiles),"loadable":sorted(clever_loadable)},
+    )
+
+    cross_plan=build_plan([str(onec_query),str(cleverence_source)],analysis_only=True,risk_override="R3_CROSS_SYSTEM")
+    cross_active=active_rule_ids(cross_plan); cross_profiles,cross_loadable=routed_profile_files(cross_plan)
+    record(
+        "representative_cross_system_still_reaches_both_sides",
+        cross_plan.get("routing",{}).get("surface")=="CROSS_SYSTEM"
+        and {"QUERY","CLEVERENCE_MSLX","CLEVERENCE_INTEGRATION"}<=cross_active
+        and cross_profiles<=cross_loadable
+        and all((ROOT/path).is_file() for path in cross_profiles),
+        {"surface":cross_plan.get("routing",{}).get("surface"),"active":sorted(x for x in cross_active if x),"profiles":sorted(cross_profiles),"loadable":sorted(cross_loadable)},
+    )
 
 p=subprocess.run([sys.executable,str(ROOT/"TOOLS/rule_registry.py"),"--rule","SOURCE_FIRST"],cwd=ROOT,capture_output=True,text=True)
 narrow=json.loads(p.stdout) if p.returncode==0 else {}
