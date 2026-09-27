@@ -43,6 +43,27 @@
       ]
     },
     {
+      "id": "mechanism_inventory",
+      "order": 35,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TOOLS/mechanism_inventory.py",
+        "--check"
+      ]
+    },
+    {
+      "id": "mechanism_inventory_regression",
+      "order": 36,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_mechanism_inventory_regression.py"
+      ]
+    },
+    {
       "id": "cold_start",
       "order": 40,
       "phase": "FAST",
