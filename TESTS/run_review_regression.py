@@ -29,6 +29,7 @@ from runtime_evidence import create_adapter_observation
 from semantic_review import write_review_receipt
 from implementation_intent import build_skeleton as build_intent_skeleton
 from rule_registry import load_registry, validate_delivery_bindings
+from release_gate_hardening import route_fingerprint
 from generate_registry_views import render as render_generated_views
 from validation_work_queue import build_work_queue
 from evidence_source_policy import classify_non_proof_ref, validate_evidence_items
@@ -1015,11 +1016,45 @@ if _gating:
     if not ok:errors.append({'case':key,'details':dr})
 key='delivery_binding:positive_control_has_advisory'; ok=bool(_advisory); results[key]={'advisory':[x.get('capability_id') for x in _advisory],'pass':ok}
 if not ok:errors.append({'case':key,'details':results[key]})
+def _rebind_plan_bound_proofs(target_plan,target_ledger,label):
+    intent=build_intent_skeleton(target_plan)
+    intent['rows']=copy.deepcopy((target_ledger.get('implementation_intent_map') or {}).get('rows') or [])
+    target_ledger['implementation_intent_map']=intent
+    for index,review in enumerate(target_ledger.get('independent_reviews') or []):
+        old_payload=json.loads(Path(review['receipt_ref']).read_text(encoding='utf-8-sig'))
+        digest=hashlib.sha256(review['claim_id'].encode('utf-8')).hexdigest()[:16]
+        receipt_path=_receipt_dir/f'{label}-review-{index:03d}-{digest}.json'
+        write_review_receipt(receipt_path,target_plan,
+            author_execution_id=old_payload['author_execution_id'],
+            reviewer_execution_id=old_payload['reviewer_execution_id'],
+            claim_id=old_payload['claim_id'],rule_id=old_payload['rule_id'],check_id=old_payload.get('check_id'),
+            source_anchors=old_payload['source_anchors'],reviewer_verdict=old_payload['reviewer_verdict'],
+            defects=old_payload.get('defects') or [],limitations=old_payload.get('limitations') or [],
+            external_reviewer_status=old_payload.get('external_reviewer_status'))
+        review['receipt_ref']=str(receipt_path)
+        review['receipt_sha256']=hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+
 if _advisory:
-    omitted=_advisory[0]; advisory_plan=copy.deepcopy(plan); advisory_plan['active_deliveries']=[x for x in advisory_plan.get('active_deliveries',[]) if x.get('capability_id')!=omitted.get('capability_id')]
-    omitted_payload=(omitted.get('executor_payload') or {}).get('value'); advisory_plan['deterministic_tools']=[x for x in advisory_plan.get('deterministic_tools',[]) if x!=omitted_payload]
-    ar=release_evaluate(advisory_plan,proved,registry); key='delivery_binding:advisory_omission_nonblocking'; ok=(ar['result']=='PASS' and ar['release_outcome']=='PROVEN' and not any(x.get('type')=='RELEASE_PLAN_RECOMPUTE_DRIFT' for x in ar.get('errors',[])))
-    results[key]={'capability':omitted.get('capability_id'),'errors':ar.get('errors',[]),'pass':ok}
+    omitted=_advisory[0]
+    if omitted.get('enforcement')!='ADVISORY':raise AssertionError('advisory omission fixture selected a non-ADVISORY row')
+    advisory_plan=copy.deepcopy(plan)
+    advisory_plan['active_deliveries']=[x for x in advisory_plan.get('active_deliveries',[]) if x.get('capability_id')!=omitted.get('capability_id')]
+    remaining=advisory_plan['active_deliveries']
+    expected_tools=[]; expected_references=[]
+    for delivery in remaining:
+        payload=delivery.get('executor_payload') or {}
+        value=payload.get('value')
+        if payload.get('kind')=='INSTRUCTION' and isinstance(value,str) and value.strip() and value not in expected_tools:expected_tools.append(value)
+        for reference in delivery.get('references') or []:
+            if reference not in expected_references:expected_references.append(reference)
+    advisory_plan['deterministic_tools']=expected_tools
+    advisory_plan.setdefault('context_load_plan',{})['references']=expected_references
+    advisory_proved=copy.deepcopy(proved)
+    _rebind_plan_bound_proofs(advisory_plan,advisory_proved,'advisory-omission')
+    expected_remaining=[x for x in plan.get('active_deliveries',[]) if x.get('capability_id')!=omitted.get('capability_id')]
+    gating_preserved=[x for x in remaining if x.get('enforcement')=='GATING']==[x for x in plan.get('active_deliveries',[]) if x.get('enforcement')=='GATING']
+    ar=release_evaluate(advisory_plan,advisory_proved,registry); key='delivery_binding:advisory_omission_nonblocking'; ok=(remaining==expected_remaining and gating_preserved and ar['result']=='PASS' and ar['release_outcome']=='PROVEN' and not any(x.get('type')=='RELEASE_PLAN_RECOMPUTE_DRIFT' for x in ar.get('errors',[])))
+    results[key]={'capability':omitted.get('capability_id'),'remaining':[x.get('capability_id') for x in remaining],'tools':expected_tools,'references':expected_references,'errors':ar.get('errors',[]),'pass':ok}
     if not ok:errors.append({'case':key,'details':ar})
 
 _bad_registry=copy.deepcopy(registry)
@@ -1143,13 +1178,22 @@ _call_rule['status']='NOT_APPLICABLE'; _call_rule['reason']='Exact candidate rev
 for _check in _call_rule.get('checks',[]):
     _check['status']='NOT_APPLICABLE'; _check['reason']='Exact candidate review concludes this check is not applicable to the accepted disposition.'; _check['evidence']=[]
 _s2c=next(x for x in _na['standards_to_code'] if x.get('rule_id')=='CALL_CONTRACT'); _s2c['status']='NOT_APPLICABLE'; _s2c['reason']='Owner rule is not applicable in this synthetic disposition.'; _s2c['evidence']=[]
-_rr=release_evaluate(plan,_na,registry); key='delivery_binding:conditional_gating_na_without_proof_blocks'; ok=(_call_route.get('activation_status')=='CONDITIONAL_REVIEW' and _rr['result']=='FAIL' and any(x.get('type')=='CAPABILITY_BOUND_CHECK_NA_WITHOUT_PROOF' and x.get('id')==_call_check_id for x in _rr.get('errors',[])))
+_route_rebuttal_evidence=synthetic_evidence('SOURCE_REQUIRED','synthetic exact-source false-positive routing adjudication',_call_rule['claim_id'])
+_call_rule['applicability_rebuttal']={
+    'status':'FALSE_POSITIVE',
+    'route_fingerprint':route_fingerprint(_call_route),
+    'rebutted_signals':list(_call_route.get('detected_by') or []),
+    'reason':'This synthetic fixture isolates an external member-call routing signal without a changed exported declaration contract; the route is rebutted for this disposition only.',
+    'evidence':[_route_rebuttal_evidence],
+}
+_bound_na_types={'CAPABILITY_BOUND_CHECK_NA_WITHOUT_PROOF','CAPABILITY_PROOF_EVIDENCE_NOT_ACCEPTED'}
+_rr=release_evaluate(plan,_na,registry); _bound_na_errors=[x for x in _rr.get('errors',[]) if x.get('type') in _bound_na_types]; key='delivery_binding:conditional_gating_na_without_proof_blocks'; ok=(_call_route.get('activation_status')=='CONDITIONAL_REVIEW' and _rr['result']=='FAIL' and len(_rr.get('errors',[]))==2 and {x.get('type') for x in _bound_na_errors}==_bound_na_types and any(x.get('type')=='CAPABILITY_BOUND_CHECK_NA_WITHOUT_PROOF' and x.get('id')==_call_check_id and x.get('capability_id')==_call_binding.get('capability_id') for x in _bound_na_errors) and all(x.get('capability_id')==_call_binding.get('capability_id') for x in _bound_na_errors) and not any(x.get('type')=='ROUTED_RULE_NA_WITHOUT_REBUTTAL' and x.get('id')=='CALL_CONTRACT' for x in _rr.get('errors',[])))
 results[key]={'route_status':_call_route.get('activation_status'),'errors':_rr.get('errors',[]),'pass':ok}
 if not ok:errors.append({'case':key,'details':results[key]})
 
 _na_proved=copy.deepcopy(_na); _call_rule=next(x for x in _na_proved['rules'] if x.get('id')=='CALL_CONTRACT'); _bound=next(x for x in _call_rule['checks'] if x.get('id')==_call_check_id)
 _bound['evidence']=[synthetic_evidence('SOURCE_REQUIRED','synthetic capability N/A exact-source evidence',_bound['claim_id'])]
-_rr=release_evaluate(plan,_na_proved,registry); key='delivery_binding:conditional_gating_na_with_verified_proof_allowed'; ok=(_rr['result']=='PASS' and _rr['release_outcome']=='PROVEN')
+_rr=release_evaluate(plan,_na_proved,registry); _validated_rebuttal=_call_rule.get('applicability_rebuttal') or {}; key='delivery_binding:conditional_gating_na_with_verified_proof_allowed'; ok=(_call_route.get('activation_status')=='CONDITIONAL_REVIEW' and _validated_rebuttal.get('route_fingerprint')==route_fingerprint(_call_route) and set(_validated_rebuttal.get('rebutted_signals') or [])==set(_call_route.get('detected_by') or []) and bool(_validated_rebuttal.get('evidence')) and bool(_validated_rebuttal['evidence'][0].get('source_provenance')) and _rr['result']=='PASS' and _rr['release_outcome']=='PROVEN')
 results[key]={'errors':_rr.get('errors',[]),'outcome':_rr.get('release_outcome'),'pass':ok}
 if not ok:errors.append({'case':key,'details':_rr})
 
