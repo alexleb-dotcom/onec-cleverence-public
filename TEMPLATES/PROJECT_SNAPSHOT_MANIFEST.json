@@ -43,5 +43,14 @@
     "runtime_business_data_included": false,
     "notes": []
   },
-  "notes": []
+  "notes": [],
+  "_artifact_lifecycle": {
+    "status": "DEPRECATED",
+    "reason": "Superseded stale template: current ProjectSnapshot validation does not require a separate snapshot_id and R2 must not preserve that placeholder as canonical task support.",
+    "task_reachable": false,
+    "superseded_by": [
+      "TOOLS/validate_project_snapshot_package.py",
+      "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json"
+    ]
+  }
 }
