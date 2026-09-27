@@ -12,7 +12,13 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TOOLS"))
 
-from mechanism_inventory import build_inventory, build_classification_context, classify_candidate_path, _internal_tool_closure
+from mechanism_inventory import (
+    build_inventory,
+    build_classification_context,
+    classify_candidate_path,
+    _internal_tool_closure,
+    _root_task_entrypoints,
+)
 from rule_registry import load_registry, materialize_delivery_applicability, materialize_supporting_artifacts
 from build_review_plan import build_plan, compact_summary
 
@@ -29,6 +35,16 @@ require(report["classification_counts"].get("DEPRECATED") == 2, "two_deprecated"
 require(report["routed_without_applicability_owner"] == 0, "routed_owner_complete")
 require(report["supporting_without_owner"] == 0, "support_owner_complete")
 require(report["silent_drop_paths_remaining"] == 0, "silent_drop_zero", report["errors"])
+require(
+    report.get("root_task_entrypoints") == _root_task_entrypoints(ROOT),
+    "root_entrypoint_set_derived",
+    {"report": report.get("root_task_entrypoints"), "derived": _root_task_entrypoints(ROOT)},
+)
+require(
+    report.get("root_task_entrypoints_all_independently_owned") is True,
+    "current_root_entrypoints_all_independently_owned",
+    {"owners": report.get("root_task_entrypoint_owners"), "errors": report.get("errors")},
+)
 
 rows = {row.get("path"): row for row in report["rows"] if row.get("path")}
 expected = {
@@ -156,6 +172,133 @@ with tempfile.TemporaryDirectory() as td:
         "inventory_reports_test_import_only_tool_as_orphan",
         synthetic_report["orphan_unknown_rows"],
     )
+
+def _manifest_add_file(root: Path, path: Path) -> None:
+    manifest_path = root / "DISTRIBUTION_MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    rel = path.relative_to(root).as_posix()
+    raw = path.read_bytes()
+    manifest["files"] = [row for row in manifest["files"] if row.get("path") != rel]
+    manifest["files"].append({
+        "path": rel,
+        "size": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+    })
+    manifest["files"] = sorted(manifest["files"], key=lambda row: row["path"])
+    manifest["file_count"] = len(manifest["files"])
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _copy_for_root_guard() -> Path:
+    holder = Path(tempfile.mkdtemp())
+    copied = holder / "repo"
+    shutil.copytree(
+        ROOT,
+        copied,
+        ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+    )
+    return copied
+
+
+for rescue in ("NONE", "TEST", "README"):
+    copied_root = _copy_for_root_guard()
+    try:
+        synthetic_tool = copied_root / "TOOLS" / "new_task_route.py"
+        synthetic_tool.write_text("def main():\n    return 'task-route'\n", encoding="utf-8")
+        _manifest_add_file(copied_root, synthetic_tool)
+
+        skill_path = copied_root / "SKILL.md"
+        skill_path.write_text(
+            skill_path.read_text(encoding="utf-8") + "\nRun TOOLS/new_task_route.py for the new task route.\n",
+            encoding="utf-8",
+        )
+        _manifest_add_file(copied_root, skill_path)
+
+        if rescue == "TEST":
+            synthetic_test = copied_root / "TESTS" / "run_new_task_route_regression.py"
+            synthetic_test.write_text("import new_task_route\n", encoding="utf-8")
+            _manifest_add_file(copied_root, synthetic_test)
+        elif rescue == "README":
+            readme_path = copied_root / "README.md"
+            readme_path.write_text(
+                readme_path.read_text(encoding="utf-8") + "\nSee TOOLS/new_task_route.py.\n",
+                encoding="utf-8",
+            )
+            _manifest_add_file(copied_root, readme_path)
+
+        synthetic_report = build_inventory(copied_root)
+        root_errors = [
+            row for row in synthetic_report.get("errors", [])
+            if row.get("type") == "ROOT_TASK_ENTRYPOINT_WITHOUT_INDEPENDENT_OWNER"
+            and row.get("path") == "TOOLS/new_task_route.py"
+        ]
+        require(
+            synthetic_report["result"] == "FAIL" and bool(root_errors),
+            f"unowned_root_entrypoint_fails_closed:{rescue.lower()}",
+            {"errors": synthetic_report.get("errors"), "owners": synthetic_report.get("root_task_entrypoint_owners")},
+        )
+    finally:
+        shutil.rmtree(copied_root.parent, ignore_errors=True)
+
+copied_root = _copy_for_root_guard()
+try:
+    synthetic_tool = copied_root / "TOOLS" / "independent_pipeline_route.py"
+    synthetic_tool.write_text("def main():\n    return 'pipeline'\n", encoding="utf-8")
+    _manifest_add_file(copied_root, synthetic_tool)
+
+    skill_path = copied_root / "SKILL.md"
+    skill_path.write_text(
+        skill_path.read_text(encoding="utf-8") + "\nRun TOOLS/independent_pipeline_route.py when the pipeline contract requires it.\n",
+        encoding="utf-8",
+    )
+    _manifest_add_file(copied_root, skill_path)
+
+    workflow_path = copied_root / "WORKFLOW" / "DEVELOPMENT_PIPELINE.json"
+    workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+    workflow["root_entrypoint_guard_fixture"] = "TOOLS/independent_pipeline_route.py"
+    workflow_path.write_text(json.dumps(workflow, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _manifest_add_file(copied_root, workflow_path)
+
+    owned_report = build_inventory(copied_root)
+    require(
+        owned_report["result"] == "PASS"
+        and owned_report.get("root_task_entrypoint_owners", {}).get("TOOLS/independent_pipeline_route.py") == "PIPELINE:INDEPENDENT_REACHABILITY",
+        "independent_pipeline_root_passes",
+        {"result": owned_report.get("result"), "owners": owned_report.get("root_task_entrypoint_owners"), "errors": owned_report.get("errors")},
+    )
+
+    workflow.pop("root_entrypoint_guard_fixture", None)
+    workflow_path.write_text(json.dumps(workflow, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _manifest_add_file(copied_root, workflow_path)
+    unowned_report = build_inventory(copied_root)
+    require(
+        unowned_report["result"] == "FAIL"
+        and any(
+            row.get("type") == "ROOT_TASK_ENTRYPOINT_WITHOUT_INDEPENDENT_OWNER"
+            and row.get("path") == "TOOLS/independent_pipeline_route.py"
+            for row in unowned_report.get("errors", [])
+        ),
+        "removing_independent_pipeline_owner_fails_closed",
+        {"owners": unowned_report.get("root_task_entrypoint_owners"), "errors": unowned_report.get("errors")},
+    )
+finally:
+    shutil.rmtree(copied_root.parent, ignore_errors=True)
+
+require(
+    str(report.get("root_task_entrypoint_owners", {}).get("TOOLS/analyze_onec_bsl.py", "")).startswith("DELIVERY:"),
+    "registry_delivery_owned_root_passes",
+    report.get("root_task_entrypoint_owners"),
+)
+require(
+    report.get("root_task_entrypoint_owners", {}).get("TOOLS/reference_locator.py") == "SKILL:SOURCE_DISCOVERY",
+    "source_support_owned_root_passes",
+    report.get("root_task_entrypoint_owners"),
+)
+require(
+    report.get("root_task_entrypoint_owners", {}).get("TOOLS/build_review_plan.py") == "PIPELINE:INDEPENDENT_REACHABILITY",
+    "existing_independent_pipeline_root_passes",
+    report.get("root_task_entrypoint_owners"),
+)
 
 # All-candidate applicability emits exactly one explicit disposition for all nine.
 inactive_routes = [
