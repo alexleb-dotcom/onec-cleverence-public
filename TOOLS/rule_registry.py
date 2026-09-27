@@ -30,6 +30,114 @@ DELIVERY_ENFORCEMENT = {"ADVISORY","GATING"}
 DELIVERY_PAYLOAD_KINDS = {"INSTRUCTION"}
 
 
+SUPPORTING_ARTIFACT_RE = re.compile(r"^(?:KNOWLEDGE|TEMPLATES|REFERENCE|PATTERNS)/[A-Za-z0-9_./-]+$")
+
+
+def validate_supporting_artifacts(registry: dict) -> list[str]:
+    """Validate owner-local supporting paths without making this projection semantic authority."""
+    errors=[]; seen={}
+    for owner_kind, rows in (("RULE",registry.get("rules",[])),("GATE",registry.get("gates",[]))):
+        for row in rows:
+            owner_id=row.get("id","?")
+            values=row.get("supporting_artifacts",[])
+            if values is None:values=[]
+            if not isinstance(values,list):
+                errors.append(f"supporting_artifacts_not_list:{owner_kind}:{owner_id}")
+                continue
+            if len(values)!=len(set(values)):
+                errors.append(f"supporting_artifacts_duplicate:{owner_kind}:{owner_id}")
+            for rel in values:
+                if not isinstance(rel,str) or not SUPPORTING_ARTIFACT_RE.fullmatch(rel):
+                    errors.append(f"supporting_artifact_bad_path:{owner_kind}:{owner_id}:{rel}")
+                    continue
+                previous=seen.get(rel)
+                current=f"{owner_kind}:{owner_id}"
+                if previous is not None and previous!=current:
+                    errors.append(f"supporting_artifact_multiple_owners:{rel}:{previous}:{current}")
+                else:
+                    seen[rel]=current
+    return errors
+
+
+def _delivery_routed(row: dict | None) -> bool:
+    return bool(row and row.get("active") and (row.get("detected_by") or row.get("tier",1)>0 or str(row.get("reason","")).startswith("derived")))
+
+
+def materialize_delivery_applicability(registry: dict, rule_rows: list[dict], surface: str) -> list[dict]:
+    """Emit one explicit applicability disposition for every canonical delivery candidate."""
+    errors=validate_delivery_bindings(registry)
+    if errors:raise ValueError("Invalid registry delivery bindings: "+"; ".join(errors))
+    routes={row.get("id"):row for row in rule_rows if isinstance(row,dict)}
+    output=[]
+    for rule in registry.get("rules",[]):
+        route=routes.get(rule.get("id"))
+        for binding in rule.get("delivery",[]):
+            condition=json.loads(json.dumps(binding.get("condition") or {},ensure_ascii=False))
+            status="NOT_EVALUATED"; reason="OWNER_ROUTE_MISSING"
+            if route is not None and not isinstance(route.get("active"),bool):
+                reason="OWNER_ROUTE_ACTIVE_STATE_MISSING"
+            elif route is not None and route.get("active") is False:
+                status="NOT_APPLICABLE"; reason="OWNER_RULE_NOT_ACTIVE"
+            elif route is not None:
+                if condition.get("surfaces") and surface not in condition["surfaces"]:
+                    status="NOT_APPLICABLE"; reason="SURFACE_CONDITION_FALSE"
+                elif condition.get("any_routed_rule_ids"):
+                    dependencies=[routes.get(x) for x in condition["any_routed_rule_ids"]]
+                    if any(row is None or not isinstance(row.get("active"),bool) for row in dependencies):
+                        status="NOT_EVALUATED"; reason="DEPENDENT_ROUTE_NOT_EVALUATED"
+                    elif any(_delivery_routed(row) for row in dependencies):
+                        status="APPLICABLE"; reason="DEPENDENT_ROUTED_RULE_APPLICABLE"
+                    else:
+                        status="NOT_APPLICABLE"; reason="DEPENDENT_ROUTED_RULE_ABSENT"
+                elif condition:
+                    status="APPLICABLE"; reason="DELIVERY_CONDITION_APPLICABLE"
+                elif _delivery_routed(route):
+                    status="APPLICABLE"; reason="OWNER_ROUTE_APPLICABLE"
+                else:
+                    status="NOT_APPLICABLE"; reason="OWNER_ROUTE_NOT_ROUTED_FOR_DELIVERY"
+            output.append({
+                "capability_id":binding["capability_id"],
+                "owner_rule_id":rule["id"],
+                "status":status,
+                "reason":reason,
+                "condition_snapshot":condition,
+                "routing_evidence":{
+                    "owner":{
+                        "active":route.get("active") if isinstance(route,dict) else None,
+                        "tier":route.get("tier") if isinstance(route,dict) else None,
+                        "detected_by":list(route.get("detected_by") or []) if isinstance(route,dict) else [],
+                        "reason":route.get("reason") if isinstance(route,dict) else None,
+                    },
+                    "surface":surface,
+                    "dependent_rule_ids":list(condition.get("any_routed_rule_ids") or []),
+                },
+            })
+    output.sort(key=lambda row:row["capability_id"])
+    return output
+
+
+def materialize_supporting_artifacts(registry: dict, rule_rows: list[dict], gate_rows: list[dict]) -> list[dict]:
+    """Project support owned by active rules/applicable gates into the existing task plan."""
+    errors=validate_supporting_artifacts(registry)
+    if errors:raise ValueError("Invalid registry supporting artifacts: "+"; ".join(errors))
+    routes={row.get("id"):row for row in rule_rows if isinstance(row,dict)}
+    gates={row.get("gate"):row for row in gate_rows if isinstance(row,dict)}
+    output=[]
+    for rule in registry.get("rules",[]):
+        route=routes.get(rule.get("id"))
+        if not route or route.get("active") is not True:continue
+        for rel in rule.get("supporting_artifacts",[]) or []:
+            output.append({"path":rel,"owner_kind":"RULE","owner_id":rule["id"]})
+    for gate in registry.get("gates",[]):
+        route=gates.get(gate.get("id"))
+        if not route or route.get("status")=="NOT_APPLICABLE":continue
+        for rel in gate.get("supporting_artifacts",[]) or []:
+            output.append({"path":rel,"owner_kind":"GATE","owner_id":gate["id"]})
+    output.sort(key=lambda row:(row["path"],row["owner_kind"],row["owner_id"]))
+    return output
+
+
+
 def validate_delivery_bindings(registry: dict) -> list[str]:
     """Validate the narrow rule-owned delivery/proof contract without creating a second registry."""
     errors=[]; seen={}; seen_sequences={}; rules=rule_map(registry); surfaces=set(registry.get("surfaces") or [])
