@@ -1755,8 +1755,8 @@
     },
     {
       "path": "TESTS/run_mechanism_inventory_regression.py",
-      "size": 7447,
-      "sha256": "b93d11a63c5a6b73d717f4bb2d9e8ea51b676af7fef3afa9ad3dc27db7568820"
+      "size": 9448,
+      "sha256": "66b7cde267922f3bb81f1e25f841458d4b0e83f21326d7ff7bd33e32e0621fdd"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -1955,8 +1955,8 @@
     },
     {
       "path": "TOOLS/build_review_plan.py",
-      "size": 27742,
-      "sha256": "99000270907a7789eb2c7f4243376cfa917b3f8a278d8cebfec2b4c8ccd2a82f"
+      "size": 27984,
+      "sha256": "61bbdbc7451b5887c506ff4cd2e659a7e11ef697cc9659c316ad148d8100dd91"
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
@@ -2010,8 +2010,8 @@
     },
     {
       "path": "TOOLS/mechanism_inventory.py",
-      "size": 22122,
-      "sha256": "be0ec86a97ee58815786e8b8066b21770f7768cf21b5cac79929b4cb25779e93"
+      "size": 22020,
+      "sha256": "1cc0c186b46343e7fb5dd005ad06b4034530fd17b772677e6ecb440d1adafe4e"
     },
     {
       "path": "TOOLS/pattern_locator.py",
@@ -2185,5 +2185,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "cd95d8b4d4a83803ee29f63164068a84cf8992f83c35e5319f114ba8f8db472e"
+  "snapshot_digest": "8a73e2d069336cb9de80d90a11918e9a5b41a7a066c0a30a443d0f9bcee395c1"
 }
