@@ -293,6 +293,21 @@ def _internal_tool_closure(root: Path, support_tools: dict[str, str]) -> set[str
         for ref in _extract_refs(path):
             add(ref)
 
+    # Regression runners are themselves governed PIPELINE_INTERNAL surface. Their
+    # imports/references prove that helper tools are validation internals even when
+    # the public CI inventory names only the runner, not every imported helper.
+    for path in sorted((root / "TESTS").glob("*.py")):
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for ref in _extract_refs(path):
+            add(ref)
+        for module in LOCAL_IMPORT_RE.findall(text):
+            mapped = module_paths.get(module)
+            if mapped:
+                add(mapped)
+
     while queue:
         rel = queue.popleft()
         path = root / rel
