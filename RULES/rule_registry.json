@@ -1,5 +1,5 @@
 {
-  "schema_version": 13,
+  "schema_version": 15,
   "principle": "A rule is not implemented merely because it exists in Markdown. Requirements and technical rules require activation, evidence/check structure, regression coverage and fail-closed gate disposition.",
   "status_model": {
     "rule_statuses": [
@@ -798,7 +798,27 @@
           "check:CALL_CONTRACT_P01",
           "fixture:call_signature_bad.bsl"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.CALL_SIGNATURE_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Resolve qualified-call boundaries; run TOOLS/check_bsl_call_signatures.py for cross-module calls with exact declarations"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:CALL_CONTRACT:CALL_SIGNATURE_CONTRACT",
+            "accepted_evidence": [
+              "MACHINE",
+              "SOURCE_REQUIRED",
+              "SEMANTIC"
+            ]
+          },
+          "sequence": 40
+        }
+      ]
     },
     {
       "id": "IMPLEMENTATION_REACHABILITY",
@@ -871,7 +891,27 @@
           "EXACT_SOURCE",
           "INDEPENDENT_REVIEW"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.REACHABILITY_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_onec_reachability.py on exact candidate + baseline; prove intended entrypoint → caller(s) → new/changed routine. Export alone is not invocation evidence"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:IMPLEMENTATION_REACHABILITY:IMPLEMENTATION_REACHABILITY_T02",
+            "accepted_evidence": [
+              "MACHINE",
+              "SOURCE_REQUIRED",
+              "SEMANTIC"
+            ]
+          },
+          "sequence": 50
+        }
+      ]
     },
     {
       "id": "DOMAIN_OWNERSHIP",
@@ -1667,7 +1707,46 @@
           "release:required_gate_na_blocks",
           "check:STANDARD_CLAIM_FIDELITY"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.ONEC_BSL_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_onec_bsl.py for each changed BSL final byte-set"
+          },
+          "references": [],
+          "enforcement": "ADVISORY",
+          "proof_binding": null,
+          "condition": {
+            "surfaces": [
+              "ONEC_ONLY",
+              "CROSS_SYSTEM"
+            ]
+          },
+          "sequence": 10
+        },
+        {
+          "capability_id": "CAP.ONEC_XML_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_onec_xml.py on the smallest supplied directory/ZIP that preserves companion XML context"
+          },
+          "references": [],
+          "enforcement": "ADVISORY",
+          "proof_binding": null,
+          "condition": {
+            "any_routed_rule_ids": [
+              "ONEC_XML_STRUCTURE",
+              "FORM_XML_STRUCTURE",
+              "METADATA_XML_STRUCTURE",
+              "CFE_EXTENSION_STRUCTURE",
+              "XDTO_STRUCTURE"
+            ]
+          },
+          "sequence": 20
+        }
+      ]
     },
     {
       "id": "DELIVERY_COHERENCE",
@@ -2562,7 +2641,28 @@
           "machine:POST_WRITE_REACHABLE_FIELD_OVERWRITE",
           "check:POST_WRITE_STANDARD_OVERWRITE_P01"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.FIELD_FLOW_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_onec_field_flow.py on exact changed BSL and resolve same-field reachable writers/unresolved lifecycle calls"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:POST_WRITE_STANDARD_OVERWRITE:POST_WRITE_STANDARD_OVERWRITE_P01",
+            "accepted_evidence": [
+              "MACHINE",
+              "SOURCE_REQUIRED",
+              "SEMANTIC",
+              "RUNTIME"
+            ]
+          },
+          "sequence": 60
+        }
+      ]
     },
     {
       "id": "ONEC_XML_STRUCTURE",
@@ -2798,7 +2898,26 @@
           "check:FORM_CONSTANTS_SET_MEMBERSHIP",
           "check:FORM_DATA_BINDING_ADAPTER_LIFECYCLE"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.FORM_DATA_BINDING_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Resolve each changed form DataPath against the actual form runtime data source/composition; for ConstantsSet.Member prove concrete set membership instead of inferring it from Constant metadata"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:FORM_DATA_BINDING:FORM_DATA_BINDING_P01",
+            "accepted_evidence": [
+              "SOURCE_REQUIRED",
+              "SEMANTIC"
+            ]
+          },
+          "sequence": 30
+        }
+      ]
     },
     {
       "id": "METADATA_XML_STRUCTURE",
@@ -3792,7 +3911,27 @@
           "machine:CHANGESET_SIMILARITY_SCOPE_TOO_BROAD",
           "check:CROSS_OBJECT_DUPLICATION_REVIEW_P05"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.CHANGESET_ARCHITECTURE_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_changeset_architecture.py on the complete changed BSL set; classify REVIEW candidates semantically and perform whole-change-set owner mapping even when candidate count is zero"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:CROSS_OBJECT_DUPLICATION_REVIEW:CROSS_OBJECT_DUPLICATION_REVIEW_P02",
+            "accepted_evidence": [
+              "MACHINE",
+              "SOURCE_REQUIRED",
+              "SEMANTIC"
+            ]
+          },
+          "sequence": 70
+        }
+      ]
     },
     {
       "id": "SERVER_API_SECURITY",
@@ -4105,7 +4244,28 @@
           "EXACT_FIELDS_TYPES",
           "PRODUCER_MAPPING_WRITER_CONSUMER"
         ]
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.CLEVERENCE_CONFIGURATION_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_cleverence_configuration.py on changed Metadata/DocumentTypes with accepted baseline when available; prove barcode precedence and exact field contracts semantically/runtime"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:CLEVERENCE_CONFIGURATION:CLEVERENCE_CONFIGURATION_P01",
+            "accepted_evidence": [
+              "MACHINE",
+              "SOURCE_REQUIRED",
+              "SEMANTIC",
+              "RUNTIME"
+            ]
+          },
+          "sequence": 90
+        }
+      ]
     },
     {
       "id": "CLEVERENCE_MSLX",
@@ -4305,7 +4465,28 @@
           "PRODUCER_MAPPING_WRITER_CONSUMER"
         ],
         "runtime_required_from": "R2_STATEFUL_RUNTIME"
-      }
+      },
+      "delivery": [
+        {
+          "capability_id": "CAP.CLEVERENCE_MSLX_ANALYSIS",
+          "executor_payload": {
+            "kind": "INSTRUCTION",
+            "value": "Run TOOLS/analyze_cleverence_mslx.py with accepted baseline for Operation/Action graph delta proof"
+          },
+          "references": [],
+          "enforcement": "GATING",
+          "proof_binding": {
+            "owner": "CHECK:CLEVERENCE_MSLX:CLEVERENCE_EXECUTION_GRAPH",
+            "accepted_evidence": [
+              "MACHINE",
+              "SOURCE_REQUIRED",
+              "SEMANTIC",
+              "RUNTIME"
+            ]
+          },
+          "sequence": 80
+        }
+      ]
     },
     {
       "id": "DIFF_ATTRIBUTION",

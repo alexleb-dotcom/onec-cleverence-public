@@ -10,7 +10,7 @@ from pathlib import Path
 import argparse, hashlib, json, re, sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rule_registry import ROOT, load_registry, max_risk, regex_hits, RISK_RANK, proof_policy_for
+from rule_registry import ROOT, load_registry, max_risk, regex_hits, RISK_RANK, proof_policy_for, materialize_delivery_bindings
 from analyze_onec_field_flow import analyze_sources as analyze_field_flow_sources
 from requirements_gate import evaluate as evaluate_requirements
 from artifact_corpus import inventory_paths, analyzable_entries, summarize as summarize_corpus
@@ -328,18 +328,12 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
         if not routed_profile:
             continue
         active_profiles.append({"name":row["profile"],"rule_id":row["id"],"file":f"PROFILES/{row['profile']}.md","detected_by":row["detected_by"],"status":row["activation_status"]})
-    commands=[]
-    if surface in {"ONEC_ONLY","CROSS_SYSTEM"}:commands.append("Run TOOLS/analyze_onec_bsl.py for each changed BSL final byte-set")
-    structural_ids={"ONEC_XML_STRUCTURE","FORM_XML_STRUCTURE","METADATA_XML_STRUCTURE","CFE_EXTENSION_STRUCTURE","XDTO_STRUCTURE"}
-    if any(r["id"] in structural_ids and r["active"] and r["detected_by"] for r in rule_rows):
-        commands.append("Run TOOLS/analyze_onec_xml.py on the smallest supplied directory/ZIP that preserves companion XML context")
-    if any(r["id"]=="FORM_DATA_BINDING" and r["active"] and r["detected_by"] for r in rule_rows):commands.append("Resolve each changed form DataPath against the actual form runtime data source/composition; for ConstantsSet.Member prove concrete set membership instead of inferring it from Constant metadata")
-    if any(r["id"]=="CALL_CONTRACT" and r["detected_by"] for r in rule_rows):commands.append("Resolve qualified-call boundaries; run TOOLS/check_bsl_call_signatures.py for cross-module calls with exact declarations")
-    if any(r["id"]=="IMPLEMENTATION_REACHABILITY" and r["detected_by"] for r in rule_rows):commands.append("Run TOOLS/analyze_onec_reachability.py on exact candidate + baseline; prove intended entrypoint → caller(s) → new/changed routine. Export alone is not invocation evidence")
-    if any(r["id"]=="POST_WRITE_STANDARD_OVERWRITE" and r["active"] and r["detected_by"] for r in rule_rows):commands.append("Run TOOLS/analyze_onec_field_flow.py on exact changed BSL and resolve same-field reachable writers/unresolved lifecycle calls")
-    if any(r["id"]=="CROSS_OBJECT_DUPLICATION_REVIEW" and r["active"] for r in rule_rows):commands.append("Run TOOLS/analyze_changeset_architecture.py on the complete changed BSL set; classify REVIEW candidates semantically and perform whole-change-set owner mapping even when candidate count is zero")
-    if any(r["id"]=="CLEVERENCE_MSLX" and r["active"] and r["detected_by"] for r in rule_rows):commands.append("Run TOOLS/analyze_cleverence_mslx.py with accepted baseline for Operation/Action graph delta proof")
-    if any(r["id"]=="CLEVERENCE_CONFIGURATION" and r["active"] and r["detected_by"] for r in rule_rows):commands.append("Run TOOLS/analyze_cleverence_configuration.py on changed Metadata/DocumentTypes with accepted baseline when available; prove barcode precedence and exact field contracts semantically/runtime")
+    active_deliveries=materialize_delivery_bindings(registry,rule_rows,surface)
+    commands=list(dict.fromkeys(
+        row["executor_payload"]["value"] for row in active_deliveries
+        if row.get("executor_payload",{}).get("kind")=="INSTRUCTION"
+    ))
+    active_references=list(dict.fromkeys(ref for row in active_deliveries for ref in row.get("references",[])))
     runtime_focus=[]
     active_ids={r["id"] for r in rule_rows if r["active"] and (r["detected_by"] or r["tier"]>0 or r["reason"].startswith("derived"))}
     if active_ids & {"QUERY","DYNAMIC_LIST"}:runtime_focus += ["1C query parser/final variants","representative list/query cardinality/performance"]
@@ -366,9 +360,11 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
         "candidate_artifacts":artifacts,
         "baseline":_dependency_snapshot(baseline),
         "rules":rule_rows,
+        "active_deliveries":active_deliveries,
         "active_profiles":active_profiles,
         "context_load_plan":{
             "profiles":[x["file"] for x in active_profiles],
+            "references":active_references,
             "knowledge":"Read only knowledge files referenced by active profiles/checks; use external source catalog and ARCHIVE on demand.",
             "archive":"ARCHIVE_ONLY unless a specific historical/provenance claim requires it.",
         },
@@ -409,6 +405,7 @@ def compact_summary(plan):
             "required":(plan.get("performance_review") or {}).get("required"),
         },
         "active_profiles":plan.get("active_profiles"),
+        "active_deliveries":[{k:row.get(k) for k in ("capability_id","sequence","owner_rule_id","enforcement","references","proof_binding")} for row in plan.get("active_deliveries",[])],
         "deterministic_tools":plan.get("deterministic_tools"),
         "runtime_focus":plan.get("runtime_focus"),
         "context_load_plan":plan.get("context_load_plan"),

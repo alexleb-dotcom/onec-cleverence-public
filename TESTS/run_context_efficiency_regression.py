@@ -90,6 +90,10 @@ with tempfile.TemporaryDirectory() as td:
     queue=vwq.build_work_queue(ledger,ledger_sha)
     compact_bytes=len((json.dumps(compact_plan(plan),ensure_ascii=False,separators=(",",":"))+"\n"+json.dumps(queue,ensure_ascii=False,separators=(",",":"))+"\n").encode("utf-8"))
     record("small_r1_compact_plan_plus_ledger_within_12kb",compact_bytes<=12*1024,{"bytes":compact_bytes,"limit":12*1024,"verifier":queue.get("verifier")})
+    all_capabilities={d.get("capability_id") for rule in load_registry().get("rules",[]) for d in rule.get("delivery",[]) if isinstance(d,dict)}
+    compact_capabilities={d.get("capability_id") for d in compact_plan(plan).get("active_deliveries",[]) if isinstance(d,dict)}
+    full_active_capabilities={d.get("capability_id") for d in plan.get("active_deliveries",[]) if isinstance(d,dict)}
+    record("compact_plan_contains_only_active_delivery_bindings",compact_capabilities==full_active_capabilities and compact_capabilities < all_capabilities,{"active":sorted(compact_capabilities),"all_count":len(all_capabilities)})
 
     registry=load_registry(); registered=rule_map(registry)
     expected=[]

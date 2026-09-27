@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 import copy, json, re, subprocess, sys, tempfile, zipfile
+from rule_registry import validate_delivery_bindings
 
 root=Path(__file__).resolve().parents[1]
 errors=[]
@@ -36,6 +37,7 @@ for path in root.rglob('*.json'):
 
 try:
     registry=json.loads((root/'RULES/rule_registry.json').read_text(encoding='utf-8'))
+    for _delivery_error in validate_delivery_bindings(registry):errors.append(f'registry_delivery:{_delivery_error}')
     allowed_modes={'MACHINE','SOURCE_REQUIRED','SEMANTIC','RUNTIME'}
     all_check_ids=[]
     machine_finding_owners={}
@@ -180,6 +182,17 @@ try:
     validate_regression_refs(requirements,req_activation_ids,requirement_gate_cases,'requirements_registry')
 except Exception as exc:
     errors.append(f'registry_parse:{exc}'); registry={}
+
+# Migrated delivery semantics must live only in the canonical registry.
+try:
+    _builder_text=(root/'TOOLS/build_review_plan.py').read_text(encoding='utf-8')
+    for _tool in (
+        'TOOLS/analyze_onec_bsl.py','TOOLS/analyze_onec_xml.py','TOOLS/check_bsl_call_signatures.py',
+        'TOOLS/analyze_onec_reachability.py','TOOLS/analyze_onec_field_flow.py','TOOLS/analyze_changeset_architecture.py',
+        'TOOLS/analyze_cleverence_mslx.py','TOOLS/analyze_cleverence_configuration.py',
+    ):
+        if _tool in _builder_text:errors.append(f'builder_hardcoded_delivery_route:{_tool}')
+except Exception as exc:errors.append(f'builder_delivery_authority_check:{exc}')
 
 # Security/contract regressions must be transitively executed by authoritative CI,
 # not merely exist in the tree. Full-audit orchestration is intentionally centralized.
