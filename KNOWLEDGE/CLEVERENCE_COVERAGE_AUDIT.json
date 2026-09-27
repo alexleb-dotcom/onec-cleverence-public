@@ -45,5 +45,17 @@
     "CLEVERENCE_BARCODE_TEMPLATE_PRECEDENCE",
     "CLEVERENCE_FIELD_NAME_EXACT_CONTRACT",
     "CLEVERENCE_CROSS_SYSTEM_CONTRACT"
-  ]
+  ],
+  "_artifact_lifecycle": {
+    "status": "DEPRECATED",
+    "reason": "Dated one-time coverage audit; promoted active knowledge is maintained by current Cleverence knowledge, profiles and analyzers.",
+    "task_reachable": false,
+    "superseded_by": [
+      "KNOWLEDGE/CLEVERENCE_RUNTIME_INTEGRATION.md",
+      "PROFILES/CLEVERENCE_CONFIGURATION.md",
+      "PROFILES/CLEVERENCE_MSLX.md",
+      "TOOLS/analyze_cleverence_configuration.py",
+      "TOOLS/analyze_cleverence_mslx.py"
+    ]
+  }
 }
