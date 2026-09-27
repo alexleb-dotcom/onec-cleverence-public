@@ -2010,8 +2010,8 @@
     },
     {
       "path": "TOOLS/mechanism_inventory.py",
-      "size": 21473,
-      "sha256": "ce804396a0019a859eec6480dee433f06be80eca614bed5993e4a06dc9f9262b"
+      "size": 22122,
+      "sha256": "be0ec86a97ee58815786e8b8066b21770f7768cf21b5cac79929b4cb25779e93"
     },
     {
       "path": "TOOLS/pattern_locator.py",
@@ -2185,5 +2185,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "29d766525942e2bdff754106f749e9256b6e37feb967d54ab25154c1519620fb"
+  "snapshot_digest": "8c942f364d04fd24897937471c36e846f6d5373d64fa1d282cceafc269f77cc0"
 }
