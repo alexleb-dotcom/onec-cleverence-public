@@ -76,7 +76,11 @@ plan = build_plan([str(fixture)], analysis_only=True, surface_override="ONEC_ONL
 applicable = {row["capability_id"] for row in plan["delivery_applicability"] if row["status"] == "APPLICABLE"}
 active = {row["capability_id"] for row in plan["active_deliveries"]}
 require(applicable == active, "applicable_equals_active_delivery", {"applicable": sorted(applicable), "active": sorted(active)})
-refs = {row["path"] for row in plan.get("active_supporting_artifacts") or []}
+full_support_rows = [
+    {k: row.get(k) for k in ("path", "owner_kind", "owner_id")}
+    for row in plan.get("active_supporting_artifacts") or []
+]
+refs = {row["path"] for row in full_support_rows}
 for rel in (
     "KNOWLEDGE/QUERY_LANGUAGE_GUIDE.md",
     "KNOWLEDGE/QUERY_TOPOLOGY_REVIEW.md",
@@ -91,7 +95,50 @@ for rel in (
 ):
     require(rel not in refs, f"deprecated_not_reachable:{rel}")
 
-compact_bytes = len(json.dumps(compact_summary(plan), ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+compact = compact_summary(plan)
+compact_support_rows = ((compact.get("context_load_plan") or {}).get("supporting_artifacts") or [])
+compact_support_refs = {row.get("path") for row in compact_support_rows if isinstance(row, dict)}
+require(
+    compact_support_rows == full_support_rows,
+    "compact_support_projection_matches_full_plan",
+    {"full": full_support_rows, "compact": compact_support_rows},
+)
+for rel in (
+    "KNOWLEDGE/QUERY_LANGUAGE_GUIDE.md",
+    "KNOWLEDGE/QUERY_TOPOLOGY_REVIEW.md",
+):
+    require(rel in compact_support_refs, f"compact_query_support_visible:{rel}", sorted(compact_support_refs))
+for rel in (
+    "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
+    "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
+):
+    require(rel in compact_support_refs, f"compact_gate_support_visible:{rel}", sorted(compact_support_refs))
+for rel in (
+    "KNOWLEDGE/CLEVERENCE_COVERAGE_AUDIT.json",
+    "TEMPLATES/PROJECT_SNAPSHOT_MANIFEST.json",
+):
+    require(rel not in compact_support_refs, f"compact_deprecated_support_absent:{rel}")
+
+def support_reachability_complete(full_rows, compact_projection):
+    compact_rows = ((compact_projection.get("context_load_plan") or {}).get("supporting_artifacts"))
+    return isinstance(compact_rows, list) and compact_rows == full_rows
+
+require(
+    support_reachability_complete(full_support_rows, compact),
+    "active_support_reachability_contract_derived",
+)
+broken_compact = json.loads(json.dumps(compact, ensure_ascii=False))
+(broken_compact.get("context_load_plan") or {}).pop("supporting_artifacts", None)
+require(
+    not support_reachability_complete(full_support_rows, broken_compact),
+    "compact_support_removal_breaks_reachability",
+)
+require(
+    not support_reachability_complete(full_support_rows, {"context_load_plan": compact.get("context_load_plan", {}) | {"supporting_artifacts": []}}),
+    "full_plan_support_alone_not_sufficient",
+)
+
+compact_bytes = len(json.dumps(compact, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 require(compact_bytes <= 12 * 1024, "compact_context_12k", compact_bytes)
 
 development = json.loads((ROOT / "WORKFLOW/DEVELOPMENT_PIPELINE.json").read_text(encoding="utf-8"))
