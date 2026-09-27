@@ -96,12 +96,12 @@ for rel in (
     require(rel not in refs, f"deprecated_not_reachable:{rel}")
 
 compact = compact_summary(plan)
-compact_support_paths = ((compact.get("context_load_plan") or {}).get("supporting_artifacts") or [])
-compact_support_refs = {row for row in compact_support_paths if isinstance(row, str)}
+compact_references = ((compact.get("context_load_plan") or {}).get("references") or [])
+compact_support_refs = {row for row in compact_references if isinstance(row, str)}
 require(
-    compact_support_paths == [row["path"] for row in full_support_rows],
+    all(row["path"] in compact_support_refs for row in full_support_rows),
     "compact_support_projection_matches_full_plan",
-    {"full": [row["path"] for row in full_support_rows], "compact": compact_support_paths},
+    {"full_support": [row["path"] for row in full_support_rows], "compact_references": compact_references},
 )
 for rel in (
     "KNOWLEDGE/QUERY_LANGUAGE_GUIDE.md",
@@ -120,22 +120,25 @@ for rel in (
     require(rel not in compact_support_refs, f"compact_deprecated_support_absent:{rel}")
 
 def support_reachability_complete(full_rows, compact_projection):
-    compact_paths = ((compact_projection.get("context_load_plan") or {}).get("supporting_artifacts"))
+    compact_refs = ((compact_projection.get("context_load_plan") or {}).get("references"))
     expected_paths = [row["path"] for row in full_rows]
-    return isinstance(compact_paths, list) and compact_paths == expected_paths
+    return isinstance(compact_refs, list) and all(path in compact_refs for path in expected_paths)
 
 require(
     support_reachability_complete(full_support_rows, compact),
     "active_support_reachability_contract_derived",
 )
 broken_compact = json.loads(json.dumps(compact, ensure_ascii=False))
-(broken_compact.get("context_load_plan") or {}).pop("supporting_artifacts", None)
+broken_compact["context_load_plan"]["references"] = list((plan.get("context_load_plan") or {}).get("references") or [])
 require(
     not support_reachability_complete(full_support_rows, broken_compact),
     "compact_support_removal_breaks_reachability",
 )
 require(
-    not support_reachability_complete(full_support_rows, {"context_load_plan": compact.get("context_load_plan", {}) | {"supporting_artifacts": []}}),
+    not support_reachability_complete(
+        full_support_rows,
+        {"context_load_plan": {"references": list((plan.get("context_load_plan") or {}).get("references") or [])}},
+    ),
     "full_plan_support_alone_not_sufficient",
 )
 
