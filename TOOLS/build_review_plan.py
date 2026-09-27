@@ -402,11 +402,15 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
 
 def compact_summary(plan):
     """Small projection for human/LLM routing; the full plan remains the proof artifact."""
-    compact_context_load=dict(plan.get("context_load_plan") or {})
-    compact_context_load["supporting_artifacts"]=[
+    full_context_load=plan.get("context_load_plan") or {}
+    support_paths=[
         row.get("path") for row in plan.get("active_supporting_artifacts",[])
         if isinstance(row,dict) and row.get("path")
     ]
+    compact_context_load={
+        "profiles":list(full_context_load.get("profiles") or []),
+        "references":list(dict.fromkeys([*(full_context_load.get("references") or []),*support_paths])),
+    }
     return {
         "result":plan.get("result"),
         "routing":plan.get("routing"),
