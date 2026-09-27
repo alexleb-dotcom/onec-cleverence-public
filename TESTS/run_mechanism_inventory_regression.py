@@ -96,12 +96,12 @@ for rel in (
     require(rel not in refs, f"deprecated_not_reachable:{rel}")
 
 compact = compact_summary(plan)
-compact_support_rows = ((compact.get("context_load_plan") or {}).get("supporting_artifacts") or [])
-compact_support_refs = {row.get("path") for row in compact_support_rows if isinstance(row, dict)}
+compact_support_paths = ((compact.get("context_load_plan") or {}).get("supporting_artifacts") or [])
+compact_support_refs = {row for row in compact_support_paths if isinstance(row, str)}
 require(
-    compact_support_rows == full_support_rows,
+    compact_support_paths == [row["path"] for row in full_support_rows],
     "compact_support_projection_matches_full_plan",
-    {"full": full_support_rows, "compact": compact_support_rows},
+    {"full": [row["path"] for row in full_support_rows], "compact": compact_support_paths},
 )
 for rel in (
     "KNOWLEDGE/QUERY_LANGUAGE_GUIDE.md",
@@ -120,8 +120,9 @@ for rel in (
     require(rel not in compact_support_refs, f"compact_deprecated_support_absent:{rel}")
 
 def support_reachability_complete(full_rows, compact_projection):
-    compact_rows = ((compact_projection.get("context_load_plan") or {}).get("supporting_artifacts"))
-    return isinstance(compact_rows, list) and compact_rows == full_rows
+    compact_paths = ((compact_projection.get("context_load_plan") or {}).get("supporting_artifacts"))
+    expected_paths = [row["path"] for row in full_rows]
+    return isinstance(compact_paths, list) and compact_paths == expected_paths
 
 require(
     support_reachability_complete(full_support_rows, compact),
