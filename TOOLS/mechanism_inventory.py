@@ -513,7 +513,6 @@ def build_inventory(root: Path = ROOT) -> dict:
         "supporting_without_owner": support_without_owner,
         "silent_drop_paths_remaining": silent_drop_paths,
         "all_candidate_applicability_complete": applicability_complete,
-        "active_support_reachability_contract": True,
         "errors": errors,
         "rows": rows,
     }
@@ -531,7 +530,6 @@ def compact(report: dict) -> dict:
         "supporting_without_owner",
         "silent_drop_paths_remaining",
         "all_candidate_applicability_complete",
-        "active_support_reachability_contract",
         "errors",
     )}
 
