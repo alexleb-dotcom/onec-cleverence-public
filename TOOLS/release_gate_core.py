@@ -29,6 +29,7 @@ def _has_text(value):return isinstance(value,str) and bool(value.strip())
 def _evidence_kinds(items):return {str(x.get("kind","")).upper() for x in items if isinstance(x,dict)}
 def _has_concrete_evidence(items):return bool(items) and all(isinstance(x,dict) and _has_text(x.get('kind')) and _has_text(x.get('ref')) for x in items)
 def _canon(value):return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+def _artifact_fingerprint(value):return hashlib.sha256(_canon(value).encode("utf-8")).hexdigest()
 
 
 SOURCE_PROVENANCE_VERIFIER_ID="release_gate_core.source_identity"
@@ -1339,6 +1340,7 @@ def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:di
     else:outcome="PROVEN"
     resolution=_resolution_protocol(ledger,errors)
     return {"result":"PASS" if not errors else "FAIL","release_outcome":outcome,"implementation_readiness":performance_review,"errors":errors,"pending":pending_items,"covered_rules":coverage,
+            "input_identity":{"plan_sha256":_artifact_fingerprint(plan),"ledger_sha256":_artifact_fingerprint(ledger)},
             "evidence_source_policy":trust["evidence_source_policy"],
             "plan_recomputation":recompute.get("result"),
             "resolution_verifier":{k:v for k,v in resolution.items() if k!="verdicts"},
