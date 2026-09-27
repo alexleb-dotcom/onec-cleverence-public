@@ -630,8 +630,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 45202,
-      "sha256": "e259216496f227ff2d9fcc5b9c79ca72010c42c7acfcaa4b223a8c85d223911f"
+      "size": 35014,
+      "sha256": "221ecc8fe971ff489453cec0dd8fadf0c002f817bfae68d3a6a3c771e57001da"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -1700,8 +1700,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 39818,
-      "sha256": "999c8d43f809873dcd6bd5616e41eabbfa3807fbc6fb4e3393e0fd96a4220bac"
+      "size": 46670,
+      "sha256": "de92120a5b5a0da9e2b9ed3208fe0b25438f3993dc4143906a81e4cb8a5bd5ff"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1815,8 +1815,8 @@
     },
     {
       "path": "TESTS/run_public_ci_regression.py",
-      "size": 4824,
-      "sha256": "1439768b5ba1d590813db3a06150d77bbd173f2bcced71970ebcc1b9ed20926f"
+      "size": 5775,
+      "sha256": "df31eb44f36176d93863a9a07c0b46d4f51b7dee1bdfa1a5b0766ce970a74f3a"
     },
     {
       "path": "TESTS/run_public_execution_receipt_regression.py",
@@ -1845,8 +1845,8 @@
     },
     {
       "path": "TESTS/run_result_delivery_contract_regression.py",
-      "size": 30167,
-      "sha256": "30c9bbbacf376caa4c7a0760ebc22cce6e850ccf0972ecc33ead786699b598b3"
+      "size": 30295,
+      "sha256": "7925d1c0d637841a116d8cf5635f5ad0e8906d600992c39646c01fedfd46c4f0"
     },
     {
       "path": "TESTS/run_review_regression.py",
@@ -2095,8 +2095,8 @@
     },
     {
       "path": "TOOLS/run_public_ci.py",
-      "size": 4560,
-      "sha256": "68891acb3b1cc39a06eba65afb0c5076c1a8f4414caa6bce07365d621f0a3c92"
+      "size": 4962,
+      "sha256": "f572ee8e1c6a2ad9ed4f254c652d19fa91f5bba2e8e5153f424e21697bb3701c"
     },
     {
       "path": "TOOLS/runtime_evidence.py",
@@ -2185,5 +2185,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "56e9db8dfbe0186f5706ee3fd4954a04d9fa310ebca50380852200525d8d935d"
+  "snapshot_digest": "0b5d23ef729c43f01f13a5727bca8d4dfd3aa82f63035407e7a9401082c349b1"
 }

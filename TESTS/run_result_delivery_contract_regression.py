@@ -416,18 +416,21 @@ def main() -> int:
         "Рекомендуется",
         "Обоснование",
         "Do not dump the complete validation ledger",
-        "Особенности реализации",
-        "Проект: <...>",
-        "Задача: <...>",
-        "Контейнер | Объект конфигурации | Процедура / функция | Статус | Описание изменения",
-        "must not be repeated as table columns",
-        "do not add extra columns to the base table",
-        "exact-candidate `Performance Review` projection",
-        "Измеренное ускорение не доказано.",
-        "RUNTIME_ADAPTER",
+        "Before final presentation, **load and obey**",
+        "Presentation never upgrades canonical requirements/evidence/release status.",
     ]:
         if anchor not in skill:
             errors.append(f"skill_result_contract_missing:{anchor}")
+    control(
+        "result_delivery:skill_defers_exact_format_to_canonical_owner",
+        "The exact implementation table/header shape and the routed `Performance Review` projection are owned there" in skill
+        and "do not maintain a second detailed format specification in this Skill body" in skill
+        and "Особенности реализации" not in skill,
+        {
+            "contract": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
+            "guide": "KNOWLEDGE/RESULT_DELIVERY.md",
+        },
+    )
 
     pipeline = json.loads(PIPELINE_PATH.read_text(encoding="utf-8"))
     if pipeline.get("result_delivery_contract") != "WORKFLOW/RESULT_DELIVERY_CONTRACT.json":
