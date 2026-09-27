@@ -244,5 +244,8 @@
   "result_delivery_contract": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
   "semantic_review_verifier": "TOOLS/semantic_review.py",
   "semantic_proof_verifier": "TOOLS/semantic_proof_verifier.py",
-  "implementation_intent_verifier": "TOOLS/implementation_intent.py"
+  "implementation_intent_verifier": "TOOLS/implementation_intent.py",
+  "handoff_contract": "KNOWLEDGE/DEVELOPMENT_HANDOFF_WORKFLOW.md",
+  "functional_contract_template": "TEMPLATES/FUNCTIONAL_CONTRACT_TEMPLATE.json",
+  "validation_ledger_template": "TEMPLATES/VALIDATION_LEDGER_TEMPLATE.json"
 }
