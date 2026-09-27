@@ -10,7 +10,7 @@ from pathlib import Path
 import argparse, hashlib, json, re, sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rule_registry import ROOT, load_registry, max_risk, regex_hits, RISK_RANK, proof_policy_for, materialize_delivery_bindings
+from rule_registry import ROOT, load_registry, max_risk, regex_hits, RISK_RANK, proof_policy_for, materialize_delivery_bindings, materialize_delivery_applicability, materialize_supporting_artifacts
 from analyze_onec_field_flow import analyze_sources as analyze_field_flow_sources
 from requirements_gate import evaluate as evaluate_requirements
 from artifact_corpus import inventory_paths, analyzable_entries, summarize as summarize_corpus
@@ -329,6 +329,13 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
             continue
         active_profiles.append({"name":row["profile"],"rule_id":row["id"],"file":f"PROFILES/{row['profile']}.md","detected_by":row["detected_by"],"status":row["activation_status"]})
     active_deliveries=materialize_delivery_bindings(registry,rule_rows,surface)
+    delivery_applicability=materialize_delivery_applicability(registry,rule_rows,surface)
+    applicable_ids={row["capability_id"] for row in delivery_applicability if row["status"]=="APPLICABLE"}
+    active_delivery_ids={row["capability_id"] for row in active_deliveries}
+    if applicable_ids!=active_delivery_ids:
+        raise ValueError(f"Delivery applicability drift: applicable={sorted(applicable_ids)} active={sorted(active_delivery_ids)}")
+    gate_plan=_gate_plan(registry,surface,risk,analysis_only)
+    active_support=materialize_supporting_artifacts(registry,rule_rows,gate_plan)
     commands=list(dict.fromkeys(
         row["executor_payload"]["value"] for row in active_deliveries
         if row.get("executor_payload",{}).get("kind")=="INSTRUCTION"
@@ -361,6 +368,8 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
         "baseline":_dependency_snapshot(baseline),
         "rules":rule_rows,
         "active_deliveries":active_deliveries,
+        "delivery_applicability":delivery_applicability,
+        "active_supporting_artifacts":active_support,
         "active_profiles":active_profiles,
         "context_load_plan":{
             "profiles":[x["file"] for x in active_profiles],
@@ -382,7 +391,7 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
             "gate_outcome":requirements.get("gate",{}).get("requirements_outcome"),
             "gate_errors":requirements.get("gate",{}).get("errors",[]),
         },
-        "gate_plan":_gate_plan(registry,surface,risk,analysis_only),
+        "gate_plan":gate_plan,
         "deterministic_tools":commands,
         "runtime_focus":list(dict.fromkeys(runtime_focus)),
         "evidence_dependencies":["artifact-model/layout/authoritative-root","requirements-contract hash/gate outcome","candidate/baseline hashes","declaration/caller hashes","reference archive/vendor/BSP/configuration version","active Cleverence Business Process","runtime environment for version-sensitive/measured claims"]
@@ -393,6 +402,15 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
 
 def compact_summary(plan):
     """Small projection for human/LLM routing; the full plan remains the proof artifact."""
+    full_context_load=plan.get("context_load_plan") or {}
+    support_paths=[
+        row.get("path") for row in plan.get("active_supporting_artifacts",[])
+        if isinstance(row,dict) and row.get("path")
+    ]
+    compact_context_load={
+        "profiles":list(full_context_load.get("profiles") or []),
+        "references":list(dict.fromkeys([*(full_context_load.get("references") or []),*support_paths])),
+    }
     return {
         "result":plan.get("result"),
         "routing":plan.get("routing"),
@@ -408,7 +426,7 @@ def compact_summary(plan):
         "active_deliveries":[{k:row.get(k) for k in ("capability_id","enforcement")} | ({"proof_owner":(row.get("proof_binding") or {}).get("owner")} if row.get("proof_binding") else {}) for row in plan.get("active_deliveries",[])],
         "deterministic_tools":plan.get("deterministic_tools"),
         "runtime_focus":plan.get("runtime_focus"),
-        "context_load_plan":plan.get("context_load_plan"),
+        "context_load_plan":compact_context_load,
     }
 
 

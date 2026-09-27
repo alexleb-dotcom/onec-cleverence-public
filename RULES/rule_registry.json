@@ -150,12 +150,18 @@
     {
       "id": "DYNAMIC_POST_VALIDATION",
       "blocking": true,
-      "description": "Run routed deterministic analyzers/checkers on exact candidate."
+      "description": "Run routed deterministic analyzers/checkers on exact candidate.",
+      "supporting_artifacts": [
+        "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md"
+      ]
     },
     {
       "id": "EXTERNAL_ITS_DISCOVERY",
       "blocking": true,
-      "description": "Independently check current official standards for non-trivial 1C mechanisms."
+      "description": "Independently check current official standards for non-trivial 1C mechanisms.",
+      "supporting_artifacts": [
+        "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md"
+      ]
     },
     {
       "id": "FINAL_ARTIFACT_VALIDATION",
@@ -1746,6 +1752,10 @@
           },
           "sequence": 20
         }
+      ],
+      "supporting_artifacts": [
+        "KNOWLEDGE/OFFICIAL_STANDARD_CATALOG.json",
+        "KNOWLEDGE/STANDARDS_TRIGGER_MAP.json"
       ]
     },
     {
@@ -1920,7 +1930,10 @@
           "check:RUNTIME_EVIDENCE_T01",
           "release:pending_does_not_hide_checks"
         ]
-      }
+      },
+      "supporting_artifacts": [
+        "KNOWLEDGE/KNOWN_RUNTIME_FINDINGS.md"
+      ]
     },
     {
       "id": "QUERY",
@@ -2290,7 +2303,11 @@
           "EXACT_SOURCE",
           "INDEPENDENT_REVIEW"
         ]
-      }
+      },
+      "supporting_artifacts": [
+        "KNOWLEDGE/QUERY_LANGUAGE_GUIDE.md",
+        "KNOWLEDGE/QUERY_TOPOLOGY_REVIEW.md"
+      ]
     },
     {
       "id": "DYNAMIC_LIST",
