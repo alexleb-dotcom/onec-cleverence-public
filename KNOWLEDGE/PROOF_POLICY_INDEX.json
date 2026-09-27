@@ -1,0 +1,389 @@
+{
+  "version": 1,
+  "generated": true,
+  "generated_from": "RULES/rule_registry.json",
+  "contract": {
+    "schema_version": 1,
+    "registry_owner": "RULES/rule_registry.json",
+    "missing_policy_behavior": "EXPLICIT_LEGACY_COMPATIBILITY",
+    "legacy_compatibility": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "rule": "Rules without proof_policy retain the pre-Phase-1 admissibility contract. This compatibility is explicit and executable; it must not be used for rules classified ARCHITECTURE_SEMANTIC."
+    },
+    "evidence_roles": [
+      "EXACT_SOURCE",
+      "MACHINE_EVIDENCE",
+      "PLATFORM_RUNTIME",
+      "USER_CONFIRMED_BUSINESS",
+      "SELF_SEMANTIC_REASONING",
+      "INDEPENDENT_REVIEW"
+    ],
+    "claim_classes": {
+      "ARCHITECTURE_SEMANTIC": {
+        "semantic_self_review": "SUPPORTING_ONLY",
+        "generic_source_interpretation": "SUPPORTING_ONLY",
+        "primary_verdict_owner": "RELEASE_VERIFIER"
+      },
+      "LEGACY_COMPATIBLE": {
+        "semantic_self_review": "LEGACY_ADMISSIBILITY",
+        "primary_verdict_owner": "RELEASE_VERIFIER"
+      }
+    },
+    "review_levels": {
+      "L4_METADATA_OBJECT": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "L5_CROSS_OBJECT": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "L6_BUSINESS_RUNTIME": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "runtime_required_from": "R2_STATEFUL_RUNTIME"
+      }
+    },
+    "independent_review": {
+      "separation": "CONTENT_SESSION_SEPARATED",
+      "external_reviewer_status": "EXTERNAL_REVIEWER_UNVERIFIED",
+      "rule": "Content/session separation reduces correlated self-review risk but is not cryptographic or externally verified independence without a separately trusted adapter."
+    }
+  },
+  "rules": {
+    "SOURCE_FIRST": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "EVIDENCE_ACQUISITION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "BASELINE_IDENTITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "ANALOG_BEFORE_INVENTION": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "STANDARD_PIPELINE_SEMANTIC_PRESERVATION": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "BSP_REUSE": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "CALL_CONTRACT": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "IMPLEMENTATION_REACHABILITY": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "DOMAIN_OWNERSHIP": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "BUSINESS_IDENTITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "RESPONSIBILITY_COHESION": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "MINIMAL_COHERENT_CHANGE": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "PROOF_CLAIM_INTEGRITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "GAP_DISCOVERY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "PROJECT_CONVENTION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "BIDIRECTIONAL_STANDARDS": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "DELIVERY_COHERENCE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "RUNTIME_EVIDENCE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "QUERY": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ]
+    },
+    "DYNAMIC_LIST": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "CLIENT_SERVER_FORM": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "POST_WRITE_STANDARD_OVERWRITE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "ONEC_XML_STRUCTURE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "FORM_XML_STRUCTURE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "FORM_DATA_BINDING": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "METADATA_XML_STRUCTURE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "REFERENCE_SELECTION_CONTRACT": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "ROLE_RIGHTS_STRUCTURE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "CFE_EXTENSION_STRUCTURE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "XDTO_STRUCTURE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "TRANSACTION_WRITE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "EXCEPTION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "STRUCTURED_CONTRACT": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "POLYMORPHIC_DOMAIN": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "DUPLICATION_INVARIANT": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "CROSS_OBJECT_DUPLICATION_REVIEW": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "SERVER_API_SECURITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "COLLECTION_ALGORITHM": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "CLEVERENCE_CONFIGURATION": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ],
+      "cleverence_review": [
+        "EXECUTION_GRAPH",
+        "SCOPE_DIRECTIONS_REENTRY",
+        "SCAN_SESSION_STATE",
+        "WRITER_PATHS",
+        "PLAN_FACT_IDENTITY",
+        "EXACT_FIELDS_TYPES",
+        "PRODUCER_MAPPING_WRITER_CONSUMER"
+      ]
+    },
+    "CLEVERENCE_MSLX": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ],
+      "cleverence_review": [
+        "EXECUTION_GRAPH",
+        "SCOPE_DIRECTIONS_REENTRY",
+        "SCAN_SESSION_STATE",
+        "WRITER_PATHS",
+        "PLAN_FACT_IDENTITY",
+        "EXACT_FIELDS_TYPES",
+        "PRODUCER_MAPPING_WRITER_CONSUMER"
+      ],
+      "runtime_required_from": "R2_STATEFUL_RUNTIME"
+    },
+    "DIFF_ATTRIBUTION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "DOCUMENTATION_CONTRACT": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "REPRESENTATION_CONTRACT": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "CLEVERENCE_INTEGRATION": {
+      "claim_class": "ARCHITECTURE_SEMANTIC",
+      "required_roles": [
+        "EXACT_SOURCE",
+        "INDEPENDENT_REVIEW"
+      ],
+      "cleverence_review": [
+        "EXECUTION_GRAPH",
+        "SCOPE_DIRECTIONS_REENTRY",
+        "SCAN_SESSION_STATE",
+        "WRITER_PATHS",
+        "PLAN_FACT_IDENTITY",
+        "EXACT_FIELDS_TYPES",
+        "PRODUCER_MAPPING_WRITER_CONSUMER"
+      ],
+      "runtime_required_from": "R3_CROSS_SYSTEM"
+    },
+    "DOMAIN_VALIDATION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "HOOK_ORCHESTRATION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "EXTERNAL_COMPONENT_LIFECYCLE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "VERSION_GATED_CAPABILITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "REFERENCE_DATA_FRESHNESS": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "BARCODE_INPUT_AND_CLASSIFICATION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "STATEFUL_UI_MODE": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "EXTERNAL_SIDE_EFFECT_IDENTITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "DECISION_DEPENDENCY_INVALIDATION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "BUSINESS_RELATION_CARDINALITY": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    },
+    "FACT_PRESERVING_REALLOCATION": {
+      "claim_class": "LEGACY_COMPATIBLE",
+      "required_roles": [],
+      "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "contract": "KNOWLEDGE/ONEC_TERMINOLOGY_CONTRACT.md",
+  "cases": [
+    {
+      "id": "official_1c_release_unchanged",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": true,
+      "matches_referenced_release": true,
+      "artifact_kind": "code",
+      "expected": "TYPICAL_1C"
+    },
+    {
+      "id": "customer_added_common_module",
+      "authored_by_firm_1c": false,
+      "present_in_official_1c_release": false,
+      "matches_referenced_release": false,
+      "artifact_kind": "code",
+      "expected": "CUSTOMIZATION"
+    },
+    {
+      "id": "franchisee_code_inside_typical_module",
+      "authored_by_firm_1c": false,
+      "present_in_official_1c_release": false,
+      "matches_referenced_release": false,
+      "artifact_kind": "fragment_in_typical_module",
+      "expected": "CUSTOMIZATION"
+    },
+    {
+      "id": "partner_extension",
+      "authored_by_firm_1c": false,
+      "present_in_official_1c_release": false,
+      "matches_referenced_release": false,
+      "artifact_kind": "extension",
+      "expected": "CUSTOMIZATION"
+    },
+    {
+      "id": "copied_typical_fragment_into_custom_module",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": false,
+      "matches_referenced_release": false,
+      "artifact_kind": "copied_fragment_in_custom_artifact",
+      "expected": "CUSTOMIZATION"
+    },
+    {
+      "id": "typical_module_with_project_edit",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": true,
+      "matches_referenced_release": false,
+      "artifact_kind": "modified_typical_module",
+      "expected": "TYPICAL_WITH_CUSTOMIZATIONS"
+    },
+    {
+      "id": "bsp_embedded_in_target_official_release",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": true,
+      "matches_referenced_release": true,
+      "artifact_kind": "bsp_code",
+      "expected": "TYPICAL_1C"
+    },
+    {
+      "id": "bsp_from_other_release_reference",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": true,
+      "matches_referenced_release": false,
+      "artifact_kind": "reference_source",
+      "expected": "REFERENCE_NOT_TARGET_TYPICAL"
+    },
+    {
+      "id": "platform_api",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": false,
+      "matches_referenced_release": false,
+      "artifact_kind": "platform_api",
+      "expected": "PLATFORM_NOT_TYPICAL_CODE"
+    },
+    {
+      "id": "cleverence_stock_action",
+      "authored_by_firm_1c": false,
+      "present_in_official_1c_release": false,
+      "matches_referenced_release": false,
+      "artifact_kind": "third_party_vendor_stock",
+      "expected": "VENDOR_STOCK_NOT_TYPICAL_1C"
+    },
+    {
+      "id": "unknown_origin",
+      "authored_by_firm_1c": null,
+      "present_in_official_1c_release": null,
+      "matches_referenced_release": null,
+      "artifact_kind": "unknown",
+      "expected": "NOT_PROVEN_AS_TYPICAL"
+    },
+    {
+      "id": "configuration_based_on_typical_with_project_changes",
+      "authored_by_firm_1c": true,
+      "present_in_official_1c_release": true,
+      "matches_referenced_release": false,
+      "artifact_kind": "configuration",
+      "expected": "BASED_ON_TYPICAL_WITH_CUSTOMIZATIONS"
+    }
+  ]
+}

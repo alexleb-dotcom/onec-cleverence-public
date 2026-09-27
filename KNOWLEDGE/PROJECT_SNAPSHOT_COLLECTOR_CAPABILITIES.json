@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "capability_states": [
+    "FULL",
+    "PARTIAL",
+    "UNSUPPORTED"
+  ],
+  "backend_preference": [
+    "SOURCE_EXPORT",
+    "CONFIGURATOR_ASSISTED",
+    "RUNTIME_METADATA",
+    "MANUAL_ATTACHMENTS"
+  ],
+  "backends": {
+    "SOURCE_EXPORT": {
+      "automatic": true,
+      "description": "Read an already exported configuration/extension source tree."
+    },
+    "CONFIGURATOR_ASSISTED": {
+      "automatic": true,
+      "description": "Use supported Configurator/Designer export facilities, then inspect exported evidence."
+    },
+    "RUNTIME_METADATA": {
+      "automatic": true,
+      "description": "Read only evidence available from a running 1C session through supported runtime APIs."
+    },
+    "MANUAL_ATTACHMENTS": {
+      "automatic": false,
+      "description": "Use exact evidence explicitly supplied when automatic acquisition cannot expose it."
+    }
+  },
+  "categories": {
+    "METADATA_PROPERTIES": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported metadata source",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted metadata export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime metadata objects",
+          "limitations": [
+            "runtime APIs do not prove every design-time property or exact source bytes"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact exported metadata artifact supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "MODULE_SOURCE": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported module source",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted module export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "UNSUPPORTED",
+          "method": "runtime metadata",
+          "limitations": [
+            "runtime metadata is not module source text"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact module source supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "FORM_DEFINITION": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported form definition and form module",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted form export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime form and metadata observations",
+          "limitations": [
+            "runtime observations do not prove the complete design-time form definition or source module"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact exported form artifacts supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "COMMAND_WIRING": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported command/form metadata and source",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted command/form export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime command metadata and observable presentation",
+          "limitations": [
+            "runtime visibility does not prove all handler bindings or source-level wiring"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact command/form artifacts supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "ROLE_RIGHTS": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported role rights and RLS definitions",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted role export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "effective-right observations in the current runtime context",
+          "limitations": [
+            "effective access is not the complete role source or RLS definition"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact role/RLS artifacts supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "SCHEDULED_JOBS": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported scheduled-job metadata and handler source",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted scheduled-job metadata/source export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime scheduled-job metadata and available state observations",
+          "limitations": [
+            "runtime metadata alone does not prove handler source or every deployment-level scheduler setting"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact scheduled-job definition and handler evidence supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "EVENT_SUBSCRIPTIONS": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported event-subscription metadata and handler source",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted event-subscription metadata/source export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime metadata objects",
+          "limitations": [
+            "runtime metadata does not prove exact handler source"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact subscription and handler artifacts supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "SUBSYSTEM_MEMBERSHIP": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "FULL",
+          "method": "exported subsystem/content metadata",
+          "limitations": []
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "FULL",
+          "method": "Configurator-assisted subsystem metadata export",
+          "limitations": []
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime metadata relationships",
+          "limitations": [
+            "runtime surface may omit design-time details needed for exact source equivalence"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "FULL",
+          "method": "exact subsystem metadata supplied manually",
+          "limitations": []
+        }
+      }
+    },
+    "CALL_DEPENDENCIES": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "PARTIAL",
+          "method": "static analysis of exported module source",
+          "limitations": [
+            "dynamic dispatch, Execute/Evaluate-style indirection and external calls can require runtime or additional evidence"
+          ]
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "PARTIAL",
+          "method": "static analysis of Configurator-assisted module export",
+          "limitations": [
+            "dynamic dispatch and external indirection can remain unresolved"
+          ]
+        },
+        "RUNTIME_METADATA": {
+          "state": "UNSUPPORTED",
+          "method": "runtime metadata",
+          "limitations": [
+            "runtime metadata alone is not a source call graph"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "PARTIAL",
+          "method": "static analysis of supplied source closure",
+          "limitations": [
+            "coverage is bounded by supplied source and dynamic calls can remain unresolved"
+          ]
+        }
+      }
+    },
+    "INTEGRATION_CONTRACTS": {
+      "backends": {
+        "SOURCE_EXPORT": {
+          "state": "PARTIAL",
+          "method": "static inspection of integration metadata/source",
+          "limitations": [
+            "external endpoint behavior and deployed counterpart contracts can remain outside the configuration"
+          ]
+        },
+        "CONFIGURATOR_ASSISTED": {
+          "state": "PARTIAL",
+          "method": "Configurator-assisted integration metadata/source export",
+          "limitations": [
+            "external counterpart behavior can remain unobserved"
+          ]
+        },
+        "RUNTIME_METADATA": {
+          "state": "PARTIAL",
+          "method": "runtime-visible integration metadata/settings where available",
+          "limitations": [
+            "runtime visibility does not prove source implementation or the external counterpart contract"
+          ]
+        },
+        "MANUAL_ATTACHMENTS": {
+          "state": "PARTIAL",
+          "method": "supplied WSDL/XSD/OpenAPI/specification or counterpart evidence",
+          "limitations": [
+            "completeness depends on supplied counterpart artifacts"
+          ]
+        }
+      }
+    }
+  }
+}

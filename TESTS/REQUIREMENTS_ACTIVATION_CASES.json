@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "requirements:tier0_always",
+      "inputs": [
+        "requirements_local.txt"
+      ],
+      "triggered_rules": [
+        "REQUIREMENTS_TRACEABILITY",
+        "ACCEPTANCE_ORACLE",
+        "REQUIREMENTS_ARTIFACT_INTEGRITY"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R0_LOCAL"
+    },
+    {
+      "id": "requirements:data_risk_routes",
+      "inputs": [
+        "requirements_contract.txt"
+      ],
+      "risk_override": "R1_CONTRACT",
+      "triggered_rules": [
+        "REQUIREMENTS_TRACEABILITY",
+        "ACCEPTANCE_ORACLE",
+        "DATA_LIFECYCLE_SOURCE_OF_TRUTH",
+        "SCOPE_ASSUMPTION_CONTRACT"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "requirements:contract_risk_routes",
+      "inputs": [
+        "requirements_contract.txt"
+      ],
+      "risk_override": "R1_CONTRACT",
+      "triggered_rules": [
+        "SCOPE_ASSUMPTION_CONTRACT"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT"
+    },
+    {
+      "id": "requirements:stateful_risk_routes",
+      "inputs": [
+        "requirements_stateful.txt"
+      ],
+      "triggered_rules": [
+        "PROCESS_ROLE_STATE_CONTRACT",
+        "DATA_LIFECYCLE_SOURCE_OF_TRUTH",
+        "ALTERNATIVE_SCENARIO_COVERAGE",
+        "SCOPE_ASSUMPTION_CONTRACT"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "requirements:cross_system_routes",
+      "inputs": [
+        "requirements_cross_system.txt"
+      ],
+      "triggered_rules": [
+        "INTEGRATION_FUNCTIONAL_CONTRACT",
+        "PROCESS_ROLE_STATE_CONTRACT",
+        "DATA_LIFECYCLE_SOURCE_OF_TRUTH",
+        "ALTERNATIVE_SCENARIO_COVERAGE",
+        "SCOPE_ASSUMPTION_CONTRACT"
+      ],
+      "surface": "CROSS_SYSTEM",
+      "risk": "R3_CROSS_SYSTEM"
+    },
+    {
+      "id": "requirements:analogy_routes",
+      "inputs": [
+        "requirements_analogy.txt"
+      ],
+      "risk_override": "R1_CONTRACT",
+      "triggered_rules": [
+        "ANALOGY_IS_NOT_REQUIREMENT"
+      ],
+      "surface": "CROSS_SYSTEM",
+      "risk": "R3_CROSS_SYSTEM"
+    },
+    {
+      "id": "requirements:artifact_purpose_routes",
+      "inputs": [],
+      "task_text": "Проанализируй требования и подготовь ЛТ для изменения заполнения документа.",
+      "surface_override": "ONEC_ONLY",
+      "risk_override": "R1_CONTRACT",
+      "purpose": "REQUIREMENTS_ARTIFACT",
+      "triggered_rules": [
+        "REQUIREMENTS_TRACEABILITY",
+        "ACCEPTANCE_ORACLE",
+        "REQUIREMENTS_ARTIFACT_INTEGRITY",
+        "DATA_LIFECYCLE_SOURCE_OF_TRUTH",
+        "SCOPE_ASSUMPTION_CONTRACT"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    }
+  ]
+}

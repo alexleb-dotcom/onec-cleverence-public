@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "catalog_id": "CLEVERENCE_DISCOVERY",
+  "role": "DISCOVERY_ONLY",
+  "source_family": "CLEVERENCE",
+  "rule": "This catalog contains Mobile SMARTS/Cleverence locator hints only. Operation and DocumentType names identify exact target/export source worth requesting; they do not prove Action semantics, parser precedence, field contracts, runtime behavior or version compatibility.",
+  "coverage_note": "The entries preserve a compact reusable vocabulary grounded during maintenance in an authorized stock Cleverence baseline. They intentionally do not reproduce Action graphs, field declarations or implementation bodies. Always inspect the exact target/user-authorized configuration export before changing MSLX or relying on a runtime contract.",
+  "entries": [
+    {
+      "id": "cleverence.marking.barcode",
+      "intent_terms": [
+        "код маркировки",
+        "маркировка",
+        "gtin",
+        "серийный номер",
+        "serial number",
+        "gs1",
+        "штрихкод маркировки",
+        "marking code"
+      ],
+      "request_candidates": [
+        {"object_type": "Operation", "name": "Operation_CheckMarkingCode", "suggested_path": "Configuration/Operations/EN/Barcodes/Operation_CheckMarkingCode.mslx"},
+        {"object_type": "Operation", "name": "Operation_GetGTIN", "suggested_path": "Configuration/Operations/EN/Barcodes/Operation_GetGTIN.mslx"},
+        {"object_type": "Operation", "name": "Operation_GetSerialNumber", "suggested_path": "Configuration/Operations/EN/Barcodes/Operation_GetSerialNumber.mslx"},
+        {"object_type": "Operation", "name": "Operation_GetMarkingCode", "suggested_path": "Configuration/Operations/EN/Barcodes/Operation_GetMarkingCode.mslx"},
+        {"object_type": "Operation", "name": "Operation_IsMarkingCode", "suggested_path": "Configuration/Operations/EN/Barcodes/Operation_IsMarkingCode.mslx"},
+        {"object_type": "Operation", "name": "Operation_TryFixMarkingCode", "suggested_path": "Configuration/Operations/EN/Barcodes/Operation_TryFixMarkingCode.mslx"}
+      ]
+    },
+    {
+      "id": "cleverence.document.plan_fact_lines",
+      "intent_terms": [
+        "declareditems",
+        "currentitems",
+        "план факт",
+        "строки документа",
+        "плановые строки",
+        "фактические строки",
+        "document lines",
+        "declared items"
+      ],
+      "request_candidates": [
+        {"object_type": "Operation", "name": "Operation_GetDeclaredItems", "suggested_path": "Configuration/Operations/EN/Document/Operation_GetDeclaredItems.mslx"},
+        {"object_type": "Operation", "name": "Operation_GetDocumentLines", "suggested_path": "Configuration/Operations/EN/Document/Operation_GetDocumentLines.mslx"},
+        {"object_type": "Operation", "name": "Operation_GetProductDeclaredItems", "suggested_path": "Configuration/Operations/EN/Document/Operation_GetProductDeclaredItems.mslx"},
+        {"object_type": "Operation", "name": "Operation_UpdateDocumentLines", "suggested_path": "Configuration/Operations/EN/Document/Operation_UpdateDocumentLines.mslx"},
+        {"object_type": "Operation", "name": "Operation_ViewDeclaredItems", "suggested_path": "Configuration/Operations/EN/Collect Barcodes/Operation_ViewDeclaredItems.mslx"}
+      ]
+    },
+    {
+      "id": "cleverence.inventory.product_search",
+      "intent_terms": [
+        "поиск товара",
+        "поиск номенклатуры",
+        "проверка товара",
+        "проверка количества",
+        "остаток товара",
+        "search product",
+        "product quantity"
+      ],
+      "request_candidates": [
+        {"object_type": "Operation", "name": "Operation_SearchProduct", "suggested_path": "Configuration/Operations/EN/Inventory/Operation_SearchProduct.mslx"},
+        {"object_type": "Operation", "name": "Operation_SHCheckProductAndQuantity", "suggested_path": "Configuration/Operations/EN/Inventory/Operation_SHCheckProductAndQuantity.mslx"},
+        {"object_type": "Operation", "name": "Operation_CheckProductInReserve", "suggested_path": "Configuration/Operations/EN/Inventory/Operation_CheckProductInReserve.mslx"}
+      ]
+    },
+    {
+      "id": "cleverence.aggregation.transport_unit",
+      "intent_terms": [
+        "агрегация",
+        "групповая упаковка",
+        "транспортная упаковка",
+        "transport unit",
+        "aggregation",
+        "вложенность упаковок"
+      ],
+      "request_candidates": [
+        {"object_type": "Operation", "name": "Operation_FindAggregationInCurrent", "suggested_path": "Configuration/Operations/EN/Search/Operation_FindAggregationInCurrent.mslx"},
+        {"object_type": "Operation", "name": "Operation_FindAggregationInDeclared", "suggested_path": "Configuration/Operations/EN/Search/Operation_FindAggregationInDeclared.mslx"},
+        {"object_type": "Operation", "name": "Operation_FindAggregationInDocument", "suggested_path": "Configuration/Operations/EN/Search/Operation_FindAggregationInDocument.mslx"},
+        {"object_type": "Operation", "name": "Operation_AcceptAggregationFromCurrent", "suggested_path": "Configuration/Operations/EN/Accept/Operation_AcceptAggregationFromCurrent.mslx"},
+        {"object_type": "Operation", "name": "Operation_AcceptAggregationFromDeclared", "suggested_path": "Configuration/Operations/EN/Accept/Operation_AcceptAggregationFromDeclared.mslx"},
+        {"object_type": "Operation", "name": "Operation_FindTUContains", "suggested_path": "Configuration/Operations/EN/Search/Operation_FindTUContains.mslx"}
+      ]
+    },
+    {
+      "id": "cleverence.document_types.warehouse_flow",
+      "intent_terms": [
+        "тип документа cleverence",
+        "отбор из ячеек",
+        "подбор заказа",
+        "отгрузка",
+        "приход на склад",
+        "размещение в ячейки",
+        "инвентаризация",
+        "warehouse document type"
+      ],
+      "request_candidates": [
+        {"object_type": "DocumentType", "name": "ОтборИзЯчеек", "suggested_path": "Configuration/DocumentTypes/Отгрузка/OtborIzYacheek.mslx"},
+        {"object_type": "DocumentType", "name": "ПодборЗаказа", "suggested_path": "Configuration/DocumentTypes/Отгрузка/PodborZakaza.mslx"},
+        {"object_type": "DocumentType", "name": "Отгрузка", "suggested_path": "Configuration/DocumentTypes/Отгрузка/Otgruzka.mslx"},
+        {"object_type": "DocumentType", "name": "ПриходНаСклад", "suggested_path": "Configuration/DocumentTypes/Приход/PrihodNaSklad.mslx"},
+        {"object_type": "DocumentType", "name": "РазмещениеВЯчейки", "suggested_path": "Configuration/DocumentTypes/Приход/RazmeshhenieVYachejki.mslx"},
+        {"object_type": "DocumentType", "name": "Инвентаризация", "suggested_path": "Configuration/DocumentTypes/Основные/Inventarizaciya.mslx"}
+      ]
+    }
+  ],
+  "proof_required_after_locator_match": [
+    "exact target or user-authorized Cleverence configuration/export source",
+    "exact Operation/DocumentType XML/MSLX for the target version",
+    "complete Action graph and referenced operation closure when execution flow matters",
+    "exact field/type/container metadata when a data contract matters",
+    "stock call sites or surrounding configuration context when applicability remains ambiguous",
+    "emulator/device/runtime evidence for parser precedence, scan behavior or other runtime semantics"
+  ]
+}

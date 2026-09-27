@@ -1,0 +1,276 @@
+{
+  "schema_version": 2,
+  "owner": "FINAL_USER_RESULT_PRESENTATION",
+  "applies_to": "NON_TRIVIAL_SKILL_TASKS",
+  "purpose": "Keep the final user-facing result stable, concise and evidence-bound without turning every answer into an internal validation dump.",
+  "principles": [
+    "the final answer summarizes the proved task state; it is not a new proof source",
+    "the final answer must never upgrade requirements/release/evidence status in prose",
+    "show the outcome before implementation detail",
+    "do not expose internal ledgers, routing tables or gate inventories by default",
+    "omit empty sections and omit user action when the user has nothing to do",
+    "artifact links and exact delivery instructions remain part of the result when artifacts were produced"
+  ],
+  "common_sections": [
+    {
+      "id": "OUTCOME",
+      "title_ru": "Итог",
+      "required": true,
+      "contract": "State the direct answer/result and the strongest justified readiness status in compact form."
+    },
+    {
+      "id": "RESULT",
+      "title_ru": "Результат",
+      "required": true,
+      "contract": "Present the profile-specific substantive result."
+    },
+    {
+      "id": "VERIFICATION",
+      "title_ru": "Проверка",
+      "required_for_profiles": [
+        "ANALYSIS_REPORT",
+        "IMPLEMENTATION_DELIVERY",
+        "REQUIREMENTS_ARTIFACT"
+      ],
+      "contract": "Name only material checks/evidence that affect confidence in the delivered result; do not dump every internal gate."
+    },
+    {
+      "id": "PROOF_BOUNDARY",
+      "title_ru": "Граница доказанности",
+      "required_when": [
+        "runtime_or_deployment_not_observed",
+        "material_evidence_remains_unresolved",
+        "artifact_ready_but_applied_target_not_observed",
+        "result_is_partial_or_blocked"
+      ],
+      "contract": "State what is and is not proven. Never imply runtime, deployment or source proof that was not observed."
+    },
+    {
+      "id": "ARTIFACTS",
+      "title_ru": "Артефакты",
+      "conditional": "include only when files, PRs, patches, reports or delivery packages were produced"
+    },
+    {
+      "id": "USER_ACTION",
+      "title_ru": "Что нужно от пользователя",
+      "conditional": "include only when a concrete next action is required from the user"
+    }
+  ],
+  "profiles": {
+    "ANALYSIS_REPORT": {
+      "use_when": "the primary result is analysis/review/recommendation rather than a delivered implementation",
+      "primary_result_modes": [
+        "ANALYSIS_REPORT"
+      ],
+      "finding_shape": [
+        "location",
+        "as_is",
+        "problem",
+        "recommendation",
+        "rationale",
+        "evidence_boundary"
+      ],
+      "finding_labels_ru": {
+        "location": "Где",
+        "as_is": "Как сейчас",
+        "problem": "Проблема",
+        "recommendation": "Рекомендуется",
+        "rationale": "Обоснование",
+        "evidence_boundary": "Доказательство / граница"
+      },
+      "code_comparison": {
+        "when": "exact source supports a concrete replacement and code would materially improve the recommendation",
+        "old_label_ru": "Старый код",
+        "recommended_label_ru": "Рекомендуемый код"
+      },
+      "rules": [
+        "group repeated manifestations under one root finding when they have the same owner/cause",
+        "keep separate findings when remediation, owner, proof boundary or risk differs",
+        "do not inflate the report with low-value style observations when they do not affect the task"
+      ]
+    },
+    "IMPLEMENTATION_DELIVERY": {
+      "use_when": "the task produced code, a patch, an importable artifact, a compare set or a manual transfer instruction",
+      "primary_result_modes": [
+        "DIRECT_SOURCE_CHANGESET",
+        "MANUAL_TRANSFER_INSTRUCTION",
+        "PATCH_DIFF",
+        "IMPORTABLE_ARTIFACT",
+        "FULL_COMPARE_SET",
+        "OTHER"
+      ],
+      "result_shape": [
+        "what_changed",
+        "changed_objects_or_files",
+        "key_design_decisions",
+        "delivery",
+        "verification",
+        "implementation_notes"
+      ],
+      "rules": [
+        "do not restate every changed line; summarize by business/technical responsibility",
+        "when manual transfer is primary, preserve the exact ordered object-by-object transfer contract",
+        "when an artifact was created, link or identify the exact artifact and its scope",
+        "do not call an artifact deployed or runtime-proven unless that target state was observed",
+        "always include the required human-readable `Особенности реализации` section for non-trivial implementation work"
+      ],
+      "implementation_notes": {
+        "title_ru": "Особенности реализации",
+        "required": true,
+        "format": "PROJECT_TASK_HEADER_PLUS_TABLE",
+        "scope": "one row per material implementation change/decision at the most precise practical object/member level; project and task are mandatory one-time section header fields and are not repeated per row",
+        "header_fields_locked": true,
+        "header_order": [
+          "project",
+          "task"
+        ],
+        "header_labels_ru": {
+          "project": "Проект",
+          "task": "Задача"
+        },
+        "base_columns_locked": true,
+        "additional_columns_allowed": false,
+        "additional_information_allowed_outside_base_format": true,
+        "row_order": [
+          "container",
+          "configuration_object",
+          "procedure_or_function",
+          "status",
+          "change_description"
+        ],
+        "labels_ru": {
+          "container": "Контейнер",
+          "configuration_object": "Объект конфигурации",
+          "procedure_or_function": "Процедура / функция",
+          "status": "Статус",
+          "change_description": "Описание изменения"
+        },
+        "header_field_rules": {
+          "project": "exact bound project name; render once above the table as `Проект: <...>`; do not invent, normalize or repeat it as a table column",
+          "task": "exact bound task name/identifier; render once above the table as `Задача: <...>`; do not replace it with a model-generated summary or repeat it as a table column"
+        },
+        "field_rules": {
+          "container": "exact source container identity, for example `Расширение <имя>` or `Основная конфигурация <имя>`",
+          "configuration_object": "human-readable exact configuration object identity in one field, including object kind/name as needed; do not split this base field into separate type/name columns",
+          "procedure_or_function": "exact changed procedure/function/member/event; may contain multiple exact members when one status/description applies; for object-level changes use the exact structural member wording",
+          "status": "factual status of this row, for example `Создана`, `Добавлена`, `Изменена`, `Удалена`, `Удалены`, `Оставлена без изменения`, `Удалена привязка`, with grammatically appropriate wording",
+          "change_description": "concise factual description of what changed or was deliberately retained and how the resulting behavior/mechanism works"
+        },
+        "format_rules": [
+          "the two header fields are mandatory and must appear exactly once above the table in header_order with exactly the header_labels_ru values",
+          "project and task must not be repeated as table columns",
+          "the five base table columns are mandatory and must appear exactly in row_order with exactly the labels_ru values",
+          "do not rename, remove, merge, split or reorder either mandatory header fields or base table columns",
+          "do not add extra columns to the base table",
+          "additional rationale, evidence, risks, performance notes, verification or links may be added only outside the mandatory project/task header and base table",
+          "do not omit material implementation rows and do not invent objects, members, statuses or changes"
+        ],
+        "identity_rules": [
+          "project and task come only from bound Project Context or requirements",
+          "container identity comes from the exact baseline/candidate layout",
+          "same-named objects in the main configuration and extensions or in different extensions remain separate rows",
+          "Cleverence and other non-1C artifacts may be documented additionally, but must not mutate the mandatory project/task header plus five-column 1C base format"
+        ]
+      },
+      "performance_review_projection": {
+        "title_ru": "Performance Review",
+        "owner_rule_id": "COLLECTION_ALGORITHM",
+        "placement": "OUTSIDE_IMPLEMENTATION_NOTES_BASE_FORMAT",
+        "source_of_truth": "canonical release_gate implementation_readiness plus the validated exact-candidate performance_review row; presentation never becomes a proof source",
+        "candidate_bound": true,
+        "fields": [
+          "current_algorithm",
+          "proposed_algorithm",
+          "passes_nested_searches_io",
+          "asymptotic_time",
+          "memory_and_copies",
+          "client_server_db_topology",
+          "reviewed_scale",
+          "preservation",
+          "runtime_status"
+        ],
+        "runtime_states": {
+          "STRUCTURAL_ONLY": {
+            "required_disclosure_ru": "Измеренное ускорение не доказано.",
+            "rule": "may describe structural/asymptotic improvement but must not state measured speedup, latency or throughput improvement"
+          },
+          "MEASURED": {
+            "rule": "may state the measured claim only when canonical validation accepted an exact-candidate runtime_case verified from RUNTIME_ADAPTER evidence"
+          },
+          "NOT_APPLICABLE": {
+            "rule": "may be shown only when the canonical exact-candidate plan reports COLLECTION_ALGORITHM inactive and detected_by is empty"
+          },
+          "BLOCKED": {
+            "rule": "missing, invalid, stale or active-owner NOT_APPLICABLE review must be surfaced as blocked/incomplete and never rendered as a ready Performance Review"
+          }
+        },
+        "rules": [
+          "render only from canonical validated Performance Review state bound to the same candidate fingerprint",
+          "generic prose, generic PASS or a generic receipt is not a Performance Review",
+          "STRUCTURAL_ONLY must include the exact disclosure `Измеренное ускорение не доказано.` and must not imply measured acceleration",
+          "MEASURED requires verifier-confirmed RUNTIME_ADAPTER evidence for the exact candidate before the measured claim may be rendered",
+          "NOT_APPLICABLE is verifier-owned and requires the exact candidate to have COLLECTION_ALGORITHM inactive with no detected activation triggers",
+          "missing, stale, wrong-candidate or otherwise blocked Performance Review must remain visibly blocked and cannot be omitted to make delivery look ready",
+          "the Performance Review projection cannot change implementation_readiness or final release_outcome",
+          "the projection is supplementary and must remain outside the mandatory project/task header and immutable five-column `Особенности реализации` table"
+        ]
+      }
+    },
+    "REQUIREMENTS_ARTIFACT": {
+      "use_when": "the primary deliverable is a requirements/specification/technical assignment artifact",
+      "result_shape": [
+        "agreed_scope_and_outcome",
+        "material_rules_and_acceptance",
+        "open_or_assumed_items",
+        "artifact"
+      ],
+      "rules": [
+        "preserve agreed requirement versus proposed solution provenance",
+        "a blocked requirements gate must be visible in OUTCOME/PROOF_BOUNDARY rather than hidden in an appendix"
+      ]
+    },
+    "BLOCKED_OR_PARTIAL": {
+      "use_when": "a blocking gate/evidence dependency remains or only part of the requested result can be completed",
+      "takes_precedence_over": [
+        "ANALYSIS_REPORT",
+        "IMPLEMENTATION_DELIVERY",
+        "REQUIREMENTS_ARTIFACT"
+      ],
+      "result_shape": [
+        "completed_work",
+        "blocking_or_missing_evidence",
+        "smallest_required_user_input",
+        "unaffected_work_that_can_still_continue"
+      ],
+      "rules": [
+        "never use ready/proven/completed wording for the blocked portion",
+        "request the smallest concrete artifact or answer that can resolve the blocker",
+        "do not ask the user to repeat context already present in the active task"
+      ]
+    }
+  },
+  "readiness_binding": {
+    "canonical_sources": [
+      "TOOLS/requirements_gate.py",
+      "TOOLS/release_gate.py",
+      "TOOLS/validate_project_snapshot_package.py",
+      "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json"
+    ],
+    "rules": [
+      "use the canonical gate/validator outcome for the property it owns",
+      "BLOCKED must not become ready in prose",
+      "READY_FOR_RUNTIME_TEST must not become runtime-proven in prose",
+      "ANALYSIS_COMPLETE is analysis coverage, not deployment/runtime proof",
+      "PROVEN applies only at the exact proof scope returned by the release gate",
+      "ProjectSnapshot package ACCEPTED proves binding/provenance only; source bytes still require content inspection",
+      "delivery artifact validation does not imply applied-target, deployment/import or runtime observation"
+    ]
+  },
+  "conciseness": {
+    "trivial_tasks_exempt": true,
+    "omit_empty_sections": true,
+    "omit_user_action_when_none": true,
+    "internal_gate_dump_by_default": false,
+    "prefer_root_findings_over_repeated_symptoms": true
+  }
+}

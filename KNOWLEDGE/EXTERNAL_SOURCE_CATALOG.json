@@ -1,0 +1,37 @@
+{
+  "schema_version": 2,
+  "principle": "External methods and repositories provide supporting evidence and provenance. They do not override actual project source, official 1C contracts or vendor/runtime evidence, and they are loaded only when routed. The shareable tree must not retain imported source archives unless redistribution rights are explicit.",
+  "sources": [
+    {
+      "id": "CC_1C_SKILLS",
+      "role": "STRUCTURAL_1C_XML_SUPPORTING_REFERENCE",
+      "trust": "SUPPORTING_REFERENCE",
+      "load": "ON_DEMAND",
+      "upstream": "https://github.com/Nikolay-Shirokov/cc-1c-skills",
+      "local_notice": "THIRD_PARTY/cc-1c-skills/NOTICE.md",
+      "local_license": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
+      "redistribution_status": "LICENSED_WITH_NOTICE",
+      "consumed_by": ["KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md", "TOOLS/analyze_onec_xml.py"],
+      "refresh_policy": "Use upstream only for routed structural discovery/calibration. Promote a heuristic to blocking behavior only after validation against actual/official evidence."
+    },
+    {
+      "id": "V8STD",
+      "role": "1C_STANDARDS_AND_DIAGNOSTICS_DISCOVERY",
+      "trust": "SUPPORTING_DISCOVERY",
+      "load": "ON_DEMAND",
+      "upstream": "https://github.com/zeegin/v8std",
+      "redistribution_status": "REFERENCE_BY_URL",
+      "consumed_by": ["KNOWLEDGE/V8STD_SOURCE_POLICY.md", "KNOWLEDGE/ITS_GAP_DISCOVERY_PROTOCOL.md"],
+      "refresh_policy": "Use to challenge embedded coverage and discover related diagnostics; current official 1C/ITS standard remains normative."
+    },
+    {
+      "id": "REQUIREMENTS_METHOD_ORIGIN",
+      "role": "REQUIREMENTS_METHODOLOGY_ORIGIN",
+      "trust": "CONCEPTUAL_SOURCE",
+      "load": "NOT_DISTRIBUTED",
+      "redistribution_status": "SOURCE_ARCHIVE_REMOVED_FROM_SHAREABLE_TREE",
+      "consumed_by": ["KNOWLEDGE/REQUIREMENTS_DISCOVERY.md", "RULES/rule_registry.json"],
+      "refresh_policy": "Only generalized functional-contract/traceability/process/data/integration/acceptance principles are retained. The original imported archive is not a dependency of the distributed skill."
+    }
+  ]
+}

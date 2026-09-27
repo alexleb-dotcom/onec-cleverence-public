@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContainerTypesBook xmlns:clr="http://schemas.cleverence.ru/clr">
+  <ContainerTypes>
+    <ContainerType barcode="(00){X:@\d{18}}" name="SSCC" />
+    <ContainerType barcode="(02){GTIN:@\d{14}}" name="Mono02" />
+  </ContainerTypes>
+</ContainerTypesBook>

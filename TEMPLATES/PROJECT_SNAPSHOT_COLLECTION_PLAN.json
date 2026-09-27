@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "result": "READY",
+  "request_id": "<originating-request-id>",
+  "baseline_expectation": {
+    "configuration_name": "<name-or-unknown>",
+    "configuration_version": "<version-or-unknown>",
+    "source_role": "DEPLOYED_OR_USER_BASELINE",
+    "known_fingerprint": null
+  },
+  "available_backends": [
+    "RUNTIME_METADATA"
+  ],
+  "allowed_backends": [
+    "SOURCE_EXPORT",
+    "CONFIGURATOR_ASSISTED",
+    "RUNTIME_METADATA",
+    "MANUAL_ATTACHMENTS"
+  ],
+  "collection_mode": "RUNTIME_METADATA",
+  "selected_backends": [
+    "RUNTIME_METADATA"
+  ],
+  "summary": {
+    "ready": 1,
+    "partial": 0,
+    "unsupported": 0
+  },
+  "runtime_collector_scope": [
+    "<logical-evidence-id>"
+  ],
+  "category_plan": [
+    {
+      "category": "METADATA_PROPERTIES",
+      "status": "PARTIAL",
+      "selected": {
+        "backend": "RUNTIME_METADATA",
+        "state": "PARTIAL",
+        "method": "runtime metadata objects",
+        "limitations": [
+          "runtime APIs do not prove every design-time property or exact source bytes"
+        ],
+        "automatic": true
+      }
+    }
+  ],
+  "item_plan": [
+    {
+      "id": "<logical-evidence-id>",
+      "category": "METADATA_PROPERTIES",
+      "logical_target": "DOCUMENT.<metadata-name>",
+      "required_for_claim": "<claim-or-check-id>",
+      "minimum_fidelity": "PARTIAL",
+      "status": "READY",
+      "selected": {
+        "backend": "RUNTIME_METADATA",
+        "state": "PARTIAL",
+        "method": "runtime metadata objects",
+        "limitations": [
+          "runtime APIs do not prove every design-time property or exact source bytes"
+        ],
+        "automatic": true
+      }
+    }
+  ],
+  "unresolved_items": []
+}

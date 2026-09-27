@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContainerTypesBook xmlns:clr="http://schemas.cleverence.ru/clr">
+  <ContainerTypes>
+    <ContainerType barcode="(01){GTIN:@\d{14}}(21){SerialNumber:}(91){X:}(92){Y:}" name="Mark">
+      <DefinedFields clr:Type="ContainerTypeFieldInfoCollection">
+        <ContainerTypeFieldInfo fieldName="bitNomerKoroba" fieldType="Int" alias="" valueTemplate="" />
+      </DefinedFields>
+    </ContainerType>
+  </ContainerTypes>
+</ContainerTypesBook>

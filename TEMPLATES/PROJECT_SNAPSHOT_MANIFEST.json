@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "<stable-snapshot-id>",
+  "request_id": "<originating-request-id>",
+  "captured_at": "<ISO-8601>",
+  "collector": {
+    "name": "<collector-name>",
+    "version": "<collector-version>",
+    "backend": "HYBRID"
+  },
+  "baseline": {
+    "configuration_name": "<name-or-unknown>",
+    "configuration_version": "<version-or-unknown>",
+    "fingerprint": "<sha256/tree-id/or-explicit-unavailable>",
+    "fingerprint_kind": "<SHA256|TREE_SHA256|VERSION_ONLY|UNAVAILABLE>"
+  },
+  "coverage": {
+    "requested_item_ids": [
+      "<logical-evidence-id>"
+    ],
+    "collected_item_ids": [
+      "<logical-evidence-id>"
+    ],
+    "missing_required": [],
+    "unsupported": [],
+    "claims_full_configuration": false
+  },
+  "items": [
+    {
+      "id": "<logical-evidence-id>",
+      "category": "<evidence-category>",
+      "logical_target": "<metadata-object/module/form/etc>",
+      "collection_status": "<COLLECTED|PARTIAL|UNSUPPORTED|ERROR>",
+      "evidence_fidelity": "<FULL|PARTIAL|UNSUPPORTED>",
+      "path_or_reference": "<relative-path-or-reference>",
+      "capture_method": "<backend-specific-method>",
+      "sha256": "<64-hex-or-null>",
+      "runtime_proven": false,
+      "limitations": []
+    }
+  ],
+  "privacy": {
+    "runtime_business_data_included": false,
+    "notes": []
+  },
+  "notes": []
+}

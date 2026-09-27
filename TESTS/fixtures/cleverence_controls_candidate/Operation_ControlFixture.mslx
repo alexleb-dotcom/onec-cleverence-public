@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Operation name="ControlFixture">
+  <Actions>
+    <GroupAction id="group" indent="0" name="group" nextDirection="return">
+      <Actions>
+        <ConditionAction id="inner" indent="0" name="inner" noDirection="up:outer" yesDirection="" />
+        <QuestionAction id="question" indent="1" name="question" nextDirection="">
+          <ButtonDirections>
+            <String>missing-target</String>
+            <String>abort</String>
+          </ButtonDirections>
+        </QuestionAction>
+        <AssignAction id="inserted" indent="2" name="inserted" nextDirection="break" />
+      </Actions>
+    </GroupAction>
+    <AssignAction id="outer" indent="0" name="outer" nextDirection="return" />
+  </Actions>
+</Operation>

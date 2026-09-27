@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ILLUSTRATIVE_PATTERN: NOT EVIDENCE. Action names/expressions/fields are placeholders. -->
+<Operation name="PatternPlanFactBad">
+  <Actions>
+    <AssignAction id="find-plan" name="FindPlan" nextDirection="mutate" expression="PlanKey = SelectedPlanKey;" />
+    <!-- BAD: mutation assumes CurrentItem still represents the intended fact. -->
+    <AssignAction id="mutate" name="MutateCurrentFact" nextDirection="return" expression="CurrentItem.Quantity = CurrentItem.Quantity + 1;" />
+  </Actions>
+</Operation>

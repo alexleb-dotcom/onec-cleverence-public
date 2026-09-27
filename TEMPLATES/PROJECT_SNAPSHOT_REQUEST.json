@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "request_id": "<stable-request-id>",
+  "purpose": "DEVELOPMENT_ANALYSIS",
+  "baseline_expectation": {
+    "configuration_name": "<name-or-unknown>",
+    "configuration_version": "<version-or-unknown>",
+    "source_role": "DEPLOYED_OR_USER_BASELINE",
+    "known_fingerprint": null
+  },
+  "entry_points": [
+    {
+      "kind": "METADATA_OBJECT_OR_SCENARIO",
+      "id": "DOCUMENT.<metadata-name>",
+      "reason": "<requirement-or-active-check>"
+    }
+  ],
+  "evidence_categories": [
+    "METADATA_PROPERTIES",
+    "MODULE_SOURCE",
+    "FORM_DEFINITION",
+    "COMMAND_WIRING",
+    "ROLE_RIGHTS",
+    "SCHEDULED_JOBS",
+    "EVENT_SUBSCRIPTIONS",
+    "SUBSYSTEM_MEMBERSHIP",
+    "CALL_DEPENDENCIES",
+    "INTEGRATION_CONTRACTS"
+  ],
+  "dependency_expansion": {
+    "mode": "MINIMAL_SUFFICIENT",
+    "include_callers_when_material": true,
+    "include_callees_when_material": true,
+    "include_metadata_companions_when_material": true,
+    "allow_iterative_delta_requests": true
+  },
+  "required_items": [
+    {
+      "id": "<logical-evidence-id>",
+      "category": "<evidence-category>",
+      "logical_target": "DOCUMENT.<metadata-name>",
+      "required_for_claim": "<claim-or-check-id>",
+      "minimum_fidelity": "FULL"
+    }
+  ],
+  "privacy": {
+    "exclude_runtime_business_data_by_default": true,
+    "include_sample_business_data_only_when_explicitly_required": true
+  },
+  "collector_policy": {
+    "allowed_backends": [
+      "SOURCE_EXPORT",
+      "CONFIGURATOR_ASSISTED",
+      "RUNTIME_METADATA",
+      "MANUAL_ATTACHMENTS",
+      "HYBRID"
+    ],
+    "read_only_collection": true,
+    "unsupported_items_must_be_reported": true
+  }
+}

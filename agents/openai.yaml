@@ -1,0 +1,15 @@
+interface:
+  display_name: onec cleverence developer
+  short_description: Requirements-first, registry-driven development and review for
+    1C:Enterprise and Cleverence Mobile SMARTS, with a functional-contract gate, BSP/typical/vendor
+    analog discovery, exact call/data contracts, semantic evidence ledgers and fail-closed
+    requirements/release gates.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

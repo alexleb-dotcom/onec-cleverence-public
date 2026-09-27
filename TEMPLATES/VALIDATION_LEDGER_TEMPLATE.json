@@ -1,0 +1,96 @@
+{
+  "schema_version": 5,
+  "registry": {
+    "path": "RULES/rule_registry.json",
+    "schema_version": 0,
+    "sha256": ""
+  },
+  "routing": {
+    "surface": "",
+    "risk": "",
+    "mode": ""
+  },
+  "artifact_model": {
+    "family": "UNKNOWN",
+    "role": "UNKNOWN",
+    "layout": "UNKNOWN",
+    "confidence": "UNRESOLVED",
+    "authoritative_roots": [],
+    "warnings": []
+  },
+  "artifact_delivery_state": {
+    "exact_delivery_allowed": false,
+    "blockers": []
+  },
+  "artifact_inventory": {},
+  "candidate_artifacts": [],
+  "baseline": null,
+  "project_context": {},
+  "requirements": {
+    "required": false,
+    "technical_design_allowed": false,
+    "coverage_sufficient": false,
+    "path": null,
+    "sha256": null,
+    "gate_result": null,
+    "gate_outcome": null
+  },
+  "gates": [],
+  "rules": [],
+  "evidence_registry": [],
+  "artifact_requests": [],
+  "evidence_reuse": {
+    "reused_ids": [],
+    "invalidated_ids": [],
+    "changed_dependencies": []
+  },
+  "review_levels": [],
+  "code_to_standards": [],
+  "standards_to_code": [],
+  "adversarial_cases": [
+    {
+      "id": "ADV:example",
+      "case": "Concrete failure/counterexample to attempt",
+      "status": "EVIDENCE_REQUIRED",
+      "reason": "",
+      "evidence": []
+    }
+  ],
+  "gap_discovery": {
+    "method": "KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md",
+    "lenses": [],
+    "hypotheses": []
+  },
+  "machine_reports": [],
+  "machine_findings": [],
+  "runtime_cases": [],
+  "knowledge_extraction": {
+    "outcome": "EVIDENCE_PENDING",
+    "reason": "",
+    "project_context_updates": [],
+    "items": []
+  },
+  "blocking_findings": [],
+  "completion": {
+    "status": "COVERAGE_GAP",
+    "release_outcome": "BLOCKED"
+  },
+  "note": "Generate the executable ledger with TOOLS/build_validation_ledger.py. machine_findings are verifier-bound leaf obligations derived from replay-verified analyzer reports; they cannot be omitted or closed by generic semantic prose. artifact_model/artifact_delivery_state remain immutable copies of the review-plan intake contract.",
+  "evidence_contract": {
+    "pass_minimum": {
+      "kind": "SEMANTIC",
+      "ref": "exact source/report/runtime anchor"
+    },
+    "machine_requires": "report_id -> machine_reports.id",
+    "runtime_requires": "case_id -> runtime_cases.id with status PASS",
+    "row_ids": "unique; duplicates invalidate proof",
+    "reusable_dependency_example": {
+      "kind": "CANDIDATE",
+      "id": "relative/path/Module.bsl",
+      "fingerprint": "sha256-or-exact-version-fingerprint"
+    },
+    "changed_dependency_semantics": "changed_dependencies invalidates by (kind,id); new fingerprint cannot evade invalidation"
+  },
+  "baseline_contract": "null when no baseline is supplied; otherwise deterministic SHA-256 snapshot object for the exact file or directory tree",
+  "artifact_contract": "UNKNOWN/MIXED/runtime-only intake may be analyzed, but exact configuration delivery/FULL_COMPARE requires a proven authoritative target layout and a rebuilt plan."
+}

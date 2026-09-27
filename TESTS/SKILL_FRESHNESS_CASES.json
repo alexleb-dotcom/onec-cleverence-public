@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "same_sha_no_reload",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "history_comparable": true,
+      "changed_files": [],
+      "expected": {
+        "status": "FRESH",
+        "diff_required": false,
+        "full_repository_reload_required": false,
+        "reroute_required": false,
+        "loaded_sha_update_allowed": true
+      }
+    },
+    {
+      "id": "missing_loaded_sha_bootstrap",
+      "loaded_sha": null,
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [],
+      "expected": {
+        "status": "BOOTSTRAP_REQUIRED",
+        "minimal_bootstrap_required": true,
+        "full_repository_reload_required": false,
+        "reroute_required": true,
+        "loaded_sha_update_allowed": false
+      }
+    },
+    {
+      "id": "current_sha_unavailable_is_unverified",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": null,
+      "history_comparable": true,
+      "changed_files": [],
+      "expected": {
+        "status": "UNVERIFIED",
+        "full_repository_reload_required": false,
+        "loaded_sha_update_allowed": false
+      }
+    },
+    {
+      "id": "registry_change_requires_reroute",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [
+        "RULES/rule_registry.json",
+        "PROFILES/INDEX.json"
+      ],
+      "expected": {
+        "status": "REFRESH_REQUIRED",
+        "diff_required": true,
+        "reroute_required": true,
+        "proof_revalidation_required": true,
+        "full_repository_reload_required": false,
+        "loaded_sha_update_allowed": false
+      },
+      "reload_contains": [
+        "RULES/rule_registry.json",
+        "PROFILES/INDEX.json"
+      ]
+    },
+    {
+      "id": "analyzer_change_reruns_machine_evidence",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [
+        "TOOLS/analyze_onec_bsl.py"
+      ],
+      "expected": {
+        "status": "REFRESH_REQUIRED",
+        "reroute_required": false,
+        "machine_revalidation_required": true,
+        "proof_revalidation_required": true,
+        "loaded_sha_update_allowed": false
+      },
+      "reload_contains": [
+        "TOOLS/analyze_onec_bsl.py"
+      ]
+    },
+    {
+      "id": "narrow_profile_change_stays_targeted",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [
+        "PROFILES/QUERY.md"
+      ],
+      "expected": {
+        "status": "REFRESH_REQUIRED",
+        "reroute_required": false,
+        "task_relevance_review_required": true,
+        "full_repository_reload_required": false,
+        "loaded_sha_update_allowed": false
+      },
+      "reload_contains": [
+        "PROFILES/QUERY.md"
+      ]
+    },
+    {
+      "id": "reference_change_remains_on_demand",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [
+        "REFERENCE/SOURCES/BSP_COMMON_MODULES.zip"
+      ],
+      "expected": {
+        "status": "REFRESH_REQUIRED",
+        "on_demand_evidence_review_required": true,
+        "full_repository_reload_required": false,
+        "loaded_sha_update_allowed": false
+      },
+      "reload_excludes": [
+        "REFERENCE/SOURCES/BSP_COMMON_MODULES.zip"
+      ]
+    },
+    {
+      "id": "noncomparable_history_rebootstraps_minimal_core",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": false,
+      "changed_files": [],
+      "expected": {
+        "status": "REBOOTSTRAP_REQUIRED",
+        "minimal_bootstrap_required": true,
+        "reroute_required": true,
+        "proof_revalidation_required": true,
+        "full_repository_reload_required": false,
+        "loaded_sha_update_allowed": false
+      }
+    },
+    {
+      "id": "changed_sha_without_diff_inventory_blocks_sha_advance",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [],
+      "expected": {
+        "status": "REFRESH_REQUIRED",
+        "diff_required": true,
+        "diff_inventory_required": true,
+        "loaded_sha_update_allowed": false
+      }
+    },
+    {
+      "id": "maintenance_only_change_not_loaded_for_project_task",
+      "loaded_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "current_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "history_comparable": true,
+      "changed_files": [
+        "TESTS/run_review_regression.py"
+      ],
+      "expected": {
+        "status": "REFRESH_REQUIRED",
+        "reroute_required": false,
+        "machine_revalidation_required": false,
+        "full_repository_reload_required": false
+      },
+      "reload_excludes": [
+        "TESTS/run_review_regression.py"
+      ]
+    }
+  ]
+}

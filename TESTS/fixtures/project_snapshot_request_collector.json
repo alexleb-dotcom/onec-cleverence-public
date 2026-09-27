@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "request_id": "fixture-project-snapshot-collector",
+  "purpose": "DEVELOPMENT_ANALYSIS",
+  "baseline_expectation": {
+    "configuration_name": "FixtureConfiguration",
+    "configuration_version": "1.0",
+    "source_role": "DEPLOYED_OR_USER_BASELINE",
+    "known_fingerprint": null
+  },
+  "entry_points": [
+    {
+      "kind": "METADATA_OBJECT_OR_SCENARIO",
+      "id": "DOCUMENT.Test",
+      "reason": "collector regression fixture"
+    }
+  ],
+  "evidence_categories": [
+    "METADATA_PROPERTIES",
+    "MODULE_SOURCE",
+    "SCHEDULED_JOBS"
+  ],
+  "dependency_expansion": {
+    "mode": "MINIMAL_SUFFICIENT",
+    "include_callers_when_material": true,
+    "include_callees_when_material": true,
+    "include_metadata_companions_when_material": true,
+    "allow_iterative_delta_requests": true
+  },
+  "required_items": [
+    {
+      "id": "document-test-metadata",
+      "category": "METADATA_PROPERTIES",
+      "logical_target": "DOCUMENT.Test",
+      "required_for_claim": "fixture:metadata-structure",
+      "minimum_fidelity": "PARTIAL"
+    },
+    {
+      "id": "document-test-object-module",
+      "category": "MODULE_SOURCE",
+      "logical_target": "DOCUMENT.Test.ObjectModule",
+      "required_for_claim": "fixture:source-logic",
+      "minimum_fidelity": "FULL"
+    },
+    {
+      "id": "scheduled-jobs-runtime",
+      "category": "SCHEDULED_JOBS",
+      "logical_target": "SCHEDULED_JOB.TestJob",
+      "required_for_claim": "fixture:scheduler-observation",
+      "minimum_fidelity": "PARTIAL"
+    }
+  ],
+  "privacy": {
+    "exclude_runtime_business_data_by_default": true,
+    "include_sample_business_data_only_when_explicitly_required": true
+  },
+  "collector_policy": {
+    "allowed_backends": [
+      "SOURCE_EXPORT",
+      "CONFIGURATOR_ASSISTED",
+      "RUNTIME_METADATA",
+      "MANUAL_ATTACHMENTS",
+      "HYBRID"
+    ],
+    "read_only_collection": true,
+    "unsupported_items_must_be_reported": true
+  }
+}

@@ -1,0 +1,688 @@
+{
+  "version": 23,
+  "machine_bad_cases": {
+    "query_in_loop_bad.bsl": [
+      "QUERY_IN_LOOP"
+    ],
+    "reference_dot_bad.bsl": [
+      "BSL_REFERENCE_DOT"
+    ],
+    "query_deref_bad.bsl": [
+      "QUERY_REFERENCE_DEREFERENCE"
+    ],
+    "structure_many_bad.bsl": [
+      "STRUCTURE_CONSTRUCTOR_MANY_VALUES"
+    ],
+    "write_loop_bad.bsl": [
+      "WRITE_IN_LOOP"
+    ],
+    "empty_ref_sentinel_bad.bsl": [
+      "EMPTY_REFERENCE_SENTINEL_REVIEW"
+    ],
+    "query_sentinel_broadening_bad.bsl": [
+      "QUERY_PARAMETER_SENTINEL_BROADENING_REVIEW"
+    ],
+    "top_without_order_bad.bsl": [
+      "TOP_WITHOUT_ORDER_REVIEW"
+    ],
+    "transaction_bad.bsl": [
+      "TRANSACTION_PATTERN_INCOMPLETE"
+    ],
+    "dynamic_list_direct_bad.bsl": [
+      "DYNAMIC_LIST_DIRECT_QUERY_OVERRIDE"
+    ],
+    "dynamic_query_schema_mutation_bad.bsl": [
+      "DYNAMIC_QUERY_TEXT_MUTATION_NOT_STRREPLACE"
+    ],
+    "query_fragment_concat_bad.bsl": [
+      "QUERY_TEXT_FRAGMENT_CONCATENATION"
+    ],
+    "order_by_alias_drift_bad.bsl": [
+      "ORDER_BY_ALIAS_CONTRACT_REVIEW"
+    ],
+    "query_custom_marker_bad.bsl": [
+      "QUERY_TEMPLATE_CUSTOM_MARKER"
+    ],
+    "query_homegrown_parser_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "form_reference_dereference_review.bsl": [
+      "FORM_REFERENCE_DEREFERENCE_REVIEW"
+    ],
+    "form_collection_client_loop_review.bsl": [
+      "FORM_COLLECTION_CLIENT_TRAVERSAL_REVIEW"
+    ],
+    "query_surgery_short_bypass_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_alias_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_keyword_var_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_execute_unused_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_surgery_direct_sink_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_nested_boundary_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_constructor_sink_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_object_alias_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_unresolved_receiver_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_surgery_neutral_names_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_execute_unrelated_temp_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_manager_presence_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_temp_producer_no_consumer_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_different_manager_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_table_identity_mutation_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_temp_table_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_surgery_factory_receiver_bad.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_execute_latin_identifier_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_late_producer_text_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_late_manager_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_late_consumer_text_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_literal_escape_direct_tab_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_direct_crlf_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_alias_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_positions_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_textquery_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_function_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_constructor_literal_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_query_alias_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_concat_second_bad.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_execute_trailing_comment_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_query_rebind_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_manager_rebind_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_alias_source_rebind_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_same_line_after_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_same_line_before_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_same_line_twice_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_text_same_line_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_if_else_consumer_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_conditional_consumer_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_sibling_state_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_try_except_consumer_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_branch_rebind_sibling_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_conditional_manager_rebind_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_return_barrier_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_conditional_return_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_raise_barrier_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_continue_barrier_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_break_barrier_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_goto_barrier_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_compile_sibling_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_standalone_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_batch_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_if_sibling_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_loop_conditional_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_unsupported_receiver_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_inline_if_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_if_body_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_inline_while_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_while_body_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_inline_conditional_return_bad.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ]
+  },
+  "machine_good_cases": {
+    "query_field_good.bsl": [
+      "QUERY_REFERENCE_DEREFERENCE"
+    ],
+    "structure_three_good.bsl": [
+      "STRUCTURE_CONSTRUCTOR_MANY_VALUES"
+    ],
+    "query_position_math_good.bsl": [
+      "QUERY_TEXT_FRAGMENT_CONCATENATION"
+    ],
+    "dynamic_list_bsp_good.bsl": [
+      "DYNAMIC_LIST_DIRECT_QUERY_OVERRIDE",
+      "DYNAMIC_QUERY_TEXT_MUTATION_NOT_STRREPLACE"
+    ],
+    "query_sentinel_explicit_branch_good.bsl": [
+      "QUERY_PARAMETER_SENTINEL_BROADENING_REVIEW"
+    ],
+    "form_direct_data_access_good.bsl": [
+      "FORM_REFERENCE_DEREFERENCE_REVIEW",
+      "FORM_COLLECTION_CLIENT_TRAVERSAL_REVIEW"
+    ],
+    "form_collection_server_loop_good.bsl": [
+      "FORM_COLLECTION_CLIENT_TRAVERSAL_REVIEW"
+    ],
+    "query_string_ops_good.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_full_template_good.bsl": [
+      "HOMEGROWN_QUERY_STRUCTURE_PARSER"
+    ],
+    "query_execute_same_manager_consumer_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_result_consumed_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_repeated_producer_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_literal_escape_spaces_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_real_tab_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_nonquery_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_quoted_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_alias_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_constructor_literal_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_query_alias_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_literal_escape_concat_good.bsl": [
+      "QUERY_LITERAL_ESCAPE_CORRUPTION"
+    ],
+    "query_execute_alias_old_identity_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_manager_alias_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_consumed_comment_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_consumed_same_line_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_return_chain_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_string_semicolon_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_same_branch_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_assignment_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_return_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_multiline_same_branch_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_same_loop_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_compile_same_branch_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_inventory_ignored_text_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_if_header_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_elseif_header_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_while_header_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ],
+    "query_execute_foreach_header_good.bsl": [
+      "QUERY_EXECUTE_SIDE_EFFECT_TRACE"
+    ]
+  },
+  "cleverence_bad_cases": {
+    "cleverence_graph_bad.mslx": [
+      "CLEVERENCE_ACTION_ID_DUPLICATE",
+      "CLEVERENCE_DIRECTION_TARGET_UNRESOLVED"
+    ]
+  },
+  "cleverence_good_cases": {
+    "cleverence_graph_good.mslx": [
+      "CLEVERENCE_ACTION_ID_DUPLICATE",
+      "CLEVERENCE_DIRECTION_TARGET_UNRESOLVED"
+    ],
+    "cleverence_controls_good.mslx": [
+      "CLEVERENCE_INDENT_INVALID",
+      "CLEVERENCE_DIRECTION_TARGET_UNRESOLVED"
+    ]
+  },
+  "cleverence_diff_cases": [
+    {
+      "candidate": "cleverence_diff_candidate",
+      "baseline": "cleverence_diff_baseline",
+      "expected": [
+        "CLEVERENCE_ACTION_SET_CHANGED",
+        "CLEVERENCE_IMPLICIT_FLOW_CHANGED"
+      ]
+    },
+    {
+      "candidate": "cleverence_controls_candidate",
+      "baseline": "cleverence_controls_baseline",
+      "expected": [
+        "CLEVERENCE_ACTION_SET_CHANGED",
+        "CLEVERENCE_DIRECTION_TARGET_UNRESOLVED",
+        "CLEVERENCE_INDENT_CHANGED",
+        "CLEVERENCE_BUTTON_DIRECTIONS_CHANGED",
+        "CLEVERENCE_FORMER_END_CHANGED"
+      ]
+    }
+  ],
+  "review_plan_cases": [
+    {
+      "inputs": [
+        "query_in_loop_bad.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "inputs": [
+        "cleverence_graph_good.mslx"
+      ],
+      "surface": "CLEVERENCE_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "cleverence_configuration_only",
+      "inputs": [
+        "cleverence_container_schema_good.mslx"
+      ],
+      "surface": "CLEVERENCE_ONLY",
+      "risk": "R1_CONTRACT",
+      "profiles": [
+        "CLEVERENCE_CONFIGURATION"
+      ],
+      "forbidden_profiles": [
+        "CLEVERENCE_MSLX"
+      ]
+    },
+    {
+      "id": "cleverence_embedded_script_isolation",
+      "inputs": [
+        "cleverence_controls_good.mslx"
+      ],
+      "surface": "CLEVERENCE_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME",
+      "profiles": [
+        "CLEVERENCE_MSLX"
+      ],
+      "forbidden_profiles": [
+        "CALL_CONTRACT"
+      ]
+    },
+    {
+      "inputs": [
+        "query_in_loop_bad.bsl",
+        "cleverence_graph_good.mslx"
+      ],
+      "surface": "CROSS_SYSTEM",
+      "risk": "R3_CROSS_SYSTEM"
+    },
+    {
+      "id": "qualified_call_nonexport_caller",
+      "inputs": [
+        "call_contract_nonexport_caller.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "profiles": [
+        "CALL_CONTRACT"
+      ],
+      "profile_statuses": {
+        "CALL_CONTRACT": "CONDITIONAL_REVIEW"
+      }
+    },
+    {
+      "id": "explicit_cross_system_override",
+      "inputs": [
+        "call_contract_nonexport_caller.bsl"
+      ],
+      "surface_override": "CROSS_SYSTEM",
+      "risk_override": "R3_CROSS_SYSTEM",
+      "surface": "CROSS_SYSTEM",
+      "risk": "R3_CROSS_SYSTEM",
+      "profiles": [
+        "CALL_CONTRACT",
+        "CLEVERENCE_INTEGRATION"
+      ]
+    },
+    {
+      "id": "cross_system_project_context",
+      "inputs": [
+        "call_contract_nonexport_caller.bsl"
+      ],
+      "project_context": "cross_system_project_context.md",
+      "surface": "CROSS_SYSTEM",
+      "risk": "R3_CROSS_SYSTEM",
+      "profiles": [
+        "BUSINESS_IDENTITY",
+        "CALL_CONTRACT",
+        "CLEVERENCE_INTEGRATION"
+      ]
+    },
+    {
+      "id": "analysis_only_preserves_source_detection",
+      "inputs": [
+        "call_contract_nonexport_caller.bsl"
+      ],
+      "analysis_only": true,
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "mode": "ANALYSIS_ONLY",
+      "profiles": [
+        "CALL_CONTRACT"
+      ]
+    },
+    {
+      "id": "surface_downgrade_refused",
+      "inputs": [
+        "query_in_loop_bad.bsl"
+      ],
+      "surface_override": "ANALYSIS_ONLY",
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "risk_downgrade_refused",
+      "inputs": [
+        "query_in_loop_bad.bsl"
+      ],
+      "risk_override": "R0_LOCAL",
+      "surface": "ONEC_ONLY",
+      "risk": "R2_STATEFUL_RUNTIME"
+    },
+    {
+      "id": "exported_declaration_required",
+      "inputs": [
+        "TestApi_Module.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "profiles": [
+        "CALL_CONTRACT"
+      ],
+      "profile_statuses": {
+        "CALL_CONTRACT": "ROUTED"
+      }
+    },
+    {
+      "id": "domain_validation_in_extension_hook",
+      "inputs": [
+        "domain_hook_review.bsl"
+      ],
+      "surface": "ONEC_ONLY",
+      "risk": "R1_CONTRACT",
+      "profiles": [
+        "DOMAIN_VALIDATION",
+        "HOOK_ORCHESTRATION"
+      ]
+    }
+  ],
+  "rule": "Machine fixtures live here; semantic rule/check definitions and activation semantics live only in RULES/rule_registry.json.",
+  "signature_bad_cases": {
+    "call_signature_bad.bsl": [
+      "CALL_SIGNATURE_MISMATCH"
+    ]
+  },
+  "signature_good_cases": {
+    "call_signature_good.bsl": [
+      "CALL_SIGNATURE_MISMATCH"
+    ]
+  },
+  "semantic_cases_source": "RULES/rule_registry.json (checks with kind SEMANTIC_REGRESSION or META)",
+  "onec_xml_bad_cases": {
+    "onec_xml_malformed.xml": [
+      "XML_PARSE_ERROR"
+    ],
+    "onec_form_xml_bad.xml": [
+      "FORM_DUPLICATE_ELEMENT_ID"
+    ],
+    "onec_metadata_adopted_bad.xml": [
+      "CFE_ADOPTED_OBJECT_WITHOUT_BASE_UUID"
+    ],
+    "onec_metadata_name_bad.xml": [
+      "METADATA_NAME_MISSING"
+    ],
+    "xdto_bad": [
+      "XDTO_TOP_LEVEL_ORDER_INVALID",
+      "XDTO_IMPORT_MISSING_FOR_REFERENCE"
+    ],
+    "role_rights_bad": [
+      "ROLE_RIGHTS_DUPLICATE_RIGHT"
+    ]
+  },
+  "onec_xml_good_cases": {
+    "onec_form_xml_good.xml": [
+      "FORM_DUPLICATE_ELEMENT_ID"
+    ],
+    "onec_metadata_adopted_good.xml": [
+      "CFE_ADOPTED_OBJECT_WITHOUT_BASE_UUID"
+    ],
+    "xdto_good": [
+      "XDTO_TOP_LEVEL_ORDER_INVALID",
+      "XDTO_IMPORT_MISSING_FOR_REFERENCE",
+      "XDTO_LOCAL_TYPE_REF_UNRESOLVED"
+    ],
+    "role_rights_good": [
+      "ROLE_RIGHTS_DUPLICATE_RIGHT",
+      "ROLE_RIGHTS_VALUE_INVALID"
+    ]
+  },
+  "field_flow_bad_cases": {
+    "post_write_reachable_same_field_bad.bsl": [
+      "POST_WRITE_REACHABLE_FIELD_OVERWRITE"
+    ],
+    "post_write_standard_overwrite_review.bsl": [
+      "POST_WRITE_EXTERNAL_LIFECYCLE_WRITER_REVIEW"
+    ]
+  },
+  "field_flow_good_cases": {
+    "post_write_unrelated_same_module_good.bsl": [
+      "POST_WRITE_REACHABLE_FIELD_OVERWRITE",
+      "POST_WRITE_EXTERNAL_LIFECYCLE_WRITER_REVIEW"
+    ],
+    "post_write_assignment_only.bsl": [
+      "POST_WRITE_REACHABLE_FIELD_OVERWRITE",
+      "POST_WRITE_EXTERNAL_LIFECYCLE_WRITER_REVIEW"
+    ]
+  },
+  "reachability_cases": [
+    {
+      "id": "new_helper_orphan_vs_connected",
+      "baseline": "reachability_baseline",
+      "bad_candidate": "reachability_candidate_bad",
+      "bad_expected": [
+        "NEW_ROUTINE_WITHOUT_CALLER"
+      ],
+      "good_candidate": "reachability_candidate_good",
+      "good_forbidden": [
+        "NEW_ROUTINE_WITHOUT_CALLER",
+        "NEW_ROUTINE_CLUSTER_NOT_CONNECTED"
+      ]
+    }
+  ],
+  "changeset_architecture_bad_cases": {
+    "cross_object_duplication_bad": [
+      "CROSS_OBJECT_DUPLICATION_CANDIDATE"
+    ],
+    "owner_reuse_internal_pipeline_bad": [
+      "INTERNAL_PIPELINE_RECONSTRUCTION_REVIEW"
+    ],
+    "owner_reuse_neutral_owner_pipeline_bad": [
+      "INTERNAL_PIPELINE_RECONSTRUCTION_REVIEW"
+    ]
+  },
+  "changeset_architecture_good_cases": {
+    "cross_object_duplication_good": [
+      "CROSS_OBJECT_DUPLICATION_CANDIDATE"
+    ],
+    "owner_reuse_public_api_good": [
+      "INTERNAL_PIPELINE_RECONSTRUCTION_REVIEW"
+    ],
+    "owner_reuse_local_multistage_good": [
+      "INTERNAL_PIPELINE_RECONSTRUCTION_REVIEW"
+    ]
+  },
+  "changeset_architecture_scope_cases": [
+    {
+      "input": "cross_object_duplication_good",
+      "max_routines": 1,
+      "expected": [
+        "CHANGESET_SIMILARITY_SCOPE_TOO_BROAD"
+      ]
+    }
+  ],
+  "onec_xml_summary_cases": {
+    "form_constants_set_binding_review.xml": {
+      "kind": "FORM",
+      "constants_set_attributes": [
+        "НаборКонстант"
+      ],
+      "constants_set_binding_paths": [
+        "НаборКонстант.НоваяКонстанта"
+      ]
+    }
+  },
+  "cleverence_config_bad_cases": {
+    "cleverence_field_confusable_bad.mslx": [
+      "CLEVERENCE_FIELD_NAME_CONFUSABLE_REVIEW"
+    ]
+  },
+  "cleverence_config_good_cases": {
+    "cleverence_container_schema_good.mslx": [
+      "CLEVERENCE_FIELD_NAME_CONFUSABLE_REVIEW",
+      "CLEVERENCE_CONFIG_XML_PARSE"
+    ]
+  },
+  "cleverence_config_diff_cases": [
+    {
+      "candidate": "cleverence_config_candidate",
+      "baseline": "cleverence_config_baseline",
+      "expected": [
+        "CLEVERENCE_CONTAINER_TEMPLATE_CHANGED",
+        "CLEVERENCE_BARCODE_TEMPLATE_OVERLAP_CHANGED"
+      ]
+    }
+  ]
+}

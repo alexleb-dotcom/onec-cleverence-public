@@ -1,0 +1,1024 @@
+{
+  "version": 11,
+  "generated": true,
+  "generated_from": "RULES/rule_registry.json",
+  "principle": "A rule is not implemented merely because it exists in Markdown. Requirements and technical rules require activation, evidence/check structure, regression coverage and fail-closed gate disposition.",
+  "blocking_rule": "Unknown/unrouted mechanism or missing rule evidence => COVERAGE_GAP; generated views are not an independent source of truth.",
+  "profiles": {
+    "BSP_REUSE": {
+      "file": "PROFILES/BSP_REUSE.md",
+      "detect": [],
+      "detect_paths": [],
+      "standards": [
+        "std467",
+        "BSP_USAGE_POLICY"
+      ],
+      "rule_id": "BSP_REUSE",
+      "tier": 0,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CALL_CONTRACT": {
+      "file": "PROFILES/CALL_CONTRACT.md",
+      "detect": [
+        "\\b[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]*\\.[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]*\\s*\\(",
+        "(?im)^\\s*(?:Процедура|Функция)\\s+\\w+\\s*\\([^\\n]*\\)\\s*Экспорт"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "BSP_USAGE_POLICY",
+        "VALIDATION_ENGINE"
+      ],
+      "rule_id": "CALL_CONTRACT",
+      "tier": 0,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "IMPLEMENTATION_REACHABILITY": {
+      "file": "PROFILES/IMPLEMENTATION_REACHABILITY.md",
+      "detect": [
+        "(?im)^\\s*(?:Процедура|Функция)\\s+[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]*\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE"
+      ],
+      "rule_id": "IMPLEMENTATION_REACHABILITY",
+      "tier": 0,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "BUSINESS_IDENTITY": {
+      "file": "PROFILES/BUSINESS_IDENTITY.md",
+      "detect": [
+        "CurrentItems|DeclaredItems|BindedLine",
+        "(?:Дедупликац|Группиров|Сопоставлен|Идентичност|merge[_ -]?key|dedup)",
+        "(?:Ключ|Индекс|Соответствие)[^\\n]{0,180}(?:Упаковк|Единиц|Коэффициент|Штрихкод|Представлен)",
+        "Новый\\s+Структура\\s*\\([^\\n]{0,240}(?:Упаковк|Единиц|Коэффициент|Штрихкод|Представлен)",
+        "(?s)(?:Ключ|Идентификатор)[А-Яа-яA-Za-z0-9_]*\\s*=.{0,800}\\.(?:Добавить|Вставить|Записать)\\s*\\(",
+        "business[_ -]?identity"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE",
+        "CLEVERENCE_RUNTIME_INTEGRATION"
+      ],
+      "rule_id": "BUSINESS_IDENTITY",
+      "tier": 0,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "QUERY": {
+      "file": "PROFILES/QUERY.md",
+      "detect": [
+        "\\bНовый\\s+Запрос\\b",
+        "Запрос\\s*\\.\\s*Текст",
+        "СхемаЗапроса"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std436",
+        "std438",
+        "std437",
+        "std496",
+        "std654",
+        "std728",
+        "std729",
+        "std777",
+        "std658",
+        "std652",
+        "query_methodical"
+      ],
+      "rule_id": "QUERY",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DYNAMIC_LIST": {
+      "file": "PROFILES/DYNAMIC_LIST.md",
+      "detect": [
+        "Динамическ(?:ий|ого)Список",
+        "УстановитьСвойстваДинамическогоСписка",
+        "ТекстЗапроса"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std768",
+        "std732",
+        "std437",
+        "std489",
+        "std729"
+      ],
+      "rule_id": "DYNAMIC_LIST",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLIENT_SERVER_FORM": {
+      "file": "PROFILES/CLIENT_SERVER_FORM.md",
+      "detect": [
+        "&НаКлиенте",
+        "&НаСервере",
+        "&НаСервереБезКонтекста"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std487",
+        "std496",
+        "std628",
+        "std636"
+      ],
+      "rule_id": "CLIENT_SERVER_FORM",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "POST_WRITE_STANDARD_OVERWRITE": {
+      "file": "PROFILES/POST_WRITE_STANDARD_OVERWRITE.md",
+      "detect": [],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE",
+        "ANALOG_BEFORE_INVENTION"
+      ],
+      "rule_id": "POST_WRITE_STANDARD_OVERWRITE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "ONEC_XML_STRUCTURE": {
+      "file": "PROFILES/ONEC_XML_STRUCTURE.md",
+      "detect": [
+        "https?://v8\\.1c\\.ru/",
+        "<MetaDataObject\\b",
+        "<package\\b[^>]*targetNamespace"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "ONEC_XML_STRUCTURE",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "FORM_XML_STRUCTURE": {
+      "file": "PROFILES/FORM_XML_STRUCTURE.md",
+      "detect": [
+        "http://v8\\.1c\\.ru/8\\.3/xcf/logform",
+        "<Form\\b[^>]*version="
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "FORM_XML_STRUCTURE",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "FORM_DATA_BINDING": {
+      "file": "PROFILES/FORM_DATA_BINDING.md",
+      "detect": [
+        "<(?:DataPath|TitleDataPath|FooterDataPath|HeaderDataPath|RowPictureDataPath)>",
+        "ПутьКДанным\\s*=",
+        "ИзменитьРеквизиты\\s*\\(",
+        "РеквизитФормы\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "FORM_DATA_BINDING",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "METADATA_XML_STRUCTURE": {
+      "file": "PROFILES/METADATA_XML_STRUCTURE.md",
+      "detect": [
+        "http://v8\\.1c\\.ru/8\\.3/MDClasses",
+        "<MetaDataObject\\b"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "METADATA_XML_STRUCTURE",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "REFERENCE_SELECTION_CONTRACT": {
+      "file": "PROFILES/REFERENCE_SELECTION_CONTRACT.md",
+      "detect": [
+        "ПараметрыВыбора",
+        "СвязиПараметровВыбора",
+        "(?im)^\\s*(?:Процедура|Функция)\\s+\\w*(?:НачалоВыбора|ОбработкаВыбора|ОкончаниеВводаТекста)"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std411",
+        "std638"
+      ],
+      "rule_id": "REFERENCE_SELECTION_CONTRACT",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "ROLE_RIGHTS_STRUCTURE": {
+      "file": "PROFILES/ROLE_RIGHTS_STRUCTURE.md",
+      "detect": [
+        "http://v8\\.1c\\.ru/8\\.2/roles",
+        "<Rights\\b[^>]*version=",
+        "(?:^|[/\\\\])Roles[/\\\\][^/\\\\]+[/\\\\]Ext[/\\\\]Rights\\.xml$"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "ROLE_RIGHTS_STRUCTURE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CFE_EXTENSION_STRUCTURE": {
+      "file": "PROFILES/CFE_EXTENSION_STRUCTURE.md",
+      "detect": [
+        "<ConfigurationExtensionPurpose>",
+        "<ObjectBelonging>\\s*Adopted\\s*</ObjectBelonging>",
+        "<ExtendedConfigurationObject>",
+        "<BaseForm\\b",
+        "callType\\s*="
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "CFE_EXTENSION_STRUCTURE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "XDTO_STRUCTURE": {
+      "file": "PROFILES/XDTO_STRUCTURE.md",
+      "detect": [
+        "<package\\b[^>]*targetNamespace",
+        "<XDTOPackage\\b",
+        "XDTOPackages[/\\\\]"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "XDTO_STRUCTURE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "TRANSACTION_WRITE": {
+      "file": "PROFILES/TRANSACTION_WRITE.md",
+      "detect": [
+        "НачатьТранзакцию",
+        "ЗафиксироватьТранзакцию",
+        "БлокировкаДанных",
+        "НаборЗаписей",
+        "\\.Записать\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ОбработкаПроверкиЗаполнения\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ПередЗаписью\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ПриЗаписи\\s*\\(",
+        "(?im)^\\s*Процедура\\s+ОбработкаПроведения\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std783",
+        "std792",
+        "std463",
+        "std464"
+      ],
+      "rule_id": "TRANSACTION_WRITE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "EXCEPTION": {
+      "file": "PROFILES/EXCEPTION.md",
+      "detect": [
+        "\\bПопытка\\b",
+        "\\bИсключение\\b",
+        "ВызватьИсключение"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std499",
+        "std783"
+      ],
+      "rule_id": "EXCEPTION",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "STRUCTURED_CONTRACT": {
+      "file": "PROFILES/STRUCTURED_CONTRACT.md",
+      "detect": [
+        "Новый\\s+Структура",
+        "ТаблицаЗначений",
+        "Соответствие"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std693",
+        "std641",
+        "std453"
+      ],
+      "rule_id": "STRUCTURED_CONTRACT",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "POLYMORPHIC_DOMAIN": {
+      "file": "PROFILES/POLYMORPHIC_DOMAIN.md",
+      "detect": [
+        "ТипЗнч",
+        "\\bССЫЛКА\\s+(?:Документ|Справочник)",
+        "Составн(?:ой|ого)Тип"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std654",
+        "std728"
+      ],
+      "rule_id": "POLYMORPHIC_DOMAIN",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DUPLICATION_INVARIANT": {
+      "file": "PROFILES/DUPLICATION_INVARIANT.md",
+      "detect": [
+        "Нормализ",
+        "Дедупликац",
+        "Повторн.*провер",
+        "Эквивалент"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std440"
+      ],
+      "rule_id": "DUPLICATION_INVARIANT",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CROSS_OBJECT_DUPLICATION_REVIEW": {
+      "file": "PROFILES/CROSS_OBJECT_DUPLICATION_REVIEW.md",
+      "detect": [],
+      "detect_paths": [],
+      "standards": [
+        "std440"
+      ],
+      "rule_id": "CROSS_OBJECT_DUPLICATION_REVIEW",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "SERVER_API_SECURITY": {
+      "file": "PROFILES/SERVER_API_SECURITY.md",
+      "detect": [
+        "Привилегирован",
+        "ВыполнитьБезПроверкиПрав",
+        "ServerCall\\s*=\\s*true"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std467"
+      ],
+      "rule_id": "SERVER_API_SECURITY",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "COLLECTION_ALGORITHM": {
+      "file": "PROFILES/COLLECTION_ALGORITHM.md",
+      "detect": [
+        "\\bДля\\s+Каждого\\b",
+        "НайтиСтроки",
+        "\\.Найти\\s*\\(",
+        "Соответствие",
+        "\\.Вставить\\s*\\("
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std436",
+        "std729"
+      ],
+      "rule_id": "COLLECTION_ALGORITHM",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": {
+        "schema_version": 1,
+        "required_when_active": true,
+        "candidate_bound": true,
+        "not_applicable_policy": "VERIFIER_RECOMPUTED_TRIGGER_ABSENCE_ONLY",
+        "max_review_rows": 100000,
+        "measured_acceleration_requires": "RUNTIME_ADAPTER"
+      },
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLEVERENCE_CONFIGURATION": {
+      "file": "PROFILES/CLEVERENCE_CONFIGURATION.md",
+      "detect": [
+        "<(?:\\w+:)?ContainerTypesBook\\b",
+        "<(?:\\w+:)?DocumentType\\b",
+        "<(?:\\w+:)?CommonFieldInfoCollection\\b"
+      ],
+      "detect_paths": [
+        "(?:^|/)Configuration/(?:Metadata|DocumentTypes)/",
+        "(?:^|/)WinClient/Configuration/(?:Metadata|DocumentTypes)/"
+      ],
+      "standards": [],
+      "rule_id": "CLEVERENCE_CONFIGURATION",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "CLEVERENCE",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "cleverence_review": [
+          "EXECUTION_GRAPH",
+          "SCOPE_DIRECTIONS_REENTRY",
+          "SCAN_SESSION_STATE",
+          "WRITER_PATHS",
+          "PLAN_FACT_IDENTITY",
+          "EXACT_FIELDS_TYPES",
+          "PRODUCER_MAPPING_WRITER_CONSUMER"
+        ]
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLEVERENCE_MSLX": {
+      "file": "PROFILES/CLEVERENCE_MSLX.md",
+      "detect": [
+        "<(?:\\w+:)?Operation\\b",
+        "<(?:\\w+:)?\\w+Action\\b",
+        "CurrentItems",
+        "DeclaredItems",
+        "BindedLine"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "CLEVERENCE_MSLX",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "CLEVERENCE",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "cleverence_review": [
+          "EXECUTION_GRAPH",
+          "SCOPE_DIRECTIONS_REENTRY",
+          "SCAN_SESSION_STATE",
+          "WRITER_PATHS",
+          "PLAN_FACT_IDENTITY",
+          "EXACT_FIELDS_TYPES",
+          "PRODUCER_MAPPING_WRITER_CONSUMER"
+        ],
+        "runtime_required_from": "R2_STATEFUL_RUNTIME"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DIFF_ATTRIBUTION": {
+      "file": "PROFILES/DIFF_ATTRIBUTION.md",
+      "detect": [
+        "baseline",
+        "candidate",
+        "changed vendor",
+        "заимствован"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std440",
+        "std453"
+      ],
+      "rule_id": "DIFF_ATTRIBUTION",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DOCUMENTATION_CONTRACT": {
+      "file": "PROFILES/DOCUMENTATION_CONTRACT.md",
+      "detect": [
+        "(?m)^\\s*//",
+        "Экспорт"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std453",
+        "std641",
+        "COMMENTING_POLICY"
+      ],
+      "rule_id": "DOCUMENTATION_CONTRACT",
+      "tier": 1,
+      "risk_floor": "R0_LOCAL",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "REPRESENTATION_CONTRACT": {
+      "file": "PROFILES/REPRESENTATION_CONTRACT.md",
+      "detect": [
+        "Строка\\s*\\(",
+        "Представлен",
+        "Сериализац"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std641"
+      ],
+      "rule_id": "REPRESENTATION_CONTRACT",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "CLEVERENCE_INTEGRATION": {
+      "file": "PROFILES/CLEVERENCE_INTEGRATION.md",
+      "detect": [
+        "1C\\s*[↔<>=-]+\\s*Cleverence",
+        "Business Process",
+        "CurrentItems.*1C",
+        "Core/Integration"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "CLEVERENCE_INTEGRATION",
+      "tier": 1,
+      "risk_floor": "R3_CROSS_SYSTEM",
+      "surface": "CROSS_SYSTEM",
+      "proof_policy": {
+        "claim_class": "ARCHITECTURE_SEMANTIC",
+        "required_roles": [
+          "EXACT_SOURCE",
+          "INDEPENDENT_REVIEW"
+        ],
+        "cleverence_review": [
+          "EXECUTION_GRAPH",
+          "SCOPE_DIRECTIONS_REENTRY",
+          "SCAN_SESSION_STATE",
+          "WRITER_PATHS",
+          "PLAN_FACT_IDENTITY",
+          "EXACT_FIELDS_TYPES",
+          "PRODUCER_MAPPING_WRITER_CONSUMER"
+        ],
+        "runtime_required_from": "R3_CROSS_SYSTEM"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DOMAIN_VALIDATION": {
+      "file": "PROFILES/DOMAIN_VALIDATION.md",
+      "detect": [
+        "(?i)\\bЕсли\\b[^\\n]*(?:<=|>=|<>|=|<|>)",
+        "(?i)(?:Процент|Диапазон|Миним|Максим|Допустим|Заполнен|ПустаяСсылка|Неопределено)"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "VALIDATION_ENGINE"
+      ],
+      "rule_id": "DOMAIN_VALIDATION",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "HOOK_ORCHESTRATION": {
+      "file": "PROFILES/HOOK_ORCHESTRATION.md",
+      "detect": [
+        "&(?:Перед|После|Вместо)\\s*\\(",
+        "(?im)^\\s*(?:Процедура|Функция)\\s+\\w*(?:ПриСоздании|ПередЗаписью|ПослеЗаписи|ОбработкаПроведения|ОбработкаПроверкиЗаполнения|ОбработкаРасшифровки|Команда)"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std440",
+        "std453",
+        "VALIDATION_ENGINE"
+      ],
+      "rule_id": "HOOK_ORCHESTRATION",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "EXTERNAL_COMPONENT_LIFECYCLE": {
+      "file": "PROFILES/EXTERNAL_COMPONENT_LIFECYCLE.md",
+      "detect": [
+        "ПодключитьВнешнююКомпоненту",
+        "НачатьПодключениеВнешнейКомпоненты",
+        "УстановитьВнешнююКомпоненту",
+        "НачатьУстановкуВнешнейКомпоненты",
+        "ЗагрузитьВнешнююКомпоненту",
+        "ТипВнешнейКомпоненты",
+        "\\bAddIn\\.",
+        "ОбработкаВнешнегоСобытия",
+        "РезультатАсинхВызоваВнешнейКомпоненты",
+        "ВнешниеКомпонентыКлиент\\.ПодключитьКомпоненту",
+        "ОбщегоНазначения(?:Клиент)?\\.ПодключитьКомпонентуИзМакета"
+      ],
+      "detect_paths": [],
+      "standards": [
+        "std669",
+        "std700",
+        "std794"
+      ],
+      "rule_id": "EXTERNAL_COMPONENT_LIFECYCLE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "VERSION_GATED_CAPABILITY": {
+      "file": "PROFILES/VERSION_GATED_CAPABILITY.md",
+      "detect": [
+        "(?:Верси[яи]|Релиз|release)\\b",
+        "\\b(?:8|11|3)\\.\\d+\\.\\d+(?:\\.\\d+)?\\b",
+        "Mobile\\s+SMARTS\\s*\\d",
+        "(?:поддержива\\w*|доступ\\w*|capabilit\\w*).{0,120}(?:верс|релиз|release|version)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "VERSION_GATED_CAPABILITY",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "REFERENCE_DATA_FRESHNESS": {
+      "file": "PROFILES/REFERENCE_DATA_FRESHNESS.md",
+      "detect": [
+        "master\\s*data|reference\\s*data|\\bНСИ\\b",
+        "(?:выгруз|загруз|синхрониз|реплицир)\\w*.{0,100}справоч",
+        "справоч\\w*.{0,100}(?:выгруз|загруз|синхрониз|реплицир)",
+        "Cleverence.{0,100}справоч|справоч.{0,100}Cleverence",
+        "(?:кэш|cache).{0,80}(?:справоч|reference|master)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "REFERENCE_DATA_FRESHNESS",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "BARCODE_INPUT_AND_CLASSIFICATION": {
+      "file": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
+      "detect": [
+        "\\bGS1\\b|DataMatrix|\\bКИЗ\\b",
+        "(?:^|[^А-Яа-я])КМ(?:[^А-Яа-я]|$)",
+        "BarcodeData|ScannedBarcode|GroupSeparator",
+        "ASCII\\s*29|0x1D|\\\\x1[dD]|\\(01\\)|\\(21\\)|\\(91\\)|\\(92\\)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "BARCODE_INPUT_AND_CLASSIFICATION",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "STATEFUL_UI_MODE": {
+      "file": "PROFILES/STATEFUL_UI_MODE.md",
+      "detect": [
+        "Режим(?:Скан|Выбор|Ожидан|Работ)",
+        "Ожида\\w*Скан|Состояни\\w*Форм",
+        "Переключ\\w*.{0,60}Режим|Сброс\\w*.{0,60}Режим",
+        "(?:Включ|Отключ|Активир|Деактивир)\\w*.{0,80}(?:режим|состояни)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "STATEFUL_UI_MODE",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ONEC",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "EXTERNAL_SIDE_EFFECT_IDENTITY": {
+      "file": "PROFILES/EXTERNAL_SIDE_EFFECT_IDENTITY.md",
+      "detect": [
+        "ОФД|Фискализац|Фискальн|\\bККМ\\b|эквайр",
+        "\\bЭДО\\b.{0,120}(?:Отправ|Подпис|Аннулир|Отозв)",
+        "(?:Отправ|Подпис|Провест|Фиксир|Зарегистрир)\\w*.{0,120}(?:HTTP|REST|SOAP|API|банк|сервис|провайдер|внешн)",
+        "HTTPЗапрос.{0,120}(?:POST|PUT|PATCH|DELETE)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "EXTERNAL_SIDE_EFFECT_IDENTITY",
+      "tier": 1,
+      "risk_floor": "R3_CROSS_SYSTEM",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "DECISION_DEPENDENCY_INVALIDATION": {
+      "file": "PROFILES/DECISION_DEPENDENCY_INVALIDATION.md",
+      "detect": [
+        "(?:ПриИзменении|OnChange)[A-Za-zА-Яа-я0-9_]*(?:Контрагент|Договор|Организац|Склад|Соглашен|Дисконт|Карта|Покупател)",
+        "(?:Перепровер|Повторн\\w*Проверк|Revalidat|DecisionDependency|InvalidateDecision)",
+        "(?:Контрагент|Договор|Организац|Склад|Соглашен|Дисконт\\w*Карт|Покупател).{0,160}(?:Пересчит|Перепровер|Переоцен|ОбновитьПровер)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "DECISION_DEPENDENCY_INVALIDATION",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "BUSINESS_RELATION_CARDINALITY": {
+      "file": "PROFILES/BUSINESS_RELATION_CARDINALITY.md",
+      "detect": [
+        "(?:Кардинальност|кратност|multiplicity|cardinality|0\\.\\.N|1:N|one[- ]to[- ]many)",
+        "(?:Связан\\w*|Основан\\w*|Заказ\\w*|Ордер\\w*|Поступлен\\w*|Реализац\\w*).{0,180}(?:ПЕРВЫЕ\\s+1|НайтиПерв|Первый\\s*\\(|FirstOrDefault|first\\s+related)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "BUSINESS_RELATION_CARDINALITY",
+      "tier": 1,
+      "risk_floor": "R1_CONTRACT",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    },
+    "FACT_PRESERVING_REALLOCATION": {
+      "file": "PROFILES/FACT_PRESERVING_REALLOCATION.md",
+      "detect": [
+        "(?:Перераспредел|Переназнач|Reassign|Reallocation|УбратьИзКороб|НазначитьКороб|СменитьКороб).{0,180}(?:Количество|Факт|Quantity|CurrentItems|Короб|Контейнер|Аналитик)",
+        "(?:Количество|Факт|Quantity|CurrentItems).{0,180}(?:Перераспредел|Переназнач|Reassign|Reallocation|УбратьИзКороб|НазначитьКороб)"
+      ],
+      "detect_paths": [],
+      "standards": [],
+      "rule_id": "FACT_PRESERVING_REALLOCATION",
+      "tier": 1,
+      "risk_floor": "R2_STATEFUL_RUNTIME",
+      "surface": "ANY",
+      "proof_policy": {
+        "claim_class": "LEGACY_COMPATIBLE",
+        "required_roles": [],
+        "migration": "REGISTRY_LEGACY_COMPATIBILITY"
+      },
+      "performance_review": null,
+      "generated_from": "RULES/rule_registry.json"
+    }
+  },
+  "review_levels": [
+    "L1_CONSTRUCTION",
+    "L2_ROUTINE",
+    "L3_MODULE",
+    "L4_METADATA_OBJECT",
+    "L5_CROSS_OBJECT",
+    "L6_BUSINESS_RUNTIME"
+  ],
+  "reverse_coverage_required": true
+}

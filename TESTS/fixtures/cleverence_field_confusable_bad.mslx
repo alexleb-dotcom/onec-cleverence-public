@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommonFieldInfoCollection xmlns:clr="http://schemas.cleverence.ru/clr">
+  <CommonFieldInfo fieldName="Code" fieldType="String" alias="" />
+  <CommonFieldInfo fieldName="Сode" fieldType="String" alias="" />
+</CommonFieldInfoCollection>

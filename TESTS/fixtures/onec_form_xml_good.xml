@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form xmlns="http://v8.1c.ru/8.3/xcf/logform" version="2.21">
+  <AutoCommandBar name="ФормаКоманднаяПанель" id="-1"/>
+  <ChildItems>
+    <Button name="КомандаОдин" id="1"><ExtendedTooltip name="КомандаОдинПодсказка" id="2"/></Button>
+    <Button name="КомандаДва" id="3"><ExtendedTooltip name="КомандаДваПодсказка" id="4"/></Button>
+  </ChildItems>
+  <Attributes>
+    <Attribute name="Объект" id="1"/>
+  </Attributes>
+  <Commands>
+    <Command name="Выполнить" id="1"/>
+  </Commands>
+</Form>

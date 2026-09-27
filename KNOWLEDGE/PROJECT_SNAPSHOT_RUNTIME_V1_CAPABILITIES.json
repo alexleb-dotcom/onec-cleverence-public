@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "profile": "RUNTIME_V1",
+  "backend": "RUNTIME_METADATA",
+  "collector_name": "ProjectSnapshotRuntimeCollector",
+  "collector_version": "1",
+  "runtime_proven": false,
+  "implemented_categories": {
+    "METADATA_PROPERTIES": {
+      "max_fidelity": "PARTIAL",
+      "logical_target_kinds": [
+        "DOCUMENT",
+        "CATALOG",
+        "INFORMATION_REGISTER",
+        "ACCUMULATION_REGISTER",
+        "CONSTANT",
+        "ENUM",
+        "COMMON_MODULE",
+        "SCHEDULED_JOB",
+        "EVENT_SUBSCRIPTION"
+      ]
+    },
+    "SCHEDULED_JOBS": {
+      "max_fidelity": "PARTIAL",
+      "logical_target_kinds": [
+        "SCHEDULED_JOB"
+      ],
+      "scope": "CONFIGURATION_METADATA_ONLY"
+    }
+  }
+}

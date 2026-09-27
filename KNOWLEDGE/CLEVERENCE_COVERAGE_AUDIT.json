@@ -1,0 +1,49 @@
+{
+  "date": "2026-08-28",
+  "purpose": "Ensure Mobile SMARTS/Cleverence knowledge accumulated from prior implementation work is active, routable and regression-covered rather than merely retained in private history.",
+  "result": "PASS_ACTIVE_COVERAGE_EXPANDED",
+  "finding": "The execution-graph core was already active, but configuration metadata and several universal runtime contracts were under-routed. A dedicated CLEVERENCE_CONFIGURATION profile and active scan/quantity/writer/live-mutation checks were added without converting project-specific logistics decisions into universal rules.",
+  "artifacts": {
+    "reference_role": "optional private/vendor reference pack; not required to be redistributed with the shareable skill",
+    "active_knowledge": "KNOWLEDGE/CLEVERENCE_RUNTIME_INTEGRATION.md",
+    "configuration_profile": "PROFILES/CLEVERENCE_CONFIGURATION.md",
+    "mslx_profile": "PROFILES/CLEVERENCE_MSLX.md",
+    "integration_profile": "PROFILES/CLEVERENCE_INTEGRATION.md",
+    "configuration_analyzer": "TOOLS/analyze_cleverence_configuration.py",
+    "graph_analyzer": "TOOLS/analyze_cleverence_mslx.py"
+  },
+  "coverage": [
+    "configuration operation execution graph + implicit fall-through",
+    "metadata and document-type configuration as a separate contract surface",
+    "container/barcode-template extraction and baseline-aware overlap review",
+    "exact Mobile field identifier/code-point and native-type contract",
+    "declared/current/bound plan-fact identity",
+    "one declared line → multiple current fact lines",
+    "scan state and repeated-entry ownership",
+    "new-fact vs existing-fact reallocation decision before quantity control",
+    "all applicable writer-path inventory for changed fact fields",
+    "live fact-row rebind by stable identity before mutation + verify/rollback",
+    "split/merge quantity invariants",
+    "mark/serial/logistics-identifier/series/weight preservation",
+    "effective Business Process and supported integration hooks",
+    "1C → Mobile SMARTS → 1C exact field/type/grouping/consumer contract",
+    "client/runtime mirror proof when applicable",
+    "runtime emulator/device/parser acceptance"
+  ],
+  "project_specific_not_promoted": [
+    "project-specific container numbering/default semantics",
+    "project-specific document-chain cardinality",
+    "project-specific repeat-import overwrite policy",
+    "project-specific custom Operation naming convention"
+  ],
+  "regression_classes": [
+    "CLEVERENCE_EXECUTION_GRAPH",
+    "CLEVERENCE_SCAN_STATE_REENTRY",
+    "CLEVERENCE_QUANTITY_STAGE_OWNERSHIP",
+    "CLEVERENCE_WRITER_PATH_COVERAGE",
+    "CLEVERENCE_LIVE_CURRENTITEM_MUTATION",
+    "CLEVERENCE_BARCODE_TEMPLATE_PRECEDENCE",
+    "CLEVERENCE_FIELD_NAME_EXACT_CONTRACT",
+    "CLEVERENCE_CROSS_SYSTEM_CONTRACT"
+  ]
+}
