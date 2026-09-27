@@ -312,155 +312,66 @@ For implementation work, summarize what changed, changed objects/files, key desi
 
 If a blocking requirement/evidence dependency remains, use the blocked/partial result profile and name the smallest concrete missing input. Do not dump the complete validation ledger, rule inventory or routing table into the final answer by default. Omit empty sections and omit “Что нужно от пользователя” when no user action remains.
 
+
 ## Critical requirements rules
 
-### Traceability and acceptance
+Requirements-first remains mandatory for non-trivial work. Preserve the chain `need/problem → observable target outcome → behavior/rules → acceptance`; an implementation action is not automatically the requirement. For stateful/data/integration work, the requirements contract must still cover the applicable lifecycle, source-of-truth, retry/idempotency/failure and final-state semantics.
 
-A technical action (`добавить`, `автоматизировать`, `реализовать`) is not automatically the need. Preserve the chain `need/problem → observable target outcome → behavior/rules → acceptance`. Acceptance must prove correctness, not only that an action completed.
+Load detailed requirements guidance from existing owners when that phase is active:
 
-### Process/data lifecycle
+- `KNOWLEDGE/REQUIREMENTS_DISCOVERY.md` for functional-contract discovery and precise question minimization;
+- `KNOWLEDGE/REQUIREMENTS_ARTIFACT_INTEGRITY.md` for LT/TZ/specification artifacts and claim provenance;
+- `KNOWLEDGE/EVIDENCE_ACQUISITION.md` plus `WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json` when a blocking source/evidence gap must be acquired.
 
-For stateful behavior prove initiator/roles, trigger/preconditions, relevant states/transitions, repeat/re-entry, material concurrency and alternative/error paths. For significant data prove source, semantic meaning, source of truth, identity vs representation, transformation/storage/transmission/use and behavior on repeat/source change.
+Ask only unresolved questions that can materially change behavior, ownership, scope or acceptance. Missing blocking evidence stays unresolved/`EVIDENCE_REQUIRED`; never replace it with inference.
 
-### Integration contract
-
-If a method/API/message is fixed, trace `trigger → input source/semantics → mapping/call → output semantics → validation/transform → persisted/consumed use → retry/idempotency/partial failure → final state in every system → acceptance`. If only target behavior is agreed, do not force an API prematurely.
-
-### Question minimization
-
-Do not ask broad “clarify roles/process/data” questions when the gap can be named precisely. Read available source/context first. Ask only unresolved questions whose answers can materially change behavior, ownership, scope or acceptance.
 
 ## Critical 1C rules
 
-### BSP
+Exact target/user-authorized source remains stronger than remembered APIs, discovery catalogs or derived indexes. Normal 1C detail is loaded from the **routed review-plan profiles and their supporting artifacts**, not from an always-loaded prose mirror.
 
-Suitable public BSP behavior is preferred and normally mandatory for platform-adjacent/infrastructure tasks. Record evidence of reuse, non-applicability or justified exception. Search by intent/domain, use the public BSP locator only to find candidate modules, and prove the actual exported contract from exact target/user-authorized source before calling it. If that source is missing, request the smallest sufficient module/metadata/call-site closure and keep the claim `EVIDENCE_REQUIRED`; do not fall back to remembered or prebuilt signatures. Exact source/local reproducible evidence beats every derived reference index.
+Cross-cutting routing invariants:
 
-### Cross-module calls
+- platform/infrastructure work must dispose `BSP_REUSE` and prove the actual target exported contract before use;
+- qualified calls/API boundaries route `CALL_CONTRACT`; query/list work routes `QUERY` / `DYNAMIC_LIST`; managed-form/client-server behavior routes the applicable form/data profiles;
+- exported XML routes `ONEC_XML_STRUCTURE` plus the applicable specialized structural profile; use `TOOLS/analyze_onec_xml.py` on final bytes rather than inferring serialized contracts;
+- write/lifecycle/custom-field changes route the applicable transaction, overwrite, hook/orchestration and ownership profiles; a locally correct assignment is not proof of final persisted behavior;
+- every new/materially changed routine must be connected to the intended runtime scenario. Use `TOOLS/analyze_onec_reachability.py` when BSL routines are added/rewired; `Экспорт` means callable, not called;
+- deduplication/grouping/search/mutation flows must preserve proven business identity and validate derived keys before mutation.
 
-Every changed qualified call that may be a module/API boundary must be classified. For real boundaries, resolve the actual exported declaration and verify required/optional arguments, semantic order, context, return/mutation behavior and deployment caller closure.
+Do not guess signatures, query topology, form data shape, lifecycle order, standard-pipeline ownership or runtime reachability from names or memory. When a routed profile requires more detail, load that profile and its canonical knowledge/support files from the compact review plan.
 
-### Queries and DynamicList
-
-Prefer complete valid query variants and native/typical extension patterns. Do not invent a general query parser with positional `СтрНайти/Сред/Лев` surgery. Stored/default/intermediate query text expected to be normal 1C query language must remain constructor/runtime-valid.
-
-For DynamicList, inspect the actual effective query/СКД, use BSP setters when applicable, preserve result contracts across variants and keep expensive operational state out of repeated online calculation unless profiling/evidence justifies it.
-
-For every empty/default/sentinel query parameter, prove its meaning, caller authorization and cardinality effect. A sentinel that disables a point filter requires an explicit bulk-mode contract or separate branch/API. For reference-dot dereference, review implicit joins, cardinality/index cost and whether an already joined source owns the value.
-
-### Managed-form data and client/server cost
-
-Do not infer performance cost from dot count alone. In an existing form context, direct `Форма.Объект.X` / `Объект.X` access reads the form data attribute; it is not by itself a DB query or a new client/server transition. A longer path such as `Форма.Объект.Договор.Организация` is different: prove the runtime type of `Договор`; if it is a reference, account for DB-read/N+1 risk, especially inside loops. Treat unresolved nested paths as `REVIEW`, not an invented defect.
-
-For `ДанныеФормыКоллекция`, distinguish client from server execution. Material client traversal/search can trigger implicit server reads; perform it on the server when applicable. Judge the complete user action by explicit and implicit server transitions and traffic. Prefer a justified context server call when platform delta transfer for form collections is cheaper than copying whole form data through parameters.
-
-### Structural XML: metadata, forms, CFE, roles/RLS and XDTO
-
-Treat exported 1C XML as source code with structural contracts, not as prose for the model to infer. When relevant, route `ONEC_XML_STRUCTURE` plus the specialized `FORM_XML_STRUCTURE`, `METADATA_XML_STRUCTURE`, `CFE_EXTENSION_STRUCTURE`, `ROLE_RIGHTS_STRUCTURE` or `XDTO_STRUCTURE` profile and run `TOOLS/analyze_onec_xml.py` on final bytes with enough companion context.
-
-For managed forms, respect separate identity scopes for form elements, attributes, commands and per-attribute columns; an extension `BaseForm` is a separate serialized baseline subtree. A changed `DataPath`/`ПутьКДанным` is also a runtime data-shape contract: resolve its root from the actual form context and prove every changed nested member against the producer/composition of that value. Do not infer `A.B` merely because a metadata object named `B` exists elsewhere. For `cfg:ConstantsSet` / `КонстантыНабор`, the target constant must be proven to belong to that concrete set; otherwise use an evidenced adaptation and prove both load and persistence paths. For CFE, prove adopted/own ownership and base UUID/Form/interceptor bindings from actual extension + base source. For roles, bind `Rights.xml` to role metadata, inspect RLS structurally and interpret absent rights using the actual format/default semantics; in 2.19+ absence of a `<right>` node is not by itself proof of denial because default-valued rights may be omitted. For XDTO, prove the namespace/import/type graph and package registration before serializer/parser code.
-
-`KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md` catalogs a curated external MIT-licensed structural corpus (`cc-1c-skills`). It is supporting evidence, not an official standard. Never promote a corpus heuristic to a blocking rule until it survives validation against real 1C/typical/project artifacts.
-
-### Domain validation and hooks
-
-Before adding an `Если` for values/ranges/states, prove what the type/metadata/platform already guarantees and what boundaries can bypass that guarantee. Multi-field/piecewise business rules require an acceptance/rejection case matrix before code.
-
-`&Перед`, `&После`, `&Вместо`, event/command/subscription/integration handlers are primarily orchestration/adaptation boundaries. Small event-specific guards may stay local; reusable validation/calculation/query/persistence belongs to a named owner API unless a proven project/typical pattern says otherwise.
-
-### Implementation reachability
-
-Correct code that is not connected to the intended runtime scenario is dead functionality. For every new or materially changed routine, classify it as an entrypoint/external callback/helper and prove the path `entrypoint → caller(s) → routine` from exact source. `Экспорт` means callable, not called. New private routines with no resolved caller and new-only orphan subgraphs are blocking. Dynamic/platform/vendor dispatch requires an explicit callback/event contract and runtime evidence rather than an assumed PASS.
-
-Run `TOOLS/analyze_onec_reachability.py` with candidate + baseline when BSL routines are added/rewired. If the intended feature depends on a specific route, prove the expected entrypoint/target path. Delivery must include every caller/hook needed to connect the new code.
-
-### Artifact scope discovery
-
-Do not infer artifact scope from a filename, archive name or top-level folder. Before narrowing relevance, inventory the actual supplied corpus: file count/types, roots, 1C/Cleverence/XML/BSL mix, metadata objects and unexpected companion artifacts. A file named like one subsystem/package may still contain full documents, forms, modules or integration context. Scope filtering happens **after** factual inventory.
-
-### Lifecycle and standard-pipeline ownership
-
-Before accepting a parallel document/calculation/row-building/write chain, trace the actual standard pipeline and map each source business dimension through its intermediate and target representation. A parallel source of truth is blocked until required semantic loss and inability to extend the standard owner are proven.
-
-For each meaningful custom field assignment, run field-aware temporal review: trace later writers of the **same field on reachable paths** through selection, filling, recalculation, handlers and before-write/write hooks. Same-module lifecycle words are not evidence by themselves. Resolve dynamic/external callbacks as evidence gaps. Validate the final persisted/consumed value after the complete scenario; a locally correct assignment is not proof.
-
-### Business identity
-
-For deduplication/grouping/search/merge/split flows, state the smallest stable identity before coding. Packaging, units, coefficients, barcodes, display values and quantity normalization are representation unless domain evidence proves they change business sameness.
-
-When a derived key controls creation of a row, index entry, register record, object or fact distribution, use `derive → validate type/domain/completeness/required uniqueness → mutate`. Do not leave partial state by validating after `Добавить()`/`Вставить()`/`Записать()`.
 
 ## Cleverence is first-class, not an appendix to 1C
 
 Route Cleverence by mechanism, not by the `.mslx` suffix alone:
 
 ```text
-Configuration/Operations/**
-→ CLEVERENCE_MSLX
-→ execution graph / state / writers
-
-Configuration/Metadata/** + Configuration/DocumentTypes/**
-→ CLEVERENCE_CONFIGURATION
-→ parser / field / document-schema contracts
-
-1C ↔ Cleverence mapping/BP/Core
-→ CLEVERENCE_INTEGRATION
-→ end-to-end producer/consumer contract
+Configuration/Operations/**                          → CLEVERENCE_MSLX
+Configuration/Metadata/** + Configuration/DocumentTypes/** → CLEVERENCE_CONFIGURATION
+1C ↔ Cleverence mapping/BP/Core                     → CLEVERENCE_INTEGRATION
 ```
 
-For MSLX/operations review execution as a graph, not just XML:
+Load the routed Cleverence profile(s) and `KNOWLEDGE/CLEVERENCE_RUNTIME_INTEGRATION.md` only when applicable. `CLEVERENCE_MSLX` owns execution-graph/state/writer detail; `CLEVERENCE_CONFIGURATION` owns field/document/parser contracts; `CLEVERENCE_INTEGRATION` owns producer/consumer closure across both systems.
 
-- physical Action order;
-- serialized `indent` and scope boundaries;
-- explicit directions and scoped `up:` targets;
-- implicit fall-through/former-END behavior;
-- ordered `ButtonDirections`;
-- error/abort/Escape/back/cancel paths;
-- scan-session state (`SelectedProduct`, `ScannedBarcode`, `BarcodeData`) and repeat entry;
-- semantic stage before quantity control: new picking vs mutation/reallocation of existing fact;
-- all applicable writer paths for changed fact fields, not one convenient writer;
-- live `CurrentItem` rebind by technical identity before mutation, with verify/rollback when state moves between rows;
-- active Business Process;
-- standard writer/router/Core integration hooks.
+Use `TOOLS/analyze_cleverence_configuration.py` for changed Metadata/DocumentTypes and `TOOLS/analyze_cleverence_mslx.py` for Operation/Action graph evidence when routed. Exact names/types/paths and actual target runtime behavior remain evidence contracts; do not infer parser precedence, writer identity or graph behavior from XML order, transliteration or a retained analog.
 
-Treat `DeclaredItems` as plan and `CurrentItems` as fact unless actual configuration proves otherwise. Preserve `BindedLine`, one-plan-many-fact identity, quantity conservation, marks/SN/SSCC/series/weight/service fields, retry and re-entry.
+For cross-system tasks, changing only one file/system never makes the contract one-sided: prove the relevant producer, exact Mobile declaration/mapping, storage/writers and consumer closure.
 
-For configuration metadata, use `TOOLS/analyze_cleverence_configuration.py`. Exact declaration names/code points and native types are contracts. Similar/transliterated/confusable identifiers are not equivalent. Barcode-template overlap is structural evidence, not automatically a defect: if a changed broad/specific pair can compete, prove actual parser selection on representative full and prefix-only input. Do not infer precedence from XML order or apparent specificity.
-
-For 1C ↔ Cleverence tasks, changing only one file/system does not make the task one-sided. Producer, exact Mobile field declaration, mapping, storage/grouping/search, every applicable writer and consumer form one cross-system contract.
 
 ## Delivery discipline
 
-- Every non-trivial implementation result must include a final `Особенности реализации` section with two mandatory one-time header fields above the table: `Проект: <...>` and `Задача: <...>`. They must not be repeated as table columns.
-- The table itself has the **exact immutable columns and order**: `Контейнер | Объект конфигурации | Процедура / функция | Статус | Описание изменения`. These five labels, their order and composition are a delivery contract: never rename, remove, merge, split, reorder or replace them; do not add extra columns to the base table.
-- Create one row per material implementation change/decision at the most precise practical object/member level. The same configuration object may legitimately appear in multiple rows for different procedures/functions/members. `Объект конфигурации` remains one base field (do not split it into type/name columns); `Процедура / функция` may name an exact routine, member/event, or multiple exact members when one status/description applies.
-- `Статус` records the factual row status using grammatically appropriate wording such as `Создана`, `Добавлена`, `Изменена`, `Удалена`, `Удалены`, `Оставлена без изменения`, `Удалена привязка`. `Описание изменения` states factually what changed or was deliberately retained and how the resulting behavior/mechanism works.
-- Take header fields `Проект`/`Задача` only from bound project context/requirements and table field `Контейнер` only from the exact source layout (for example `Расширение <имя>` or `Основная конфигурация <имя>`). Never collapse same-named objects from the main configuration and extensions or from different extensions.
-- Additional rationale, evidence, risks, performance notes, verification results or links may be added **outside** the mandatory project/task header and five-column table, but supplementary information must never alter either part of the base format. Cleverence and other non-1C artifacts may be documented additionally without mutating the mandatory 1C format.
-- When `COLLECTION_ALGORITHM` is routed, add the canonical exact-candidate `Performance Review` projection outside that base format. Show current/proposed passes, nested searches, loop I/O, asymptotic time, memory/copies, topology, reviewed scale, semantics preservation and runtime status. `STRUCTURAL_ONLY` must state `Измеренное ускорение не доказано.`; a measured claim requires verifier-confirmed `RUNTIME_ADAPTER` evidence. Missing/stale/generic/active-N/A review remains blocked and the projection must never change implementation readiness or final release outcome.
-- Never modify the user's baseline in place.
-- Validate exact final bytes/archive, not an earlier worktree.
-- Transfer only changed files plus contract-coupled dependencies actually required by the deployed baseline.
-- Preserve UTF-8/Cyrillic filenames; ZIP mojibake is blocking.
-- New skill/output filenames must not use version suffixes like `v2`, `_fix`, `_new`, `final2`; revision belongs in metadata/manifests.
-- If runtime cannot be executed here, say so and use `READY_FOR_RUNTIME_TEST`/`RUNTIME_PENDING`.
+Before final presentation, **load and obey** `WORKFLOW/RESULT_DELIVERY_CONTRACT.json` as the canonical machine-readable result contract and `KNOWLEDGE/RESULT_DELIVERY.md` for human guidance. The exact implementation table/header shape and the routed `Performance Review` projection are owned there; do not maintain a second detailed format specification in this Skill body.
+
+Presentation never upgrades canonical requirements/evidence/release status. Keep blocked/runtime-pending states explicit, never modify the user's baseline in place, validate the exact final bytes/archive, transfer only changed files plus contract-coupled dependencies, and preserve UTF-8/Cyrillic filenames. Runtime not executed here remains `READY_FOR_RUNTIME_TEST`/`RUNTIME_PENDING`, not proven.
+
 
 ## Learning protocol
 
-A substantive task always ends with a knowledge-extraction disposition: `PROMOTED`, `PROJECT_ONLY`, `NO_REUSABLE_KNOWLEDGE` or `EVIDENCE_PENDING`. Read `KNOWLEDGE/LEARNING_PROTOCOL.md`.
+Every substantive task ends with an explicit knowledge-extraction disposition: `PROMOTED`, `PROJECT_ONLY`, `NO_REUSABLE_KNOWLEDGE` or `EVIDENCE_PENDING`. At that phase, load `KNOWLEDGE/LEARNING_PROTOCOL.md`.
 
-A confirmed reusable failure is not fully learned until all four questions are answered:
+Promotion requires falsifiable source/runtime/authoritative evidence plus a search proving that no existing Registry owner already covers the lesson. Reusable knowledge belongs in the existing Rule Registry/profile/knowledge/regression owners; project/customer identifiers and one-off business decisions remain project-only. Do not add a second knowledge-routing mechanism.
 
-1. **Rule:** what universal contract was violated?
-2. **Activation:** how will the router know to apply it next time?
-3. **Enforcement:** how is it checked/demonstrated?
-4. **Release:** how does missing evidence prevent unsupported delivery?
-
-A novel model hypothesis is not a confirmed reusable failure. It becomes promotion material only after falsifiable source/runtime/authoritative evidence and a search proving that no existing registry owner already covers it.
-
-Add the generalized lesson to `RULES/rule_registry.json`, relevant profile/knowledge and deterministic fixture when possible. Then regenerate views and run the complete self-validation/regression suite.
-
-Do not learn project/customer names, prefixes, authors or one-off business decisions into universal rules. Historical material remains available under `ARCHIVE` on demand; reducing bootstrap context never means deleting accumulated knowledge.
 
 ## Progressive loading
 
@@ -473,8 +384,9 @@ routed profile(s)
 exact needed reference/index/source
 ```
 
-`RULES/rule_registry.json` stays out of normal LLM context. Builders and gates read it directly. Full plan/contract/ledger JSON remains durable machine evidence on disk; use `--full-json` only when an explicit diagnostic requires the entire artifact.
+The compact review-plan projection is the normal model routing contract: use its active profiles, active deliveries, deterministic tools and complete active support/reference path set, then open detail only for the current routed phase/check. Do not invent an additional `required_now/on_demand` state model.
 
-For 1C XML work, load `KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md` only when a structural profile is routed; do not load the external families wholesale.
+Treat deterministic helpers as **black boxes during normal task execution**: consume the command contract and compact structured result. Read helper implementation source only when debugging/modifying that helper or when an explicit architecture review requires its internals.
 
-Do not eagerly load `ARCHIVE`, all BSP modules, all Cleverence operations or the full standards corpus.
+`RULES/rule_registry.json` stays out of normal LLM context; builders/gates read it directly. Full plan/contract/ledger/proof JSON stays durable off-context and `--full-json` is diagnostic only. For 1C XML work load `KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md` only when a structural profile is routed. Do not eagerly load `ARCHIVE`, all BSP modules, all Cleverence operations or the full standards corpus.
+
