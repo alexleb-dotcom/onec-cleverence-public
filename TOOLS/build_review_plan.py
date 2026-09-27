@@ -404,8 +404,8 @@ def compact_summary(plan):
     """Small projection for human/LLM routing; the full plan remains the proof artifact."""
     compact_context_load=dict(plan.get("context_load_plan") or {})
     compact_context_load["supporting_artifacts"]=[
-        {k:row.get(k) for k in ("path","owner_kind","owner_id")}
-        for row in plan.get("active_supporting_artifacts",[])
+        row.get("path") for row in plan.get("active_supporting_artifacts",[])
+        if isinstance(row,dict) and row.get("path")
     ]
     return {
         "result":plan.get("result"),
