@@ -56,6 +56,12 @@ ledger = build_ledger(plan)
 release = release_evaluate(plan, ledger)
 projection = build_projection(plan, ledger, release)
 
+expected_release_identity = {
+    "plan_sha256": hashlib.sha256(json.dumps(plan, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+    "ledger_sha256": hashlib.sha256(json.dumps(ledger, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+}
+require(release.get("input_identity") == expected_release_identity, "canonical release report must bind exact plan + ledger", release.get("input_identity"))
+
 require(projection.get("projection_integrity") == "PASS", "fresh projection must be structurally valid", projection)
 require(projection.get("kind") == KIND, "projection kind", projection.get("kind"))
 require(projection["policy"]["authority"] == "NON_AUTHORITATIVE_DERIVED", "projection must be non-authoritative")
@@ -166,6 +172,17 @@ drift_gating = next((row for row in drift_rows.values() if row.get("proof_owner"
 if drift_gating is not None:
     require(drift_gating["VERIFIED"] == "UNRESOLVED" and drift_gating.get("reason") == "VERDICT_LEDGER_DRIFT", "verdict/ledger drift must not project VERIFIED", drift_gating)
 
+# A release report for a different ledger cannot supply VERIFIED for the current task.
+stale_ledger = copy.deepcopy(ledger)
+stale_ledger["knowledge_extraction"]["reason"] = "post-release-report synthetic ledger drift"
+stale_report_projection = build_projection(plan, stale_ledger, release)
+require(
+    stale_report_projection.get("projection_integrity") == "FAIL"
+    and any(row.get("type") == "CAPABILITY_PROJECTION_RELEASE_INPUT_IDENTITY_MISMATCH" for row in stale_report_projection.get("errors") or []),
+    "release report must be identity-bound to the exact current ledger",
+    stale_report_projection,
+)
+
 # Release-verifier identity/protocol drift makes the projection itself invalid, not release-blocking.
 bad_release = copy.deepcopy(release)
 bad_release["resolution_verifier"]["version"] = int(bad_release["resolution_verifier"]["version"]) + 1
@@ -174,7 +191,7 @@ require(bad_projection.get("projection_integrity") == "FAIL", "verifier protocol
 
 print(json.dumps({
     "result": "PASS",
-    "cases": 9,
+    "cases": 11,
     "projection_kind": KIND,
     "policy": projection["policy"],
 }, ensure_ascii=False, indent=2))

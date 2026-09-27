@@ -1680,8 +1680,8 @@
     },
     {
       "path": "TESTS/run_capability_compliance_projection_regression.py",
-      "size": 8611,
-      "sha256": "5e1118e23b8e07a57eddde8b8bc30dfc1e3f6fb80115e7f164da503adfc39355"
+      "size": 9700,
+      "sha256": "2505502ec3a60757df473bbbe78b4cf53c40c76fab45e4781334e181ea5b6a10"
     },
     {
       "path": "TESTS/run_cleverence_exact_contract_regression.py",
@@ -1960,8 +1960,8 @@
     },
     {
       "path": "TOOLS/capability_compliance_projection.py",
-      "size": 11910,
-      "sha256": "7d4631e9cc238a90d9c94796eb79cb5d4f90dafcd18667c8d5258aaebc3f76e8"
+      "size": 12370,
+      "sha256": "7ec6e8152d2d3026e680957dfc8eb462cc363f4f38b1833065f838e1acdd102c"
     },
     {
       "path": "TOOLS/check_bsl_call_signatures.py",
@@ -2060,8 +2060,8 @@
     },
     {
       "path": "TOOLS/release_gate_core.py",
-      "size": 88588,
-      "sha256": "f32a36c608b87461542afbb30bada84129cb4678fff21916d8b30e315effb43c"
+      "size": 88806,
+      "sha256": "076ce9fb321e80ae0ae78433b99b995b500c18e2ef5c7dd246d4e26096e7f808"
     },
     {
       "path": "TOOLS/release_gate_hardening.py",
@@ -2175,5 +2175,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "602bb9fc6365c66bf6ac9b112de6b5db0d589a405c928eb9944d62ab4b5b723b"
+  "snapshot_digest": "c9bbe9162c06aa46c3c4a4e4fa6898ad8701e1e4ade6647e04981a39d0955d41"
 }

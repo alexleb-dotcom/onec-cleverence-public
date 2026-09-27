@@ -175,8 +175,19 @@ def _proof_verification(binding: dict, ledger: dict, release_report: dict) -> di
     }
 
 
-def _release_report_integrity(release_report: dict) -> list[dict]:
+def _release_report_integrity(release_report: dict, plan: dict, ledger: dict) -> list[dict]:
     errors = []
+    expected_identity = {
+        "plan_sha256": _fingerprint(plan),
+        "ledger_sha256": _fingerprint(ledger),
+    }
+    actual_identity = release_report.get("input_identity")
+    if actual_identity != expected_identity:
+        errors.append({
+            "type": "CAPABILITY_PROJECTION_RELEASE_INPUT_IDENTITY_MISMATCH",
+            "expected": expected_identity,
+            "actual": actual_identity,
+        })
     protocol = release_report.get("resolution_verifier")
     if not isinstance(protocol, dict):
         return [{"type": "CAPABILITY_PROJECTION_RELEASE_VERIFIER_MISSING"}]
@@ -221,7 +232,7 @@ def build_projection(plan: dict, ledger: dict, release_report: dict, registry: d
 
     recompute = validate_plan_recomputation(plan)
     integrity_errors = list(recompute.get("errors") or [])
-    integrity_errors.extend(_release_report_integrity(release_report))
+    integrity_errors.extend(_release_report_integrity(release_report, plan, ledger))
     if integrity_errors:
         return {
             "schema_version": SCHEMA_VERSION,
