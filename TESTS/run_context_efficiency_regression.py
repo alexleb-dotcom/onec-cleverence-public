@@ -88,8 +88,28 @@ with tempfile.TemporaryDirectory() as td:
     ledger=build_ledger(plan); ledger_text=json.dumps(ledger,ensure_ascii=False,indent=2)+"\n"
     ledger_sha=hashlib.sha256(ledger_text.encode("utf-8")).hexdigest()
     queue=vwq.build_work_queue(ledger,ledger_sha)
-    compact_bytes=len((json.dumps(compact_plan(plan),ensure_ascii=False,separators=(",",":"))+"\n"+json.dumps(queue,ensure_ascii=False,separators=(",",":"))+"\n").encode("utf-8"))
+    compact_plan_text=json.dumps(compact_plan(plan),ensure_ascii=False,separators=(",",":"))+"\n"
+    work_queue_text=json.dumps(queue,ensure_ascii=False,separators=(",",":"))+"\n"
+    compact_plan_bytes=len(compact_plan_text.encode("utf-8"))
+    work_queue_bytes=len(work_queue_text.encode("utf-8"))
+    compact_bytes=compact_plan_bytes+work_queue_bytes
+    efficiency_metrics={
+        "skill_utf8_bytes":len((ROOT/"SKILL.md").read_bytes()),
+        "skill_lines":len(skill.splitlines()),
+        "compact_plan_bytes":compact_plan_bytes,
+        "work_queue_bytes":work_queue_bytes,
+        "combined_compact_bytes":compact_bytes,
+        "active_profile_count":len(compact_plan(plan).get("active_profiles") or []),
+        "active_delivery_count":len(compact_plan(plan).get("active_deliveries") or []),
+        "active_support_reference_count":len(plan.get("active_supporting_artifacts") or []),
+        "context_reference_count":len((compact_plan(plan).get("context_load_plan") or {}).get("references") or []),
+        "compact_limit_bytes":12*1024,
+    }
     record("small_r1_compact_plan_plus_ledger_within_12kb",compact_bytes<=12*1024,{"bytes":compact_bytes,"limit":12*1024,"verifier":queue.get("verifier")})
+    record("efficiency_metrics_are_visible",all(isinstance(efficiency_metrics.get(key),int) for key in (
+        "skill_utf8_bytes","skill_lines","compact_plan_bytes","work_queue_bytes","combined_compact_bytes",
+        "active_profile_count","active_delivery_count","active_support_reference_count"
+    )),efficiency_metrics)
     all_capabilities={d.get("capability_id") for rule in load_registry().get("rules",[]) for d in rule.get("delivery",[]) if isinstance(d,dict)}
     compact_capabilities={d.get("capability_id") for d in compact_plan(plan).get("active_deliveries",[]) if isinstance(d,dict)}
     full_active_capabilities={d.get("capability_id") for d in plan.get("active_deliveries",[]) if isinstance(d,dict)}
@@ -471,6 +491,6 @@ p=subprocess.run([sys.executable,str(ROOT/"TOOLS/rule_registry.py"),"--rule","SO
 narrow=json.loads(p.stdout) if p.returncode==0 else {}
 record("registry_query_is_narrow_single_rule_projection",p.returncode==0 and narrow.get("rule",{}).get("id")=="SOURCE_FIRST" and "rules" not in narrow)
 
-out={"result":"PASS" if not errors else "FAIL","results":results,"errors":errors}
+out={"result":"PASS" if not errors else "FAIL","efficiency_metrics":efficiency_metrics,"results":results,"errors":errors}
 print(json.dumps(out,ensure_ascii=False,indent=2))
 raise SystemExit(0 if not errors else 2)
