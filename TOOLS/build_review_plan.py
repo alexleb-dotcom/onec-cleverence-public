@@ -340,7 +340,7 @@ def build_plan(paths, baseline=None, analysis_only=False, surface_override=None,
         row["executor_payload"]["value"] for row in active_deliveries
         if row.get("executor_payload",{}).get("kind")=="INSTRUCTION"
     ))
-    active_references=list(dict.fromkeys([*(ref for row in active_deliveries for ref in row.get("references",[])),*(row["path"] for row in active_support)]))
+    active_references=list(dict.fromkeys(ref for row in active_deliveries for ref in row.get("references",[])))
     runtime_focus=[]
     active_ids={r["id"] for r in rule_rows if r["active"] and (r["detected_by"] or r["tier"]>0 or r["reason"].startswith("derived"))}
     if active_ids & {"QUERY","DYNAMIC_LIST"}:runtime_focus += ["1C query parser/final variants","representative list/query cardinality/performance"]
@@ -415,7 +415,6 @@ def compact_summary(plan):
         },
         "active_profiles":[{k:profile.get(k) for k in ("name","rule_id","file","status")} for profile in plan.get("active_profiles",[])],
         "active_deliveries":[{k:row.get(k) for k in ("capability_id","enforcement")} | ({"proof_owner":(row.get("proof_binding") or {}).get("owner")} if row.get("proof_binding") else {}) for row in plan.get("active_deliveries",[])],
-        "delivery_applicability_summary":{status:sum(1 for row in plan.get("delivery_applicability",[]) if row.get("status")==status) for status in ("APPLICABLE","NOT_APPLICABLE","NOT_EVALUATED")},
         "deterministic_tools":plan.get("deterministic_tools"),
         "runtime_focus":plan.get("runtime_focus"),
         "context_load_plan":plan.get("context_load_plan"),
