@@ -20,24 +20,33 @@ PUBLIC_CI_INVENTORY_PATH = ROOT / "TOOLS/PUBLIC_CI_INVENTORY.json"
 EXPECTED_SECTIONS = ["OUTCOME", "RESULT", "VERIFICATION", "PROOF_BOUNDARY", "ARTIFACTS", "USER_ACTION"]
 EXPECTED_PROFILES = {"ANALYSIS_REPORT", "IMPLEMENTATION_DELIVERY", "REQUIREMENTS_ARTIFACT", "BLOCKED_OR_PARTIAL"}
 EXPECTED_FINDING_SHAPE = ["location", "as_is", "problem", "recommendation", "rationale", "evidence_boundary"]
-EXPECTED_IMPLEMENTATION_NOTES_HEADER_ORDER = ["project", "task"]
+EXPECTED_IMPLEMENTATION_NOTES_HEADER_ORDER = [
+    "tz_number",
+    "project",
+    "task",
+    "platform_version",
+    "configuration_name_version",
+]
 EXPECTED_IMPLEMENTATION_NOTES_HEADER_LABELS = {
+    "tz_number": "Номер ТЗ",
     "project": "Проект",
     "task": "Задача",
+    "platform_version": "Версия платформы",
+    "configuration_name_version": "Наименование и версия конфигурации",
 }
 EXPECTED_IMPLEMENTATION_NOTES_ROW_ORDER = [
     "container",
     "configuration_object",
-    "procedure_or_function",
+    "procedure_function",
     "status",
     "change_description",
 ]
 EXPECTED_IMPLEMENTATION_NOTES_LABELS = {
     "container": "Контейнер",
-    "configuration_object": "Объект конфигурации",
-    "procedure_or_function": "Процедура / функция",
+    "configuration_object": "ОбъектКонфигурации",
+    "procedure_function": "Процедура/Функция",
     "status": "Статус",
-    "change_description": "Описание изменения",
+    "change_description": "ОписаниеИзменений",
 }
 
 
@@ -176,8 +185,8 @@ def validate_contract(contract: dict) -> list[str]:
     labels = notes.get("labels_ru") or {}
     if labels != EXPECTED_IMPLEMENTATION_NOTES_LABELS:
         errors.append(f"implementation_notes_labels_exact:{labels}")
-    if notes.get("format") != "PROJECT_TASK_HEADER_PLUS_TABLE":
-        errors.append("implementation_notes_format_must_be_project_task_header_plus_table")
+    if notes.get("format") != "SEPARATE_DOCX_HEADER_PLUS_TABLE":
+        errors.append("implementation_notes_format_must_be_separate_docx_header_plus_table")
     if notes.get("header_fields_locked") is not True:
         errors.append("implementation_notes_header_fields_must_be_locked")
     if notes.get("base_columns_locked") is not True:
@@ -196,17 +205,17 @@ def validate_contract(contract: dict) -> list[str]:
             errors.append(f"implementation_notes_field_rule_missing:{field}")
     format_rules = "\n".join(notes.get("format_rules") or [])
     for anchor in [
-        "two header fields are mandatory",
+        "five header fields are mandatory",
         "must not be repeated as table columns",
         "five base table columns are mandatory",
         "do not rename, remove, merge, split or reorder",
         "do not add extra columns to the base table",
-        "outside the mandatory project/task header and base table",
+        "outside the mandatory header and base table",
     ]:
         if anchor not in format_rules:
             errors.append(f"implementation_notes_format_rule_missing:{anchor}")
     identity_rules = "\n".join(notes.get("identity_rules") or [])
-    for anchor in ["Project Context or requirements", "exact baseline/candidate layout", "same-named objects", "project/task header plus five-column 1C base format"]:
+    for anchor in ["Project Context or requirements", "exact evidenced target context", "exact baseline/candidate layout", "same-named objects"]:
         if anchor not in identity_rules:
             errors.append(f"implementation_notes_identity_rule_missing:{anchor}")
 
@@ -314,42 +323,39 @@ def main() -> int:
 
     requirements_template = REQUIREMENTS_ARTIFACT_TEMPLATE_PATH.read_text(encoding="utf-8")
     for token in [
-        "## Потребность / проблема",
-        "## Целевой результат",
-        "## Границы",
-        "## Функциональное поведение и материальные правила",
-        "## Приемка",
-        "## Открытые вопросы / блокеры",
-        "## Допущения",
-        "## Предлагаемое решение",
-        "## Доказанность / provenance",
-        "## Статус требований",
+        "Функциональная спецификация.docx",
+        "Потребность / проблема",
+        "Целевой результат",
+        "Границы",
+        "Функциональное поведение и материальные правила",
+        "Приемка",
+        "Открытые вопросы / блокеры",
+        "Допущения",
+        "Предлагаемое решение",
+        "Основания и граница доказанности",
         "REQUIREMENTS_BLOCKED",
-        "PROPOSED_SOLUTION",
         "requirements gate",
-        "UTF-8",
-        "псевдоверсии",
+        "Truly empty conditional sections are omitted",
+        "Internal authoring invariants",
     ]:
         if token not in requirements_template:
             errors.append(f"requirements_artifact_template_missing:{token}")
 
     manual_template = MANUAL_TRANSFER_TEMPLATE_PATH.read_text(encoding="utf-8")
     for token in [
+        "Инструкция по внедрению.docx",
         "Целевая база / артефакт",
-        "## Порядок изменений",
-        "STEP-001",
-        "CREATE | MODIFY | DELETE",
-        "Место / якорь",
-        "Код / payload",
-        "Зависит от",
-        "## Статическая проверка после переноса",
-        "## Runtime-проверка",
-        "## Нерешённые выборы для исполнителя",
-        "BLOCKING:",
-        "## Граница доказанности",
-        "UTF-8",
-        "псевдоверсии",
-        "не доказывает",
+        "Создаваемые объекты",
+        "Изменяемые объекты",
+        "Код",
+        "Было",
+        "Стало",
+        "Обоснование",
+        "Применимый стандарт/правило",
+        "AUTHOR_MARKER",
+        "object-first",
+        "ChangePackage",
+        "Граница доказанности",
     ]:
         if token not in manual_template:
             errors.append(f"manual_transfer_template_missing:{token}")
@@ -478,9 +484,10 @@ def main() -> int:
             errors.append(f"skill_result_contract_missing:{anchor}")
     control(
         "result_delivery:skill_defers_exact_format_to_canonical_owner",
-        "The exact implementation table/header shape and the routed `Performance Review` projection are owned there" in skill
-        and "do not maintain a second detailed format specification in this Skill body" in skill
-        and "Особенности реализации" not in skill,
+        "Exact artifact structure remains owned by the Result Delivery contract and artifact-specific templates" in skill
+        and "not duplicated in this Skill body" in skill
+        and "KNOWLEDGE/USER_ARTIFACT_DOCX.md" in skill
+        and "TOOLS/render_user_artifact_docx.py" in skill,
         {
             "contract": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
             "guide": "KNOWLEDGE/RESULT_DELIVERY.md",
@@ -496,7 +503,7 @@ def main() -> int:
         errors.append("pipeline_manual_transfer_template_reference_missing")
     requirements_stage = next((row for row in pipeline.get("stages") or [] if row.get("id") == "REQUIREMENTS_AND_SCOPE"), {})
     requirements_actions = "\n".join(requirements_stage.get("actions") or [])
-    if "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in requirements_actions or "never upgrades the requirements gate" not in requirements_actions:
+    if "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in requirements_actions or "never upgrade the requirements gate" not in requirements_actions or "Функциональная спецификация.docx" not in requirements_actions:
         errors.append("pipeline_requirements_artifact_rendering_contract_missing")
     final_stage = next((row for row in pipeline.get("stages") or [] if row.get("id") == "FINAL_ARTIFACT_VALIDATION"), {})
     final_actions = "\n".join(final_stage.get("actions") or [])
@@ -504,9 +511,9 @@ def main() -> int:
         errors.append("pipeline_final_stage_must_apply_result_delivery_contract")
     if "must not upgrade the canonical gate outcome" not in final_actions:
         errors.append("pipeline_final_stage_readiness_guard_missing")
-    if "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" not in final_actions or "stable instruction step ids referenced by ChangePackage" not in final_actions:
+    if "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" not in final_actions or "object-first R2 contract" not in final_actions or "ChangePackage remains the machine delivery/proof owner" not in final_actions:
         errors.append("pipeline_manual_transfer_rendering_contract_missing")
-    for anchor in ["COLLECTION_ALGORITHM", "Performance Review", "Измеренное ускорение не доказано.", "RUNTIME_ADAPTER", "immutable Особенности реализации base format"]:
+    for anchor in ["COLLECTION_ALGORITHM", "Performance Review", "Измеренное ускорение не доказано.", "RUNTIME_ADAPTER", "separate DOCX artifact proof boundary"]:
         if anchor not in final_actions:
             errors.append(f"pipeline_performance_projection_missing:{anchor}")
 
@@ -534,12 +541,14 @@ def main() -> int:
         errors.append("result_delivery_guide_missing_final_response_scope")
     for anchor in [
         "### Особенности реализации",
-        "Проект: <bound project name>",
-        "Задача: <bound task name or identifier>",
-        "| Контейнер | Объект конфигурации | Процедура / функция | Статус | Описание изменения |",
-        "Both parts of the base format are immutable",
-        "Do not repeat `Проект`/`Задача` as table columns",
-        "do not add extra columns to the base table",
+        "Особенности реализации.docx",
+        "Номер ТЗ",
+        "Версия платформы",
+        "Наименование и версия конфигурации",
+        "| Контейнер | ОбъектКонфигурации | Процедура/Функция | Статус | ОписаниеИзменений |",
+        "separate mandatory",
+        "### Построчное обоснование изменений",
+        "only on explicit user request",
         "### Performance Review",
         "Измеренное ускорение не доказано.",
         "RUNTIME_ADAPTER",
