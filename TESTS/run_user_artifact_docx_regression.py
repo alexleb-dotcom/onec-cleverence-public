@@ -32,6 +32,11 @@ requirements={
 marker="// ИвановИИ, ПервыйБит, 28.09.2026, ТЗ-42, 1.2"
 manual={
  "project":"Проект А","task":"ТЗ-42","target_identity":"Расширение Приемка baseline abc",
+ "preconditions":["Выполнить резервную копию."],
+ "migration":["Заполнить существующие ключи при необходимости."],
+ "static_verification":["Проверить синтаксис модуля."],
+ "runtime_verification":["Выполнить контрольный повтор операции."],
+ "blocking_choices":["Нет нерешённых выборов."],
  "created_objects":[{"object":"РегистрСведений.ОбработанныеОперации","properties":[{"name":"Периодичность","value":"Непериодический"}],"rationale":"Хранить бизнес-ключ.","standard_rule":"Проектное правило IDEMPOTENCY"}],
  "modified_objects":[{"object":"ОбщийМодуль.ИнтеграцияCleverenceСервер","properties":[{"name":"Сервер","before":"Ложь","after":"Истина"}],"rationale":"Выполнение на сервере.","standard_rule":"Клиент-серверный контракт"}],
  "code_changes":[{"object":"ОбщийМодуль.ИнтеграцияCleverenceСервер","member":"Процедура ОбработатьРезультатПриемки","before":"Контекст();","after":"Контекст();\n"+marker+"\nПроверитьПовтор();","rationale":"Идемпотентность.","standard_rule":"Проектное правило IDEMPOTENCY"}],
@@ -69,6 +74,19 @@ with tempfile.TemporaryDirectory() as td:
     headings=[p.text for p in man.paragraphs if p.style and p.style.name.startswith("Heading")]
     require(all(x in headings for x in ["Создаваемые объекты","Изменяемые объекты","Код"]),"manual_primary_headings",headings)
     require(headings.index("Создаваемые объекты")<headings.index("Изменяемые объекты")<headings.index("Код"),"manual_owner_order",headings)
+    h1=[p.text for p in man.paragraphs if p.style and p.style.name=="Heading 1"]
+    expected_h1=[
+      "Создаваемые объекты",
+      "Изменяемые объекты",
+      "Код",
+      "Предусловия",
+      "Миграция / инициализация / одноразовые действия",
+      "Статическая проверка после внедрения",
+      "Проверка выполнения",
+      "Нерешённые выборы / блокеры",
+      "Граница доказанности",
+    ]
+    require(h1==expected_h1,"manual_full_owner_order_with_conditionals",h1)
     man_text="\n".join(p.text for p in man.paragraphs)
     require("STEP-001" not in man_text,"manual_not_step_first",man_text)
     require(marker in man_text,"author_marker_literal_preserved",man_text)
@@ -125,5 +143,5 @@ require(impl_contract["line_by_line_justification"].get("trigger")=="EXPLICIT_US
 require(contract["profiles"]["REQUIREMENTS_ARTIFACT"]["artifact_output"].get("separate_file") is True,"requirements_separate_file")
 require(impl_contract["manual_transfer_artifact_output"].get("separate_file") is True,"manual_separate_file")
 
-print(json.dumps({"result":"PASS" if not errors else "FAIL","errors":errors,"cases":19},ensure_ascii=False,indent=2))
+print(json.dumps({"result":"PASS" if not errors else "FAIL","errors":errors,"cases":20},ensure_ascii=False,indent=2))
 raise SystemExit(0 if not errors else 2)
