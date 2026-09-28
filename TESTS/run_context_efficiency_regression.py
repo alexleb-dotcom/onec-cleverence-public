@@ -146,6 +146,45 @@ record(
     {"actual":sorted(current_root_tool_refs),"expected":sorted(baseline_root_tool_refs)},
 )
 
+record(
+    "current_turn_intake_kernel_is_explicit",
+    all(token in skill for token in (
+        "## Current-turn intake and continuation",
+        "bind the exact target/project identity before reusing prior context",
+        "correlate the turn with any pending requested answer/artifact/evidence",
+        "detect an explicit user/project decision correction",
+        "distinguish continuation of the active task from a genuinely new task",
+        "inspect whether already available evidence is sufficient",
+        "invoke only the next existing canonical owner",
+    )),
+)
+record(
+    "returned_requested_input_resumes_without_restatement",
+    "resume the active task from the blocked canonical owner" in skill
+    and "without asking the user to restate the task, project, or request reason" in skill,
+)
+record(
+    "new_task_reuses_only_durable_context",
+    "build a new requirements contract" in skill
+    and "previous-task assumptions or proposed solutions do not become new-task requirements by reuse" in skill,
+)
+record(
+    "mixed_context_requires_exact_target_binding",
+    "Mixed/unrelated prior chat or source is non-authoritative until exact current target/project identity binds it" in skill,
+)
+record(
+    "no_persistent_global_interaction_state",
+    "Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`" in skill
+    and "second interaction registry/state machine" in skill,
+)
+record(
+    "new_user_artifact_templates_are_deferred",
+    "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" in skill
+    and "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" in skill
+    and "neither template is a normal startup dependency" in skill
+    and "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in progressive.split("routed profile(s)",1)[0],
+)
+
 with tempfile.TemporaryDirectory() as td:
     temp=Path(td)
     source=temp/"small_r1.bsl"; source_text="Процедура Обработать()\n    Значение = 1;\nКонецПроцедуры\n"; source.write_text(source_text,encoding="utf-8")

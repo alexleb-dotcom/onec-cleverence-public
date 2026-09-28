@@ -86,6 +86,8 @@ This allows the skill to work without a permanent static customer contour while 
 
 `ChangePackage` is the delivery envelope around the selected result mode. It may contain a manual-transfer instruction, direct source changes, patch/diff, importable artifact, full compare set, analysis report or a justified combination.
 
+When the primary result mode is `MANUAL_TRANSFER_INSTRUCTION`, render the human-executable instruction through `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`. Its stable `STEP-...` ids/sections are the targets of ChangePackage `instruction_refs`; the ChangePackage remains the machine delivery envelope and proof-boundary owner. A deployment/rollout sequence may remain a conditional section of that instruction when it is the same operational flow; do not create a mandatory separate rollout artifact.
+
 The package manifest must bind the result to the exact ProjectSnapshot/baseline used for development and trace each material change item to:
 - target object/artifact;
 - create/modify/delete action;

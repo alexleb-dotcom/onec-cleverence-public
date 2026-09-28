@@ -64,6 +64,25 @@ Technical Tier-0 principles include:
 - exact delivery closure;
 - honest runtime evidence.
 
+## Current-turn intake and continuation
+
+Before asking a substantive question or starting a new task contract, interpret the **current turn** from observable context in this order:
+
+1. bind the exact target/project identity before reusing prior context;
+2. correlate the turn with any pending requested answer/artifact/evidence;
+3. detect an explicit user/project decision correction;
+4. distinguish continuation of the active task from a genuinely new task;
+5. inspect whether already available evidence is sufficient;
+6. invoke only the next existing canonical owner.
+
+Inspect before asking. Reuse only current identity-matching context/evidence. If the user returns something previously requested, validate/bind it and resume the active task from the blocked canonical owner **without asking the user to restate the task, project, or request reason**. If the user starts a genuinely new task in the same project, reuse only valid durable `PROJECT_CONTEXT`, revalidate only relevant stale keys, and build a new requirements contract; previous-task assumptions or proposed solutions do not become new-task requirements by reuse.
+
+Mixed/unrelated prior chat or source is non-authoritative until exact current target/project identity binds it. Material decision corrections invalidate only affected downstream claims/artifacts through the existing Project Context / requirements owners.
+
+Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`, or a second interaction registry/state machine. This turn classification is recomputed from current observable context.
+
+When a human-readable requirements/specification artifact is the requested deliverable, load `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md` only for that rendering phase. When `MANUAL_TRANSFER_INSTRUCTION` is the selected result mode, load `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md` only for final delivery assembly; neither template is a normal startup dependency.
+
 ## Mandatory task workflow
 
 For non-trivial implementation/review tasks:
