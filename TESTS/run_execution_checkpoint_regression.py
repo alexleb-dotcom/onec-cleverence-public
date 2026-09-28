@@ -150,7 +150,37 @@ with tempfile.TemporaryDirectory() as td:
     dead_result = recover(dead_op, dead_spec)
     record("execution:dead_pid_without_rc_is_lost", dead_result.get("state") == "LOST_PROCESS", dead_result)
 
-    # 12: live PID with wrong process-start token => LOST_PROCESS, never false RUNNING.
+    # 12: finished/dead child + live exact supervisor + no RC is a legitimate
+    # supervisor-finalization window and must remain RUNNING rather than false LOST_PROCESS.
+    finalize_cwd = base / "finalize"; finalize_cwd.mkdir()
+    finalize_root = base / "state-finalize"
+    finalize_spec = spec_for(finalize_cwd, counter_code(), check="finalize")
+    finalize_op = operation_dir(finalize_root, finalize_spec); finalize_op.mkdir(parents=True)
+    finalize_manifest = copy.deepcopy(dead_manifest)
+    finalize_manifest.update({
+        "operation_id": finalize_spec["operation_id"],
+        "stage_id": finalize_spec["stage_id"],
+        "check_id": finalize_spec["check_id"],
+        "command_argv": finalize_spec["command_argv"],
+        "command_fingerprint": finalize_spec["command_fingerprint"],
+        "cwd": finalize_spec["cwd"],
+        "source_identity": finalize_spec["source_identity"],
+        "source_fingerprint": finalize_spec["source_fingerprint"],
+        "reason": "CHILD_RUNNING",
+    })
+    finalize_manifest["child"] = {"pid": 99999998, "start_token": "linux:missing:2"}
+    finalize_manifest["supervisor"] = {"pid": os.getpid(), "start_token": process_start_token(os.getpid())}
+    _atomic_write_json(finalize_op / "operation.json", finalize_manifest)
+    finalize_result = recover(finalize_op, finalize_spec)
+    record(
+        "execution:finished_child_live_supervisor_stays_running_until_terminal_evidence",
+        finalize_result.get("state") == "RUNNING"
+        and finalize_result.get("exit_code") is None
+        and not (finalize_op / "rc.txt").exists(),
+        finalize_result,
+    )
+
+    # 13: live PID with wrong process-start token => LOST_PROCESS, never false RUNNING.
     reuse_cwd = base / "reuse"; reuse_cwd.mkdir()
     reuse_root = base / "state-reuse"
     reuse_spec = spec_for(reuse_cwd, counter_code(), check="reuse")
