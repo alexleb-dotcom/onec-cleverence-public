@@ -2115,8 +2115,8 @@
     },
     {
       "path": "TOOLS/render_user_artifact_docx.py",
-      "size": 15894,
-      "sha256": "a9edbbe6792e73221924f62c153e81cf9caf482f9c61241dc40723eb4b77aaf6"
+      "size": 15891,
+      "sha256": "4b131e69d07ad42d2349d8bd0489fc9f6298013d0fb69eb07949bf5a0244c3bc"
     },
     {
       "path": "TOOLS/requirements_gate.py",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "d4345f5ad150a03055db5f007a6e9a67494e879c6b9259b609ed3bbaa3a2c5ce"
+  "snapshot_digest": "b763ee10e7ee7b9544aea68ced274f7f15207fbd80c32e9626a5185dbf52cad1"
 }
