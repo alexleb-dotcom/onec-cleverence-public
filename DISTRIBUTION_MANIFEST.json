@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 437,
+  "file_count": 442,
   "files": [
     {
       "path": ".gitattributes",
@@ -65,8 +65,8 @@
     },
     {
       "path": "KNOWLEDGE/DEVELOPMENT_HANDOFF_WORKFLOW.md",
-      "size": 9693,
-      "sha256": "6459b8629ad025106a5690dda5323d87dbba56315a79de61dced4ef916759056"
+      "size": 9997,
+      "sha256": "98a8199bf302d651d5b3df0e7acf9146ef3b28db3175aa9bf580e36309aa1389"
     },
     {
       "path": "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
@@ -220,8 +220,8 @@
     },
     {
       "path": "KNOWLEDGE/RESULT_DELIVERY.md",
-      "size": 10588,
-      "sha256": "97d4540da328fdec9dca152deccb662da28d3b7ce98313c89c1f053afef2bdf9"
+      "size": 8941,
+      "sha256": "2d2135fe9a280cbbb0232b51a45066e3fb677b2da78a6f08af19e911f7ae968d"
     },
     {
       "path": "KNOWLEDGE/SKILL_FRESHNESS.md",
@@ -237,6 +237,11 @@
       "path": "KNOWLEDGE/TYPICAL_CODE_DISCOVERY.md",
       "size": 6450,
       "sha256": "1e5ecd3affd825b170ca25ac195fcec8a3db6679575877dfd45c35cf6510a3e6"
+    },
+    {
+      "path": "KNOWLEDGE/USER_ARTIFACT_DOCX.md",
+      "size": 3640,
+      "sha256": "859f77f923980d237d6f1f7caaba013427ae9e722a0f05095f254262aca61a0f"
     },
     {
       "path": "KNOWLEDGE/V8STD_SOURCE_POLICY.md",
@@ -630,8 +635,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 38356,
-      "sha256": "62d97cf950f40948d1d0faf11b40c167682a8f0e994ea058895d469d0513b32f"
+      "size": 38739,
+      "sha256": "2151af32eb59449320e967da9a3c08511a9103cedcd0133545ee9a02af84eb92"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -644,9 +649,19 @@
       "sha256": "6033be5824c472f09143e1cd8e89a2486749b8d84479c20012e6621241586993"
     },
     {
+      "path": "TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md",
+      "size": 1738,
+      "sha256": "804e1ce8a6fc219d3a35f26ee345f019b1356400179740375b30a012cb17929b"
+    },
+    {
+      "path": "TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md",
+      "size": 1548,
+      "sha256": "d3e7edb42acb6ee35839dc3295c8cf77e2c9ad56273bf5ccbc419ff93b7b84ad"
+    },
+    {
       "path": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
-      "size": 3072,
-      "sha256": "d74112ac2f8acf0de1ec16929a2a0b8d07477bdb51937c9f1a57f7b900588fe6"
+      "size": 2950,
+      "sha256": "e230e7ecc0a122d33ba7d5cdd9326453b39761b926bc1b6bb297ecc8529f0c37"
     },
     {
       "path": "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md",
@@ -670,8 +685,8 @@
     },
     {
       "path": "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md",
-      "size": 3017,
-      "sha256": "ce4046491f6bb986243b9220b12187a47f917369346c9e8259ecdbe3fbbae0b0"
+      "size": 2431,
+      "sha256": "807d532c4498cff52aba8bc659ab95a6eb2fe2a7b722d288b26dc7a577bc3b26"
     },
     {
       "path": "TEMPLATES/VALIDATION_LEDGER_TEMPLATE.json",
@@ -1879,6 +1894,11 @@
       "sha256": "744507629cacf8aeed7e813cf94439a5764b2ad700c3b8e4d46882430ae37582"
     },
     {
+      "path": "TESTS/run_user_artifact_docx_regression.py",
+      "size": 9277,
+      "sha256": "3fea39942bd936b869fbbec1896997ee907ac8d696c8664c22fef1b6d5107195"
+    },
+    {
       "path": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
       "size": 1075,
       "sha256": "b80d5d3cb8861dbd2bbbd1e97bbf794b5b61a18ac76bb8ed40c8f26ebb324ab5"
@@ -2094,6 +2114,11 @@
       "sha256": "58af26caa66689294f7dfb7340366fa16dd31122be5f0b615bbe265cd51937c8"
     },
     {
+      "path": "TOOLS/render_user_artifact_docx.py",
+      "size": 15894,
+      "sha256": "a9edbbe6792e73221924f62c153e81cf9caf482f9c61241dc40723eb4b77aaf6"
+    },
+    {
       "path": "TOOLS/requirements_gate.py",
       "size": 21668,
       "sha256": "ca4e9a9045db0562efb6145d6307b4aa005adb1f9b30a78488dbfb68d48cc242"
@@ -2170,8 +2195,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 21326,
-      "sha256": "f43a95eb8bcb44d995b4638d5bc19d39d7ff2e89c10f753910bda56f2f9f89ec"
+      "size": 22609,
+      "sha256": "9e05a4a39a3e149b96f5f2a4fbdf5ef5faff163f12d2a14ce3de50aaa8cda867"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2180,8 +2205,8 @@
     },
     {
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
-      "size": 15348,
-      "sha256": "47f20861cc26588c532269d9163ab25af7a101b1162839cf9d0703a3a98052f4"
+      "size": 18507,
+      "sha256": "2e22615f557e0ec165e895272b3f30a2418588df7944d34fa166ba6a696af8a1"
     },
     {
       "path": "agents/openai.yaml",
@@ -2195,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "203fcf9d465788524471ee25186ade57062ebb28fac1b9a96f4697e0e4da8aac"
+  "snapshot_digest": "9d5fe43b72ccc7b7865c2183e034fe379b4fb6ba08d296b0a5c95899fe1c4951"
 }
