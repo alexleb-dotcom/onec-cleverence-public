@@ -105,6 +105,47 @@ with tempfile.TemporaryDirectory() as td:
     )
 
 
+    scalar_known=copy.deepcopy(bound)
+    scalar_known['author_marker']['status']='KNOWN'
+    scalar_known['author_marker']['value']='legacy-regression-evidenced'
+    scalar_known_gates=_capability_gates(scalar_known)
+    scalar_known_requests=_requests(scalar_known,bootstrap['artifact_model'],bootstrap['discovery_candidates'])
+    scalar_known_marker=next((x for x in scalar_known_requests if x['id']=='AUTHOR_MARKER'),None)
+    record(
+        'author_marker_scalar_known_is_fail_closed',
+        _author_marker_gate_state(scalar_known)=='AUTHOR_MARKER_BLOCKED'
+        and scalar_known_gates['code_output_allowed']['allowed'] is False
+        and scalar_known_marker is not None
+        and all(name in scalar_known_marker.get('what','') for name in ('ФамилияИО','Дата','НомерТЗ','пункты ТЗ')),
+        {'state':_author_marker_gate_state(scalar_known),'gates':scalar_known_gates,'request':scalar_known_marker},
+    )
+
+    scalar_derived=copy.deepcopy(bound)
+    scalar_derived['author_marker']['status']='DERIVED_WITH_EVIDENCE'
+    scalar_derived['author_marker']['value']='legacy-regression-evidenced'
+    scalar_derived_gates=_capability_gates(scalar_derived)
+    record(
+        'author_marker_scalar_derived_is_fail_closed',
+        _author_marker_gate_state(scalar_derived)=='AUTHOR_MARKER_BLOCKED'
+        and scalar_derived_gates['code_output_allowed']['allowed'] is False
+        and 'author_marker' in scalar_derived_gates['code_output_allowed']['blocking_open_fields'],
+        {'state':_author_marker_gate_state(scalar_derived),'gates':scalar_derived_gates},
+    )
+
+    dict_without_values=copy.deepcopy(bound)
+    dict_without_values['author_marker']['status']='KNOWN'
+    dict_without_values['author_marker']['value']={
+        'syntax_source':'SKILL_DEFAULT_1C',
+        'canonical_shape':copy.deepcopy(CANONICAL_ONEC_AUTHOR_MARKER),
+    }
+    dict_without_values_gates=_capability_gates(dict_without_values)
+    record(
+        'author_marker_dict_without_values_is_fail_closed',
+        _author_marker_gate_state(dict_without_values)=='AUTHOR_MARKER_BLOCKED'
+        and dict_without_values_gates['code_output_allowed']['allowed'] is False,
+        {'state':_author_marker_gate_state(dict_without_values),'gates':dict_without_values_gates},
+    )
+
     incomplete_known=copy.deepcopy(bound)
     incomplete_known['author_marker']['value']['values']['Дата']=None
     incomplete_known['author_marker']['status']='KNOWN'
@@ -150,7 +191,7 @@ with tempfile.TemporaryDirectory() as td:
         {'state':_author_marker_gate_state(not_applicable),'gates':not_applicable_gates},
     )
 
-    applicable_cases=[incomplete_known,incomplete_derived,bound,complete_derived]
+    applicable_cases=[scalar_known,scalar_derived,dict_without_values,incomplete_known,incomplete_derived,bound,complete_derived]
     contradictions=[]
     for row in applicable_cases:
         state=_author_marker_gate_state(row)
@@ -193,8 +234,10 @@ with tempfile.TemporaryDirectory() as td:
     )
 
     fields=copy.deepcopy(bootstrap['fields'])
-    for fid in ('actual_deployed_baseline','modification_policy','author_marker','technical_comment','existing_comment_policy'):
-        fields[fid]['status']='KNOWN'; fields[fid]['value']='regression-evidenced'
+    for fid in ('actual_deployed_baseline','modification_policy','technical_comment','existing_comment_policy'):
+        fields[fid]['status']='KNOWN'
+        fields[fid]['value']='regression-evidenced'
+    fields['author_marker']=copy.deepcopy(bound['author_marker'])
     isolated=_capability_gates(fields)
     record(
         'metadata_delivery_do_not_false_block_code',
