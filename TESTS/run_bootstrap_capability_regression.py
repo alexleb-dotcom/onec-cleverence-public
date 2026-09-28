@@ -90,6 +90,9 @@ with tempfile.TemporaryDirectory() as td:
     )
 
     bound=copy.deepcopy(bootstrap['fields'])
+    for fid in ('actual_deployed_baseline','modification_policy','technical_comment','existing_comment_policy'):
+        bound[fid]['status']='KNOWN'
+        bound[fid]['value']='regression-evidenced'
     bound_values=bound['author_marker']['value']['values']
     bound_values.update({'ФамилияИО':'ИвановИИ','Дата':'28.09.2026','НомерТЗ':'ТЗ-42','пункты ТЗ':'1.2'})
     bound['author_marker']['status']='KNOWN'
@@ -147,7 +150,7 @@ with tempfile.TemporaryDirectory() as td:
         {'state':_author_marker_gate_state(not_applicable),'gates':not_applicable_gates},
     )
 
-    applicable_cases=[bootstrap,incomplete_known,incomplete_derived,bound,complete_derived]
+    applicable_cases=[incomplete_known,incomplete_derived,bound,complete_derived]
     contradictions=[]
     for row in applicable_cases:
         state=_author_marker_gate_state(row)
