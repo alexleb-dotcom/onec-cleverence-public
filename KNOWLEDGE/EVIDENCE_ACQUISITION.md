@@ -31,6 +31,13 @@ When the user returns an answer, source file, archive, log, runtime result or ot
 
 Do **not** ask the user to restate the original task, project identity, reason for the request or already accepted answers. If correlation is ambiguous, ask only for the smallest missing binding fact. ProjectSnapshot keeps its existing local orchestration states; this generic resume invariant does not introduce a second task/session state machine.
 
+### Interrupted response does not invalidate bound evidence
+
+If the assistant/tool response is interrupted after evidence or a task artifact may already have been accepted/bound, treat completion as unknown and inspect current durable evidence/artifact state before requesting or producing it again. Reuse every matching item that is still valid for the exact task/target/baseline and resume from the first canonical owner whose work is genuinely incomplete.
+
+Do not re-request evidence merely because the response that acknowledged it was lost. If current binding is ambiguous, verify only the smallest exact identity/provenance fact needed to decide whether the existing item is reusable.
+
+
 ## Request quality
 
 A useful request states all of:
