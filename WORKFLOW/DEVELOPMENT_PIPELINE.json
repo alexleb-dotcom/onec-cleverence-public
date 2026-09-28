@@ -49,7 +49,8 @@
         "run TOOLS/requirements_gate.py; REQUIREMENTS_BLOCKED forbids production-ready technical design",
         "record need → target outcome → behavior/rules → acceptance traceability",
         "scale depth by risk: R1 adds invariant/source-of-truth/scope, R2 adds process/state/repeat/errors, R3 adds full integration contract",
-        "when a material requirements gap can be resolved by a concrete missing artifact, request the smallest sufficient artifact and keep the affected gate blocked until it is provided or independently resolved"
+        "when a material requirements gap can be resolved by a concrete missing artifact, request the smallest sufficient artifact and keep the affected gate blocked until it is provided or independently resolved",
+        "when the requested primary deliverable is a human requirements/specification artifact, render it through TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md only after canonical requirements status is known; the template never upgrades the requirements gate"
       ]
     },
     {
@@ -191,7 +192,8 @@
         "validate TEMPLATES/CHANGE_PACKAGE_MANIFEST.json semantics: exact source snapshot/baseline binding, result mode, change-item traceability and proof boundary",
         "retain post-transfer verification hooks and changed-object snapshot scope in ChangePackage; default policy is OPTIONAL, so absence of PostTransferSnapshot does not block artifact readiness unless PROJECT_CONTEXT says REQUIRED_BY_PROJECT",
         "project the validated result through WORKFLOW/RESULT_DELIVERY_CONTRACT.json; the user-facing presentation must not upgrade the canonical gate outcome, source proof, applied-target state, deployment/import state or runtime evidence",
-        "when COLLECTION_ALGORITHM is routed, project the canonical exact-candidate Performance Review through RESULT_DELIVERY_CONTRACT as supplementary output; STRUCTURAL_ONLY must say `Измеренное ускорение не доказано.`, MEASURED requires verifier-confirmed RUNTIME_ADAPTER evidence, and the projection must not alter implementation_readiness, release_outcome or the immutable Особенности реализации base format"
+        "when COLLECTION_ALGORITHM is routed, project the canonical exact-candidate Performance Review through RESULT_DELIVERY_CONTRACT as supplementary output; STRUCTURAL_ONLY must say `Измеренное ускорение не доказано.`, MEASURED requires verifier-confirmed RUNTIME_ADAPTER evidence, and the projection must not alter implementation_readiness, release_outcome or the immutable Особенности реализации base format",
+        "when MANUAL_TRANSFER_INSTRUCTION is the selected result mode, render the human instruction through TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md with exact candidate/baseline identity and stable instruction step ids referenced by ChangePackage"
       ]
     },
     {
@@ -247,5 +249,7 @@
   "implementation_intent_verifier": "TOOLS/implementation_intent.py",
   "handoff_contract": "KNOWLEDGE/DEVELOPMENT_HANDOFF_WORKFLOW.md",
   "functional_contract_template": "TEMPLATES/FUNCTIONAL_CONTRACT_TEMPLATE.json",
-  "validation_ledger_template": "TEMPLATES/VALIDATION_LEDGER_TEMPLATE.json"
+  "validation_ledger_template": "TEMPLATES/VALIDATION_LEDGER_TEMPLATE.json",
+  "requirements_artifact_template": "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md",
+  "manual_transfer_instruction_template": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md"
 }
