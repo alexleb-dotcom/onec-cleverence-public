@@ -1765,8 +1765,8 @@
     },
     {
       "path": "TESTS/run_execution_checkpoint_regression.py",
-      "size": 13944,
-      "sha256": "aac82bb2fa9675e0636a7f8b94f3ed8b568091cbca09d1aa16cb9a72542d02a9"
+      "size": 13926,
+      "sha256": "3dc9f8db159ab8a6297dc7d3e54972e40c545e4eace8a4a66fe9a73848519e3d"
     },
     {
       "path": "TESTS/run_external_source_regression.py",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "0abf265e85abfec2670465bd71bcb659bed97bd14c988835c84d896bdc62497b"
+  "snapshot_digest": "ebf09f03e1abcda609cf9b10f8d7332a57118d266e9a857cc80aa8dd0b637764"
 }
