@@ -1120,7 +1120,7 @@ def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:di
     errors.extend(performance_review.get("errors") or [])
     independent_reviews=validate_independent_reviews(ledger.get('independent_reviews'),plan,errors)
     if (plan.get('routing') or {}).get('mode')!='ANALYSIS_ONLY':
-        intent_result=validate_intent_map(ledger.get('implementation_intent_map'),plan)
+        intent_result=validate_intent_map(ledger.get('implementation_intent_map'),plan,ledger)
         errors.extend(intent_result.get('errors') or [])
     _validate_evidence_reuse(ledger,errors,plan)
     _validate_artifact_requests(ledger.get("artifact_requests") or [],errors,pending_items,machine_reports,runtime_cases)
