@@ -702,6 +702,19 @@ with tempfile.TemporaryDirectory() as td:
         {"surface":cross_plan.get("routing",{}).get("surface"),"active":sorted(x for x in cross_active if x),"profiles":sorted(cross_profiles),"loadable":sorted(cross_loadable)},
     )
 
+p=subprocess.run([sys.executable,str(ROOT/"TESTS/run_execution_checkpoint_regression.py")],cwd=ROOT,capture_output=True,text=True)
+checkpoint_report=json.loads(p.stdout) if p.returncode==0 else {}
+checkpoint_cases={row.get("id"):row for row in checkpoint_report.get("cases") or [] if isinstance(row,dict)}
+record(
+    "recover_first_checkpoint_regression_is_green",
+    p.returncode==0
+    and checkpoint_report.get("status")=="PASS"
+    and checkpoint_cases.get("execution:absent_checkpoint_is_never_started",{}).get("result")=="PASS"
+    and checkpoint_cases.get("execution:second_caller_reuses_running_operation",{}).get("result")=="PASS"
+    and checkpoint_cases.get("execution:completion_response_lost_reads_terminal_rc",{}).get("result")=="PASS",
+    {"returncode":p.returncode,"stderr":p.stderr[-2000:],"checkpoint_status":checkpoint_report.get("status")},
+)
+
 p=subprocess.run([sys.executable,str(ROOT/"TOOLS/rule_registry.py"),"--rule","SOURCE_FIRST"],cwd=ROOT,capture_output=True,text=True)
 narrow=json.loads(p.stdout) if p.returncode==0 else {}
 record("registry_query_is_narrow_single_rule_projection",p.returncode==0 and narrow.get("rule",{}).get("id")=="SOURCE_FIRST" and "rules" not in narrow)
