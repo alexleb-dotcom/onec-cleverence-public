@@ -61,6 +61,7 @@ for case in cases.get("cases", []):
 knowledge = (ROOT / "KNOWLEDGE/PROJECT_CONTEXT_LIFECYCLE.md").read_text(encoding="utf-8")
 template = (ROOT / "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md").read_text(encoding="utf-8") if (ROOT / "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md").is_file() else ""
 first = (ROOT / "README_FIRST.md").read_text(encoding="utf-8")
+bootstrap_knowledge = (ROOT / "KNOWLEDGE/PROJECT_BOOTSTRAP.md").read_text(encoding="utf-8")
 required_tokens = [
     "TEMPORARY_COMPROMISE_PROMOTED_TO_INVARIANT",
     "STALE_PROJECT_CONTEXT_REUSE",
@@ -85,6 +86,17 @@ record("template_integration", not missing_template, {"missing": missing_templat
 entry_tokens = ["## Project-context freshness for long-lived projects", "KNOWLEDGE/PROJECT_CONTEXT_LIFECYCLE.md", "decision_key", "SUPERSEDED", "technical proxy"]
 missing_entry = [x for x in entry_tokens if x not in first]
 record("entrypoint_integration", not missing_entry, {"missing": missing_entry})
+
+# Later-task integration must reuse only current relevant durable context rather than restart bootstrap or inherit task-local proposals.
+later_task_tokens = [
+    "genuinely new task after prior delivery in the same project",
+    "build a **new task requirements contract**",
+    "Do not inherit previous-task assumptions, proposed solutions or task-local evidence",
+    "Revalidate only relevant stale/conflicting decision keys",
+    "bind the exact current target/project identity before reusing any prior context or source",
+]
+missing_later_task = [x for x in later_task_tokens if x not in bootstrap_knowledge]
+record("later_task_targeted_reuse_contract", not missing_later_task, {"missing": missing_later_task})
 
 # Cross-system predicate ownership must be executable registry coverage, not Markdown-only advice.
 registry = json.loads((ROOT / "RULES/rule_registry.json").read_text(encoding="utf-8-sig"))
