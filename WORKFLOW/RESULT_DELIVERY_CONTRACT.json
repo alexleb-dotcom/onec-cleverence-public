@@ -116,60 +116,80 @@
       ],
       "implementation_notes": {
         "title_ru": "Особенности реализации",
-        "required": true,
-        "format": "PROJECT_TASK_HEADER_PLUS_TABLE",
-        "scope": "one row per material implementation change/decision at the most precise practical object/member level; project and task are mandatory one-time section header fields and are not repeated per row",
+        "required_for": "NON_TRIVIAL_IMPLEMENTATION",
+        "format": "SEPARATE_DOCX_HEADER_PLUS_TABLE",
+        "template": "TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md",
+        "renderer": "TOOLS/render_user_artifact_docx.py",
+        "artifact_key": "implementation_notes",
+        "filename_ru": "Особенности реализации.docx",
+        "separate_file": true,
         "header_fields_locked": true,
         "header_order": [
+          "tz_number",
           "project",
-          "task"
+          "task",
+          "platform_version",
+          "configuration_name_version"
         ],
         "header_labels_ru": {
+          "tz_number": "Номер ТЗ",
           "project": "Проект",
-          "task": "Задача"
+          "task": "Задача",
+          "platform_version": "Версия платформы",
+          "configuration_name_version": "Наименование и версия конфигурации"
         },
         "base_columns_locked": true,
         "additional_columns_allowed": false,
-        "additional_information_allowed_outside_base_format": true,
         "row_order": [
           "container",
           "configuration_object",
-          "procedure_or_function",
+          "procedure_function",
           "status",
           "change_description"
         ],
         "labels_ru": {
           "container": "Контейнер",
-          "configuration_object": "Объект конфигурации",
-          "procedure_or_function": "Процедура / функция",
+          "configuration_object": "ОбъектКонфигурации",
+          "procedure_function": "Процедура/Функция",
           "status": "Статус",
-          "change_description": "Описание изменения"
-        },
-        "header_field_rules": {
-          "project": "exact bound project name; render once above the table as `Проект: <...>`; do not invent, normalize or repeat it as a table column",
-          "task": "exact bound task name/identifier; render once above the table as `Задача: <...>`; do not replace it with a model-generated summary or repeat it as a table column"
+          "change_description": "ОписаниеИзменений"
         },
         "field_rules": {
-          "container": "exact source container identity, for example `Расширение <имя>` or `Основная конфигурация <имя>`",
-          "configuration_object": "human-readable exact configuration object identity in one field, including object kind/name as needed; do not split this base field into separate type/name columns",
-          "procedure_or_function": "exact changed procedure/function/member/event; may contain multiple exact members when one status/description applies; for object-level changes use the exact structural member wording",
-          "status": "factual status of this row, for example `Создана`, `Добавлена`, `Изменена`, `Удалена`, `Удалены`, `Оставлена без изменения`, `Удалена привязка`, with grammatically appropriate wording",
-          "change_description": "concise factual description of what changed or was deliberately retained and how the resulting behavior/mechanism works"
+          "container": "exact extension name or ОсновнаяКонфигурация",
+          "configuration_object": "exact configuration object",
+          "procedure_function": "exact procedure/function when applicable; otherwise dash",
+          "status": "factual Russian status such as Изменен or Создан, grammatically appropriate to the object",
+          "change_description": "concise implemented functionality plus the applicable evidenced standard/rule"
+        },
+        "rules": [
+          "header fields are mandatory and appear exactly once in owner-approved order",
+          "five table columns are mandatory and appear exactly in owner-approved order",
+          "do not rename, merge, split, remove, reorder or add base columns",
+          "do not invent project/task/platform/configuration identity or standard/rule",
+          "the DOCX is a presentation artifact and cannot create or upgrade proof"
+        ],
+        "required": true,
+        "additional_information_allowed_outside_base_format": true,
+        "header_field_rules": {
+          "tz_number": "exact task/TZ number from bound task/project context",
+          "project": "exact bound project",
+          "task": "exact bound task",
+          "platform_version": "exact evidenced target platform version",
+          "configuration_name_version": "exact evidenced configuration name and version"
         },
         "format_rules": [
-          "the two header fields are mandatory and must appear exactly once above the table in header_order with exactly the header_labels_ru values",
-          "project and task must not be repeated as table columns",
-          "the five base table columns are mandatory and must appear exactly in row_order with exactly the labels_ru values",
-          "do not rename, remove, merge, split or reorder either mandatory header fields or base table columns",
+          "five header fields are mandatory and appear exactly once in the owner-approved order",
+          "header fields must not be repeated as table columns",
+          "five base table columns are mandatory and appear exactly in the owner-approved order",
+          "do not rename, remove, merge, split or reorder header fields or base table columns",
           "do not add extra columns to the base table",
-          "additional rationale, evidence, risks, performance notes, verification or links may be added only outside the mandatory project/task header and base table",
-          "do not omit material implementation rows and do not invent objects, members, statuses or changes"
+          "additional supplementary information remains outside the mandatory header and base table"
         ],
         "identity_rules": [
-          "project and task come only from bound Project Context or requirements",
+          "project/task/TZ identity comes only from bound Project Context or requirements",
+          "platform/configuration identity comes only from exact evidenced target context",
           "container identity comes from the exact baseline/candidate layout",
-          "same-named objects in the main configuration and extensions or in different extensions remain separate rows",
-          "Cleverence and other non-1C artifacts may be documented additionally, but must not mutate the mandatory project/task header plus five-column 1C base format"
+          "same-named objects in the main configuration and extensions or different extensions remain separate rows"
         ]
       },
       "performance_review_projection": {
@@ -217,11 +237,53 @@
       },
       "manual_transfer_instruction_template": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
       "manual_transfer_template_rules": [
-        "use only when MANUAL_TRANSFER_INSTRUCTION is the selected result mode",
-        "preserve exact baseline/candidate and object/member/payload identities",
-        "leave no material implementation decision silently delegated to the human executor",
-        "the rendered instruction does not replace ChangePackage or upgrade applied/deployment/runtime proof"
-      ]
+        "render object-first R2 structure in the exact owner-approved order",
+        "created objects include exact material properties and concise rationale/applicable evidenced standard",
+        "modified objects show material property changes as Было/Стало",
+        "code changes show exact object/member and minimum sufficient Было/Стало fragments with the same integration anchor/context",
+        "preserve exact code and canonical AUTHOR_MARKER when applicable",
+        "leave no material implementation decision silently delegated to the human executor"
+      ],
+      "manual_transfer_artifact_output": {
+        "format": "DOCX",
+        "separate_file": true,
+        "artifact_key": "manual_transfer",
+        "filename_ru": "Инструкция по внедрению.docx",
+        "renderer": "TOOLS/render_user_artifact_docx.py",
+        "trigger": "MANUAL_TRANSFER_INSTRUCTION selected",
+        "presentation_order": [
+          "Создаваемые объекты",
+          "Изменяемые объекты",
+          "Код"
+        ],
+        "source_of_truth": "ChangePackage plus exact validated candidate/baseline",
+        "proof_boundary": "document does not prove target application, deployment/import or runtime behavior"
+      },
+      "line_by_line_justification": {
+        "title_ru": "Построчное обоснование изменений",
+        "required": false,
+        "trigger": "EXPLICIT_USER_REQUEST_ONLY",
+        "template": "TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md",
+        "renderer": "TOOLS/render_user_artifact_docx.py",
+        "artifact_key": "line_by_line",
+        "filename_ru": "Построчное обоснование изменений.docx",
+        "separate_file": true,
+        "required_sections": [
+          "Назначение документа",
+          "Правила чтения",
+          "Причина изменения",
+          "Что изменено",
+          "Влияние на поведение",
+          "Точный diff"
+        ],
+        "rules": [
+          "group by exact configuration object and then procedure/function/change unit",
+          "include task/TZ relation and exact location when available",
+          "diff uses - removed, + added and unmarked unchanged context",
+          "generate only when explicit_user_request=true",
+          "presentation cannot create or upgrade proof"
+        ]
+      }
     },
     "REQUIREMENTS_ARTIFACT": {
       "use_when": "the primary deliverable is a requirements/specification/technical assignment artifact",
@@ -237,10 +299,22 @@
       ],
       "template": "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md",
       "template_rules": [
-        "preserve exact project/task identifiers",
-        "keep agreed requirements, material OPEN items, explicit assumptions and proposed solution distinct",
-        "render requirements readiness only from the canonical requirements gate"
-      ]
+        "use compact project/task metadata",
+        "render Russian human-facing labels for a Russian user/project",
+        "omit truly empty conditional sections",
+        "keep agreed requirements, material OPEN items, assumptions and proposed solution distinct",
+        "do not render internal authoring invariants into the customer document",
+        "render readiness only from the canonical requirements gate"
+      ],
+      "artifact_output": {
+        "format": "DOCX",
+        "separate_file": true,
+        "artifact_key": "requirements",
+        "filename_ru": "Функциональная спецификация.docx",
+        "renderer": "TOOLS/render_user_artifact_docx.py",
+        "trigger": "requested/required human-readable requirements or functional specification",
+        "source_of_truth": "canonical executable requirements contract and requirements gate"
+      }
     },
     "BLOCKED_OR_PARTIAL": {
       "use_when": "a blocking gate/evidence dependency remains or only part of the requested result can be completed",
@@ -290,6 +364,12 @@
     "default_language_encoding": "Russian UTF-8 for a Russian user/project",
     "identifier_preservation": "exact source identifiers, code, paths, hashes, API names and machine tokens remain literal",
     "filename_rule": "do not use pseudo-version suffixes such as v2/final/fix/new; revision belongs in metadata/history",
-    "proof_rule": "user-facing presentation cannot create or upgrade canonical requirements/evidence/release proof"
+    "proof_rule": "user-facing presentation cannot create or upgrade canonical requirements/evidence/release proof",
+    "default_container": "DOCX",
+    "renderer": "TOOLS/render_user_artifact_docx.py",
+    "renderer_dependency": "python-docx==1.2.0",
+    "separate_file_default": true,
+    "combined_document_only_on_explicit_user_request": true,
+    "contract": "Each applicable user-facing documentation artifact is a separate DOCX projection; canonical machine/proof artifacts remain in native formats and DOCX cannot create or upgrade proof."
   }
 }

@@ -81,7 +81,7 @@ Mixed/unrelated prior chat or source is non-authoritative until exact current ta
 
 Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`, or a second interaction registry/state machine. This turn classification is recomputed from current observable context.
 
-When a human-readable requirements/specification artifact is the requested deliverable, load `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md` only for that rendering phase. When `MANUAL_TRANSFER_INSTRUCTION` is the selected result mode, load `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md` only for final delivery assembly; neither template is a normal startup dependency.
+When a user-facing documentation artifact is applicable, defer its presentation contract until the rendering phase. Load `KNOWLEDGE/USER_ARTIFACT_DOCX.md` plus only the artifact-specific template needed, then render one separate DOCX through `TOOLS/render_user_artifact_docx.py`. Requirements, manual-transfer, implementation-notes and line-by-line documents are separate files by default; line-by-line is generated only on explicit user request. These contracts are not normal startup dependencies and never replace machine/proof owners.
 
 ## Mandatory task workflow
 
@@ -225,6 +225,30 @@ For Cleverence, load `KNOWLEDGE/CLEVERENCE_RUNTIME_INTEGRATION.md`. Search the a
 For non-trivial 1C standards discovery, read `KNOWLEDGE/V8STD_SOURCE_POLICY.md`. `https://github.com/zeegin/v8std` / `https://v8std.ru/` are supporting discovery/index sources for standards and diagnostics; they do not replace the current official 1C/ITS standard as normative evidence. Use them to challenge embedded coverage and discover related rules/diagnostics on demand rather than loading the full corpus into task context.
 
 Do not guess signatures, query topology, MSLX flow, writer identity, Business Process behavior or client/server semantics from memory.
+
+### 4.5. Resolve 1C AUTHOR_MARKER before development
+
+For applicable 1C implementation, read `KNOWLEDGE/COMMENTING_POLICY.md` before entering source mutation / final code generation / patch construction / manual-transfer implementation.
+
+Use the canonical Skill default shape unless an explicit project/user override is already bound:
+
+```bsl
+// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+...
+// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+```
+
+A one-line change and object-property / metadata comment attribution use:
+
+```bsl
+// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+```
+
+Before implementation starts, reuse valid bound `ФамилияИО`, date value/policy, `НомерТЗ` and applicable `пункты ТЗ`. `ПервыйБит` is fixed by the Skill contract. Ask only for still-missing values; do not invent them and do not ask for default marker syntax.
+
+`AUTHOR_MARKER_READY` permits implementation. `AUTHOR_MARKER_BLOCKED` forbids implementation/development entry while still allowing requirements clarification, source inspection, evidence acquisition and architecture/design analysis.
+
+Do not create a second marker workflow/gate. This is enforced through the existing project-bootstrap / Project Context / comment-policy owners.
 
 ### 5. Implement minimal coherent change
 
@@ -382,7 +406,7 @@ For cross-system tasks, changing only one file/system never makes the contract o
 
 ## Delivery discipline
 
-Before final presentation, **load and obey** `WORKFLOW/RESULT_DELIVERY_CONTRACT.json` as the canonical machine-readable result contract and `KNOWLEDGE/RESULT_DELIVERY.md` for human guidance. The exact implementation table/header shape and the routed `Performance Review` projection are owned there; do not maintain a second detailed format specification in this Skill body.
+Before final presentation, **load and obey** `WORKFLOW/RESULT_DELIVERY_CONTRACT.json` as the canonical machine-readable result contract and `KNOWLEDGE/RESULT_DELIVERY.md` for human guidance. When user-facing documentation applies, also load `KNOWLEDGE/USER_ARTIFACT_DOCX.md` and generate each applicable document as its own DOCX with `TOOLS/render_user_artifact_docx.py`; do not silently merge documents or substitute chat/Markdown for a required DOCX. Exact artifact structure remains owned by the Result Delivery contract and artifact-specific templates, not duplicated in this Skill body.
 
 Presentation never upgrades canonical requirements/evidence/release status. Keep blocked/runtime-pending states explicit, never modify the user's baseline in place, validate the exact final bytes/archive, transfer only changed files plus contract-coupled dependencies, and preserve UTF-8/Cyrillic filenames. Runtime not executed here remains `READY_FOR_RUNTIME_TEST`/`RUNTIME_PENDING`, not proven.
 

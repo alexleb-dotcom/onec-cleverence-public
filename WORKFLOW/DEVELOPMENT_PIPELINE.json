@@ -18,7 +18,7 @@
       "do not treat repository access as proof of deployed baseline, runtime or delivery workflow",
       "when customer configuration evidence is not already sufficient, derive TEMPLATES/PROJECT_SNAPSHOT_REQUEST.json from the accepted requirement and unresolved proof dependencies before asking for a broad configuration export"
     ],
-    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER or delivery details are unresolved; final changed code requires the applicable project conventions, and exact delivery requires an authoritative baseline/layout."
+    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER values or delivery details are unresolved. For applicable 1C implementation, AUTHOR_MARKER_BLOCKED forbids development entry; reuse bound values and ask only still-missing ФамилияИО / Дата value-or-policy / НомерТЗ / пункты ТЗ. ПервыйБит and the default marker shape are Skill-owned. Exact delivery still requires an authoritative baseline/layout."
   },
   "stages": [
     {
@@ -50,7 +50,7 @@
         "record need → target outcome → behavior/rules → acceptance traceability",
         "scale depth by risk: R1 adds invariant/source-of-truth/scope, R2 adds process/state/repeat/errors, R3 adds full integration contract",
         "when a material requirements gap can be resolved by a concrete missing artifact, request the smallest sufficient artifact and keep the affected gate blocked until it is provided or independently resolved",
-        "when the requested primary deliverable is a human requirements/specification artifact, render it through TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md only after canonical requirements status is known; the template never upgrades the requirements gate"
+        "when a human-readable requirements/specification artifact is applicable, render a separate Функциональная спецификация.docx through TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md and TOOLS/render_user_artifact_docx.py only after canonical requirements status is known; omit truly empty conditional sections and never upgrade the requirements gate"
       ]
     },
     {
@@ -118,13 +118,13 @@
     {
       "id": "IMPLEMENTATION",
       "actions": [
+        "before any applicable 1C source mutation, final implementation code generation, delivery patch construction or manual-transfer implementation step, require AUTHOR_MARKER_READY from the existing Project Context/bootstrap/comment-policy contract; AUTHOR_MARKER_BLOCKED permits analysis/requirements/source inspection/evidence acquisition only, reuses bound values and asks only still-missing values",
         "build and maintain the canonical Implementation Intent Map bound to exact baseline/candidate/requirements/review-plan identities",
         "trace each material change requirement → design decision → artifact/fragment → entrypoint/caller → acceptance case → nearest smaller applicable alternative → verification hooks",
         "for Cleverence trace MSLX Action scenario/writer/state and field producer → mapping → Mobile field → writer/router/Core → consumer; unknown Action/writer remains an evidence gap",
         "minimal coherent diff",
         "preserve encoding/style and evidenced PROJECT_CONTEXT conventions",
         "do not refactor existing project/customer/third-party code or rewrite existing attribution/comments unless the task requires it and project policy permits it",
-        "when metadata attribution/author marker syntax is still OPEN, continue analysis but do not present final changed code as ready",
         "select/confirm the primary development result mode before final assembly: DIRECT_SOURCE_CHANGESET, MANUAL_TRANSFER_INSTRUCTION, PATCH_DIFF, IMPORTABLE_ARTIFACT, FULL_COMPARE_SET, ANALYSIS_REPORT or justified OTHER; supporting modes may be combined without weakening completeness",
         "bind development output to the accepted ProjectSnapshot identity/baseline and assemble it as a ChangePackage whose manifest traces every material change item to target, payload/instruction, dependencies and verification hooks"
       ],
@@ -192,8 +192,11 @@
         "validate TEMPLATES/CHANGE_PACKAGE_MANIFEST.json semantics: exact source snapshot/baseline binding, result mode, change-item traceability and proof boundary",
         "retain post-transfer verification hooks and changed-object snapshot scope in ChangePackage; default policy is OPTIONAL, so absence of PostTransferSnapshot does not block artifact readiness unless PROJECT_CONTEXT says REQUIRED_BY_PROJECT",
         "project the validated result through WORKFLOW/RESULT_DELIVERY_CONTRACT.json; the user-facing presentation must not upgrade the canonical gate outcome, source proof, applied-target state, deployment/import state or runtime evidence",
-        "when COLLECTION_ALGORITHM is routed, project the canonical exact-candidate Performance Review through RESULT_DELIVERY_CONTRACT as supplementary output; STRUCTURAL_ONLY must say `Измеренное ускорение не доказано.`, MEASURED requires verifier-confirmed RUNTIME_ADAPTER evidence, and the projection must not alter implementation_readiness, release_outcome or the immutable Особенности реализации base format",
-        "when MANUAL_TRANSFER_INSTRUCTION is the selected result mode, render the human instruction through TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md with exact candidate/baseline identity and stable instruction step ids referenced by ChangePackage"
+        "render every applicable user-facing documentation artifact as its own DOCX through KNOWLEDGE/USER_ARTIFACT_DOCX.md and TOOLS/render_user_artifact_docx.py; do not combine artifacts unless the user explicitly requests a combined/alternate format",
+        "when MANUAL_TRANSFER_INSTRUCTION is selected, render separate Инструкция по внедрению.docx through the object-first R2 contract TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md: Создаваемые объекты -> Изменяемые объекты -> Код; ChangePackage remains the machine delivery/proof owner",
+        "for every non-trivial implementation, render separate mandatory Особенности реализации.docx through TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md with exact five owner header fields and exact five owner table columns",
+        "render separate Построчное обоснование изменений.docx through TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md only when the user explicitly requested it",
+        "when COLLECTION_ALGORITHM is routed, project the canonical exact-candidate Performance Review through RESULT_DELIVERY_CONTRACT as supplementary output; STRUCTURAL_ONLY must say `Измеренное ускорение не доказано.`, MEASURED requires verifier-confirmed RUNTIME_ADAPTER evidence, and the projection must not alter implementation_readiness, release_outcome or any separate DOCX artifact proof boundary"
       ]
     },
     {
@@ -251,5 +254,10 @@
   "functional_contract_template": "TEMPLATES/FUNCTIONAL_CONTRACT_TEMPLATE.json",
   "validation_ledger_template": "TEMPLATES/VALIDATION_LEDGER_TEMPLATE.json",
   "requirements_artifact_template": "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md",
-  "manual_transfer_instruction_template": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md"
+  "manual_transfer_instruction_template": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
+  "user_artifact_docx_contract": "KNOWLEDGE/USER_ARTIFACT_DOCX.md",
+  "user_artifact_docx_renderer": "TOOLS/render_user_artifact_docx.py",
+  "user_artifact_docx_dependency": "python-docx==1.2.0",
+  "implementation_notes_docx_template": "TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md",
+  "line_by_line_justification_docx_template": "TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md"
 }

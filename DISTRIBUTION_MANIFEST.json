@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 437,
+  "file_count": 442,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 4984,
-      "sha256": "cf4e190829405598c987f6f298f255b4f5a6751a37c327d718549b6d3c9666b3"
+      "size": 5376,
+      "sha256": "7b94c16bdb26d01268740ce5b2dece45a3e7d629656acbfd0e546b45f67adfc9"
     },
     {
       "path": ".gitignore",
@@ -55,8 +55,8 @@
     },
     {
       "path": "KNOWLEDGE/COMMENTING_POLICY.md",
-      "size": 3616,
-      "sha256": "7d90f8b4cea6d61de2fed03f66915950a76750d5be4a4856bb7b26de857a2c56"
+      "size": 7154,
+      "sha256": "8cac8190dc71a57df3f1c48b0d6c4cff2f36452b83307198d14fe5fd0dda6e19"
     },
     {
       "path": "KNOWLEDGE/DATA_STATE_VERSION_CONTRACTS.md",
@@ -65,8 +65,8 @@
     },
     {
       "path": "KNOWLEDGE/DEVELOPMENT_HANDOFF_WORKFLOW.md",
-      "size": 9693,
-      "sha256": "6459b8629ad025106a5690dda5323d87dbba56315a79de61dced4ef916759056"
+      "size": 9997,
+      "sha256": "98a8199bf302d651d5b3df0e7acf9146ef3b28db3175aa9bf580e36309aa1389"
     },
     {
       "path": "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
@@ -220,8 +220,8 @@
     },
     {
       "path": "KNOWLEDGE/RESULT_DELIVERY.md",
-      "size": 10588,
-      "sha256": "97d4540da328fdec9dca152deccb662da28d3b7ce98313c89c1f053afef2bdf9"
+      "size": 8941,
+      "sha256": "2d2135fe9a280cbbb0232b51a45066e3fb677b2da78a6f08af19e911f7ae968d"
     },
     {
       "path": "KNOWLEDGE/SKILL_FRESHNESS.md",
@@ -237,6 +237,11 @@
       "path": "KNOWLEDGE/TYPICAL_CODE_DISCOVERY.md",
       "size": 6450,
       "sha256": "1e5ecd3affd825b170ca25ac195fcec8a3db6679575877dfd45c35cf6510a3e6"
+    },
+    {
+      "path": "KNOWLEDGE/USER_ARTIFACT_DOCX.md",
+      "size": 3640,
+      "sha256": "859f77f923980d237d6f1f7caaba013427ae9e722a0f05095f254262aca61a0f"
     },
     {
       "path": "KNOWLEDGE/V8STD_SOURCE_POLICY.md",
@@ -630,8 +635,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 36978,
-      "sha256": "13d604b43642166466c59b11fa31f9c7d4967997f2a103d76a93a81766199525"
+      "size": 38739,
+      "sha256": "2151af32eb59449320e967da9a3c08511a9103cedcd0133545ee9a02af84eb92"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -644,14 +649,24 @@
       "sha256": "6033be5824c472f09143e1cd8e89a2486749b8d84479c20012e6621241586993"
     },
     {
+      "path": "TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md",
+      "size": 1738,
+      "sha256": "804e1ce8a6fc219d3a35f26ee345f019b1356400179740375b30a012cb17929b"
+    },
+    {
+      "path": "TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md",
+      "size": 1548,
+      "sha256": "d3e7edb42acb6ee35839dc3295c8cf77e2c9ad56273bf5ccbc419ff93b7b84ad"
+    },
+    {
       "path": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
-      "size": 3072,
-      "sha256": "d74112ac2f8acf0de1ec16929a2a0b8d07477bdb51937c9f1a57f7b900588fe6"
+      "size": 2950,
+      "sha256": "e230e7ecc0a122d33ba7d5cdd9326453b39761b926bc1b6bb297ecc8529f0c37"
     },
     {
       "path": "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md",
-      "size": 10531,
-      "sha256": "0b4e2da2dd5ccd33d97906713eecb79adc04d236e7df79995ea30021c208d683"
+      "size": 10951,
+      "sha256": "4e56a631e69b044dd8a6ce61e0a14b38562c13e1999f525a0d02db85f8457871"
     },
     {
       "path": "TEMPLATES/PROJECT_SNAPSHOT_COLLECTION_PLAN.json",
@@ -670,8 +685,8 @@
     },
     {
       "path": "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md",
-      "size": 3017,
-      "sha256": "ce4046491f6bb986243b9220b12187a47f917369346c9e8259ecdbe3fbbae0b0"
+      "size": 2431,
+      "sha256": "807d532c4498cff52aba8bc659ab95a6eb2fe2a7b722d288b26dc7a577bc3b26"
     },
     {
       "path": "TEMPLATES/VALIDATION_LEDGER_TEMPLATE.json",
@@ -1685,8 +1700,8 @@
     },
     {
       "path": "TESTS/run_bootstrap_capability_regression.py",
-      "size": 2464,
-      "sha256": "b6a2f45c67ca6829dd91993917fe757e66a1355fda5dc3cdac0c7b2c63545eb7"
+      "size": 13674,
+      "sha256": "e2f372c27d04156d4404149e94c9f5283aad3be413d3e648551f34d68eff67ee"
     },
     {
       "path": "TESTS/run_capability_compliance_projection_regression.py",
@@ -1710,8 +1725,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 48463,
-      "sha256": "e8d15dec930aae6ea86a829f549c249906766f401b546c6e4dee3aed6c5e6c9c"
+      "size": 48686,
+      "sha256": "5a71e48472919dd2a067e955c203893d92ce4f4baf3c24fe991f7eab2ce9ad4a"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1855,8 +1870,8 @@
     },
     {
       "path": "TESTS/run_result_delivery_contract_regression.py",
-      "size": 34174,
-      "sha256": "027aa0176ca540849f875fddc9ea600d3a0225398f198922af6d1e37a8c3f291"
+      "size": 34511,
+      "sha256": "a851aadd2dc5e5e079952af7c939eade54b838e3d716d53643ba070789228554"
     },
     {
       "path": "TESTS/run_review_regression.py",
@@ -1879,6 +1894,11 @@
       "sha256": "744507629cacf8aeed7e813cf94439a5764b2ad700c3b8e4d46882430ae37582"
     },
     {
+      "path": "TESTS/run_user_artifact_docx_regression.py",
+      "size": 10361,
+      "sha256": "d2d99e212f7688e879c469b5554e2d01b4a14c63f457eea849946d36e9a3aa75"
+    },
+    {
       "path": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
       "size": 1075,
       "sha256": "b80d5d3cb8861dbd2bbbd1e97bbf794b5b61a18ac76bb8ed40c8f26ebb324ab5"
@@ -1890,8 +1910,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 8620,
-      "sha256": "6514d47ba1cc87565f0a221e224f7d7bc0bc9d7e01ecd39ec1fd8e2cb3614dad"
+      "size": 8855,
+      "sha256": "43587bba4f8491d9ec260ccedf9737e8eb6248af9584663bb975c6a72b005a30"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -1955,8 +1975,8 @@
     },
     {
       "path": "TOOLS/build_project_bootstrap.py",
-      "size": 14394,
-      "sha256": "15a00935b3fdc3349a39d02510cdd17fafb798a328fced6addb91a6217e635b7"
+      "size": 17352,
+      "sha256": "0d35cc84b7b6f19a5220175fcf738f7fb04210fbb40a7bd83a13b8d6918dfdbc"
     },
     {
       "path": "TOOLS/build_requirements_contract.py",
@@ -2094,6 +2114,11 @@
       "sha256": "58af26caa66689294f7dfb7340366fa16dd31122be5f0b615bbe265cd51937c8"
     },
     {
+      "path": "TOOLS/render_user_artifact_docx.py",
+      "size": 15891,
+      "sha256": "3e9d0a8eb7bf75e2bed986e812bb426d70f123e8fe77ae3475ac666f47716dfa"
+    },
+    {
       "path": "TOOLS/requirements_gate.py",
       "size": 21668,
       "sha256": "ca4e9a9045db0562efb6145d6307b4aa005adb1f9b30a78488dbfb68d48cc242"
@@ -2170,8 +2195,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 20833,
-      "sha256": "27858b729b4770247af8137c3b815738d90c7d26e13cc3cb4b987220f2f178ca"
+      "size": 22609,
+      "sha256": "9e05a4a39a3e149b96f5f2a4fbdf5ef5faff163f12d2a14ce3de50aaa8cda867"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2180,8 +2205,8 @@
     },
     {
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
-      "size": 15348,
-      "sha256": "47f20861cc26588c532269d9163ab25af7a101b1162839cf9d0703a3a98052f4"
+      "size": 18507,
+      "sha256": "2e22615f557e0ec165e895272b3f30a2418588df7944d34fa166ba6a696af8a1"
     },
     {
       "path": "agents/openai.yaml",
@@ -2195,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "1ed651febc1923d0b81150bc0bf97b585e5157d6eb89a92217345d05baf5095b"
+  "snapshot_digest": "95cc1d42366300a85e97ab7797b3ca51fcfb482b188c37b466597db1dfd5a936"
 }

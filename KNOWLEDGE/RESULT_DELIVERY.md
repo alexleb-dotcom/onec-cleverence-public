@@ -45,51 +45,48 @@ Do not manufacture a replacement fragment when the missing dependency means the 
 
 ## Implementation delivery profile
 
-For implemented changes, summarize by responsibility rather than by changed line:
+For implemented changes, the chat summary remains compact and evidence-bound, while every applicable user-facing documentation artifact is delivered as its own Word file through `KNOWLEDGE/USER_ARTIFACT_DOCX.md` and `TOOLS/render_user_artifact_docx.py`.
 
-```text
-Что изменено
-Изменённые объекты / файлы
-Ключевые решения
-Поставка
-Проверка
-```
+`ChangePackage` remains the machine delivery envelope and proof owner. DOCX files are human-facing projections only.
 
-The selected result mode still controls the technical delivery shape (`DIRECT_SOURCE_CHANGESET`, `MANUAL_TRANSFER_INSTRUCTION`, `PATCH_DIFF`, `IMPORTABLE_ARTIFACT`, `FULL_COMPARE_SET`, etc.). `ChangePackage` remains the machine delivery envelope; this Result Delivery contract controls how that delivery is presented to the person.
+### Инструкция по внедрению
 
-When `MANUAL_TRANSFER_INSTRUCTION` is primary, render the exact human-executable transfer document through `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`. The template must preserve exact target identity, ordered stable steps, anchors/payloads/dependencies and the proof boundary; it must not leave a material implementation choice to the human. The instruction does not replace `ChangePackage` and does not prove application/deployment/runtime.
+When `MANUAL_TRANSFER_INSTRUCTION` is primary, generate the separate `Инструкция по внедрению.docx` from `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`.
 
-Standalone rollout, validation or human-handoff files are conditional project/user deliverables, not mandatory artifacts for every implementation. Normal `Проверка` remains this Result Delivery projection.
+The visible R2 order is fixed:
+
+1. `Создаваемые объекты`;
+2. `Изменяемые объекты`;
+3. `Код`.
+
+Created objects show exact material properties plus concise rationale/applicable evidenced rule. Modified objects show material property changes as `Было / Стало`. Code changes show exact object/member and minimum sufficient exact `Было / Стало` fragments with the same integration anchor/context. Preserve exact code and the canonical AUTHOR_MARKER when applicable. Do not leave a material implementation decision to the human executor.
 
 ### Особенности реализации
 
-Every non-trivial implementation must finish with a human-readable `Особенности реализации` section. `Проект` and `Задача` are mandatory one-time section fields above the table and are not repeated in each row:
+Every non-trivial implementation produces a **separate mandatory** `Особенности реализации.docx` from `TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md`.
 
-```text
-Проект: <bound project name>
-Задача: <bound task name or identifier>
-```
+The header is exact and ordered:
 
-The table then uses exactly these five base columns:
+1. `Номер ТЗ`;
+2. `Проект`;
+3. `Задача`;
+4. `Версия платформы`;
+5. `Наименование и версия конфигурации`.
 
-| Контейнер | Объект конфигурации | Процедура / функция | Статус | Описание изменения |
+The document contains one table with exactly these columns and order:
+
+| Контейнер | ОбъектКонфигурации | Процедура/Функция | Статус | ОписаниеИзменений |
 |---|---|---|---|---|
-| <exact container> | <exact configuration object> | <exact routine/member/event> | <factual status> | <factual change description> |
 
-Both parts of the base format are immutable. The labels/order of `Проект` and `Задача` and the five table columns must not be changed: do not rename, remove, merge, split or reorder them. Do not repeat `Проект`/`Задача` as table columns, and do not add extra columns to the base table. In particular, keep `Объект конфигурации` as one field; do not replace it with separate `Тип объекта конфигурации` + `Имя объекта конфигурации` columns.
+`ОписаниеИзменений` contains concise implemented functionality plus the applicable evidenced standard/rule. Exact container/object/member identity is preserved. The document does not upgrade application/deployment/runtime/release proof.
 
-- `Проект` and `Задача` come only from bound Project Context/requirements and appear once above the table.
-- Create one row per material implementation change/decision at the most precise practical object/member level. The same configuration object may appear in several rows when different procedures/functions/members have separate statuses or descriptions.
-- `Контейнер` is the exact source container identity, for example `Расширение <имя>` or `Основная конфигурация <имя>`.
-- `Объект конфигурации` is the exact human-readable configuration object identity in one field.
-- `Процедура / функция` contains the exact changed routine/member/event; multiple exact members are allowed in the cell when one status/description genuinely applies to the group.
-- `Статус` is factual and grammatically appropriate, for example `Создана`, `Добавлена`, `Изменена`, `Удалена`, `Удалены`, `Оставлена без изменения`, `Удалена привязка`.
-- `Описание изменения` concisely states what changed or was deliberately retained and how the resulting behavior/mechanism works.
-- Do not collapse equal object names from the main configuration, an extension or different extensions. Do not invent objects, members, statuses or changes, and do not omit material implementation rows.
-- Additional rationale, evidence, risks, performance notes, verification or links may be added after/below the mandatory header+table as supplementary material. They never replace, rename or extend the two header fields or five table columns.
-- Cleverence and other non-1C artifacts may be documented additionally with their own system/artifact identity, but that supplementary representation must not mutate the mandatory 1C format.
+### Построчное обоснование изменений
 
-If manual transfer is primary, the compact user summary must not replace the exact ordered transfer specification required by the ChangePackage contract.
+Generate the separate `Построчное обоснование изменений.docx` **only on explicit user request**, using `TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md`.
+
+It is grouped by exact object and then procedure/function/change unit, contains `Причина изменения`, `Что изменено`, `Влияние на поведение`, and an exact diff-like fragment where `-` marks removed lines, `+` marks added lines and unmarked lines are context.
+
+Do not silently combine requirements, manual-transfer, implementation-notes or line-by-line artifacts into one Word file unless the user explicitly requests a combined/alternate format.
 
 ### Performance Review
 
@@ -105,16 +102,11 @@ Show the current and proposed algorithms with passes over primary data, nested s
 
 ## Requirements artifact profile
 
-Render a requested human-readable requirements / LT / TZ / specification document through `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md`. The executable requirements contract/gate remains authoritative: the rendered document must preserve agreed requirements, material `OPEN` items, explicit assumptions and proposed solution as distinct classes and must never upgrade a blocked gate.
+When a human-readable requirements / LT / TZ / functional specification artifact is applicable, generate the separate `Функциональная спецификация.docx` through `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md` and `TOOLS/render_user_artifact_docx.py`.
 
-For a specification/technical assignment/resulting requirements artifact, the result must distinguish:
+Use compact `Проект` / `Задача` metadata, Russian user-facing labels for a Russian project/user, and omit truly empty conditional technical sections. Internal authoring rules are not rendered to the customer.
 
-- agreed scope/outcome;
-- material rules and acceptance criteria;
-- unresolved assumptions/open questions;
-- the produced artifact.
-
-A requirements gate that is still blocked must be visible in the outcome/proof boundary. Do not bury it in an appendix while describing the artifact as complete.
+The executable requirements contract/gate remains authoritative. The DOCX must preserve agreed requirements, material `OPEN` items, explicit assumptions and proposed solution as distinct classes, and must never upgrade a blocked gate. A blocked requirements artifact must visibly retain the blocker and proof boundary.
 
 ## Blocked or partial profile
 

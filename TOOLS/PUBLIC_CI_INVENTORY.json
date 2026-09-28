@@ -194,6 +194,16 @@
       ]
     },
     {
+      "id": "user_artifact_docx",
+      "order": 145,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_user_artifact_docx_regression.py"
+      ]
+    },
+    {
       "id": "proof_contract",
       "order": 150,
       "phase": "FAST",

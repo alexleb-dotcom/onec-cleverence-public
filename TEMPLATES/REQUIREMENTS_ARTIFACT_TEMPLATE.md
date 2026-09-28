@@ -1,67 +1,67 @@
-# Шаблон требований / функциональной спецификации
+# Функциональная спецификация — source contract for separate DOCX
 
-Использовать только для человекочитаемого артефакта требований. Семантика и готовность остаются у исполняемого requirements contract и `TOOLS/requirements_gate.py`.
+This file defines the artifact-specific source contract. Service rules in this file are **not rendered verbatim** to the customer.
 
-По умолчанию для русскоязычного проекта/пользователя документ ведётся в UTF-8 на русском языке. Идентификаторы исходного кода, объектов, API, путей, хэшей и машинных токенов сохраняются буквально.
+## Trigger
 
-Не использовать псевдоверсии в имени файла (`v2`, `final`, `fix`, `new` и подобные). Ревизия/статус относятся к метаданным документа или проектной истории.
+Use when the user/project requires a human-readable requirements / LT / TZ / functional specification artifact.
 
-## Проект
-<exact bound project>
+## Output
 
-## Задача
-<exact bound task>
+Separate file:
 
-## Потребность / проблема
-<business need or problem>
+`Функциональная спецификация.docx`
 
-## Целевой результат
-<observable target outcome>
+Renderer:
 
-## Границы
+`TOOLS/render_user_artifact_docx.py --artifact requirements`
 
-### Входит
-...
+The executable requirements contract and `TOOLS/requirements_gate.py` remain the semantic/readiness authority.
 
-### Не входит
-...
+## Visible document model
 
-## Функциональное поведение и материальные правила
-...
+Compact metadata:
+- `Проект: <exact>`
+- `Задача: <exact>`
 
-## Источник истины / идентичность / данные
-<если применимо>
+Then:
+1. `Потребность / проблема`
+2. `Целевой результат`
+3. `Границы`
+   - `Входит`
+   - `Не входит`
+4. `Функциональное поведение и материальные правила`
+5. `Источник истины / идентичность / данные` — only when materially applicable
+6. `Процесс / состояния / повтор / ошибки` — only when materially applicable
+7. `Интеграционный контракт` — only when materially applicable
+8. `Приемка`
+9. `Открытые вопросы / блокеры` — when any remain; mandatory when requirements are blocked
+10. `Допущения` — only when present
+11. `Предлагаемое решение` — only when present and visibly separate from agreed requirements
+12. `Основания и граница доказанности`
+13. localized readiness wording plus exact canonical readiness token.
 
-## Процесс / состояния / повтор / ошибки
-<если применимо>
+Truly empty conditional sections are omitted.
 
-## Интеграционный контракт
-<если применимо>
+## Acceptance table
 
-## Приемка
+Exact columns:
+- `Случай`
+- `Предусловия`
+- `Действие`
+- `Ожидаемый результат`
+- `Оракул`
 
-| Случай | Предусловия | Действие | Ожидаемый результат | Оракул |
-|---|---|---|---|---|
-| ... | ... | ... | ... | ... |
+## Language / identity
 
-## Открытые вопросы / блокеры
-<все material OPEN items; ничего не скрывать>
+For a Russian project/user, all human-facing labels/explanations are Russian.
 
-## Допущения
-<только явные non-blocking assumptions + impact + validation plan>
+Exact identifiers, paths, code, API names, hashes and machine tokens required for traceability remain literal.
 
-## Предлагаемое решение
-<отдельно от согласованных требований; PROPOSED_SOLUTION не становится требованием без подтверждения>
+## Readiness boundary
 
-## Доказанность / provenance
-<claim/evidence boundary; exact identifiers preserved>
+The DOCX cannot create or upgrade requirements readiness.
 
-## Статус требований
-<REQUIREMENTS_READY | REQUIREMENTS_READY_WITH_ASSUMPTIONS | REQUIREMENTS_BLOCKED>
+`REQUIREMENTS_BLOCKED` must stay visibly blocked and must expose its material open questions.
 
-### Инварианты готовности
-
-- Статус берётся только из канонического requirements gate.
-- `REQUIREMENTS_BLOCKED` нельзя повышать до «готово» в тексте.
-- Согласованные требования, `OPEN`/блокеры, допущения и `PROPOSED_SOLUTION` должны оставаться различимыми.
-- Этот документ не является вторым источником истины требований.
+Internal authoring invariants, renderer instructions and tool names are not part of the rendered customer body.
