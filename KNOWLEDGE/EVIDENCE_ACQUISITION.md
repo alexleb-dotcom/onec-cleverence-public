@@ -20,6 +20,17 @@ material claim / suspected mechanism
 
 Never replace a missing source with an implementation guess. Never say only “I cannot prove this” when the missing proof is reasonably requestable from the user. Continue unaffected parts of the task, but keep the affected gate unresolved.
 
+## Returned requested input resumes the active task
+
+When the user returns an answer, source file, archive, log, runtime result or other artifact that was previously requested for the active task:
+
+1. correlate it to the exact request / claim / target / baseline it was meant to resolve;
+2. validate provenance, integrity and content at the fidelity required by that claim;
+3. bind only the evidence it actually closes and keep any remainder explicit;
+4. resume from the canonical owner that was blocked by the missing input.
+
+Do **not** ask the user to restate the original task, project identity, reason for the request or already accepted answers. If correlation is ambiguous, ask only for the smallest missing binding fact. ProjectSnapshot keeps its existing local orchestration states; this generic resume invariant does not introduce a second task/session state machine.
+
 ## Request quality
 
 A useful request states all of:
