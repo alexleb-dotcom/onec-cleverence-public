@@ -20,6 +20,50 @@ from artifact_corpus import inventory_paths, summarize, analyzable_entries
 STATES=("KNOWN","DERIVED_WITH_EVIDENCE","OPEN","NOT_APPLICABLE")
 DECISION_STATUSES=("ACTIVE","TEMPORARY","REVALIDATION_REQUIRED","SUPERSEDED","INVALIDATED")
 
+AUTHOR_MARKER_VALUE_FIELDS=("ФамилияИО","Дата","НомерТЗ","пункты ТЗ")
+CANONICAL_ONEC_AUTHOR_MARKER={
+    "syntax_source":"SKILL_DEFAULT_1C",
+    "field_order":["ФамилияИО","ПервыйБит","Дата","НомерТЗ","пункты ТЗ"],
+    "organization_marker":"ПервыйБит",
+    "block_open":"// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
+    "block_close":"// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
+    "one_line":"// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
+    "metadata_comment":"// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
+}
+
+
+def _default_author_marker_value():
+    return {
+        "syntax_source":"SKILL_DEFAULT_1C",
+        "canonical_shape":dict(CANONICAL_ONEC_AUTHOR_MARKER),
+        "explicit_override_syntax":None,
+        "values":{name:None for name in AUTHOR_MARKER_VALUE_FIELDS},
+    }
+
+
+def _missing_author_marker_values(row):
+    if not isinstance(row,dict):
+        return list(AUTHOR_MARKER_VALUE_FIELDS)
+    if row.get("status")=="NOT_APPLICABLE":
+        return []
+    value=row.get("value")
+    if not isinstance(value,dict):
+        return [] if row.get("status") in {"KNOWN","DERIVED_WITH_EVIDENCE"} else list(AUTHOR_MARKER_VALUE_FIELDS)
+    values=value.get("values")
+    if not isinstance(values,dict):
+        return [] if row.get("status") in {"KNOWN","DERIVED_WITH_EVIDENCE"} else list(AUTHOR_MARKER_VALUE_FIELDS)
+    return [name for name in AUTHOR_MARKER_VALUE_FIELDS if not values.get(name)]
+
+
+def _author_marker_gate_state(fields):
+    row=(fields or {}).get("author_marker") or {}
+    if row.get("status")=="NOT_APPLICABLE":
+        return "AUTHOR_MARKER_READY"
+    if row.get("status") in {"KNOWN","DERIVED_WITH_EVIDENCE"} and not _missing_author_marker_values(row):
+        return "AUTHOR_MARKER_READY"
+    return "AUTHOR_MARKER_BLOCKED"
+
+
 
 def field(title,blocking=False,value=None,status="OPEN",evidence=None,reason=""):
     return {
@@ -73,9 +117,15 @@ def _requests(fields,artifact_model,candidates):
     if fields["metadata_attribution"]["status"]=="OPEN":
         evidence="; найденные кандидаты: "+", ".join(x["value"] for x in candidates["metadata_comment_candidates"][:3]) if candidates["metadata_comment_candidates"] else ""
         add("METADATA_ATTRIBUTION","актуальный формат поля Comment/Комментарий для новых метаданных либо подтверждённый пример"+evidence,"формат является проектным контрактом и не должен угадываться","new/changed metadata only",False)
-    if fields["author_marker"]["status"]=="OPEN":
-        evidence="; найденные кандидаты: "+" | ".join(x["value"] for x in candidates["author_marker_candidates"][:3]) if candidates["author_marker_candidates"] else ""
-        add("AUTHOR_MARKER","актуальный формат маркеров изменения кода либо подтверждение, что они не требуются"+evidence,"исторический пример не доказывает обязательную текущую конвенцию","final changed code")
+    if _author_marker_gate_state(fields)=="AUTHOR_MARKER_BLOCKED":
+        missing=_missing_author_marker_values(fields["author_marker"])
+        missing_text=", ".join(missing) if missing else "применимость/явный override"
+        add(
+            "AUTHOR_MARKER",
+            "недостающие значения AUTHOR_MARKER: "+missing_text+". Канонический 1C формат уже задан Skill; ПервыйБит фиксирован и формат повторно не запрашивается",
+            "без этих значений нельзя корректно отрендерить обязательный marker; значения нельзя выдумывать, а явный project/user override нужно сохранить дословно",
+            "1C implementation/development entry",
+        )
     if fields["technical_comment"]["status"]=="OPEN":
         add("TECHNICAL_COMMENT_POLICY","правило новых технических комментариев в коде: когда они обязательны, какой стиль ожидается и какие комментарии считаются избыточными; допустим ответ «специальных требований нет»","без этого модель может молча применить собственный стиль комментариев или не добавить требуемые проектом пояснения","final changed code")
     if fields["existing_comment_policy"]["status"]=="OPEN":
@@ -131,7 +181,7 @@ def build(paths):
         "actual_deployed_baseline":field("Actual deployed/user baseline identity",True),
         "modification_policy":field("Allowed/protected surfaces and unrelated-refactor policy",True),
         "metadata_attribution":field("Metadata Comment/Комментарий attribution contract",False),
-        "author_marker":field("Changed-code author marker contract",True),
+        "author_marker":field("1C AUTHOR_MARKER values / explicit override",True,_default_author_marker_value(),"OPEN",reason="Canonical Skill syntax is known; task/project values remain unresolved until bound"),
         "technical_comment":field("Technical why/invariant/constraint comment policy",True),
         "public_interface_comment":field("Public interface documentation contract",False),
         "existing_comment_policy":field("Existing comments/history marker preservation policy",True),
@@ -146,7 +196,7 @@ def build(paths):
         "schema_version":4,
         "result":"PROJECT_BOOTSTRAP_CREATED",
         "source_fingerprint":source_fingerprint,
-        "rule":"Mine repository/artifact evidence first. Ask only unresolved material project contracts. Repository access is evidence, not proof that deployed/project truth is complete. Before first final code output in a new project, attribution/comment fields that affect changed code must be resolved rather than silently defaulted. Metadata/public-interface/delivery contracts block only the capabilities they control.",
+        "rule":"Mine repository/artifact evidence first. Ask only unresolved material project contracts. Repository access is evidence, not proof that deployed/project truth is complete. For applicable 1C work the Skill-owned AUTHOR_MARKER shape is already known: reuse bound values and ask only missing values before implementation starts. Metadata/public-interface/delivery contracts block only the capabilities they control.",
         "artifact_model":model,
         "fields":fields,
         "decision_lifecycle":{
@@ -162,10 +212,11 @@ def build(paths):
         "gate":{
             "status":"BLOCKED" if not code_gate["allowed"] else ("READY_WITH_CAPABILITY_GAPS" if any(not x["allowed"] for x in capability_gates.values()) else "READY"),
             "blocking_open_fields":blocking_open,
+            "author_marker_state":_author_marker_gate_state(fields),
             "implementation_allowed":code_gate["allowed"],
-            "rule":"Legacy implementation_allowed mirrors code_output_allowed only. Metadata, public-interface and exact-delivery gaps are enforced by capability_gates and must not globally block unrelated code output. Unaffected analysis may continue while any capability request is open."
+            "rule":"Legacy implementation_allowed mirrors code_output_allowed only. AUTHOR_MARKER_BLOCKED forbids applicable 1C implementation/development entry but still permits analysis, requirements clarification, source inspection and evidence acquisition. Metadata, public-interface and exact-delivery gaps remain capability-scoped."
         },
-        "next_sequence":["inspect evidence candidates semantically","resolve/request only project fields required by the task's affected capabilities","persist PROJECT_CONTEXT","record/revalidate/supersede mutable project decisions","build task requirements contract","perform task-specific evidence acquisition","build technical review plan"]
+        "next_sequence":["inspect evidence candidates semantically","resolve/request only project fields required by the task's affected capabilities","reuse bound AUTHOR_MARKER values and request only missing values before applicable 1C implementation","persist PROJECT_CONTEXT","record/revalidate/supersede mutable project decisions","build task requirements contract","perform task-specific evidence acquisition","build technical review plan"]
     }
 
 
