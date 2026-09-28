@@ -27,7 +27,7 @@ from release_gate import evaluate as release_evaluate
 from machine_receipts import create_receipt
 from runtime_evidence import create_adapter_observation
 from semantic_review import write_review_receipt
-from implementation_intent import build_skeleton as build_intent_skeleton
+from implementation_intent import build_skeleton as build_intent_skeleton, validate_implementation_admission, validate_intent_map, current_target_identity
 from rule_registry import load_registry, validate_delivery_bindings
 from release_gate_hardening import route_fingerprint
 from generate_registry_views import render as render_generated_views
@@ -951,12 +951,36 @@ for row in proved['standards_to_code']:
 # for this synthetic release-mechanics positive control.
 intent=build_intent_skeleton(plan)
 logical=plan['candidate_artifacts'][0]['logical_path']
+analog_claim=next(x for x in proved['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+analog_source_ref=next(x['ref'] for x in analog_claim['evidence'] if x.get('kind')=='SOURCE_REQUIRED')
+target_identity=current_target_identity(plan)
+admitted_scope=[
+    {'artifact':logical,'target_kind':'BSL_ROUTINE','fragment':'ПроверитьДоговор','change_kind':'CUSTOM','mechanism_scale':False},
+]
+analog_claim['existing_capability_disposition']={
+    'disposition':'CUSTOM_REQUIRED',
+    'discovery_candidates':[],
+    'existing_owner':None,
+    'reused_capability':None,
+    'gap':[{
+        'requirement_dimension_id':'REQ:SYNTHETIC',
+        'required_behavior':'exercise release mechanics',
+        'existing_behavior':'synthetic fixture has no pre-existing delivery owner',
+        'target_identity_ref':target_identity,
+        'noncoverage_proof_refs':[analog_source_ref],
+        'change_scope':copy.deepcopy(admitted_scope),
+    }],
+    'change_scope':copy.deepcopy(admitted_scope),
+    'why_not_existing':'synthetic fixture intentionally exercises a genuinely new candidate artifact',
+    'proof_refs':[analog_source_ref],
+    'owner_exception':None,
+}
 intent['rows']=[
     {
         'requirement_id':'REQ:SYNTHETIC','design_decision_id':'DD:SYNTHETIC','artifact':logical,
         'target_kind':'ARTIFACT','action':'create',
         'responsibility':'carry the synthetic changed source','necessity':'required by synthetic release mechanics',
-        'existing_owner_disposition':'new candidate artifact is the explicit delivery surface','platform_reuse_decision':'no alternate artifact mechanism',
+        'existing_owner_disposition':'CUSTOM_REQUIRED','existing_capability_claim_id':analog_claim['claim_id'],'platform_reuse_decision':'no alternate artifact mechanism',
         'acceptance_cases':['AC:SYNTHETIC'],
         'nearest_smaller_alternative':{'alternative':'no artifact','rejection_reason':'would not exercise release mechanics'},
         'verification_hooks':['release regression'],
@@ -965,7 +989,7 @@ intent['rows']=[
         'requirement_id':'REQ:SYNTHETIC','design_decision_id':'DD:SYNTHETIC','artifact':logical,
         'target_kind':'BSL_ROUTINE','fragment':'ПроверитьДоговор','action':'create',
         'responsibility':'exercise release mechanics','necessity':'synthetic required behavior',
-        'existing_owner_disposition':'routine is carried by the explicit new candidate artifact','platform_reuse_decision':'no new platform mechanism',
+        'existing_owner_disposition':'CUSTOM_REQUIRED','existing_capability_claim_id':analog_claim['claim_id'],'platform_reuse_decision':'no new platform mechanism',
         'entrypoint':{'kind':'ENTRYPOINT','ref':'ПроверитьДоговор'},
         'acceptance_cases':['AC:SYNTHETIC'],
         'nearest_smaller_alternative':{'alternative':'no routine','rejection_reason':'would not exercise the changed candidate'},
@@ -1707,6 +1731,77 @@ minimal_checks={x.get('id') for x in (minimal_rule or {}).get('checks',[])}
 minimal_expected={'MINIMAL_COHERENT_CHANGE_T01','MINIMAL_COHERENT_CHANGE_T02','MINIMAL_COHERENT_CHANGE_T03','MINIMAL_COHERENT_CHANGE_T04','UNJUSTIFIED_CHANGE_SURFACE_EXPANSION','OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE','PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS','LOC_MINIMIZATION_DAMAGES_COHESION'}
 key='registry:minimal_coherent_change_contract'; ok=bool(minimal_rule and minimal_rule.get('tier')==0 and minimal_rule.get('severity')=='BLOCKING' and minimal_rule.get('always_disposition') is True and minimal_expected<=minimal_checks and 'MINIMAL_COHERENT_CHANGE' in registry.get('rule_order',[])); results[key]={'pass':ok,'checks':sorted(minimal_checks)}
 if not ok:errors.append({'case':key,'details':minimal_rule})
+
+
+# Existing-capability pre-mutation admission regressions.
+admission=validate_implementation_admission(plan,proved)
+key='existing_capability:custom_exact_gap_ready'; ok=admission['result']=='IMPLEMENTATION_ADMISSION_READY'; results[key]={'result':admission['result'],'errors':admission['errors'],'pass':ok}
+if not ok:errors.append({'case':key,'details':admission})
+
+default_admission=build_ledger(plan,registry)
+r=validate_implementation_admission(plan,default_admission); key='existing_capability:default_evidence_required_blocks'; ok=(r['result']=='IMPLEMENTATION_ADMISSION_BLOCKED' and any(x['type']=='IMPLEMENTATION_ADMISSION_EVIDENCE_REQUIRED' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+analog_exact_ref=analog_source_ref
+def _owner():
+    return {'owner_ref':'CommonModule.SyntheticOwner','target_identity_ref':target_identity,'coverage':[{'requirement_dimension_id':'REQ:SYNTHETIC','exact_source_refs':[analog_exact_ref]}]}
+
+reuse=copy.deepcopy(proved); a=next(x for x in reuse['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+a['existing_capability_disposition']={'disposition':'REUSE_EXISTING','discovery_candidates':[],'existing_owner':_owner(),'reused_capability':'existing synthetic owner','gap':[],'change_scope':[],'why_not_existing':None,'proof_refs':[analog_exact_ref],'owner_exception':None}
+r=validate_implementation_admission(plan,reuse); key='existing_capability:reuse_exact_owner_ready'; ok=r['result']=='IMPLEMENTATION_ADMISSION_READY'; results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+provider_miss=copy.deepcopy(proved); a=next(x for x in provider_miss['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+a['existing_capability_disposition']['discovery_candidates']=[{'candidate_id':'DISCOVERY:NO_HIT','provider':{'id':'synthetic','mode':'search'},'finding':{'kind':'no_hit','ref':'query:synthetic','summary':'no result'}}]
+a['existing_capability_disposition']['proof_refs']=['DISCOVERY:NO_HIT']
+a['existing_capability_disposition']['gap'][0]['noncoverage_proof_refs']=['DISCOVERY:NO_HIT']
+r=validate_implementation_admission(plan,provider_miss); key='existing_capability:provider_miss_cannot_prove_custom'; ok=(r['result']=='IMPLEMENTATION_ADMISSION_BLOCKED' and any(x['type']=='IMPLEMENTATION_ADMISSION_PROOF_REF_NOT_EXACT_CURRENT_SOURCE' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+stale=copy.deepcopy(provider_miss); a=next(x for x in stale['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+a['existing_capability_disposition']['discovery_candidates']=[{'candidate_id':'DISCOVERY:STALE','provider':{'id':'synthetic-index','mode':'semantic'},'target_identity_ref':'older-release','provider_input_identity':{'fingerprint_sha256':'older-release'},'finding':{'kind':'semantic_hit','ref':'CommonModule.OldOwner','summary':'stale owner candidate'}}]
+r=validate_implementation_admission(plan,stale); key='existing_capability:stale_provider_cannot_prove_current'; ok=r['result']=='IMPLEMENTATION_ADMISSION_BLOCKED'; results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+disagree=copy.deepcopy(reuse); a=next(x for x in disagree['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+a['existing_capability_disposition']['discovery_candidates']=[
+ {'candidate_id':'DISCOVERY:A','provider':{'id':'provider-a','mode':'search'},'finding':{'kind':'semantic_hit','ref':'OwnerA','summary':'candidate A'}},
+ {'candidate_id':'DISCOVERY:B','provider':{'id':'provider-b','mode':'search'},'finding':{'kind':'semantic_hit','ref':'OwnerB','summary':'candidate B'}},
+]
+r=validate_implementation_admission(plan,disagree); key='existing_capability:provider_disagreement_exact_source_wins'; ok=r['result']=='IMPLEMENTATION_ADMISSION_READY'; results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+duplicate=copy.deepcopy(reuse); a=next(x for x in duplicate['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+dup_scope={'artifact':logical,'target_kind':'BSL_ROUTINE','fragment':'ПроверитьДоговор','change_kind':'NEW_OWNER','mechanism_scale':False}
+a['existing_capability_disposition']['change_scope']=[dup_scope]
+r=validate_implementation_admission(plan,duplicate); key='existing_capability:reuse_duplicate_without_exception_blocks'; ok=(r['result']=='IMPLEMENTATION_ADMISSION_BLOCKED' and any(x['type']=='IMPLEMENTATION_ADMISSION_REUSE_PARALLEL_OWNER_BLOCKED' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+a['existing_capability_disposition']['owner_exception']={'existing_capability_claim_id':a['claim_id'],'target_identity_ref':target_identity,'confirmation_ref':'owner:synthetic-confirmation','reason':'explicit synthetic duplicate exception','duplicate_scope':[dup_scope]}
+r=validate_implementation_admission(plan,duplicate); key='existing_capability:identity_bound_duplicate_exception_ready'; ok=r['result']=='IMPLEMENTATION_ADMISSION_READY'; results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+mechanism=copy.deepcopy(proved); a=next(x for x in mechanism['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+for item in a['existing_capability_disposition']['change_scope']:item['mechanism_scale']=True
+for item in a['existing_capability_disposition']['gap'][0]['change_scope']:item['mechanism_scale']=True
+p=next(x for x in mechanism['rules'] if x['id']=='STANDARD_PIPELINE_SEMANTIC_PRESERVATION'); p['status']='EVIDENCE_REQUIRED'
+r=validate_implementation_admission(plan,mechanism); key='existing_capability:mechanism_scale_requires_pipeline_closure'; ok=(r['result']=='IMPLEMENTATION_ADMISSION_BLOCKED' and any(x['type']=='IMPLEMENTATION_ADMISSION_CLAIM_UNRESOLVED' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+claim_drift=copy.deepcopy(proved); claim_drift['implementation_intent_map']['rows'][0]['existing_capability_claim_id']='RULE:OTHER'
+r=validate_intent_map(claim_drift['implementation_intent_map'],plan,claim_drift); key='existing_capability:final_claim_drift_fails'; ok=(r['result']=='FAIL' and any(x['type']=='IMPLEMENTATION_INTENT_EXISTING_CAPABILITY_CLAIM_DRIFT' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+scope_drift=copy.deepcopy(proved); a=next(x for x in scope_drift['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+wrong_scope={'artifact':logical,'target_kind':'BSL_ROUTINE','fragment':'ДругаяПроцедура','change_kind':'CUSTOM','mechanism_scale':False}
+a['existing_capability_disposition']['change_scope']=[wrong_scope]
+a['existing_capability_disposition']['gap'][0]['change_scope']=[copy.deepcopy(wrong_scope)]
+r=validate_intent_map(scope_drift['implementation_intent_map'],plan,scope_drift); key='existing_capability:final_scope_beyond_gap_fails'; ok=(r['result']=='FAIL' and any(x['type']=='IMPLEMENTATION_INTENT_SCOPE_EXCEEDS_ADMISSION' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+workflow=json.loads((root/'WORKFLOW'/'DEVELOPMENT_PIPELINE.json').read_text(encoding='utf-8'))
+implementation_stage=next(x for x in workflow['stages'] if x['id']=='IMPLEMENTATION'); joined=' '.join(implementation_stage['actions'])
+key='existing_capability:author_marker_and_admission_independent'; ok=('AUTHOR_MARKER_READY' in joined and 'IMPLEMENTATION_ADMISSION_READY' in joined); results[key]={'pass':ok}
+if not ok:errors.append({'case':key,'details':implementation_stage})
 
 # Generated views must match the registry exactly.
 for rel,text in render_generated_views(registry).items():

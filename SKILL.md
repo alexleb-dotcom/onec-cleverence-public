@@ -241,6 +241,10 @@ For non-trivial 1C standards discovery, read `KNOWLEDGE/V8STD_SOURCE_POLICY.md`.
 
 Do not guess signatures, query topology, MSLX flow, writer identity, Business Process behavior or client/server semantics from memory.
 
+Before technical design is finalized and before source mutation/final implementation generation, resolve the existing Tier-0 `ANALOG_BEFORE_INVENTION` claim to exactly one of `REUSE_EXISTING`, `EXTEND_EXISTING`, `CUSTOM_REQUIRED`, or `EVIDENCE_REQUIRED`. The default is `EVIDENCE_REQUIRED`. Discovery/search/index/provider output is candidate provenance only: a hit is not owner proof, a miss is not absence proof, stale/version-mismatched output cannot prove current behavior, and exact current target source/metadata/settings/runtime or exact-bound structural evidence wins on contradiction. A technical prescription in a TZ remains `PROPOSED_SOLUTION` by default and cannot prove `CUSTOM_REQUIRED`.
+
+Use the existing Validation Ledger claim as the semantic owner. `REUSE_EXISTING` forbids a parallel owner/mechanism unless an explicit identity-bound owner exception is present; `EXTEND_EXISTING` admits only the exact evidenced residual gap/change scope; `CUSTOM_REQUIRED` requires exact non-fit/non-extendability evidence. For mechanism-scale EXTEND/CUSTOM paths, the existing `STANDARD_PIPELINE_SEMANTIC_PRESERVATION` claim must also be resolved. Run the existing Implementation Intent admission verifier against the current plan+ledger and require derived `IMPLEMENTATION_ADMISSION_READY`; `IMPLEMENTATION_ADMISSION_BLOCKED` still permits source inspection/evidence acquisition but forbids mutation. Final Implementation Intent rows must bind to the same `existing_capability_claim_id` and may not exceed admitted scope.
+
 ### 4.5. Resolve 1C AUTHOR_MARKER before development
 
 For applicable 1C implementation, read `KNOWLEDGE/COMMENTING_POLICY.md` before entering source mutation / final code generation / patch construction / manual-transfer implementation.

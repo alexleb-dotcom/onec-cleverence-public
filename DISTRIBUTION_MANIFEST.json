@@ -630,13 +630,13 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 291949,
-      "sha256": "f5b802b627f68ac31599eb9574304aa3a922f0cc0039ff1758a568bd70f0c269"
+      "size": 292062,
+      "sha256": "441ae3ec71dce676b861e3360e1639cee2dcf4e95c86316255b260948ce46bfb"
     },
     {
       "path": "SKILL.md",
-      "size": 40662,
-      "sha256": "86314058568805e544dc752055a8476cdf95124b7a1ec2fccac4644fba4620ea"
+      "size": 42190,
+      "sha256": "6125f2462177bd2ee5e31465d1a08924d757fcdffe4293ee650b97f6538b63f4"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -725,13 +725,13 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 11313,
-      "sha256": "fad2f849c0b59866c020bdb6d93f94c58b95b93e780818ac801f19be200ba6f3"
+      "size": 13508,
+      "sha256": "673de76a9d6ae5fa9448e7a544cdfc0e0bdc8763a2fd7cb3d521b8b4b58b596a"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 40399,
-      "sha256": "25f43aa86b3fd00226731a7932f6e25f04c5a251544a78e1c2a3872b2f529873"
+      "size": 40512,
+      "sha256": "617efedf27e686be0fb3dca53a15332cf3516a5e57311f6995274cb30a624c4c"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -1875,18 +1875,18 @@
     },
     {
       "path": "TESTS/run_review_regression.py",
-      "size": 139439,
-      "sha256": "95bf6d52ddf5eab958c8a5894890f4f8d52ef9104db7151a0da6758f042cbfc7"
+      "size": 148449,
+      "sha256": "542a0f884d1e405d09427175dca7047050ee559a60b8e98e2bf293510bbe0c15"
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
-      "size": 7110,
-      "sha256": "c64d18bb3b9450427d5f41b9140eda645f553742d5bd720fe9919d67e089490a"
+      "size": 7967,
+      "sha256": "04ccc05aa74315c57520b4ad642bd209ec8438747c8aabf5b9fd7ef49900f522"
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
-      "size": 43506,
-      "sha256": "2e35118cf54a7f29e7e7adf30f768265ee0415e4de293126ce6d7f2a7217a4a8"
+      "size": 43568,
+      "sha256": "84e49cd25985a51b131308daf49b4bb04572d4b0c9bb946eca813a825eba9d80"
     },
     {
       "path": "TESTS/run_skill_freshness_regression.py",
@@ -1990,8 +1990,8 @@
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
-      "size": 17408,
-      "sha256": "2c3a8490d81017ddbb96c7901c03e8ce4e13f20cf05ec7200ceb98466f7188d0"
+      "size": 17906,
+      "sha256": "b3bb2391c1e14143558801842bf9eeaaaf6d35d469669b56aea26baf737d3a78"
     },
     {
       "path": "TOOLS/capability_compliance_projection.py",
@@ -2025,8 +2025,8 @@
     },
     {
       "path": "TOOLS/implementation_intent.py",
-      "size": 21234,
-      "sha256": "8255c23bd41abdc8fb6282426b0126d54b7331f5e2b1b5ad8013ed9107e25c8a"
+      "size": 39168,
+      "sha256": "bb9607ff095cc0a1dc8d23c901a84226ce963ae64195d834607e286c023c2fc5"
     },
     {
       "path": "TOOLS/machine_receipts.py",
@@ -2100,8 +2100,8 @@
     },
     {
       "path": "TOOLS/release_gate_core.py",
-      "size": 88806,
-      "sha256": "076ce9fb321e80ae0ae78433b99b995b500c18e2ef5c7dd246d4e26096e7f808"
+      "size": 88813,
+      "sha256": "13b157097bbc9e4fc697163b23f375f054d76ff063091844f05f8d7048c59573"
     },
     {
       "path": "TOOLS/release_gate_hardening.py",
@@ -2195,8 +2195,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 24137,
-      "sha256": "7a34c25a716dccd66f81e502b75b8d7382f46776c18cf39f826c54a06a1dcc4b"
+      "size": 24588,
+      "sha256": "c2f2a0b842423f0c4f5e07dff0a0d99281b28dbca49067b1a0186e0acf15fb1b"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "ebf09f03e1abcda609cf9b10f8d7332a57118d266e9a857cc80aa8dd0b637764"
+  "snapshot_digest": "46b3907877adadba2f71dcdb7a1c019a023f814f17974a285aee5321e38d04e8"
 }

@@ -48,7 +48,7 @@ When Mobile SMARTS behavior is uncertain, was the nearest stock operation/action
 
 Rule: `ANALOG_BEFORE_INVENTION`
 
-Before accepting source-code customization, was the target configuration/platform/BSP/vendor checked for an existing supported capability, setting or standard mechanism that satisfies the observable requirement without customization, with partial-fit gaps stated explicitly?
+Before source mutation/final implementation generation, is the target configuration/platform/BSP/vendor existing capability resolved from exact current-target evidence (discovery hits/misses/stale indexes/partial graphs are candidate-only), with technical TZ prescriptions kept as PROPOSED_SOLUTION by default, and with any duplicate owner requiring an explicit identity-bound exception?
 
 ## STANDARD_PIPELINE_SEMANTIC_PRESERVATION
 

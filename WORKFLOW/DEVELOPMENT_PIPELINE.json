@@ -119,6 +119,7 @@
       "id": "IMPLEMENTATION",
       "actions": [
         "before any applicable 1C source mutation, final implementation code generation, delivery patch construction or manual-transfer implementation step, require AUTHOR_MARKER_READY from the existing Project Context/bootstrap/comment-policy contract; AUTHOR_MARKER_BLOCKED permits analysis/requirements/source inspection/evidence acquisition only, reuses bound values and asks only still-missing values",
+        "before source mutation/final implementation generation, run the existing TOOLS/implementation_intent.py pre-mutation admission against review plan + Validation Ledger; require IMPLEMENTATION_ADMISSION_READY derived from ANALOG_BEFORE_INVENTION existing_capability_disposition, while IMPLEMENTATION_ADMISSION_BLOCKED permits analysis/source inspection/evidence acquisition only; AUTHOR_MARKER_READY remains an independent required admission",
         "build and maintain the canonical Implementation Intent Map bound to exact baseline/candidate/requirements/review-plan identities",
         "trace each material change requirement → design decision → artifact/fragment → entrypoint/caller → acceptance case → nearest smaller applicable alternative → verification hooks",
         "for Cleverence trace MSLX Action scenario/writer/state and field producer → mapping → Mobile field → writer/router/Core → consumer; unknown Action/writer remains an evidence gap",
