@@ -469,10 +469,19 @@ def recover(op_dir: str | Path, expected_spec: dict) -> dict:
     child = manifest.get("child") or {}
     supervisor = manifest.get("supervisor") or {}
     if child.get("pid"):
-        match = process_identity_matches(child.get("pid"), child.get("start_token"))
-        if match is True:
+        child_match = process_identity_matches(child.get("pid"), child.get("start_token"))
+        if child_match is True:
             return manifest
-        reason = "CHILD_PROCESS_IDENTITY_MISMATCH" if match is False else "CHILD_PROCESS_IDENTITY_UNVERIFIABLE"
+        # The child can exit a few instructions before the live supervisor writes
+        # rc.txt, captures expected-output hashes and persists the terminal manifest.
+        # In that legitimate finalize window the supervisor is still the exact owner
+        # of completion, so recovery must keep polling instead of fabricating
+        # LOST_PROCESS from the already-finished child.
+        if supervisor.get("pid"):
+            supervisor_match = process_identity_matches(supervisor.get("pid"), supervisor.get("start_token"))
+            if supervisor_match is True:
+                return manifest
+        reason = "CHILD_PROCESS_IDENTITY_MISMATCH" if child_match is False else "CHILD_PROCESS_IDENTITY_UNVERIFIABLE"
         return _persist_transition(p["manifest"], manifest, state="LOST_PROCESS", reason=reason)
     if supervisor.get("pid"):
         match = process_identity_matches(supervisor.get("pid"), supervisor.get("start_token"))
