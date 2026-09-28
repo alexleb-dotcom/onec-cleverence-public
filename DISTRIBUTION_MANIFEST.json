@@ -24,16 +24,6 @@
       "sha256": "2b69ce153962754f4d362541cc929797e294038872b455acb0e7629bb7bad798"
     },
     {
-      "path": "agents/openai.yaml",
-      "size": 514,
-      "sha256": "f527c89e640edffefb5fe35d1f7ef6d465a29a39a97370eb77a0ab8ef4d68fa9"
-    },
-    {
-      "path": "assets/icon.svg",
-      "size": 1738,
-      "sha256": "8936b24f674a1250d999e2c2b5901374fb4240426f32bd1ae340c352a90d617d"
-    },
-    {
       "path": "DISTRIBUTION.md",
       "size": 13913,
       "sha256": "2d86d5b784f6db84f99e26b9617dc8a5412f3c497ba7bf22bad7c13756d281be"
@@ -174,6 +164,11 @@
       "sha256": "668bd761d1904e4709ba779a245e08cbb8f2eb1136973c934b27d9a51931bc87"
     },
     {
+      "path": "KNOWLEDGE/PROJECT_SNAPSHOT_COLLECTOR.md",
+      "size": 12696,
+      "sha256": "c201ad905ba77f7e197a8167e40594b7a1f167a594abd36384363fd44b1e35e5"
+    },
+    {
       "path": "KNOWLEDGE/PROJECT_SNAPSHOT_COLLECTOR_CAPABILITIES.json",
       "size": 9746,
       "sha256": "ed62cbafc3fa82de88892f028654211da12209d1daf6965087768456c31420ea"
@@ -182,11 +177,6 @@
       "path": "KNOWLEDGE/PROJECT_SNAPSHOT_COLLECTOR_DISTRIBUTION.md",
       "size": 4225,
       "sha256": "51e9400ad9202f8e7ee894c69c5e3b30d2b77961c40e4cc9a0a701fcc948b1df"
-    },
-    {
-      "path": "KNOWLEDGE/PROJECT_SNAPSHOT_COLLECTOR.md",
-      "size": 12696,
-      "sha256": "c201ad905ba77f7e197a8167e40594b7a1f167a594abd36384363fd44b1e35e5"
     },
     {
       "path": "KNOWLEDGE/PROJECT_SNAPSHOT_RUNTIME_V1_CAPABILITIES.json",
@@ -589,14 +579,14 @@
       "sha256": "18de3fb6cfc63828aa95ea0165b4a8b2e6863907fa1727b8b4516e53dbbfc29f"
     },
     {
-      "path": "README_FIRST.md",
-      "size": 14881,
-      "sha256": "c144bac8a186070d4b04f13a6a534870bec35090e10401e38e9424a1084ab0bd"
-    },
-    {
       "path": "README.md",
       "size": 12728,
       "sha256": "7619b2a6de0c0e62b769e11f24d0e48858136a5f6d3c370da041854f4d11845a"
+    },
+    {
+      "path": "README_FIRST.md",
+      "size": 14881,
+      "sha256": "c144bac8a186070d4b04f13a6a534870bec35090e10401e38e9424a1084ab0bd"
     },
     {
       "path": "REFERENCE/CATALOGS/bsp_discovery.json",
@@ -689,9 +679,64 @@
       "sha256": "90e747e5c836c1db6b74b2acd99b51d34f0bbf83b3fc8699749661b62f90b368"
     },
     {
+      "path": "TESTS/LLM_BYPASS_MATRIX.json",
+      "size": 81493,
+      "sha256": "de4e7fd99759146fc7c82ab7436669b942788fb7caab9e4a73548bdb4d788d79"
+    },
+    {
+      "path": "TESTS/PROJECT_CONTEXT_LIFECYCLE_CASES.json",
+      "size": 7719,
+      "sha256": "481ddd15cbb1ef2b41c0cf985e661cd9d51cdd411573df93293ef17e0f8eddd1"
+    },
+    {
+      "path": "TESTS/REGRESSION_MANIFEST.json",
+      "size": 19607,
+      "sha256": "3a6a6536fa71eff07b9d534e56764bf253675023ec27bdec63fa9714c4cf3be7"
+    },
+    {
+      "path": "TESTS/REQUIREMENTS_ACTIVATION_CASES.json",
+      "size": 2805,
+      "sha256": "748c259b6d7b5a119fe10f805ab217d6a6f1f535aa70a1518c17f2083460211e"
+    },
+    {
+      "path": "TESTS/REQUIREMENTS_SEMANTIC_CLASSES.md",
+      "size": 8461,
+      "sha256": "a3f2641deecbce6c69dd91cf9ad5ae282087bdf0b8f095d469e6e98073cfd237"
+    },
+    {
+      "path": "TESTS/RULE_ACTIVATION_CASES.json",
+      "size": 11557,
+      "sha256": "0b9735d944e3a00b5a218d003b6bed83f13f10991c1382eb5f3cb7d96facc9ab"
+    },
+    {
+      "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
+      "size": 11313,
+      "sha256": "fad2f849c0b59866c020bdb6d93f94c58b95b93e780818ac801f19be200ba6f3"
+    },
+    {
+      "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
+      "size": 40399,
+      "sha256": "25f43aa86b3fd00226731a7932f6e25f04c5a251544a78e1c2a3872b2f529873"
+    },
+    {
+      "path": "TESTS/SKILL_FRESHNESS_CASES.json",
+      "size": 5414,
+      "sha256": "aae08e5f901f4ff1c3075de5e6083c8b1c419b470292ee2a890d598e30c9ce8c"
+    },
+    {
+      "path": "TESTS/TERMINOLOGY_CONTRACT_CASES.json",
+      "size": 3290,
+      "sha256": "9a27c1688d3e46a8f4ee71a686dbde35f1b1f97334cd1cdaba46903c9a686481"
+    },
+    {
       "path": "TESTS/benchmark_context_efficiency.py",
       "size": 10427,
       "sha256": "0455fbcff8c7e1c47b2caf4801823ddebd4a39020a8a6d911782849a6c17c34e"
+    },
+    {
+      "path": "TESTS/fixtures/TestApi_Module.bsl",
+      "size": 734,
+      "sha256": "7394e3b38fc1323680898473c0a27f01b13a7768eea78a0b01105650624280f0"
     },
     {
       "path": "TESTS/fixtures/all_onec_profile_activation.bsl",
@@ -1604,11 +1649,6 @@
       "sha256": "220cd9ee95e266f4519eb1295672a0e814ac32586f4b05e42cd0f998e54560e5"
     },
     {
-      "path": "TESTS/fixtures/TestApi_Module.bsl",
-      "size": 734,
-      "sha256": "7394e3b38fc1323680898473c0a27f01b13a7768eea78a0b01105650624280f0"
-    },
-    {
       "path": "TESTS/fixtures/top_without_order_bad.bsl",
       "size": 316,
       "sha256": "5f67b3cc6adf38cbcfda2fe43c4177ee8c6abad085960e1bd33c5acfd2bb2f02"
@@ -1637,36 +1677,6 @@
       "path": "TESTS/fixtures/xdto_good/Ext/Package.bin",
       "size": 324,
       "sha256": "3255e1c5f744b5348e7f69feba63a8feaefc5bee5c61cc95a1fa487ee9a0f4cd"
-    },
-    {
-      "path": "TESTS/LLM_BYPASS_MATRIX.json",
-      "size": 81493,
-      "sha256": "de4e7fd99759146fc7c82ab7436669b942788fb7caab9e4a73548bdb4d788d79"
-    },
-    {
-      "path": "TESTS/PROJECT_CONTEXT_LIFECYCLE_CASES.json",
-      "size": 7719,
-      "sha256": "481ddd15cbb1ef2b41c0cf985e661cd9d51cdd411573df93293ef17e0f8eddd1"
-    },
-    {
-      "path": "TESTS/REGRESSION_MANIFEST.json",
-      "size": 19607,
-      "sha256": "3a6a6536fa71eff07b9d534e56764bf253675023ec27bdec63fa9714c4cf3be7"
-    },
-    {
-      "path": "TESTS/REQUIREMENTS_ACTIVATION_CASES.json",
-      "size": 2805,
-      "sha256": "748c259b6d7b5a119fe10f805ab217d6a6f1f535aa70a1518c17f2083460211e"
-    },
-    {
-      "path": "TESTS/REQUIREMENTS_SEMANTIC_CLASSES.md",
-      "size": 8461,
-      "sha256": "a3f2641deecbce6c69dd91cf9ad5ae282087bdf0b8f095d469e6e98073cfd237"
-    },
-    {
-      "path": "TESTS/RULE_ACTIVATION_CASES.json",
-      "size": 11557,
-      "sha256": "0b9735d944e3a00b5a218d003b6bed83f13f10991c1382eb5f3cb7d96facc9ab"
     },
     {
       "path": "TESTS/run_artifact_bootstrap_regression.py",
@@ -1869,26 +1879,6 @@
       "sha256": "744507629cacf8aeed7e813cf94439a5764b2ad700c3b8e4d46882430ae37582"
     },
     {
-      "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 11313,
-      "sha256": "fad2f849c0b59866c020bdb6d93f94c58b95b93e780818ac801f19be200ba6f3"
-    },
-    {
-      "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 40399,
-      "sha256": "25f43aa86b3fd00226731a7932f6e25f04c5a251544a78e1c2a3872b2f529873"
-    },
-    {
-      "path": "TESTS/SKILL_FRESHNESS_CASES.json",
-      "size": 5414,
-      "sha256": "aae08e5f901f4ff1c3075de5e6083c8b1c419b470292ee2a890d598e30c9ce8c"
-    },
-    {
-      "path": "TESTS/TERMINOLOGY_CONTRACT_CASES.json",
-      "size": 3290,
-      "sha256": "9a27c1688d3e46a8f4ee71a686dbde35f1b1f97334cd1cdaba46903c9a686481"
-    },
-    {
       "path": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
       "size": 1075,
       "sha256": "b80d5d3cb8861dbd2bbbd1e97bbf794b5b61a18ac76bb8ed40c8f26ebb324ab5"
@@ -1897,6 +1887,16 @@
       "path": "THIRD_PARTY/cc-1c-skills/NOTICE.md",
       "size": 587,
       "sha256": "4a9321f628555e49162e05020cc7a939a9f2adeebceae338b9acd6049937a14c"
+    },
+    {
+      "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
+      "size": 8620,
+      "sha256": "6514d47ba1cc87565f0a221e224f7d7bc0bc9d7e01ecd39ec1fd8e2cb3614dad"
+    },
+    {
+      "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
+      "size": 1783,
+      "sha256": "2965ae87e699e6bb1fefd5ae6c38d8f9f64b051c07ce41ecf7d12c5fc24cc54b"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2054,11 +2054,6 @@
       "sha256": "5cad3af9f717b3b4020c1f603572f1a7c5d2d8daa4c051ddd1ac99dae8e03ca8"
     },
     {
-      "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 8620,
-      "sha256": "6514d47ba1cc87565f0a221e224f7d7bc0bc9d7e01ecd39ec1fd8e2cb3614dad"
-    },
-    {
       "path": "TOOLS/public_execution_receipt.py",
       "size": 13045,
       "sha256": "07a31a86aa562b99b831eeb04890ee2a82a65a36bc46236532138954f8f41a41"
@@ -2079,6 +2074,11 @@
       "sha256": "739ec63a97ccd900be5cc2e2929ccbff3e80ffd6250d85d616de5a8296a98f5a"
     },
     {
+      "path": "TOOLS/release_gate.py",
+      "size": 1080,
+      "sha256": "54fa250d4fd7a3eed489857fba1f178317bcc6ba17dfe50b0f479edddf5a37c3"
+    },
+    {
       "path": "TOOLS/release_gate_core.py",
       "size": 88806,
       "sha256": "076ce9fb321e80ae0ae78433b99b995b500c18e2ef5c7dd246d4e26096e7f808"
@@ -2087,11 +2087,6 @@
       "path": "TOOLS/release_gate_hardening.py",
       "size": 13867,
       "sha256": "1947c5835fc3e15342c28fb078c48fc8b9029a52f9f5c7242e390edcaf64b607"
-    },
-    {
-      "path": "TOOLS/release_gate.py",
-      "size": 1080,
-      "sha256": "54fa250d4fd7a3eed489857fba1f178317bcc6ba17dfe50b0f479edddf5a37c3"
     },
     {
       "path": "TOOLS/release_intake.py",
@@ -2127,11 +2122,6 @@
       "path": "TOOLS/semantic_review.py",
       "size": 12161,
       "sha256": "84652767d23876f9d3e896e651bacdb087507c4375978d1fe51e61d6dcf8d4e1"
-    },
-    {
-      "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
-      "size": 1783,
-      "sha256": "2965ae87e699e6bb1fefd5ae6c38d8f9f64b051c07ce41ecf7d12c5fc24cc54b"
     },
     {
       "path": "TOOLS/skill_freshness.py",
@@ -2192,8 +2182,18 @@
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
       "size": 15348,
       "sha256": "47f20861cc26588c532269d9163ab25af7a101b1162839cf9d0703a3a98052f4"
+    },
+    {
+      "path": "agents/openai.yaml",
+      "size": 514,
+      "sha256": "f527c89e640edffefb5fe35d1f7ef6d465a29a39a97370eb77a0ab8ef4d68fa9"
+    },
+    {
+      "path": "assets/icon.svg",
+      "size": 1738,
+      "sha256": "8936b24f674a1250d999e2c2b5901374fb4240426f32bd1ae340c352a90d617d"
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "eebe79dae7d3577f9976ee5b51f5939c6e3c21adcca87ffbbeb2ac135d3ab18d"
+  "snapshot_digest": "1ed651febc1923d0b81150bc0bf97b585e5157d6eb89a92217345d05baf5095b"
 }
