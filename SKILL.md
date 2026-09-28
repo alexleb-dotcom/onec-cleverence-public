@@ -226,6 +226,30 @@ For non-trivial 1C standards discovery, read `KNOWLEDGE/V8STD_SOURCE_POLICY.md`.
 
 Do not guess signatures, query topology, MSLX flow, writer identity, Business Process behavior or client/server semantics from memory.
 
+### 4.5. Resolve 1C AUTHOR_MARKER before development
+
+For applicable 1C implementation, read `KNOWLEDGE/COMMENTING_POLICY.md` before entering source mutation / final code generation / patch construction / manual-transfer implementation.
+
+Use the canonical Skill default shape unless an explicit project/user override is already bound:
+
+```bsl
+// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+...
+// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+```
+
+A one-line change and object-property / metadata comment attribution use:
+
+```bsl
+// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+```
+
+Before implementation starts, reuse valid bound `ФамилияИО`, date value/policy, `НомерТЗ` and applicable `пункты ТЗ`. `ПервыйБит` is fixed by the Skill contract. Ask only for still-missing values; do not invent them and do not ask for default marker syntax.
+
+`AUTHOR_MARKER_READY` permits implementation. `AUTHOR_MARKER_BLOCKED` forbids implementation/development entry while still allowing requirements clarification, source inspection, evidence acquisition and architecture/design analysis.
+
+Do not create a second marker workflow/gate. This is enforced through the existing project-bootstrap / Project Context / comment-policy owners.
+
 ### 5. Implement minimal coherent change
 
 **Minimize necessary change surface, not raw line count.** Among implementations that fully satisfy the proven requirements, correctness, standards, maintainability, runtime safety and delivery contract, prefer the one that changes the fewest necessary objects/files/routines/material hunks and introduces the least new executable code or new abstractions relative to the exact baseline.
