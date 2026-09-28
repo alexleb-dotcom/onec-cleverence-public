@@ -446,6 +446,38 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "standard_capability_before_customization"
+        },
+        {
+          "id": "EXISTING_CAPABILITY_PREMUTATION_ADMISSION",
+          "question": "Before source mutation/final implementation generation, is the existing ANALOG claim resolved to REUSE_EXISTING, EXTEND_EXISTING, CUSTOM_REQUIRED, or EVIDENCE_REQUIRED with exact current-target proof and a fail-closed implementation admission?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "existing_capability_premutation_admission"
+        },
+        {
+          "id": "DISCOVERY_CANDIDATE_IS_NOT_PROOF",
+          "question": "Are search/semantic/index/provider hits, misses, stale results and partial graphs treated only as discovery candidates while exact current-target evidence controls EXISTING_OWNER/GAP conclusions?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "discovery_candidate_not_proof"
+        },
+        {
+          "id": "TECHNICAL_TZ_PROPOSED_SOLUTION_ONLY",
+          "question": "Is a technical prescription in the TZ kept as PROPOSED_SOLUTION unless independently accepted after the reuse challenge, rather than being used as proof of CUSTOM_REQUIRED?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "technical_tz_proposed_solution_only"
+        },
+        {
+          "id": "DUPLICATE_OWNER_EXCEPTION_REQUIRED",
+          "question": "When exact evidence proves an existing owner covers the requirement, is any duplicate owner/mechanism blocked unless an explicit identity-bound owner exception authorizes the exact duplicate scope?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "duplicate_owner_exception_required"
         }
       ],
       "regression": {
@@ -454,7 +486,11 @@
         ],
         "enforcement_cases": [
           "check:ANALOG_BEFORE_INVENTION_T01",
-          "check:STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION"
+          "check:STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
+          "check:EXISTING_CAPABILITY_PREMUTATION_ADMISSION",
+          "check:DISCOVERY_CANDIDATE_IS_NOT_PROOF",
+          "check:TECHNICAL_TZ_PROPOSED_SOLUTION_ONLY",
+          "check:DUPLICATE_OWNER_EXCEPTION_REQUIRED"
         ]
       },
       "proof_policy": {
