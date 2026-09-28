@@ -403,8 +403,10 @@ def _normalize_scope(items,errors,where):
 def _scope_allows(row,scope):
     for item in scope or []:
         if item.get("artifact")!=row.get("artifact"):continue
+        # ARTIFACT intent rows are material-change summaries.  A proven granular
+        # scope on the same artifact is enough for the summary row, but an
+        # ARTIFACT scope is never a wildcard that silently admits every fragment.
         if row.get("target_kind")=="ARTIFACT":return True
-        if item.get("target_kind")=="ARTIFACT":return True
         if item.get("target_kind")==row.get("target_kind") and item.get("fragment")==row.get("fragment"):return True
     return False
 
