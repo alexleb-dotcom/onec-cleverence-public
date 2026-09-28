@@ -101,6 +101,65 @@ with tempfile.TemporaryDirectory() as td:
         {'state':_author_marker_gate_state(bound),'requests':bound_requests},
     )
 
+
+    incomplete_known=copy.deepcopy(bound)
+    incomplete_known['author_marker']['value']['values']['Дата']=None
+    incomplete_known['author_marker']['status']='KNOWN'
+    incomplete_known_gates=_capability_gates(incomplete_known)
+    record(
+        'author_marker_incomplete_known_is_fail_closed',
+        _author_marker_gate_state(incomplete_known)=='AUTHOR_MARKER_BLOCKED'
+        and incomplete_known_gates['code_output_allowed']['allowed'] is False
+        and 'author_marker' in incomplete_known_gates['code_output_allowed']['blocking_open_fields'],
+        {'state':_author_marker_gate_state(incomplete_known),'gates':incomplete_known_gates},
+    )
+
+    incomplete_derived=copy.deepcopy(bound)
+    incomplete_derived['author_marker']['value']['values']['пункты ТЗ']=None
+    incomplete_derived['author_marker']['status']='DERIVED_WITH_EVIDENCE'
+    incomplete_derived_gates=_capability_gates(incomplete_derived)
+    record(
+        'author_marker_incomplete_derived_is_fail_closed',
+        _author_marker_gate_state(incomplete_derived)=='AUTHOR_MARKER_BLOCKED'
+        and incomplete_derived_gates['code_output_allowed']['allowed'] is False
+        and 'author_marker' in incomplete_derived_gates['code_output_allowed']['blocking_open_fields'],
+        {'state':_author_marker_gate_state(incomplete_derived),'gates':incomplete_derived_gates},
+    )
+
+    complete_derived=copy.deepcopy(bound)
+    complete_derived['author_marker']['status']='DERIVED_WITH_EVIDENCE'
+    complete_derived_gates=_capability_gates(complete_derived)
+    record(
+        'author_marker_complete_derived_is_ready',
+        _author_marker_gate_state(complete_derived)=='AUTHOR_MARKER_READY'
+        and complete_derived_gates['code_output_allowed']['allowed'] is True,
+        {'state':_author_marker_gate_state(complete_derived),'gates':complete_derived_gates},
+    )
+
+    not_applicable=copy.deepcopy(bound)
+    not_applicable['author_marker']['status']='NOT_APPLICABLE'
+    not_applicable['author_marker']['value']=None
+    not_applicable_gates=_capability_gates(not_applicable)
+    record(
+        'author_marker_not_applicable_uses_existing_disposition',
+        _author_marker_gate_state(not_applicable)=='AUTHOR_MARKER_READY'
+        and not_applicable_gates['code_output_allowed']['allowed'] is True,
+        {'state':_author_marker_gate_state(not_applicable),'gates':not_applicable_gates},
+    )
+
+    applicable_cases=[bootstrap,incomplete_known,incomplete_derived,bound,complete_derived]
+    contradictions=[]
+    for row in applicable_cases:
+        state=_author_marker_gate_state(row)
+        gates_row=_capability_gates(row)
+        if state=='AUTHOR_MARKER_BLOCKED' and gates_row['code_output_allowed']['allowed']:
+            contradictions.append({'state':state,'gates':gates_row})
+    record(
+        'author_marker_state_never_contradicts_code_gate',
+        not contradictions,
+        contradictions,
+    )
+
     override=copy.deepcopy(bound)
     override['author_marker']['value']['syntax_source']='EXPLICIT_PROJECT_OVERRIDE'
     override['author_marker']['value']['explicit_override_syntax']='// explicit project override'
