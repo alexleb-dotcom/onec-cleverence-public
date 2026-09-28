@@ -1,56 +1,83 @@
-# Инструкция по ручному переносу изменений
+# Инструкция по внедрению — source contract for separate DOCX
 
-Использовать только когда выбран результат `MANUAL_TRANSFER_INSTRUCTION`.
+This file defines the artifact-specific source contract. Service rules in this file are **not rendered verbatim** to the customer.
 
-По умолчанию для русскоязычного проекта/пользователя документ ведётся в UTF-8 на русском языке. Идентификаторы объектов, процедур, кода, путей, хэшей, API и машинных токенов сохраняются буквально.
+## Trigger
 
-Не использовать псевдоверсии в имени файла (`v2`, `final`, `fix`, `new` и подобные).
+Use when `MANUAL_TRANSFER_INSTRUCTION` is the selected implementation delivery mode.
 
-Проект: <exact bound project>
-Задача: <exact bound task>
-Целевая база / артефакт: <exact baseline or candidate identity>
+## Output
 
-## Предусловия
-...
+Separate file:
 
-## Порядок изменений
+`Инструкция по внедрению.docx`
 
-### STEP-001 — <CREATE | MODIFY | DELETE>
-- Объект / артефакт: <exact target>
-- Место / якорь: <exact insertion / replacement / region / handler anchor>
-- Код / payload: <exact content or payload reference>
-- Зависит от: <stable step ids or none>
-- Wiring: <form / command / role / subsystem / scheduled job / event subscription / integration wiring when applicable>
+Renderer:
 
-### STEP-002 — <CREATE | MODIFY | DELETE>
-...
+`TOOLS/render_user_artifact_docx.py --artifact manual_transfer`
 
-## Миграция / инициализация / одноразовые действия
-<если применимо>
+`ChangePackage` remains the machine delivery/proof-boundary owner.
 
-## Статическая проверка после переноса
-...
+## Compact metadata
 
-## Runtime-проверка
-...
+- `Проект: <exact>`
+- `Задача: <exact>`
+- `Целевая база / артефакт: <exact baseline/candidate identity>`
 
-## Нерешённые выборы для исполнителя
-none
+## Visible R2 structure — exact order
 
-Если остаётся материальный выбор реализации, вместо `none` указать `BLOCKING: <exact unresolved choice>`; такая инструкция не может считаться готовой к переносу.
+### 1. Создаваемые объекты
 
-## Граница доказанности
-- Полнота инструкции проверена: <yes | no | pending>
-- Применённые target bytes/state наблюдались: <yes | no>
-- Deployment/import наблюдался: <yes | no>
-- Runtime-поведение наблюдалось: <yes | no | partial>
-- Сильнейшее обоснованное утверждение: <...>
+For every created object show:
+- `Объект: <exact configuration object>`;
+- all material properties required for manual creation;
+- exact/evidenced values;
+- `Обоснование`;
+- `Применимый стандарт/правило` when an applicable evidenced rule exists.
 
-### Инварианты
+Do not invent a rule merely to fill the field.
 
-- Порядок CREATE/MODIFY/DELETE и stable STEP ids обязателен.
-- Каждый материальный шаг должен иметь точный target и точный anchor/payload.
-- Все зависимости и требуемый порядок должны быть явными.
-- Нельзя молча делегировать человеку материальный выбор реализации.
-- Готовая инструкция не доказывает, что изменения применены, развернуты или проверены в runtime.
-- Этот документ не заменяет `ChangePackage` и не создаёт новый proof owner.
+### 2. Изменяемые объекты
+
+For every modified object show:
+- `Объект: <exact configuration object>`;
+- only material changed properties;
+- exact `Было` / `Стало` values;
+- enough object identity to avoid applying the change to another object;
+- `Обоснование`;
+- applicable evidenced standard/rule when present.
+
+### 3. Код
+
+For every changed procedure/function/handler show:
+- exact `Объект`;
+- exact `Изменения: <procedure/function/handler>`;
+- dependencies/order when material;
+- `Было`: minimum sufficient exact source fragment locating the integration/replacement point;
+- `Стало`: the same anchor/context with resulting code;
+- concise `Обоснование`;
+- applicable evidenced standard/rule when present.
+
+Exact identifiers/code remain literal. The resulting `Стало` fragment must preserve the canonical Skill `AUTHOR_MARKER` when it is applicable upstream.
+
+If DELETE is required, the removed object/property/code must be shown explicitly with rationale.
+
+Do not leave a material design choice to the human executor.
+
+## Conditional operational sections
+
+After the three owner-approved primary blocks, render only when applicable:
+- `Предусловия`;
+- `Миграция / инициализация / одноразовые действия`;
+- `Статическая проверка после внедрения`;
+- `Проверка выполнения`;
+- `Нерешённые выборы / блокеры`.
+
+Always render:
+- `Граница доказанности`.
+
+## Boundary
+
+A complete instruction does not prove target application, deployment/import or runtime behavior.
+
+The R2 human-facing document is object-first. Do not render the previous generic STEP-first presentation as the primary customer structure.
