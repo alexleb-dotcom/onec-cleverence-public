@@ -81,6 +81,21 @@ Mixed/unrelated prior chat or source is non-authoritative until exact current ta
 
 Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`, or a second interaction registry/state machine. This turn classification is recomputed from current observable context.
 
+### Recovery after interrupted assistant/tool response
+
+**RECOVER_FIRST_NOT_REPLAY_FIRST.** A chat/stream/tool/transport/LLM interruption means the previous turn's completion state is **UNKNOWN**, not failed.
+
+On a user `continue` / `retry` turn after an interruption, correlate the same bound task first and reconcile durable/native state **before replaying any material action**:
+
+1. inspect matching durable task artifacts, already-bound evidence and current authoritative/native target state;
+2. reuse a matching durable artifact/evidence item that was already produced; losing the final assistant response does not invalidate it;
+3. for an applicable local long-running command, use the existing `TOOLS/execution_checkpoint.py` owner with the same exact operation identity: `RUNNING` means continue/poll; terminal `PASSED`/`FAILED` means read the persisted result rather than rerun;
+4. for an external non-idempotent mutation, perform exact native-state read-back before retry: if the intended mutation already exists and matches, continue from the next canonical owner; if it is definitely absent, retry may proceed through its normal owner; if state remains ambiguous, fail closed, perform/request the smallest exact verification and **do not blind-replay**;
+5. for a read-only action, reuse a still-valid durable result when available; otherwise re-read the authoritative source when freshness requires it;
+6. resume from the first genuinely uncompleted canonical owner/stage.
+
+Do not ask the user to restate already-bound task/project/requirements solely because the prior response timed out. `COMPLETED`, `RUNNING`, `NOT_COMPLETED` and `UNCERTAIN` may be used as turn-local descriptive recovery dispositions only; do not persist them as conversation/session/recovery state. Do not add a generic retry queue, mutation/task ledger, event log, daemon/watcher, second checkpoint or assistant-turn persistence layer.
+
 When a user-facing documentation artifact is applicable, defer its presentation contract until the rendering phase. Load `KNOWLEDGE/USER_ARTIFACT_DOCX.md` plus only the artifact-specific template needed, then render one separate DOCX through `TOOLS/render_user_artifact_docx.py`. Requirements, manual-transfer, implementation-notes and line-by-line documents are separate files by default; line-by-line is generated only on explicit user request. These contracts are not normal startup dependencies and never replace machine/proof owners.
 
 ## Mandatory task workflow
