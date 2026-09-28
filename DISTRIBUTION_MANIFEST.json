@@ -630,13 +630,13 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 291949,
-      "sha256": "f5b802b627f68ac31599eb9574304aa3a922f0cc0039ff1758a568bd70f0c269"
+      "size": 294083,
+      "sha256": "7f7712945245893abceecbffb41a2b3faa982b24045c3c36629ec72e88f7c8d3"
     },
     {
       "path": "SKILL.md",
-      "size": 40662,
-      "sha256": "86314058568805e544dc752055a8476cdf95124b7a1ec2fccac4644fba4620ea"
+      "size": 42181,
+      "sha256": "09a03da4cd6d7ca984c713d661a6af9e35b457f24ed6ff824a0807f2a87001be"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -725,13 +725,13 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 11313,
-      "sha256": "fad2f849c0b59866c020bdb6d93f94c58b95b93e780818ac801f19be200ba6f3"
+      "size": 13508,
+      "sha256": "673de76a9d6ae5fa9448e7a544cdfc0e0bdc8763a2fd7cb3d521b8b4b58b596a"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 40399,
-      "sha256": "25f43aa86b3fd00226731a7932f6e25f04c5a251544a78e1c2a3872b2f529873"
+      "size": 41508,
+      "sha256": "78f935816b575b7c228198c05e2e0c223424120ab2f40f6386ce0bf2f8deb068"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -1875,13 +1875,13 @@
     },
     {
       "path": "TESTS/run_review_regression.py",
-      "size": 139439,
-      "sha256": "95bf6d52ddf5eab958c8a5894890f4f8d52ef9104db7151a0da6758f042cbfc7"
+      "size": 148478,
+      "sha256": "cc253ff40069f4edde927213092e5b76499a5c9433c18d4682081096393d47ef"
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
-      "size": 7110,
-      "sha256": "c64d18bb3b9450427d5f41b9140eda645f553742d5bd720fe9919d67e089490a"
+      "size": 7967,
+      "sha256": "04ccc05aa74315c57520b4ad642bd209ec8438747c8aabf5b9fd7ef49900f522"
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
@@ -1990,8 +1990,8 @@
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
-      "size": 17408,
-      "sha256": "2c3a8490d81017ddbb96c7901c03e8ce4e13f20cf05ec7200ceb98466f7188d0"
+      "size": 17906,
+      "sha256": "b3bb2391c1e14143558801842bf9eeaaaf6d35d469669b56aea26baf737d3a78"
     },
     {
       "path": "TOOLS/capability_compliance_projection.py",
@@ -2025,8 +2025,8 @@
     },
     {
       "path": "TOOLS/implementation_intent.py",
-      "size": 21234,
-      "sha256": "8255c23bd41abdc8fb6282426b0126d54b7331f5e2b1b5ad8013ed9107e25c8a"
+      "size": 38989,
+      "sha256": "f321567ab6a33b1974d653555c346c36993440167bdb29d20efafa4c93b96638"
     },
     {
       "path": "TOOLS/machine_receipts.py",
@@ -2100,8 +2100,8 @@
     },
     {
       "path": "TOOLS/release_gate_core.py",
-      "size": 88806,
-      "sha256": "076ce9fb321e80ae0ae78433b99b995b500c18e2ef5c7dd246d4e26096e7f808"
+      "size": 88813,
+      "sha256": "13b157097bbc9e4fc697163b23f375f054d76ff063091844f05f8d7048c59573"
     },
     {
       "path": "TOOLS/release_gate_hardening.py",
@@ -2195,8 +2195,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 24137,
-      "sha256": "7a34c25a716dccd66f81e502b75b8d7382f46776c18cf39f826c54a06a1dcc4b"
+      "size": 24588,
+      "sha256": "c2f2a0b842423f0c4f5e07dff0a0d99281b28dbca49067b1a0186e0acf15fb1b"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "ebf09f03e1abcda609cf9b10f8d7332a57118d266e9a857cc80aa8dd0b637764"
+  "snapshot_digest": "4056452c9bf0b352c06874980b6b7625e5e230e6e2eeeaeeb0e9f183fe6276f2"
 }
