@@ -703,8 +703,12 @@ with tempfile.TemporaryDirectory() as td:
     )
 
 p=subprocess.run([sys.executable,str(ROOT/"TESTS/run_execution_checkpoint_regression.py")],cwd=ROOT,capture_output=True,text=True)
-checkpoint_report=json.loads(p.stdout) if p.returncode==0 else {}
+try:
+    checkpoint_report=json.loads(p.stdout)
+except json.JSONDecodeError:
+    checkpoint_report={}
 checkpoint_cases={row.get("id"):row for row in checkpoint_report.get("cases") or [] if isinstance(row,dict)}
+checkpoint_failed=[row for row in checkpoint_report.get("cases") or [] if isinstance(row,dict) and row.get("result")!="PASS"]
 record(
     "recover_first_checkpoint_regression_is_green",
     p.returncode==0
@@ -712,7 +716,13 @@ record(
     and checkpoint_cases.get("execution:absent_checkpoint_is_never_started",{}).get("result")=="PASS"
     and checkpoint_cases.get("execution:second_caller_reuses_running_operation",{}).get("result")=="PASS"
     and checkpoint_cases.get("execution:completion_response_lost_reads_terminal_rc",{}).get("result")=="PASS",
-    {"returncode":p.returncode,"stderr":p.stderr[-2000:],"checkpoint_status":checkpoint_report.get("status")},
+    {
+        "returncode":p.returncode,
+        "stderr":p.stderr[-2000:],
+        "stdout_tail":p.stdout[-4000:],
+        "checkpoint_status":checkpoint_report.get("status"),
+        "failed_cases":checkpoint_failed,
+    },
 )
 
 p=subprocess.run([sys.executable,str(ROOT/"TOOLS/rule_registry.py"),"--rule","SOURCE_FIRST"],cwd=ROOT,capture_output=True,text=True)
