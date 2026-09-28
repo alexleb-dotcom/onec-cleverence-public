@@ -197,13 +197,26 @@ def build_ledger(plan:dict, registry:dict|None=None)->dict:
         rule=rules[route["id"]]
         if not route.get("active") and rule.get("tier",1)>0:
             continue
-        rule_rows.append({
+        rule_row={
             "id":rule["id"],"claim_id":rule_claim_id(rule["id"]),"tier":rule["tier"],"profile":rule.get("profile"),"activation_status":route.get("activation_status"),
             "detected_by":route.get("detected_by",[]),"status":"EVIDENCE_REQUIRED","reason":"","evidence":[],
             "required_evidence_modes":rule.get("evidence_modes",[]),
             "proof_policy":proof_policy_for(rule,registry),
             "checks":[{**_unresolved_check(c,rule["id"]),"proof_policy":proof_policy_for(rule,registry)} for c in rule.get("checks",[])],
-        })
+        }
+        if rule["id"]=="ANALOG_BEFORE_INVENTION":
+            rule_row["existing_capability_disposition"]={
+                "disposition":"EVIDENCE_REQUIRED",
+                "discovery_candidates":[],
+                "existing_owner":None,
+                "reused_capability":None,
+                "gap":[],
+                "change_scope":[],
+                "why_not_existing":None,
+                "proof_refs":[],
+                "owner_exception":None,
+            }
+        rule_rows.append(rule_row)
     gates=[]
     req=plan.get("requirements",{})
     req_ready=req.get("gate_result")=="PASS" and req.get("gate_outcome") in {"REQUIREMENTS_READY","REQUIREMENTS_READY_WITH_ASSUMPTIONS"}
