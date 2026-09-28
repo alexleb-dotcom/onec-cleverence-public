@@ -81,7 +81,7 @@ Mixed/unrelated prior chat or source is non-authoritative until exact current ta
 
 Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`, or a second interaction registry/state machine. This turn classification is recomputed from current observable context.
 
-When a human-readable requirements/specification artifact is the requested deliverable, load `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md` only for that rendering phase. When `MANUAL_TRANSFER_INSTRUCTION` is the selected result mode, load `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md` only for final delivery assembly; neither template is a normal startup dependency.
+When a user-facing documentation artifact is applicable, defer its presentation contract until the rendering phase. Load `KNOWLEDGE/USER_ARTIFACT_DOCX.md` plus only the artifact-specific template needed, then render one separate DOCX through `TOOLS/render_user_artifact_docx.py`. Requirements, manual-transfer, implementation-notes and line-by-line documents are separate files by default; line-by-line is generated only on explicit user request. These contracts are not normal startup dependencies and never replace machine/proof owners.
 
 ## Mandatory task workflow
 
@@ -406,7 +406,7 @@ For cross-system tasks, changing only one file/system never makes the contract o
 
 ## Delivery discipline
 
-Before final presentation, **load and obey** `WORKFLOW/RESULT_DELIVERY_CONTRACT.json` as the canonical machine-readable result contract and `KNOWLEDGE/RESULT_DELIVERY.md` for human guidance. The exact implementation table/header shape and the routed `Performance Review` projection are owned there; do not maintain a second detailed format specification in this Skill body.
+Before final presentation, **load and obey** `WORKFLOW/RESULT_DELIVERY_CONTRACT.json` as the canonical machine-readable result contract and `KNOWLEDGE/RESULT_DELIVERY.md` for human guidance. When user-facing documentation applies, also load `KNOWLEDGE/USER_ARTIFACT_DOCX.md` and generate each applicable document as its own DOCX with `TOOLS/render_user_artifact_docx.py`; do not silently merge documents or substitute chat/Markdown for a required DOCX. Exact artifact structure remains owned by the Result Delivery contract and artifact-specific templates, not duplicated in this Skill body.
 
 Presentation never upgrades canonical requirements/evidence/release status. Keep blocked/runtime-pending states explicit, never modify the user's baseline in place, validate the exact final bytes/archive, transfer only changed files plus contract-coupled dependencies, and preserve UTF-8/Cyrillic filenames. Runtime not executed here remains `READY_FOR_RUNTIME_TEST`/`RUNTIME_PENDING`, not proven.
 
