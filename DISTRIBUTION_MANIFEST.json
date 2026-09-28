@@ -1885,8 +1885,8 @@
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
-      "size": 43506,
-      "sha256": "2e35118cf54a7f29e7e7adf30f768265ee0415e4de293126ce6d7f2a7217a4a8"
+      "size": 43568,
+      "sha256": "84e49cd25985a51b131308daf49b4bb04572d4b0c9bb946eca813a825eba9d80"
     },
     {
       "path": "TESTS/run_skill_freshness_regression.py",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "ca9d226de501734222deee1ef8f41ccbc1c549c35bfc50e5c73d7629e8e49883"
+  "snapshot_digest": "71586d7dcf73ea5bffb2fd4e1e63346aa36eea8d8839406479fd81a1ccdcaf6b"
 }
