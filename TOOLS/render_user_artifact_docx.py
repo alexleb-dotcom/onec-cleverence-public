@@ -201,8 +201,6 @@ def _manual(payload: dict) -> Document:
     doc = _base(payload.get("title") or "Инструкция по внедрению")
     _meta(doc, [("Проект", payload["project"]), ("Задача", payload["task"]),
                 ("Целевая база / артефакт", payload["target_identity"])])
-    if payload.get("preconditions"):
-        _heading(doc, "Предусловия"); _body(doc, payload["preconditions"])
     _heading(doc, "Создаваемые объекты")
     created = payload.get("created_objects") or []
     if not created: doc.add_paragraph("Нет")
@@ -233,6 +231,8 @@ def _manual(payload: dict) -> Document:
         _heading(doc, "Было", 2); _code(doc, item["before"])
         _heading(doc, "Стало", 2); _code(doc, item["after"])
         _rationale(doc, item["rationale"], item.get("standard_rule"))
+    if payload.get("preconditions"):
+        _heading(doc, "Предусловия"); _body(doc, payload["preconditions"])
     for title, key in (
         ("Миграция / инициализация / одноразовые действия", "migration"),
         ("Статическая проверка после внедрения", "static_verification"),
