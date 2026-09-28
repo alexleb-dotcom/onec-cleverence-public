@@ -167,6 +167,29 @@
           "do not rename, merge, split, remove, reorder or add base columns",
           "do not invent project/task/platform/configuration identity or standard/rule",
           "the DOCX is a presentation artifact and cannot create or upgrade proof"
+        ],
+        "required": true,
+        "additional_information_allowed_outside_base_format": true,
+        "header_field_rules": {
+          "tz_number": "exact task/TZ number from bound task/project context",
+          "project": "exact bound project",
+          "task": "exact bound task",
+          "platform_version": "exact evidenced target platform version",
+          "configuration_name_version": "exact evidenced configuration name and version"
+        },
+        "format_rules": [
+          "five header fields are mandatory and appear exactly once in the owner-approved order",
+          "header fields must not be repeated as table columns",
+          "five base table columns are mandatory and appear exactly in the owner-approved order",
+          "do not rename, remove, merge, split or reorder header fields or base table columns",
+          "do not add extra columns to the base table",
+          "additional supplementary information remains outside the mandatory header and base table"
+        ],
+        "identity_rules": [
+          "project/task/TZ identity comes only from bound Project Context or requirements",
+          "platform/configuration identity comes only from exact evidenced target context",
+          "container identity comes from the exact baseline/candidate layout",
+          "same-named objects in the main configuration and extensions or different extensions remain separate rows"
         ]
       },
       "performance_review_projection": {
