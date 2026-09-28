@@ -79,6 +79,9 @@ def write_zip(path,rows):
 
 skill=(ROOT/"SKILL.md").read_text(encoding="utf-8-sig")
 progressive=skill.split("## Progressive loading",1)[1] if "## Progressive loading" in skill else ""
+execution_checkpoint_knowledge=(ROOT/"KNOWLEDGE/EXECUTION_CHECKPOINT.md").read_text(encoding="utf-8-sig")
+evidence_acquisition_knowledge=(ROOT/"KNOWLEDGE/EVIDENCE_ACQUISITION.md").read_text(encoding="utf-8-sig")
+development_pipeline=json.loads((ROOT/"WORKFLOW/DEVELOPMENT_PIPELINE.json").read_text(encoding="utf-8-sig"))
 record("llm_does_not_load_full_registry","RULES/rule_registry.json\nrouted profile(s)" not in progressive and "LLM must not load the full registry" in skill)
 record(
     "skill_workbench_ownership_boundary_is_always_loaded",
@@ -177,6 +180,66 @@ record(
     "no_persistent_global_interaction_state",
     "Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`" in skill
     and "second interaction registry/state machine" in skill,
+)
+recovery_contract=development_pipeline.get("interruption_recovery_contract") or {}
+recovery_rules="\n".join(recovery_contract.get("rules") or [])
+recovery_forbidden="\n".join(recovery_contract.get("forbidden_persistence") or [])
+
+record(
+    "timeout_before_side_effect_is_unknown_then_absent_checkpoint_is_distinguishable",
+    "previous turn's completion state is **UNKNOWN**, not failed" in skill
+    and "NEVER_STARTED / MANIFEST_ABSENT" in execution_checkpoint_knowledge,
+)
+record(
+    "read_only_response_loss_reuses_or_rereads_authoritative_state",
+    "for a read-only action, reuse a still-valid durable result when available; otherwise re-read the authoritative source when freshness requires it" in skill
+    and "read-only result is reused while still valid or re-read from the authoritative source when freshness requires" in recovery_rules,
+)
+record(
+    "non_idempotent_external_mutation_requires_native_readback_before_retry",
+    "for an external non-idempotent mutation, perform exact native-state read-back before retry" in skill
+    and "external non-idempotent mutation requires exact native-state read-back before retry" in recovery_rules,
+)
+record(
+    "checkpoint_running_and_terminal_response_loss_route_to_existing_owner",
+    "RUNNING` means continue/poll" in skill
+    and "terminal `PASSED`/`FAILED` means read the persisted result rather than rerun" in skill
+    and "existing `TOOLS/execution_checkpoint.py` owner" in skill,
+)
+record(
+    "continue_retry_turn_recovers_before_material_replay",
+    "On a user `continue` / `retry` turn after an interruption" in skill
+    and "before replaying any material action" in skill
+    and recovery_contract.get("invariant")=="RECOVER_FIRST_NOT_REPLAY_FIRST",
+)
+record(
+    "matching_durable_artifact_survives_lost_final_response",
+    "losing the final assistant response does not invalidate it" in skill
+    and "inspect current durable evidence/artifact state before requesting or producing it again" in evidence_acquisition_knowledge,
+)
+record(
+    "ambiguous_external_state_fails_closed_without_blind_replay",
+    "if state remains ambiguous, fail closed" in skill
+    and "do not blind-replay" in skill
+    and "ambiguous state fails closed" in recovery_rules,
+)
+record(
+    "resume_first_genuinely_uncompleted_owner_without_restatement",
+    "resume from the first genuinely uncompleted canonical owner/stage" in skill
+    and "Do not ask the user to restate already-bound task/project/requirements solely because the prior response timed out" in skill,
+)
+record(
+    "bound_evidence_is_not_rerequested_after_interrupted_acknowledgement",
+    "Do not re-request evidence merely because the response that acknowledged it was lost" in evidence_acquisition_knowledge
+    and "resume from the first canonical owner whose work is genuinely incomplete" in evidence_acquisition_knowledge,
+)
+record(
+    "recover_first_adds_no_persisted_recovery_state_machine",
+    recovery_contract.get("persistence")=="TURN_LOCAL_DESCRIPTIVE_ONLY"
+    and "conversation/session/recovery state machine" in recovery_forbidden
+    and "generic task or mutation ledger" in recovery_forbidden
+    and "second execution checkpoint" in recovery_forbidden
+    and "do not persist them as conversation/session/recovery state" in skill,
 )
 record(
     "new_user_artifact_templates_are_deferred",
@@ -638,6 +701,29 @@ with tempfile.TemporaryDirectory() as td:
         and all((ROOT/path).is_file() for path in cross_profiles),
         {"surface":cross_plan.get("routing",{}).get("surface"),"active":sorted(x for x in cross_active if x),"profiles":sorted(cross_profiles),"loadable":sorted(cross_loadable)},
     )
+
+p=subprocess.run([sys.executable,str(ROOT/"TESTS/run_execution_checkpoint_regression.py")],cwd=ROOT,capture_output=True,text=True)
+try:
+    checkpoint_report=json.loads(p.stdout)
+except json.JSONDecodeError:
+    checkpoint_report={}
+checkpoint_cases={row.get("id"):row for row in checkpoint_report.get("cases") or [] if isinstance(row,dict)}
+checkpoint_failed=[row for row in checkpoint_report.get("cases") or [] if isinstance(row,dict) and row.get("result")!="PASS"]
+record(
+    "recover_first_checkpoint_regression_is_green",
+    p.returncode==0
+    and checkpoint_report.get("status")=="PASS"
+    and checkpoint_cases.get("execution:absent_checkpoint_is_never_started",{}).get("result")=="PASS"
+    and checkpoint_cases.get("execution:second_caller_reuses_running_operation",{}).get("result")=="PASS"
+    and checkpoint_cases.get("execution:completion_response_lost_reads_terminal_rc",{}).get("result")=="PASS",
+    {
+        "returncode":p.returncode,
+        "stderr":p.stderr[-2000:],
+        "stdout_tail":p.stdout[-4000:],
+        "checkpoint_status":checkpoint_report.get("status"),
+        "failed_cases":checkpoint_failed,
+    },
+)
 
 p=subprocess.run([sys.executable,str(ROOT/"TOOLS/rule_registry.py"),"--rule","SOURCE_FIRST"],cwd=ROOT,capture_output=True,text=True)
 narrow=json.loads(p.stdout) if p.returncode==0 else {}

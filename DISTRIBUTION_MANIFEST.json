@@ -75,13 +75,13 @@
     },
     {
       "path": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
-      "size": 14762,
-      "sha256": "367232c8cfeaa12376b19a75e4e01291537c1420cbc1970c66442f97d1aa04eb"
+      "size": 15455,
+      "sha256": "299506a6d7d9cc985c852f9b946555e7ee1d3284b093f60227bc5b8eb598c27b"
     },
     {
       "path": "KNOWLEDGE/EXECUTION_CHECKPOINT.md",
-      "size": 3130,
-      "sha256": "0407a2db44bd9c50c60fe518269e171209e9ce93f806946bd15899c0fa707100"
+      "size": 3916,
+      "sha256": "490aed1c8270a766b78b25a2b71d7b96b25998fc39363cc32631a2006303b419"
     },
     {
       "path": "KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md",
@@ -635,8 +635,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 38739,
-      "sha256": "2151af32eb59449320e967da9a3c08511a9103cedcd0133545ee9a02af84eb92"
+      "size": 40662,
+      "sha256": "86314058568805e544dc752055a8476cdf95124b7a1ec2fccac4644fba4620ea"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -1725,8 +1725,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 48686,
-      "sha256": "5a71e48472919dd2a067e955c203893d92ce4f4baf3c24fe991f7eab2ce9ad4a"
+      "size": 53437,
+      "sha256": "b92591199baa322433cda66e3ec683784d5780b79378845d03d3ffda1c9fba09"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1765,8 +1765,8 @@
     },
     {
       "path": "TESTS/run_execution_checkpoint_regression.py",
-      "size": 11728,
-      "sha256": "60e3a57011cd67d980acccc8cb3aaba75652b769c5e75f649e1bdd49707704cd"
+      "size": 12321,
+      "sha256": "a8e7ee6b65344d93f0ee2e2b325b570ff19906d236c5727c8dcebf6a1dde8272"
     },
     {
       "path": "TESTS/run_external_source_regression.py",
@@ -2195,8 +2195,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 22609,
-      "sha256": "9e05a4a39a3e149b96f5f2a4fbdf5ef5faff163f12d2a14ce3de50aaa8cda867"
+      "size": 24137,
+      "sha256": "7a34c25a716dccd66f81e502b75b8d7382f46776c18cf39f826c54a06a1dcc4b"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "95cc1d42366300a85e97ab7797b3ca51fcfb482b188c37b466597db1dfd5a936"
+  "snapshot_digest": "491041cdf547c5d8a129452dc67c1e88643d47f8c5070ba44b2098312026d5b4"
 }

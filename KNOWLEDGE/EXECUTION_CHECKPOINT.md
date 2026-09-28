@@ -10,6 +10,13 @@ Before any apparent retry, invoke the same exact operation again or use `recover
 
 `RUNNING` means continue polling the persisted operation. `PASSED`/`FAILED` means read the existing RC/log/report and do not rerun. `LOST_PROCESS` and `STALE_IDENTITY` are fail-closed and require an explicit recovery decision. A tool/transport/LLM timeout never proves that the target process failed to start.
 
+## Scope within generic turn recovery
+
+This checkpoint remains canonical **only for applicable local long-running commands**. Generic chat-turn recovery must not manufacture checkpoint records for arbitrary external API mutations, publication/deployment actions or other non-idempotent remote side effects. Those actions are reconciled against their exact native durable state/read-back through their normal owner before retry.
+
+If `recover` is called for the exact local operation before any checkpoint manifest exists, the canonical result is `NEVER_STARTED / MANIFEST_ABSENT`. That is distinguishable from `RUNNING`, `LOST_PROCESS` or a terminal operation. An already terminal checkpoint remains reusable even when the assistant/tool response that would have reported it was lost.
+
+
 ## CLI shape
 
 The source identity is a JSON file outside the tracked source when it contains run-specific state. For a public snapshot use `SNAPSHOT` identity with `archive_sha256` and `snapshot_digest`; for private source use `PR_SOURCE` with repository/base/head/tree/verified local tree. Environment names may be fingerprinted with `--env-name`; plaintext values are never persisted.

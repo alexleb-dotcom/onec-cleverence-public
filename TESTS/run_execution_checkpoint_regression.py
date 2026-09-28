@@ -74,6 +74,20 @@ def counter(cwd: Path) -> int:
 with tempfile.TemporaryDirectory() as td:
     base = Path(td)
 
+    # 0: recover before any checkpoint registration/launch distinguishes no recorded side effect.
+    absent_cwd = base / "absent"; absent_cwd.mkdir()
+    absent_root = base / "state-absent"
+    absent_spec = spec_for(absent_cwd, counter_code(), check="absent")
+    absent_op = operation_dir(absent_root, absent_spec)
+    absent = recover(absent_op, absent_spec)
+    record(
+        "execution:absent_checkpoint_is_never_started",
+        absent.get("state") == "NEVER_STARTED"
+        and absent.get("reason") == "MANIFEST_ABSENT"
+        and counter(absent_cwd) == 0,
+        absent,
+    )
+
     # 1-3: fresh launch, duplicate caller while RUNNING, and lost launch response recovery.
     cwd = base / "running"; cwd.mkdir()
     state_root = base / "state-running"

@@ -259,5 +259,28 @@
   "user_artifact_docx_renderer": "TOOLS/render_user_artifact_docx.py",
   "user_artifact_docx_dependency": "python-docx==1.2.0",
   "implementation_notes_docx_template": "TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md",
-  "line_by_line_justification_docx_template": "TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md"
+  "line_by_line_justification_docx_template": "TEMPLATES/LINE_BY_LINE_JUSTIFICATION_DOCX_TEMPLATE.md",
+  "interruption_recovery_contract": {
+    "invariant": "RECOVER_FIRST_NOT_REPLAY_FIRST",
+    "persistence": "TURN_LOCAL_DESCRIPTIVE_ONLY",
+    "rules": [
+      "interrupted chat/stream/tool/transport/LLM response means completion UNKNOWN, not failure",
+      "before replaying any material action, reconcile matching durable artifacts/evidence and exact native state",
+      "local long-running command recovery is delegated to the existing TOOLS/execution_checkpoint.py owner with the same exact operation identity",
+      "external non-idempotent mutation requires exact native-state read-back before retry; matching completed mutation resumes at the next owner, definitely absent mutation may retry through its normal owner, ambiguous state fails closed with the smallest exact verification and no blind replay",
+      "read-only result is reused while still valid or re-read from the authoritative source when freshness requires",
+      "resume from the first genuinely uncompleted canonical owner/stage and never require restatement of already-bound task/project/requirements solely because the response timed out"
+    ],
+    "forbidden_persistence": [
+      "conversation/session/recovery state machine",
+      "generic task or mutation ledger",
+      "event log or retry queue",
+      "daemon or watcher",
+      "second execution checkpoint",
+      "duplicate Project Context owner",
+      "global ProjectSnapshot state",
+      "Result Delivery recovery mode",
+      "generic assistant-turn persistence layer"
+    ]
+  }
 }
