@@ -109,6 +109,19 @@ def violates(case, observation):
             or not observation.get("state_reentry_dispositioned", False)
             or not observation.get("producer_mapping_consumer_complete", False)
         )
+    if oracle == "existing_capability_admission":
+        disposition = observation.get("disposition")
+        if disposition == "EVIDENCE_REQUIRED" and observation.get("mutation_allowed", False):
+            return True
+        if disposition == "CUSTOM_REQUIRED" and observation.get("provider_miss_only", False):
+            return True
+        if observation.get("exact_source_contradicts_provider", False) and observation.get("provider_controls_conclusion", False):
+            return True
+        if disposition == "REUSE_EXISTING" and observation.get("exact_owner_full", False) and observation.get("new_parallel_mechanism", False) and not observation.get("owner_exception", False):
+            return True
+        if disposition == "EXTEND_EXISTING" and observation.get("change_scope_exceeds_gap", False):
+            return True
+        return False
     raise ValueError(f"unknown oracle: {oracle}")
 
 
