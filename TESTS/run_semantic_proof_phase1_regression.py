@@ -33,7 +33,7 @@ def intent_row(artifact,target_kind="ARTIFACT",fragment=None,action="modify",ent
         "requirement_id":"REQ:1","design_decision_id":"DD:1","artifact":artifact,
         "target_kind":target_kind,"action":action,
         "responsibility":"own requested behavior","necessity":"required by REQ:1",
-        "existing_owner_disposition":"existing owner checked","platform_reuse_decision":"reuse existing owner",
+        "existing_owner_disposition":"existing owner checked","existing_capability_claim_id":"RULE:ANALOG_BEFORE_INVENTION","platform_reuse_decision":"reuse existing owner",
         "acceptance_cases":["AC:1"],
         "nearest_smaller_alternative":{"alternative":"no change","rejection_reason":"does not satisfy REQ:1"},
         "verification_hooks":["phase1 regression"],
