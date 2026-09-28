@@ -136,6 +136,7 @@ baseline_root_tool_refs={
     "TOOLS/execution_checkpoint.py",
     "TOOLS/reference_locator.py",
     "TOOLS/release_gate.py",
+    "TOOLS/render_user_artifact_docx.py",
     "TOOLS/requirements_gate.py",
     "TOOLS/rule_registry.py",
 }
@@ -179,10 +180,12 @@ record(
 )
 record(
     "new_user_artifact_templates_are_deferred",
-    "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" in skill
-    and "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" in skill
-    and "neither template is a normal startup dependency" in skill
-    and "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in progressive.split("routed profile(s)",1)[0],
+    "KNOWLEDGE/USER_ARTIFACT_DOCX.md" in skill
+    and "TOOLS/render_user_artifact_docx.py" in skill
+    and "These contracts are not normal startup dependencies" in skill
+    and "KNOWLEDGE/USER_ARTIFACT_DOCX.md" not in progressive.split("routed profile(s)",1)[0]
+    and "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in progressive.split("routed profile(s)",1)[0]
+    and "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" not in progressive.split("routed profile(s)",1)[0],
 )
 
 with tempfile.TemporaryDirectory() as td:
