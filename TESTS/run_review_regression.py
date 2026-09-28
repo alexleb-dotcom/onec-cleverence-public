@@ -955,7 +955,6 @@ analog_claim=next(x for x in proved['rules'] if x['id']=='ANALOG_BEFORE_INVENTIO
 analog_source_ref=next(x['ref'] for x in analog_claim['evidence'] if x.get('kind')=='SOURCE_REQUIRED')
 target_identity=current_target_identity(plan)
 admitted_scope=[
-    {'artifact':logical,'target_kind':'ARTIFACT','change_kind':'CUSTOM','mechanism_scale':False},
     {'artifact':logical,'target_kind':'BSL_ROUTINE','fragment':'ПроверитьДоговор','change_kind':'CUSTOM','mechanism_scale':False},
 ]
 analog_claim['existing_capability_disposition']={
@@ -1793,8 +1792,9 @@ r=validate_intent_map(claim_drift['implementation_intent_map'],plan,claim_drift)
 if not ok:errors.append({'case':key,'details':r})
 
 scope_drift=copy.deepcopy(proved); a=next(x for x in scope_drift['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
-a['existing_capability_disposition']['change_scope']=[a['existing_capability_disposition']['change_scope'][0]]
-a['existing_capability_disposition']['gap'][0]['change_scope']=copy.deepcopy(a['existing_capability_disposition']['change_scope'])
+wrong_scope={'artifact':logical,'target_kind':'BSL_ROUTINE','fragment':'ДругаяПроцедура','change_kind':'CUSTOM','mechanism_scale':False}
+a['existing_capability_disposition']['change_scope']=[wrong_scope]
+a['existing_capability_disposition']['gap'][0]['change_scope']=[copy.deepcopy(wrong_scope)]
 r=validate_intent_map(scope_drift['implementation_intent_map'],plan,scope_drift); key='existing_capability:final_scope_beyond_gap_fails'; ok=(r['result']=='FAIL' and any(x['type']=='IMPLEMENTATION_INTENT_SCOPE_EXCEEDS_ADMISSION' for x in r['errors'])); results[key]={'result':r['result'],'pass':ok}
 if not ok:errors.append({'case':key,'details':r})
 
