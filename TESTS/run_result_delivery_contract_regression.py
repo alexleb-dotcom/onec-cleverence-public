@@ -334,7 +334,7 @@ def main() -> int:
         "Предлагаемое решение",
         "Основания и граница доказанности",
         "REQUIREMENTS_BLOCKED",
-        "requirements gate",
+        "requirements_gate.py",
         "Truly empty conditional sections are omitted",
         "Internal authoring invariants",
     ]:
