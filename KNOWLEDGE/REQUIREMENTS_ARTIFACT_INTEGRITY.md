@@ -46,6 +46,12 @@ Before a non-trivial requirements artifact is called ready, try to falsify the f
 
 The purpose is not to invent edge cases. It is to expose material choices that the current wording leaves ambiguous.
 
+## Human-readable requirements artifact
+
+When the requested deliverable is a human-readable requirements / LT / TZ / specification document, render it through `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md`.
+
+The executable requirements contract and `TOOLS/requirements_gate.py` remain the semantic/readiness authority. Rendering must preserve exact project/task/source identifiers and must keep agreed requirements, material `OPEN` items, explicit non-blocking assumptions and `PROPOSED_SOLUTION` visibly distinct. A template cannot turn `REQUIREMENTS_BLOCKED` into a ready document by prose.
+
 ## Readiness boundary
 
 A requirements artifact may be described as complete/ready only when the requirements gate is ready and all material claims are either proven requirements, evidence-backed derivations, explicitly separated proposals, or resolved/non-blocking gaps. Blocking `OPEN`, proposal-to-requirement laundering, vague material match keys, unresolved correction fallout and missing required adversarial cases keep the artifact blocked.
