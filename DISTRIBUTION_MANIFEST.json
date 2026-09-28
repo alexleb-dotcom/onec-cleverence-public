@@ -1685,8 +1685,8 @@
     },
     {
       "path": "TESTS/run_bootstrap_capability_regression.py",
-      "size": 11081,
-      "sha256": "d0361d38088775cfb1bcd5b85ae0167056ea5281bb0082a23da79be4dcc2538a"
+      "size": 11272,
+      "sha256": "ef454a976ec2bb0ab8b83213c548ae3303e5df484d95b550f2af96aab0a4c45e"
     },
     {
       "path": "TESTS/run_capability_compliance_projection_regression.py",
@@ -2195,5 +2195,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "fc982177a6da3e49aac45a86040e18dc7aa9c66dcaee00d95808d9b532902fd5"
+  "snapshot_digest": "a736778a987820d9775cbb6608a37fa3bffd800d5f0f74a509ce8aa3660b9656"
 }
