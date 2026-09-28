@@ -48,31 +48,7 @@ When Mobile SMARTS behavior is uncertain, was the nearest stock operation/action
 
 Rule: `ANALOG_BEFORE_INVENTION`
 
-Before accepting source-code customization, was the target configuration/platform/BSP/vendor checked for an existing supported capability, setting or standard mechanism that satisfies the observable requirement without customization, with partial-fit gaps stated explicitly?
-
-## EXISTING_CAPABILITY_PREMUTATION_ADMISSION
-
-Rule: `ANALOG_BEFORE_INVENTION`
-
-Before source mutation/final implementation generation, is the existing ANALOG claim resolved to REUSE_EXISTING, EXTEND_EXISTING, CUSTOM_REQUIRED, or EVIDENCE_REQUIRED with exact current-target proof and a fail-closed implementation admission?
-
-## DISCOVERY_CANDIDATE_IS_NOT_PROOF
-
-Rule: `ANALOG_BEFORE_INVENTION`
-
-Are search/semantic/index/provider hits, misses, stale results and partial graphs treated only as discovery candidates while exact current-target evidence controls EXISTING_OWNER/GAP conclusions?
-
-## TECHNICAL_TZ_PROPOSED_SOLUTION_ONLY
-
-Rule: `ANALOG_BEFORE_INVENTION`
-
-Is a technical prescription in the TZ kept as PROPOSED_SOLUTION unless independently accepted after the reuse challenge, rather than being used as proof of CUSTOM_REQUIRED?
-
-## DUPLICATE_OWNER_EXCEPTION_REQUIRED
-
-Rule: `ANALOG_BEFORE_INVENTION`
-
-When exact evidence proves an existing owner covers the requirement, is any duplicate owner/mechanism blocked unless an explicit identity-bound owner exception authorizes the exact duplicate scope?
+Before source mutation/final implementation generation, is the target configuration/platform/BSP/vendor existing capability resolved from exact current-target evidence (discovery hits/misses/stale indexes/partial graphs are candidate-only), with technical TZ prescriptions kept as PROPOSED_SOLUTION by default, and with any duplicate owner requiring an explicit identity-bound exception?
 
 ## STANDARD_PIPELINE_SEMANTIC_PRESERVATION
 
