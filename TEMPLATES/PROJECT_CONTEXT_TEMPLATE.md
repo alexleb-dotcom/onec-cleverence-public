@@ -159,6 +159,8 @@ Resolve each independently and bind it to source evidence.
 
 Task-specific `request_id`, CollectionPlan rows, package path/hash, returned source files, delta requests and ChangePackage linkage belong to the current task evidence/ledger/orchestration state. Do **not** accumulate them in durable `PROJECT_CONTEXT` as project policy.
 
+The fields below define durable **project delivery policy/constraints**, not the rendered task instruction itself. When `MANUAL_TRANSFER_INSTRUCTION` is selected, render the task-specific human instruction through `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`. Stable step ids, payload refs and task-specific transfer steps belong to the task/ChangePackage artifact, not durable PROJECT_CONTEXT.
+
 ### MANUAL_TRANSFER_INSTRUCTION contract
 - applies: yes | no
 - ordered create / modify / delete inventory:
