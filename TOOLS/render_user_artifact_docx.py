@@ -23,7 +23,7 @@ ARTIFACTS = {
     "implementation_notes": "Особенности реализации.docx",
     "line_by_line": "Построчное обоснование изменений.docx",
 }
-PSEUDO_VERSION_RE = re.compile(r"(?:^|[_ .-])(v\\d+|final\\d*|fix\\d*|new)(?:[_ .-]|$)", re.I)
+PSEUDO_VERSION_RE = re.compile(r"(?:^|[_ .-])(v\d+|final\d*|fix\d*|new)(?:[_ .-]|$)", re.I)
 INVALID_FILENAME_RE = re.compile(r'[<>:"/\\\\|?*]')
 
 
