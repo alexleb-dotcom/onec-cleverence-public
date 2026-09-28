@@ -93,11 +93,17 @@ Resolve each independently and bind it to source evidence.
 - evidence:
 
 ### AUTHOR_MARKER
-- status:
-- applies to new blocks / modified typical 1C code / customizations:
-- opening/closing syntax:
-- author/company/task/date syntax:
-- whether closing marker is required:
+- status: KNOWN | OPEN | NOT_APPLICABLE
+- development gate: AUTHOR_MARKER_READY | AUTHOR_MARKER_BLOCKED
+- applies to new blocks / one-line changes / modified typical 1C code / customizations / object-property attribution:
+- syntax source: SKILL_DEFAULT_1C | EXPLICIT_PROJECT_OVERRIDE | EXPLICIT_USER_OVERRIDE
+- explicit override syntax (only when explicitly supplied):
+- ФамилияИО:
+- organization marker: ПервыйБит (fixed by Skill default when no explicit override applies)
+- Дата value / rendering policy:
+- НомерТЗ:
+- пункты ТЗ:
+- unresolved required values:
 - evidence:
 
 ### TECHNICAL_COMMENT
