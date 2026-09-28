@@ -18,7 +18,7 @@
       "do not treat repository access as proof of deployed baseline, runtime or delivery workflow",
       "when customer configuration evidence is not already sufficient, derive TEMPLATES/PROJECT_SNAPSHOT_REQUEST.json from the accepted requirement and unresolved proof dependencies before asking for a broad configuration export"
     ],
-    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER or delivery details are unresolved; final changed code requires the applicable project conventions, and exact delivery requires an authoritative baseline/layout."
+    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER values or delivery details are unresolved. For applicable 1C implementation, AUTHOR_MARKER_BLOCKED forbids development entry; reuse bound values and ask only still-missing ФамилияИО / Дата value-or-policy / НомерТЗ / пункты ТЗ. ПервыйБит and the default marker shape are Skill-owned. Exact delivery still requires an authoritative baseline/layout."
   },
   "stages": [
     {
@@ -118,13 +118,13 @@
     {
       "id": "IMPLEMENTATION",
       "actions": [
+        "before any applicable 1C source mutation, final implementation code generation, delivery patch construction or manual-transfer implementation step, require AUTHOR_MARKER_READY from the existing Project Context/bootstrap/comment-policy contract; AUTHOR_MARKER_BLOCKED permits analysis/requirements/source inspection/evidence acquisition only, reuses bound values and asks only still-missing values",
         "build and maintain the canonical Implementation Intent Map bound to exact baseline/candidate/requirements/review-plan identities",
         "trace each material change requirement → design decision → artifact/fragment → entrypoint/caller → acceptance case → nearest smaller applicable alternative → verification hooks",
         "for Cleverence trace MSLX Action scenario/writer/state and field producer → mapping → Mobile field → writer/router/Core → consumer; unknown Action/writer remains an evidence gap",
         "minimal coherent diff",
         "preserve encoding/style and evidenced PROJECT_CONTEXT conventions",
         "do not refactor existing project/customer/third-party code or rewrite existing attribution/comments unless the task requires it and project policy permits it",
-        "when metadata attribution/author marker syntax is still OPEN, continue analysis but do not present final changed code as ready",
         "select/confirm the primary development result mode before final assembly: DIRECT_SOURCE_CHANGESET, MANUAL_TRANSFER_INSTRUCTION, PATCH_DIFF, IMPORTABLE_ARTIFACT, FULL_COMPARE_SET, ANALYSIS_REPORT or justified OTHER; supporting modes may be combined without weakening completeness",
         "bind development output to the accepted ProjectSnapshot identity/baseline and assemble it as a ChangePackage whose manifest traces every material change item to target, payload/instruction, dependencies and verification hooks"
       ],
