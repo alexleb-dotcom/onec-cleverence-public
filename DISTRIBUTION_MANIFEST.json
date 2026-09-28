@@ -1895,8 +1895,8 @@
     },
     {
       "path": "TESTS/run_user_artifact_docx_regression.py",
-      "size": 9277,
-      "sha256": "3fea39942bd936b869fbbec1896997ee907ac8d696c8664c22fef1b6d5107195"
+      "size": 10361,
+      "sha256": "d2d99e212f7688e879c469b5554e2d01b4a14c63f457eea849946d36e9a3aa75"
     },
     {
       "path": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
@@ -2116,7 +2116,7 @@
     {
       "path": "TOOLS/render_user_artifact_docx.py",
       "size": 15891,
-      "sha256": "4b131e69d07ad42d2349d8bd0489fc9f6298013d0fb69eb07949bf5a0244c3bc"
+      "sha256": "3e9d0a8eb7bf75e2bed986e812bb426d70f123e8fe77ae3475ac666f47716dfa"
     },
     {
       "path": "TOOLS/requirements_gate.py",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "b763ee10e7ee7b9544aea68ced274f7f15207fbd80c32e9626a5185dbf52cad1"
+  "snapshot_digest": "95cc1d42366300a85e97ab7797b3ca51fcfb482b188c37b466597db1dfd5a936"
 }
