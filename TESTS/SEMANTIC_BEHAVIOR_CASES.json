@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "principle": "Concrete positive/negative domain scenarios establish BEHAVIORALLY_SAMPLED only for the named failure mode. They do not constitute target-runtime proof or an LLM-provider/model smoke test.",
   "cases": [
     {
@@ -425,6 +425,82 @@
         "writer_path_bound": true,
         "state_reentry_dispositioned": true,
         "producer_mapping_consumer_complete": true
+      }
+    },
+    {
+      "id": "EXISTING_CAPABILITY_EVIDENCE_REQUIRED_BLOCKS_MUTATION",
+      "oracle": "existing_capability_admission",
+      "bad": {
+        "disposition": "EVIDENCE_REQUIRED",
+        "mutation_allowed": true
+      },
+      "good": {
+        "disposition": "EVIDENCE_REQUIRED",
+        "mutation_allowed": false
+      }
+    },
+    {
+      "id": "PROVIDER_MISS_DOES_NOT_PROVE_CUSTOM",
+      "oracle": "existing_capability_admission",
+      "bad": {
+        "disposition": "CUSTOM_REQUIRED",
+        "provider_miss_only": true,
+        "mutation_allowed": true
+      },
+      "good": {
+        "disposition": "EVIDENCE_REQUIRED",
+        "provider_miss_only": true,
+        "mutation_allowed": false
+      }
+    },
+    {
+      "id": "EXACT_OWNER_BLOCKS_DUPLICATE",
+      "oracle": "existing_capability_admission",
+      "bad": {
+        "disposition": "REUSE_EXISTING",
+        "exact_owner_full": true,
+        "new_parallel_mechanism": true,
+        "owner_exception": false,
+        "mutation_allowed": true
+      },
+      "good": {
+        "disposition": "REUSE_EXISTING",
+        "exact_owner_full": true,
+        "new_parallel_mechanism": false,
+        "owner_exception": false,
+        "mutation_allowed": true
+      }
+    },
+    {
+      "id": "EXTEND_SCOPE_STAYS_INSIDE_GAP",
+      "oracle": "existing_capability_admission",
+      "bad": {
+        "disposition": "EXTEND_EXISTING",
+        "gap_proven": true,
+        "change_scope_exceeds_gap": true,
+        "mutation_allowed": true
+      },
+      "good": {
+        "disposition": "EXTEND_EXISTING",
+        "gap_proven": true,
+        "change_scope_exceeds_gap": false,
+        "mutation_allowed": true
+      }
+    },
+    {
+      "id": "EXACT_SOURCE_WINS_PROVIDER_CONTRADICTION",
+      "oracle": "existing_capability_admission",
+      "bad": {
+        "disposition": "CUSTOM_REQUIRED",
+        "exact_source_contradicts_provider": true,
+        "provider_controls_conclusion": true,
+        "mutation_allowed": true
+      },
+      "good": {
+        "disposition": "REUSE_EXISTING",
+        "exact_source_contradicts_provider": true,
+        "provider_controls_conclusion": false,
+        "mutation_allowed": true
       }
     }
   ]
