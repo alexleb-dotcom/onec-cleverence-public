@@ -57,6 +57,10 @@ For implemented changes, summarize by responsibility rather than by changed line
 
 The selected result mode still controls the technical delivery shape (`DIRECT_SOURCE_CHANGESET`, `MANUAL_TRANSFER_INSTRUCTION`, `PATCH_DIFF`, `IMPORTABLE_ARTIFACT`, `FULL_COMPARE_SET`, etc.). `ChangePackage` remains the machine delivery envelope; this Result Delivery contract controls how that delivery is presented to the person.
 
+When `MANUAL_TRANSFER_INSTRUCTION` is primary, render the exact human-executable transfer document through `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`. The template must preserve exact target identity, ordered stable steps, anchors/payloads/dependencies and the proof boundary; it must not leave a material implementation choice to the human. The instruction does not replace `ChangePackage` and does not prove application/deployment/runtime.
+
+Standalone rollout, validation or human-handoff files are conditional project/user deliverables, not mandatory artifacts for every implementation. Normal `Проверка` remains this Result Delivery projection.
+
 ### Особенности реализации
 
 Every non-trivial implementation must finish with a human-readable `Особенности реализации` section. `Проект` and `Задача` are mandatory one-time section fields above the table and are not repeated in each row:
@@ -100,6 +104,8 @@ Show the current and proposed algorithms with passes over primary data, nested s
 - The projection cannot change `implementation_readiness` or the final `release_outcome`.
 
 ## Requirements artifact profile
+
+Render a requested human-readable requirements / LT / TZ / specification document through `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md`. The executable requirements contract/gate remains authoritative: the rendered document must preserve agreed requirements, material `OPEN` items, explicit assumptions and proposed solution as distinct classes and must never upgrade a blocked gate.
 
 For a specification/technical assignment/resulting requirements artifact, the result must distinguish:
 
