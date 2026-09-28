@@ -11,7 +11,7 @@ GUIDE_PATH = ROOT / "KNOWLEDGE/RESULT_DELIVERY.md"
 SKILL_PATH = ROOT / "SKILL.md"
 PIPELINE_PATH = ROOT / "WORKFLOW/DEVELOPMENT_PIPELINE.json"
 CHANGE_PACKAGE_PATH = ROOT / "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json"
-README_PATH = ROOT / "README.md"
+REQUIREMENTS_ARTIFACT_TEMPLATE_PATH = ROOT / "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md"\nMANUAL_TRANSFER_TEMPLATE_PATH = ROOT / "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md"\nREADME_PATH = ROOT / "README.md"
 PUBLIC_WORKFLOW_PATH = ROOT / ".github/workflows/shareable-validation.yml"
 PUBLIC_CI_INVENTORY_PATH = ROOT / "TOOLS/PUBLIC_CI_INVENTORY.json"
 
@@ -289,7 +289,7 @@ def main() -> int:
             controls[case_id]["details"] = details
         if not ok:
             errors.append(f"control_failed:{case_id}")
-    for path in [CONTRACT_PATH, GUIDE_PATH, SKILL_PATH, PIPELINE_PATH, CHANGE_PACKAGE_PATH, README_PATH, PUBLIC_WORKFLOW_PATH, PUBLIC_CI_INVENTORY_PATH]:
+    for path in [CONTRACT_PATH, GUIDE_PATH, SKILL_PATH, PIPELINE_PATH, CHANGE_PACKAGE_PATH, REQUIREMENTS_ARTIFACT_TEMPLATE_PATH, MANUAL_TRANSFER_TEMPLATE_PATH, README_PATH, PUBLIC_WORKFLOW_PATH, PUBLIC_CI_INVENTORY_PATH]:
         if not path.is_file():
             errors.append(f"missing:{path.relative_to(ROOT)}")
     if errors:
@@ -298,6 +298,59 @@ def main() -> int:
 
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     errors.extend(validate_contract(contract))
+
+    req_profile = (contract.get("profiles") or {}).get("REQUIREMENTS_ARTIFACT") or {}
+    impl_profile = (contract.get("profiles") or {}).get("IMPLEMENTATION_DELIVERY") or {}
+    if req_profile.get("template") != "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md":
+        errors.append("requirements_artifact_template_reference_missing")
+    if impl_profile.get("manual_transfer_instruction_template") != "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md":
+        errors.append("manual_transfer_template_reference_missing")
+    artifact_format = contract.get("user_artifact_format") or {}
+    for token in ["Russian UTF-8", "remain literal", "pseudo-version", "cannot create or upgrade"]:
+        if token not in "\n".join(str(v) for v in artifact_format.values()):
+            errors.append(f"user_artifact_format_missing:{token}")
+
+    requirements_template = REQUIREMENTS_ARTIFACT_TEMPLATE_PATH.read_text(encoding="utf-8")
+    for token in [
+        "## Потребность / проблема",
+        "## Целевой результат",
+        "## Границы",
+        "## Функциональное поведение и материальные правила",
+        "## Приемка",
+        "## Открытые вопросы / блокеры",
+        "## Допущения",
+        "## Предлагаемое решение",
+        "## Доказанность / provenance",
+        "## Статус требований",
+        "REQUIREMENTS_BLOCKED",
+        "PROPOSED_SOLUTION",
+        "requirements gate",
+        "UTF-8",
+        "псевдоверсии",
+    ]:
+        if token not in requirements_template:
+            errors.append(f"requirements_artifact_template_missing:{token}")
+
+    manual_template = MANUAL_TRANSFER_TEMPLATE_PATH.read_text(encoding="utf-8")
+    for token in [
+        "Целевая база / артефакт",
+        "## Порядок изменений",
+        "STEP-001",
+        "CREATE | MODIFY | DELETE",
+        "Место / якорь",
+        "Код / payload",
+        "Зависит от",
+        "## Статическая проверка после переноса",
+        "## Runtime-проверка",
+        "## Нерешённые выборы для исполнителя",
+        "BLOCKING:",
+        "## Граница доказанности",
+        "UTF-8",
+        "псевдоверсии",
+        "не доказывает",
+    ]:
+        if token not in manual_template:
+            errors.append(f"manual_transfer_template_missing:{token}")
 
     # Negative controls: the validator must reject the two most important output shortcuts.
     no_boundary = copy.deepcopy(contract)
@@ -435,12 +488,22 @@ def main() -> int:
     pipeline = json.loads(PIPELINE_PATH.read_text(encoding="utf-8"))
     if pipeline.get("result_delivery_contract") != "WORKFLOW/RESULT_DELIVERY_CONTRACT.json":
         errors.append("pipeline_result_delivery_contract_reference_missing")
+    if pipeline.get("requirements_artifact_template") != "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md":
+        errors.append("pipeline_requirements_artifact_template_reference_missing")
+    if pipeline.get("manual_transfer_instruction_template") != "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md":
+        errors.append("pipeline_manual_transfer_template_reference_missing")
+    requirements_stage = next((row for row in pipeline.get("stages") or [] if row.get("id") == "REQUIREMENTS_AND_SCOPE"), {})
+    requirements_actions = "\n".join(requirements_stage.get("actions") or [])
+    if "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in requirements_actions or "never upgrades the requirements gate" not in requirements_actions:
+        errors.append("pipeline_requirements_artifact_rendering_contract_missing")
     final_stage = next((row for row in pipeline.get("stages") or [] if row.get("id") == "FINAL_ARTIFACT_VALIDATION"), {})
     final_actions = "\n".join(final_stage.get("actions") or [])
     if "RESULT_DELIVERY_CONTRACT.json" not in final_actions:
         errors.append("pipeline_final_stage_must_apply_result_delivery_contract")
     if "must not upgrade the canonical gate outcome" not in final_actions:
         errors.append("pipeline_final_stage_readiness_guard_missing")
+    if "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" not in final_actions or "stable instruction step ids referenced by ChangePackage" not in final_actions:
+        errors.append("pipeline_manual_transfer_rendering_contract_missing")
     for anchor in ["COLLECTION_ALGORITHM", "Performance Review", "Измеренное ускорение не доказано.", "RUNTIME_ADAPTER", "immutable Особенности реализации base format"]:
         if anchor not in final_actions:
             errors.append(f"pipeline_performance_projection_missing:{anchor}")
