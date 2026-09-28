@@ -630,13 +630,13 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 294083,
-      "sha256": "7f7712945245893abceecbffb41a2b3faa982b24045c3c36629ec72e88f7c8d3"
+      "size": 292062,
+      "sha256": "441ae3ec71dce676b861e3360e1639cee2dcf4e95c86316255b260948ce46bfb"
     },
     {
       "path": "SKILL.md",
-      "size": 42181,
-      "sha256": "09a03da4cd6d7ca984c713d661a6af9e35b457f24ed6ff824a0807f2a87001be"
+      "size": 42190,
+      "sha256": "6125f2462177bd2ee5e31465d1a08924d757fcdffe4293ee650b97f6538b63f4"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -730,8 +730,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 41508,
-      "sha256": "78f935816b575b7c228198c05e2e0c223424120ab2f40f6386ce0bf2f8deb068"
+      "size": 40512,
+      "sha256": "617efedf27e686be0fb3dca53a15332cf3516a5e57311f6995274cb30a624c4c"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -2220,5 +2220,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "4056452c9bf0b352c06874980b6b7625e5e230e6e2eeeaeeb0e9f183fe6276f2"
+  "snapshot_digest": "ca9d226de501734222deee1ef8f41ccbc1c549c35bfc50e5c73d7629e8e49883"
 }
