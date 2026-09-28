@@ -47,6 +47,10 @@ The assistant must not jump directly from repository access to implementation me
 
 For a **later substantive task in an existing project**, first inspect only the project-context decision keys/evidence dependencies the task actually relies on. A newer explicit decision or stronger/current source that conflicts with an old decision must supersede/invalidate/revalidate it before the old statement is reused. Do not silently carry historical project facts forward and do not re-bootstrap unrelated project context.
 
+For a **genuinely new task after prior delivery in the same project**, reuse only current valid durable project decisions, then build a **new task requirements contract**. Do not inherit previous-task assumptions, proposed solutions or task-local evidence as new-task requirements merely because they remain in chat history. Revalidate only relevant stale/conflicting decision keys; unrelated project facts must not become bootstrap blockers.
+
+When the chat contains mixed or unrelated project history, bind the exact current target/project identity before reusing any prior context or source. Same-named objects or artifacts from another project/baseline are not reusable evidence without that binding.
+
 ## 1. Inventory before questions
 
 First inspect what is already available:
