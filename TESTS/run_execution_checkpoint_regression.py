@@ -188,7 +188,7 @@ with tempfile.TemporaryDirectory() as td:
     reuse_manifest = copy.deepcopy(dead_manifest)
     reuse_manifest.update({"operation_id": reuse_spec["operation_id"], "stage_id": reuse_spec["stage_id"], "check_id": reuse_spec["check_id"], "command_argv": reuse_spec["command_argv"], "command_fingerprint": reuse_spec["command_fingerprint"], "cwd": reuse_spec["cwd"], "source_identity": reuse_spec["source_identity"], "source_fingerprint": reuse_spec["source_fingerprint"]})
     reuse_manifest["child"] = {"pid": os.getpid(), "start_token": (process_start_token(os.getpid()) or "token") + ":wrong"}
-    reuse_manifest["supervisor"] = {"pid": os.getpid(), "start_token": process_start_token(os.getpid())}
+    reuse_manifest["supervisor"] = {"pid": 99999999, "start_token": "linux:missing:1"}
     _atomic_write_json(reuse_op / "operation.json", reuse_manifest)
     reuse_result = recover(reuse_op, reuse_spec)
     record("execution:pid_reuse_token_mismatch_is_lost", reuse_result.get("state") == "LOST_PROCESS" and "IDENTITY_MISMATCH" in str(reuse_result.get("reason")), reuse_result)
