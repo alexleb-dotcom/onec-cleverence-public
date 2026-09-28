@@ -214,7 +214,14 @@
           "the Performance Review projection cannot change implementation_readiness or final release_outcome",
           "the projection is supplementary and must remain outside the mandatory project/task header and immutable five-column `Особенности реализации` table"
         ]
-      }
+      },
+      "manual_transfer_instruction_template": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
+      "manual_transfer_template_rules": [
+        "use only when MANUAL_TRANSFER_INSTRUCTION is the selected result mode",
+        "preserve exact baseline/candidate and object/member/payload identities",
+        "leave no material implementation decision silently delegated to the human executor",
+        "the rendered instruction does not replace ChangePackage or upgrade applied/deployment/runtime proof"
+      ]
     },
     "REQUIREMENTS_ARTIFACT": {
       "use_when": "the primary deliverable is a requirements/specification/technical assignment artifact",
@@ -227,6 +234,12 @@
       "rules": [
         "preserve agreed requirement versus proposed solution provenance",
         "a blocked requirements gate must be visible in OUTCOME/PROOF_BOUNDARY rather than hidden in an appendix"
+      ],
+      "template": "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md",
+      "template_rules": [
+        "preserve exact project/task identifiers",
+        "keep agreed requirements, material OPEN items, explicit assumptions and proposed solution distinct",
+        "render requirements readiness only from the canonical requirements gate"
       ]
     },
     "BLOCKED_OR_PARTIAL": {
@@ -272,5 +285,11 @@
     "omit_user_action_when_none": true,
     "internal_gate_dump_by_default": false,
     "prefer_root_findings_over_repeated_symptoms": true
+  },
+  "user_artifact_format": {
+    "default_language_encoding": "Russian UTF-8 for a Russian user/project",
+    "identifier_preservation": "exact source identifiers, code, paths, hashes, API names and machine tokens remain literal",
+    "filename_rule": "do not use pseudo-version suffixes such as v2/final/fix/new; revision belongs in metadata/history",
+    "proof_rule": "user-facing presentation cannot create or upgrade canonical requirements/evidence/release proof"
   }
 }
