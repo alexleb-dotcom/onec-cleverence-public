@@ -163,7 +163,14 @@ def _capability_gates(fields):
     }
     result={}
     for capability,field_ids in requirements.items():
-        open_fields=[fid for fid in field_ids if fields.get(fid,{}).get("status")=="OPEN"]
+        open_fields=[]
+        for fid in field_ids:
+            if fid=="author_marker":
+                if _author_marker_gate_state(fields)=="AUTHOR_MARKER_BLOCKED":
+                    open_fields.append(fid)
+                continue
+            if fields.get(fid,{}).get("status")=="OPEN":
+                open_fields.append(fid)
         result[capability]={
             "allowed":not open_fields,
             "blocking_open_fields":open_fields,
