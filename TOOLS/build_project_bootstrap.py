@@ -47,11 +47,13 @@ def _missing_author_marker_values(row):
     if row.get("status")=="NOT_APPLICABLE":
         return []
     value=row.get("value")
+    # Legacy/scalar or otherwise unstructured AUTHOR_MARKER data is migration/revalidation
+    # input only. It cannot satisfy the mandatory structured values contract.
     if not isinstance(value,dict):
-        return [] if row.get("status") in {"KNOWN","DERIVED_WITH_EVIDENCE"} else list(AUTHOR_MARKER_VALUE_FIELDS)
+        return list(AUTHOR_MARKER_VALUE_FIELDS)
     values=value.get("values")
     if not isinstance(values,dict):
-        return [] if row.get("status") in {"KNOWN","DERIVED_WITH_EVIDENCE"} else list(AUTHOR_MARKER_VALUE_FIELDS)
+        return list(AUTHOR_MARKER_VALUE_FIELDS)
     return [name for name in AUTHOR_MARKER_VALUE_FIELDS if not values.get(name)]
 
 
