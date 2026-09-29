@@ -201,6 +201,26 @@ with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False
     _f.write('Процедура Проверить()\n    Если КонтекстныйФлаг Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n');_known=Path(_f.name)
 _x=analyze_onec(_known,bare_symbol_scope_complete=True,known_symbols=['КонтекстныйФлаг']);key='bare_symbol:known_context_symbol';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='PASS';results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
 if not ok:errors.append({'case':key,'details':results[key]})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Процедура Проверить(Знач Флаг, Знач Режим = Ложь)\n    Если Флаг Или Режим Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n');_value_params=Path(_f.name)
+_x=analyze_onec(_value_params,bare_symbol_scope_complete=True);key='bare_symbol:value_parameter_and_default_valid';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='PASS' and not [f for f in _x.get('findings',[]) if f.get('type')=='UNRESOLVED_BARE_IDENTIFIER_READ'];results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Асинх Процедура Проверить()\n    Если НеизвестныйФлаг Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n');_async_bad=Path(_f.name)
+_x=analyze_onec(_async_bad,bare_symbol_scope_complete=True);_hits=[f for f in _x.get('findings',[]) if f.get('type')=='UNRESOLVED_BARE_IDENTIFIER_READ'];key='bare_symbol:async_bad_never_passes';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='FAIL' and any(f.get('symbol')=='НеизвестныйФлаг' for f in _hits);results[key]={'validation':_x.get('bare_symbol_validation'),'findings':_hits,'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Асинх Функция Получить(Знач Флаг = Ложь)\n    Возврат Флаг;\nКонецФункции\n');_async_good=Path(_f.name)
+_x=analyze_onec(_async_good,bare_symbol_scope_complete=True);key='bare_symbol:async_good_checked';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='PASS' and len(_x.get('procedures') or [])==1;results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Асинх Процедура НеполныйЗаголовок\n    Возврат;\nКонецПроцедуры\n');_unparsed_header=Path(_f.name)
+_x=analyze_onec(_unparsed_header,bare_symbol_scope_complete=True);key='bare_symbol:recognizable_unparsed_routine_not_checked';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='NOT_CHECKED';results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
 with tempfile.TemporaryDirectory() as _td:
     _td=Path(_td);_candidate=_td/'Module.bsl';_candidate.write_bytes((fixtures/'bare_symbol_A_good.bsl').read_bytes());_plan=build_plan([_candidate]);_ledger=build_ledger(_plan,registry);_logical=_plan['candidate_artifacts'][0]['logical_path'];_ledger['implementation_intent_map']={'rows':[{'artifact':_logical}]}
     _r=release_evaluate(_plan,_ledger,registry);key='bare_symbol:release_requires_property';ok=any(e.get('type')=='BSL_BARE_SYMBOL_CURRENT_ANALYZER_REQUIRED' for e in _r.get('errors',[]));results[key]={'pass':ok}
