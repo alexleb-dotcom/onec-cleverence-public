@@ -1229,7 +1229,7 @@
       "always_disposition": true,
       "surface": "ANY",
       "risk_floor": "R0_LOCAL",
-      "description": "Among implementations that fully satisfy requirements, correctness, standards, maintainability and proven contracts, choose the smallest necessary change surface relative to the exact baseline. Minimize changed objects/files/routines/hunks, new executable code, new abstractions and unnecessary visual/vertical expansion; do not minimize raw LOC at the expense of clarity, cohesion, supported mechanisms, runtime safety or delivery closure, and do not normalize unrelated formatting.",
+      "description": "Choose the smallest necessary coherent change surface; avoid unrelated formatting/vertical expansion without sacrificing clarity, standards, safety or delivery closure.",
       "activation": {
         "mode": "ALWAYS_DISPOSITION",
         "patterns": [],
@@ -1313,14 +1313,14 @@
         },
         {
           "id": "FORMATTING_ONLY_VERTICAL_NOISE",
-          "question": "Does the change avoid formatting-only churn and avoid vertically decomposing a simple readable expression/call/condition without a real line-length/readability reason, while preserving necessary standard-compliant wrapping?",
+          "question": "Does the change avoid unrelated formatting churn and avoid needless vertical decomposition while preserving necessary standard-compliant wrapping?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
         },
         {
           "id": "UNTOUCHED_SOURCE_FORMAT_PRESERVATION",
-          "question": "Are unrelated baseline formatting plus exact encoding/newline conventions left untouched unless a proven delivery contract requires a change, rather than globally normalized by a formatter?",
+          "question": "Are unrelated baseline formatting, encoding and newline conventions left untouched unless an evidenced delivery contract requires change?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1523,7 +1523,7 @@
       "always_disposition": true,
       "surface": "ANY",
       "risk_floor": "R0_LOCAL",
-      "description": "Project-specific conventions refine a universal OneC source/layout floor; they cannot authorize invented conventions, arbitrary vertical noise, standard-violating BSL layout or interactive form mutation.",
+      "description": "Project conventions may refine but not weaken universal OneC layout and form-mutation floors.",
       "activation": {
         "mode": "ALWAYS_DISPOSITION",
         "patterns": [],
@@ -1561,21 +1561,21 @@
         },
         {
           "id": "BSL_SOURCE_LAYOUT_STANDARD_FLOOR",
-          "question": "For changed/new BSL, are applicable 1C std444 line-length/wrapping rules enforced, with lines over 120 characters wrapped unless the standard's documented exception applies, no more than one consecutive blank line, and necessary readable/standard-compliant wrapping still allowed?",
+          "question": "Does changed/new BSL follow std444 wrapping (>120 only with documented exception), use at most one consecutive blank line, and allow necessary readable wrapping?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
         },
         {
           "id": "PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR",
-          "question": "Does project style only refine/tighten the universal BSL layout floor rather than weakening it into arbitrary vertical decomposition, multiple consecutive blank lines or standard-violating line length?",
+          "question": "Does project style only tighten the universal BSL layout floor, never weaken it into vertical noise or standard violations?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
         },
         {
           "id": "FORM_CHANGE_MODE_PROGRAMMATIC_ONLY",
-          "question": "For form changes, is FORM_CHANGE_MODE fixed to PROGRAMMATIC_ONLY so Designer/Configurator interactive structure/property editing is rejected while reproducible programmatic/static artifact mutation and Form.xml evidence/validation remain allowed?",
+          "question": "Is FORM_CHANGE_MODE PROGRAMMATIC_ONLY: no interactive Designer/Configurator mutation, while programmatic/static form mutation and Form.xml evidence remain allowed?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
