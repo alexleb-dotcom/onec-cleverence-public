@@ -1252,7 +1252,7 @@
         },
         {
           "id": "MINIMAL_COHERENT_CHANGE_T02",
-          "question": "Does the candidate exclude opportunistic refactoring, unrelated cleanup, cosmetic renames/moves, speculative future-proofing and other changes that are not required to solve the current task at the required quality?",
+          "question": "Does the candidate exclude opportunistic refactoring, unrelated cleanup/format normalization and needless vertical decomposition outside the necessary task change?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1266,7 +1266,7 @@
         },
         {
           "id": "MINIMAL_COHERENT_CHANGE_T04",
-          "question": "Is change minimization evaluated by necessary change surface (objects/files/routines/hunks/new executable code/new abstractions) rather than raw LOC, with readability, responsibility cohesion, standard mechanisms, correctness, performance, runtime safety and required delivery closure taking precedence over code golf?",
+          "question": "Is minimization based on necessary change surface rather than raw LOC, preserving readability/standard-required wrapping and untouched baseline encoding/newlines/style?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1310,20 +1310,6 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "owner_reuse_level_classification"
-        },
-        {
-          "id": "FORMATTING_ONLY_VERTICAL_NOISE",
-          "question": "Does the change avoid unrelated formatting churn and avoid needless vertical decomposition while preserving necessary standard-compliant wrapping?",
-          "kind": "TIER0",
-          "blocking": true,
-          "evidence_required": true
-        },
-        {
-          "id": "UNTOUCHED_SOURCE_FORMAT_PRESERVATION",
-          "question": "Are unrelated baseline formatting, encoding and newline conventions left untouched unless an evidenced delivery contract requires change?",
-          "kind": "TIER0",
-          "blocking": true,
-          "evidence_required": true
         }
       ],
       "regression": {
@@ -1339,9 +1325,7 @@
           "check:OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE",
           "check:PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS",
           "check:MINIMAL_COHERENT_CHANGE_T04",
-          "check:OWNER_REUSE_LEVEL_CLASSIFICATION",
-          "check:FORMATTING_ONLY_VERTICAL_NOISE",
-          "check:UNTOUCHED_SOURCE_FORMAT_PRESERVATION"
+          "check:OWNER_REUSE_LEVEL_CLASSIFICATION"
         ]
       },
       "proof_policy": {
@@ -1560,15 +1544,8 @@
           "semantic_case_id": "project_convention_invention"
         },
         {
-          "id": "BSL_SOURCE_LAYOUT_STANDARD_FLOOR",
-          "question": "Does changed/new BSL follow std444 wrapping (>120 only with documented exception), use at most one consecutive blank line, and allow necessary readable wrapping?",
-          "kind": "TIER0",
-          "blocking": true,
-          "evidence_required": true
-        },
-        {
-          "id": "PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR",
-          "question": "Does project style only tighten the universal BSL layout floor, never weaken it into vertical noise or standard violations?",
+          "id": "BSL_LAYOUT_UNIVERSAL_FLOOR",
+          "question": "Does changed/new BSL follow std444 (>120 wrapped unless documented exception), use at most one consecutive blank line, and avoid project-style weakening into needless vertical noise?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1587,8 +1564,7 @@
         ],
         "enforcement_cases": [
           "check:PROJECT_CONVENTION_T01",
-          "check:BSL_SOURCE_LAYOUT_STANDARD_FLOOR",
-          "check:PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR",
+          "check:BSL_LAYOUT_UNIVERSAL_FLOOR",
           "check:FORM_CHANGE_MODE_PROGRAMMATIC_ONLY"
         ]
       }
