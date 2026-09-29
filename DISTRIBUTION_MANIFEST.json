@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 294635,
-      "sha256": "72443a73b269171a5581971b2f813ebd636dfc158d97a2ac826c7da79cb16783"
+      "size": 293801,
+      "sha256": "eca2696a9f95d71270f40cf8f57bcdb01423bb4b2b99ec33ece74fc9d841d69d"
     },
     {
       "path": "SKILL.md",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "e30c401dce08bc2b67ad3531cb268db07effdc674b91a0249270e1d8c664d153"
+  "snapshot_digest": "986f9c1e8051f6d15c0efd1cde999ab8544b731030f460c2d147fb4832b60a7b"
 }
