@@ -1782,9 +1782,41 @@ if not ok:errors.append({'case':key,'details':r})
 # Minimal-change is a real Tier-0 release obligation, not only prose in SKILL.md.
 minimal_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='MINIMAL_COHERENT_CHANGE'),None)
 minimal_checks={x.get('id') for x in (minimal_rule or {}).get('checks',[])}
-minimal_expected={'MINIMAL_COHERENT_CHANGE_T01','MINIMAL_COHERENT_CHANGE_T02','MINIMAL_COHERENT_CHANGE_T03','MINIMAL_COHERENT_CHANGE_T04','UNJUSTIFIED_CHANGE_SURFACE_EXPANSION','OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE','PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS','LOC_MINIMIZATION_DAMAGES_COHESION'}
+minimal_expected={'MINIMAL_COHERENT_CHANGE_T01','MINIMAL_COHERENT_CHANGE_T02','MINIMAL_COHERENT_CHANGE_T03','MINIMAL_COHERENT_CHANGE_T04','UNJUSTIFIED_CHANGE_SURFACE_EXPANSION','OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE','PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS','LOC_MINIMIZATION_DAMAGES_COHESION','FORMATTING_ONLY_VERTICAL_NOISE','UNTOUCHED_SOURCE_FORMAT_PRESERVATION'}
 key='registry:minimal_coherent_change_contract'; ok=bool(minimal_rule and minimal_rule.get('tier')==0 and minimal_rule.get('severity')=='BLOCKING' and minimal_rule.get('always_disposition') is True and minimal_expected<=minimal_checks and 'MINIMAL_COHERENT_CHANGE' in registry.get('rule_order',[])); results[key]={'pass':ok,'checks':sorted(minimal_checks)}
 if not ok:errors.append({'case':key,'details':minimal_rule})
+
+project_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='PROJECT_CONVENTION'),None)
+project_checks={x.get('id') for x in (project_rule or {}).get('checks',[])}
+project_expected={'BSL_SOURCE_LAYOUT_STANDARD_FLOOR','PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR','FORM_CHANGE_MODE_PROGRAMMATIC_ONLY'}
+key='registry:layout_form_universal_floor'; ok=bool(project_rule and project_rule.get('tier')==0 and project_rule.get('severity')=='BLOCKING' and project_rule.get('always_disposition') is True and 'std444' in project_rule.get('standards',[]) and project_expected<=project_checks);results[key]={'pass':ok,'checks':sorted(project_checks),'standards':(project_rule or {}).get('standards')}
+if not ok:errors.append({'case':key,'details':project_rule})
+
+with tempfile.TemporaryDirectory() as _td:
+    _td=Path(_td)
+    _blank=_td/'blank.bsl';_blank.write_text('Процедура Тест()\n    А = 1;\n\n\n    Б = 2;\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_blank);_types={x.get('type') for x in _r.get('findings',[])}
+    key='layout:consecutive_empty_lines_blocking';ok='MULTIPLE_CONSECUTIVE_EMPTY_LINES' in _types;results[key]={'findings':_r.get('findings'),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _long=_td/'long.bsl';_long.write_text('Процедура Тест()\n    Результат = '+('ОченьДлинноеИмяПеременной + '*7)+'Финал;\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_long);_types={x.get('type') for x in _r.get('findings',[])}
+    key='layout:std444_hard_line_length';ok='BSL_LINE_LENGTH_STD444' in _types;results[key]={'findings':_r.get('findings'),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _wrapped=_td/'wrapped.bsl';_wrapped.write_text('Процедура Тест(Флаг1, Флаг2)\n    Если Флаг1\n        И Флаг2 Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_wrapped);_layout=[x for x in _r.get('findings',[]) if x.get('type') in {'MULTIPLE_CONSECUTIVE_EMPTY_LINES','BSL_LINE_LENGTH_STD444'}]
+    key='layout:necessary_wrap_allowed';ok=not _layout;results[key]={'layout_findings':_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _string=_td/'string.bsl';_string.write_text('Процедура Тест()\n    Сообщить("'+('ДлинныйПользовательскийТекст'*8)+'");\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_string);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    key='layout:std444_string_exception_not_mechanically_blocked';ok=not _layout;results[key]={'layout_findings':_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _crlf=_td/'preserve.bsl';_before='Процедура Тест()\r\n    А = 1;\r\nКонецПроцедуры\r\n'.encode('utf-8');_crlf.write_bytes(_before);analyze_onec(_crlf);_after=_crlf.read_bytes()
+    key='layout:analyzer_does_not_normalize_source_bytes';ok=_before==_after and b'\r\n' in _after;results[key]={'before_sha':hashlib.sha256(_before).hexdigest(),'after_sha':hashlib.sha256(_after).hexdigest(),'pass':ok}
+    if not ok:errors.append({'case':key,'details':results[key]})
 
 
 # Existing-capability pre-mutation admission regressions.
