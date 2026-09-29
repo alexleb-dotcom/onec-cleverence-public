@@ -78,7 +78,9 @@ Rules:
 - minimal coherent diff: yes | no
 - typical 1C configuration / customization / vendor code modification policy:
 - extension/preferred adaptation policy:
-- forms mode: standard | programmatic-preferred | programmatic-only
+- form change mode: PROGRAMMATIC_ONLY (universal floor; interactive Designer/Configurator form structure/property mutation is forbidden)
+- form mutation evidence: exact programmatic/static artifact route, affected Form.xml/metadata artifacts and validation evidence
+- form mutation fallback: BLOCKED/EVIDENCE_REQUIRED when no authorized programmatic/static route is proven; never fall back to interactive editing
 - environment/AppDescription/version changes allowed:
 
 ## Attribution and comment contracts
