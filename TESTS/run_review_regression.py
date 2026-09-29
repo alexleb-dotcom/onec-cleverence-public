@@ -1791,6 +1791,10 @@ project_checks={x.get('id') for x in (project_rule or {}).get('checks',[])}
 project_expected={'BSL_SOURCE_LAYOUT_STANDARD_FLOOR','PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR','FORM_CHANGE_MODE_PROGRAMMATIC_ONLY'}
 key='registry:layout_form_universal_floor'; ok=bool(project_rule and project_rule.get('tier')==0 and project_rule.get('severity')=='BLOCKING' and project_rule.get('always_disposition') is True and 'std444' in project_rule.get('standards',[]) and project_expected<=project_checks);results[key]={'pass':ok,'checks':sorted(project_checks),'standards':(project_rule or {}).get('standards')}
 if not ok:errors.append({'case':key,'details':project_rule})
+form_xml_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='FORM_XML_STRUCTURE'),None)
+form_mode_check=next((x for x in (project_rule or {}).get('checks',[]) if x.get('id')=='FORM_CHANGE_MODE_PROGRAMMATIC_ONLY'),{})
+key='registry:form_xml_analysis_remains_independent_of_mutation_permission';ok=bool(form_xml_rule and 'Form.xml' in form_mode_check.get('question','') and 'remain allowed' in form_mode_check.get('question',''));results[key]={'pass':ok,'form_xml_rule':bool(form_xml_rule),'form_mode_question':form_mode_check.get('question')}
+if not ok:errors.append({'case':key,'details':results[key]})
 
 with tempfile.TemporaryDirectory() as _td:
     _td=Path(_td)
