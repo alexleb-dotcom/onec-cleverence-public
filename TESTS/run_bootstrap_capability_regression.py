@@ -9,7 +9,7 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'TOOLS'))
-from build_project_bootstrap import build, _capability_gates, _requests, _author_marker_gate_state, CANONICAL_ONEC_AUTHOR_MARKER
+from build_project_bootstrap import build, _capability_gates, _requests, _author_marker_gate_state, CANONICAL_ONEC_AUTHOR_MARKER, FORM_CHANGE_MODE
 
 errors=[]; results={}
 
@@ -31,6 +31,27 @@ with tempfile.TemporaryDirectory() as td:
     required={'code_output_allowed','metadata_change_allowed','public_interface_change_allowed','delivery_allowed'}
     record('capability_gate_set',required==set(gates),gates)
     record('legacy_gate_maps_code_output',bootstrap['gate']['implementation_allowed']==gates['code_output_allowed']['allowed'],bootstrap['gate'])
+
+    form_policy=bootstrap.get('form_change_policy') or {}
+    record(
+        'form_change_mode_is_universal_programmatic_only',
+        FORM_CHANGE_MODE=='PROGRAMMATIC_ONLY'
+        and bootstrap['fields'].get('form_change_mode',{}).get('status')=='KNOWN'
+        and bootstrap['fields'].get('form_change_mode',{}).get('value')=='PROGRAMMATIC_ONLY'
+        and form_policy.get('mode')=='PROGRAMMATIC_ONLY'
+        and form_policy.get('interactive_designer_configurator_mutation_allowed') is False
+        and form_policy.get('programmatic_static_artifact_mutation_allowed') is True
+        and form_policy.get('form_xml_read_inventory_diff_validation_allowed') is True
+        and form_policy.get('missing_programmatic_route_result')=='BLOCKED/EVIDENCE_REQUIRED',
+        {'field':bootstrap['fields'].get('form_change_mode'),'policy':form_policy},
+    )
+    record(
+        'form_change_mode_not_user_preference_or_evidence_request',
+        not any(x.get('id')=='FORM_CHANGE_MODE' for x in bootstrap.get('evidence_requests',[]))
+        and 'standard | programmatic-preferred | programmatic-only' not in PROJECT_CONTEXT
+        and 'form change mode: PROGRAMMATIC_ONLY' in PROJECT_CONTEXT,
+        {'requests':bootstrap.get('evidence_requests'),'template_has_programmatic_only':'form change mode: PROGRAMMATIC_ONLY' in PROJECT_CONTEXT},
+    )
 
 
     marker=bootstrap['fields']['author_marker']
