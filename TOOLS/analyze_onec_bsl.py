@@ -1486,6 +1486,39 @@ def bare_symbol_read_analysis(block_rows,known_symbols=None,scope_complete=False
             defined.update(x.lower() for x in define_after)
     return {"status":"FAIL" if findings else "PASS","finding_count":len(findings),"findings":findings,"reason":"Exact unqualified-symbol scope was declared complete for this analyzer run.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
 
+
+BSL_STANDARD_MAX_LINE_LENGTH=120
+
+def source_layout_analysis(text):
+    """Deterministic floor only. Callers still own changed/new scope and semantic wrapping review."""
+    findings=[];blank_run=0
+    for line_no,line in enumerate(text.splitlines(),1):
+        stripped=line.strip()
+        if not stripped:
+            blank_run+=1
+            if blank_run>1:
+                findings.append({
+                    "severity":"HIGH","type":"MULTIPLE_CONSECUTIVE_EMPTY_LINES","line":line_no,
+                    "note":"Changed/new BSL may contain at most one consecutive blank line.",
+                })
+            continue
+        blank_run=0
+        left=line.lstrip()
+        # std444 has documented cases where a long source line cannot/should not be
+        # mechanically wrapped (notably user-visible/string content). Do not guess there.
+        if len(line)>BSL_STANDARD_MAX_LINE_LENGTH and not left.startswith("//") and not left.startswith("|") and '"' not in line:
+            findings.append({
+                "severity":"HIGH","type":"BSL_LINE_LENGTH_STD444","line":line_no,
+                "length":len(line),"limit":BSL_STANDARD_MAX_LINE_LENGTH,
+                "note":"Official 1C std444 requires wrapping over 120 characters unless its documented exception applies.",
+            })
+    return {
+        "status":"FAIL" if findings else "PASS",
+        "finding_count":len(findings),"findings":findings,
+        "scope":"ANALYZED_CONTENT; canonical caller/review must apply this floor to changed/new BSL and must not normalize unrelated baseline formatting.",
+        "standard":"std444",
+    }
+
 def analyze(path,bare_symbol_scope_complete=False,known_symbols=None):
     text = decode(path)
     bs = blocks(text)
@@ -1498,6 +1531,11 @@ def analyze(path,bare_symbol_scope_complete=False,known_symbols=None):
         "findings": [],
         "standards": set(),
     }
+    layout=source_layout_analysis(text)
+    result["layout_validation"]={k:v for k,v in layout.items() if k!="findings"}
+    result["findings"].extend(layout["findings"])
+    if any(x.get("type")=="BSL_LINE_LENGTH_STD444" for x in layout["findings"]):
+        result["standards"].add("std444")
     bare=bare_symbol_read_analysis(
         bs,known_symbols=known_symbols,scope_complete=bare_symbol_scope_complete,
         routine_headers_complete=len(list(ROUTINE_HEADER_HINT_RE.finditer(text)))==len(bs),
