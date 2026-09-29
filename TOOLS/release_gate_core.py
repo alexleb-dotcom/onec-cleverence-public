@@ -21,6 +21,9 @@ from implementation_intent import validate_intent_map
 from query_literal_escape_contract import ANALYZER_PROPERTY as QUERY_ESCAPE_PROPERTY, ANALYZER_TOOL as QUERY_ESCAPE_TOOL, FINDING_TYPE as QUERY_ESCAPE_FINDING_TYPE, blocking_row as query_escape_blocking_row
 from performance_review import validate as validate_performance_review
 
+BSL_BARE_SYMBOL_TOOL="TOOLS/analyze_onec_bsl.py"
+BSL_BARE_SYMBOL_PROPERTY="STATIC:ONEC_BSL_BARE_SYMBOL"
+
 ALLOWED_EVIDENCE_KINDS={"MACHINE","SOURCE_REQUIRED","SEMANTIC","RUNTIME"}
 REVIEW_LEVELS=["L1_CONSTRUCTION","L2_ROUTINE","L3_MODULE","L4_METADATA_OBJECT","L5_CROSS_OBJECT","L6_BUSINESS_RUNTIME"]
 
@@ -1043,6 +1046,44 @@ def _validate_query_literal_escape_gate(plan,ledger,machine_reports,registry,err
     return expected
 
 
+def _bsl_bare_symbol_intent_candidates(plan,ledger,errors):
+    if (plan.get("routing") or {}).get("mode")=="ANALYSIS_ONLY":return []
+    rows=(ledger.get("implementation_intent_map") or {}).get("rows") or []
+    wanted={str(row.get("artifact") or "") for row in rows if isinstance(row,dict) and str(row.get("artifact") or "").lower().endswith((".bsl",".os"))}
+    by_logical={str(row.get("logical_path") or ""):row for row in plan.get("candidate_artifacts") or [] if isinstance(row,dict)}
+    result=[]
+    for artifact in sorted(wanted):
+        candidate=by_logical.get(artifact)
+        if candidate is None:errors.append({"type":"BSL_BARE_SYMBOL_INTENT_ARTIFACT_NOT_CANDIDATE","artifact":artifact})
+        else:result.append(candidate)
+    return result
+
+def _bsl_bare_symbol_report_covers(report,candidate):
+    if report.get("_receipt_integrity")!="PASS" or report.get("_receipt_result")!="PASS":return False
+    receipt=report.get("_receipt") or {}
+    if receipt.get("tool")!=BSL_BARE_SYMBOL_TOOL or BSL_BARE_SYMBOL_PROPERTY not in (receipt.get("verified_properties") or []):return False
+    candidate_sha=str(candidate.get("sha256") or "").lower();origin=_canonical_source_ref(candidate.get("origin"))
+    for row in receipt.get("inputs") or []:
+        if isinstance(row,dict) and str(row.get("sha256") or "").lower()==candidate_sha and _canonical_source_ref(row.get("path"))==origin:return True
+    return False
+
+def _bsl_bare_symbol_payload_passes(report,candidate,errors):
+    receipt=report.get("_receipt") or {};output=receipt.get("output") or {};path=Path(output.get("stdout_path") or "")
+    if not path.is_file():errors.append({"type":"BSL_BARE_SYMBOL_REPORT_STDOUT_MISSING","report_id":report.get("id")});return False
+    try:raw=path.read_bytes();payload=json.loads(raw.decode("utf-8-sig"))
+    except Exception as exc:errors.append({"type":"BSL_BARE_SYMBOL_REPORT_STDOUT_INVALID","report_id":report.get("id"),"error":str(exc)});return False
+    if hashlib.sha256(raw).hexdigest()!=output.get("stdout_sha256"):errors.append({"type":"BSL_BARE_SYMBOL_REPORT_STDOUT_HASH_DRIFT","report_id":report.get("id")});return False
+    if str(payload.get("sha256") or "").lower()!=str(candidate.get("sha256") or "").lower():errors.append({"type":"BSL_BARE_SYMBOL_REPORT_CANDIDATE_DRIFT","report_id":report.get("id"),"artifact":candidate.get("logical_path")});return False
+    status=(payload.get("bare_symbol_validation") or {}).get("status")
+    if status!="PASS":errors.append({"type":"BSL_BARE_SYMBOL_PROPERTY_NOT_PASS","report_id":report.get("id"),"artifact":candidate.get("logical_path"),"status":status});return False
+    return True
+
+def _validate_bsl_bare_symbol_gate(plan,ledger,machine_reports,errors):
+    for candidate in _bsl_bare_symbol_intent_candidates(plan,ledger,errors):
+        current=[row for row in (machine_reports or {}).values() if _bsl_bare_symbol_report_covers(row,candidate)]
+        if not any(_bsl_bare_symbol_payload_passes(row,candidate,errors) for row in current):
+            errors.append({"type":"BSL_BARE_SYMBOL_CURRENT_ANALYZER_REQUIRED","artifact":candidate.get("logical_path"),"candidate_sha256":candidate.get("sha256"),"tool":BSL_BARE_SYMBOL_TOOL,"property_id":BSL_BARE_SYMBOL_PROPERTY})
+
 def _active_gating_check_bindings(plan):
     result={}
     for binding in plan.get("active_deliveries") or []:
@@ -1115,6 +1156,7 @@ def evaluate(plan:dict, ledger:dict, registry:dict|None=None, external_intake:di
     receipt_provenance=_validate_receipt_evidence_provenance(ledger,plan,registry,errors)
     machine_reports=_validate_machine_reports(ledger.get('machine_reports') or [],errors)
     _validate_query_literal_escape_gate(plan,ledger,machine_reports,registry,errors)
+    _validate_bsl_bare_symbol_gate(plan,ledger,machine_reports,errors)
     runtime_cases=_validate_runtime_cases(ledger.get('runtime_cases') or [],errors,pending_items,blocking,pending)
     performance_review=validate_performance_review(plan,ledger,runtime_cases,registry)
     errors.extend(performance_review.get("errors") or [])
