@@ -725,8 +725,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 13508,
-      "sha256": "673de76a9d6ae5fa9448e7a544cdfc0e0bdc8763a2fd7cb3d521b8b4b58b596a"
+      "size": 16992,
+      "sha256": "fe4fe0525e6e4634c1c15038ef60622731711d0d7b8cff9acb819949af0ae035"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -1900,8 +1900,8 @@
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
-      "size": 7967,
-      "sha256": "04ccc05aa74315c57520b4ad642bd209ec8438747c8aabf5b9fd7ef49900f522"
+      "size": 8863,
+      "sha256": "371dc2f499746f34fee74ccac6f4a5b789d02f319fe78d52f08826ed5e285335"
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "d01dffc1ae47fb121221dd9f9f756f7a787d89b0714da6e3e7a52d1fb4ba44ac"
+  "snapshot_digest": "9f096d598275a1ffe489e9090da6f55b0cc3388145ca0df23766d01eb0c56cba"
 }
