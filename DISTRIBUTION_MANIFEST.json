@@ -135,8 +135,8 @@
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_STANDARD_CATALOG.json",
-      "size": 15442,
-      "sha256": "b01fe9e6039d1500c4e4af3b40d8cdc46dbe63991659f7e345ab2d3a79a0bf32"
+      "size": 16103,
+      "sha256": "c099128605372dfce253ffd13e0f8f0e1aeab3ece480c5bdc8f6830ee9676d63"
     },
     {
       "path": "KNOWLEDGE/ONEC_OBJECT_WRITE_VALIDATION_LIFECYCLE.md",
@@ -150,8 +150,8 @@
     },
     {
       "path": "KNOWLEDGE/PROJECT_BOOTSTRAP.md",
-      "size": 15032,
-      "sha256": "7c081632ed0691750bb641e6964e96ebd6b4ce9baf9910abf60e96d4d8b45050"
+      "size": 16032,
+      "sha256": "92968c81709f3485fe9c7c5de42c28d8beb7f281914c00db1cf4596a1f99ad00"
     },
     {
       "path": "KNOWLEDGE/PROJECT_CONTEXT_LIFECYCLE.md",
@@ -630,13 +630,13 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 292062,
-      "sha256": "441ae3ec71dce676b861e3360e1639cee2dcf4e95c86316255b260948ce46bfb"
+      "size": 292412,
+      "sha256": "ba415ab6e2905c2432b30230cae673eef5486f31d9a9d602686eb39b386d2542"
     },
     {
       "path": "SKILL.md",
-      "size": 42190,
-      "sha256": "6125f2462177bd2ee5e31465d1a08924d757fcdffe4293ee650b97f6538b63f4"
+      "size": 43277,
+      "sha256": "5cc6453edd8871a8a814fb13a02b219e32957fe36fe1db6caeb8c7067c68dc65"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -665,8 +665,8 @@
     },
     {
       "path": "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md",
-      "size": 10951,
-      "sha256": "4e56a631e69b044dd8a6ce61e0a14b38562c13e1999f525a0d02db85f8457871"
+      "size": 11296,
+      "sha256": "31c5dc612e7ec93422d837dc449c6b2152a721b07e0ff00d2f41a17e1ef54344"
     },
     {
       "path": "TEMPLATES/PROJECT_SNAPSHOT_COLLECTION_PLAN.json",
@@ -1720,8 +1720,8 @@
     },
     {
       "path": "TESTS/run_bootstrap_capability_regression.py",
-      "size": 13674,
-      "sha256": "e2f372c27d04156d4404149e94c9f5283aad3be413d3e648551f34d68eff67ee"
+      "size": 15038,
+      "sha256": "4b4cbad8afe73bc5e160375f99faacfc63d661f87f0fd1dc602fc68b2c65b9b0"
     },
     {
       "path": "TESTS/run_capability_compliance_projection_regression.py",
@@ -1895,8 +1895,8 @@
     },
     {
       "path": "TESTS/run_review_regression.py",
-      "size": 157291,
-      "sha256": "43b662e8ff8d4624fe685e1b021bb4f73bf677eca27578b0f9fac4450fc9b078"
+      "size": 165004,
+      "sha256": "ad54312c33ec10c854a5bfb0311313ee2bffb4a689ce6d24aab7f18feeb93a46"
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
@@ -1955,8 +1955,8 @@
     },
     {
       "path": "TOOLS/analyze_onec_bsl.py",
-      "size": 86576,
-      "sha256": "0cb166010f8c7e9ed4649c79e47d886c67fdc8e0c2c35c9231c191e05c2f19ba"
+      "size": 91414,
+      "sha256": "acea71ea497096591d94f7536ee873ee32ac6a7729f8f1607a4f69b06c5a729f"
     },
     {
       "path": "TOOLS/analyze_onec_field_flow.py",
@@ -1995,8 +1995,8 @@
     },
     {
       "path": "TOOLS/build_project_bootstrap.py",
-      "size": 17352,
-      "sha256": "0d35cc84b7b6f19a5220175fcf738f7fb04210fbb40a7bd83a13b8d6918dfdbc"
+      "size": 18361,
+      "sha256": "9e513452b0509e7cfb6ff837f8329c5598642858482f52ead0b91e5be0ef582f"
     },
     {
       "path": "TOOLS/build_requirements_contract.py",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "9df4fb3d03283e6989b8d6f072fc8a0d618fffa63bd8b45e03d36930d84f988b"
+  "snapshot_digest": "d01dffc1ae47fb121221dd9f9f756f7a787d89b0714da6e3e7a52d1fb4ba44ac"
 }

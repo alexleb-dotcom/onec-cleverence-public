@@ -1229,7 +1229,7 @@
       "always_disposition": true,
       "surface": "ANY",
       "risk_floor": "R0_LOCAL",
-      "description": "Among implementations that fully satisfy requirements, correctness, standards, maintainability and proven contracts, choose the smallest necessary change surface relative to the exact baseline. Minimize changed objects/files/routines/hunks, new executable code and new abstractions; do not minimize raw LOC at the expense of clarity, cohesion, supported mechanisms, runtime safety or delivery closure.",
+      "description": "Choose the smallest necessary coherent change surface; avoid unrelated formatting/vertical expansion without sacrificing clarity, standards, safety or delivery closure.",
       "activation": {
         "mode": "ALWAYS_DISPOSITION",
         "patterns": [],
@@ -1252,7 +1252,7 @@
         },
         {
           "id": "MINIMAL_COHERENT_CHANGE_T02",
-          "question": "Does the candidate exclude opportunistic refactoring, unrelated cleanup, cosmetic renames/moves, speculative future-proofing and other changes that are not required to solve the current task at the required quality?",
+          "question": "Does the candidate exclude opportunistic refactoring, unrelated cleanup/format normalization and needless vertical decomposition outside the necessary task change?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1266,7 +1266,7 @@
         },
         {
           "id": "MINIMAL_COHERENT_CHANGE_T04",
-          "question": "Is change minimization evaluated by necessary change surface (objects/files/routines/hunks/new executable code/new abstractions) rather than raw LOC, with readability, responsibility cohesion, standard mechanisms, correctness, performance, runtime safety and required delivery closure taking precedence over code golf?",
+          "question": "Is minimization based on necessary change surface rather than raw LOC, preserving readability/standard-required wrapping and untouched baseline encoding/newlines/style?",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1507,7 +1507,7 @@
       "always_disposition": true,
       "surface": "ANY",
       "risk_floor": "R0_LOCAL",
-      "description": "Do not invent author tags, prefixes, regions, comments or placement conventions absent from project evidence.",
+      "description": "Project conventions may refine but not weaken universal OneC layout and form-mutation floors.",
       "activation": {
         "mode": "ALWAYS_DISPOSITION",
         "patterns": [],
@@ -1517,7 +1517,9 @@
         "SOURCE_REQUIRED",
         "SEMANTIC"
       ],
-      "standards": [],
+      "standards": [
+        "std444"
+      ],
       "checks": [
         {
           "id": "PROJECT_CONVENTION_T01",
@@ -1540,6 +1542,20 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "project_convention_invention"
+        },
+        {
+          "id": "BSL_LAYOUT_FLOOR",
+          "question": "Does changed/new BSL follow std444 (>120 wrapped unless documented exception), use at most one consecutive blank line, and avoid project-style weakening into needless vertical noise?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
+        },
+        {
+          "id": "FORM_PROGRAMMATIC_ONLY",
+          "question": "Is FORM_CHANGE_MODE PROGRAMMATIC_ONLY: no interactive Designer/Configurator mutation, while programmatic/static form mutation and Form.xml evidence remain allowed?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
         }
       ],
       "regression": {
@@ -1547,7 +1563,9 @@
           "tier0_disposition_required"
         ],
         "enforcement_cases": [
-          "check:PROJECT_CONVENTION_T01"
+          "check:PROJECT_CONVENTION_T01",
+          "check:BSL_LAYOUT_FLOOR",
+          "check:FORM_PROGRAMMATIC_ONLY"
         ]
       }
     },

@@ -99,7 +99,9 @@ Record evidence dependencies and supersession links. A temporary technical proxy
 - whether refactoring outside task scope is forbidden;
 - whether originals must remain untouched;
 - extension/typical-1C-configuration/customization modification policy;
-- programmatic-vs-static form modification preference when evidenced.
+- universal `FORM_CHANGE_MODE = PROGRAMMATIC_ONLY`: form structure/properties may be changed only through reproducible programmatic/static artifact mutation; interactive Designer/Configurator editing is not a selectable project preference;
+- exact form mutation route/evidence when a task changes a form; if no authorized programmatic/static route can be proven, keep the task BLOCKED/EVIDENCE_REQUIRED rather than falling back to interactive editing.
+- existing Form.xml/form metadata may still be read, inventoried, diffed and structurally/runtime validated; this evidence path does not authorize interactive mutation.
 
 ### Attribution and comment contract
 
@@ -236,6 +238,8 @@ Default evidence-first behavior when no broader permission is proven:
 
 - do not rewrite unrelated existing project/customer/third-party logic;
 - do not normalize formatting/comments across untouched code;
+- for changed/new BSL, apply the universal source-layout floor: official 1C std444 line-length/wrapping rules, no more than one consecutive blank line, and no avoidable vertical decomposition of a simple readable expression/call/condition; project style may tighten but not weaken this floor;
+- preserve the existing source encoding and newline convention outside the necessary changed hunk unless an evidenced delivery contract requires otherwise;
 - do not refactor merely because a better implementation is visible;
 - if an existing defect blocks the requested change, identify it separately and explain the minimum required intervention;
 - preserve attribution/history markers unless the project contract explicitly authorizes changing them.

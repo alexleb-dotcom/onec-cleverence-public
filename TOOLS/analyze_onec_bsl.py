@@ -1486,7 +1486,79 @@ def bare_symbol_read_analysis(block_rows,known_symbols=None,scope_complete=False
             defined.update(x.lower() for x in define_after)
     return {"status":"FAIL" if findings else "PASS","finding_count":len(findings),"findings":findings,"reason":"Exact unqualified-symbol scope was declared complete for this analyzer run.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
 
-def analyze(path,bare_symbol_scope_complete=False,known_symbols=None):
+
+BSL_STANDARD_MAX_LINE_LENGTH=120
+
+def _normalize_changed_line_ranges(changed_line_ranges):
+    if changed_line_ranges is None:
+        return None
+    normalized=[]
+    for item in changed_line_ranges:
+        if not isinstance(item,(list,tuple)) or len(item)!=2:
+            raise ValueError("changed line range must be a (start,end) pair")
+        start,end=int(item[0]),int(item[1])
+        if start<1 or end<start:
+            raise ValueError("changed line range must satisfy 1 <= start <= end")
+        normalized.append((start,end))
+    return sorted(set(normalized))
+
+def _line_is_changed(line_no,changed_line_ranges):
+    return changed_line_ranges is not None and any(start<=line_no<=end for start,end in changed_line_ranges)
+
+def source_layout_analysis(text,changed_line_ranges=None):
+    """Deterministic floor with explicit attribution authority.
+
+    Without exact changed-line scope, whole-file findings are REVIEW-only because
+    legacy untouched layout debt must not be attributed to the current task.
+    """
+    changed_line_ranges=_normalize_changed_line_ranges(changed_line_ranges)
+    authoritative=changed_line_ranges is not None
+    findings=[];blank_run=0;blank_run_start=None
+    for line_no,line in enumerate(text.splitlines(),1):
+        stripped=line.strip()
+        if not stripped:
+            if blank_run==0:
+                blank_run_start=line_no
+            blank_run+=1
+            run_intersects_change=(
+                authoritative
+                and any(
+                    _line_is_changed(run_line,changed_line_ranges)
+                    for run_line in range(blank_run_start,line_no+1)
+                )
+            )
+            if blank_run>1 and (not authoritative or run_intersects_change):
+                findings.append({
+                    "severity":"HIGH" if authoritative else "REVIEW",
+                    "type":"MULTIPLE_CONSECUTIVE_EMPTY_LINES","line":line_no,
+                    "blank_run_start":blank_run_start,"blank_run_end":line_no,
+                    "change_attribution":"EXACT_CHANGED_RUN" if authoritative else "WHOLE_FILE_UNATTRIBUTED",
+                    "note":"Changed/new BSL may contain at most one consecutive blank line. Exact attribution applies when any line participating in the violating blank run intersects changed scope; whole-file scan without exact scope is diagnostic only.",
+                })
+            continue
+        blank_run=0;blank_run_start=None
+        left=line.lstrip()
+        # std444 has documented cases where a long source line cannot/should not be
+        # mechanically wrapped (notably user-visible/string content). Do not guess there.
+        if len(line)>BSL_STANDARD_MAX_LINE_LENGTH and not left.startswith("//") and not left.startswith("|") and '"' not in line:
+            if not authoritative or _line_is_changed(line_no,changed_line_ranges):
+                findings.append({
+                    "severity":"HIGH" if authoritative else "REVIEW",
+                    "type":"BSL_LINE_LENGTH_STD444","line":line_no,
+                    "length":len(line),"limit":BSL_STANDARD_MAX_LINE_LENGTH,
+                    "change_attribution":"EXACT_CHANGED_LINE" if authoritative else "WHOLE_FILE_UNATTRIBUTED",
+                    "note":"Official 1C std444 requires wrapping over 120 characters unless its documented exception applies. Whole-file scan without exact changed-line scope is diagnostic only.",
+                })
+    return {
+        "status":("FAIL" if findings else "PASS") if authoritative else ("EVIDENCE_REQUIRED" if findings else "PASS"),
+        "finding_count":len(findings),"findings":findings,
+        "scope":"EXACT_CHANGED_LINES" if authoritative else "WHOLE_FILE_NON_AUTHORITATIVE",
+        "authoritative_for_change_attribution":authoritative,
+        "changed_line_ranges":[list(x) for x in changed_line_ranges] if authoritative else [],
+        "standard":"std444",
+    }
+
+def analyze(path,bare_symbol_scope_complete=False,known_symbols=None,changed_line_ranges=None):
     text = decode(path)
     bs = blocks(text)
     names = {b["name"] for b in bs}
@@ -1498,6 +1570,11 @@ def analyze(path,bare_symbol_scope_complete=False,known_symbols=None):
         "findings": [],
         "standards": set(),
     }
+    layout=source_layout_analysis(text,changed_line_ranges=changed_line_ranges)
+    result["layout_validation"]={k:v for k,v in layout.items() if k!="findings"}
+    result["findings"].extend(layout["findings"])
+    if any(x.get("type")=="BSL_LINE_LENGTH_STD444" for x in layout["findings"]):
+        result["standards"].add("std444")
     bare=bare_symbol_read_analysis(
         bs,known_symbols=known_symbols,scope_complete=bare_symbol_scope_complete,
         routine_headers_complete=len(list(ROUTINE_HEADER_HINT_RE.finditer(text)))==len(bs),
@@ -1761,8 +1838,23 @@ if __name__ == "__main__":
     ap.add_argument("--known-symbol",action="append",default=[])
     ap.add_argument("--bare-symbol-scope-complete",action="store_true")
     ap.add_argument("--require-bare-symbol-proof",action="store_true")
+    ap.add_argument("--changed-line-range",action="append",default=[],metavar="START:END")
     args = ap.parse_args()
-    r = analyze(args.path,bare_symbol_scope_complete=args.bare_symbol_scope_complete,known_symbols=args.known_symbol)
+    changed_ranges=[]
+    for raw in args.changed_line_range:
+        parts=raw.split(":",1)
+        if len(parts)!=2:
+            ap.error("--changed-line-range must be START:END")
+        try:
+            changed_ranges.append((int(parts[0]),int(parts[1])))
+        except ValueError:
+            ap.error("--changed-line-range must contain integers")
+    r = analyze(
+        args.path,
+        bare_symbol_scope_complete=args.bare_symbol_scope_complete,
+        known_symbols=args.known_symbol,
+        changed_line_ranges=changed_ranges if args.changed_line_range else None,
+    )
     out = json.dumps(r, ensure_ascii=False, indent=2)
     if args.output:
         Path(args.output).write_text(out, encoding="utf-8")

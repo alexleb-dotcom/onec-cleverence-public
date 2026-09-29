@@ -1786,6 +1786,69 @@ minimal_expected={'MINIMAL_COHERENT_CHANGE_T01','MINIMAL_COHERENT_CHANGE_T02','M
 key='registry:minimal_coherent_change_contract'; ok=bool(minimal_rule and minimal_rule.get('tier')==0 and minimal_rule.get('severity')=='BLOCKING' and minimal_rule.get('always_disposition') is True and minimal_expected<=minimal_checks and 'MINIMAL_COHERENT_CHANGE' in registry.get('rule_order',[])); results[key]={'pass':ok,'checks':sorted(minimal_checks)}
 if not ok:errors.append({'case':key,'details':minimal_rule})
 
+project_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='PROJECT_CONVENTION'),None)
+project_checks={x.get('id') for x in (project_rule or {}).get('checks',[])}
+project_expected={'BSL_LAYOUT_FLOOR','FORM_PROGRAMMATIC_ONLY'}
+key='registry:layout_form_universal_floor'; ok=bool(project_rule and project_rule.get('tier')==0 and project_rule.get('severity')=='BLOCKING' and project_rule.get('always_disposition') is True and 'std444' in project_rule.get('standards',[]) and project_expected<=project_checks);results[key]={'pass':ok,'checks':sorted(project_checks),'standards':(project_rule or {}).get('standards')}
+if not ok:errors.append({'case':key,'details':project_rule})
+form_xml_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='FORM_XML_STRUCTURE'),None)
+form_mode_check=next((x for x in (project_rule or {}).get('checks',[]) if x.get('id')=='FORM_PROGRAMMATIC_ONLY'),{})
+key='registry:form_xml_analysis_remains_independent_of_mutation_permission';ok=bool(form_xml_rule and 'Form.xml' in form_mode_check.get('question','') and 'remain allowed' in form_mode_check.get('question',''));results[key]={'pass':ok,'form_xml_rule':bool(form_xml_rule),'form_mode_question':form_mode_check.get('question')}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+with tempfile.TemporaryDirectory() as _td:
+    _td=Path(_td)
+    _blank=_td/'blank.bsl';_blank.write_text('Процедура Тест()\n    А = 1;\n\n\n    Б = 2;\nКонецПроцедуры\n',encoding='utf-8')
+    _preceding=analyze_onec(_blank,changed_line_ranges=[(3,3)]);_preceding_layout=[x for x in _preceding.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:blank_run_changed_preceding_blank_blocks';ok=bool(_preceding_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_RUN' and x.get('blank_run_start')==3 and x.get('blank_run_end')==4 for x in _preceding_layout));results[key]={'findings':_preceding_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_preceding})
+
+    _following=analyze_onec(_blank,changed_line_ranges=[(4,4)]);_following_layout=[x for x in _following.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:blank_run_changed_following_blank_blocks';ok=bool(_following_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_RUN' and x.get('blank_run_start')==3 and x.get('blank_run_end')==4 for x in _following_layout));results[key]={'findings':_following_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_following})
+
+    _unrelated_blank=analyze_onec(_blank,changed_line_ranges=[(2,2)]);_unrelated_blank_layout=[x for x in _unrelated_blank.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:old_two_blank_debt_unrelated_change_not_blocked';ok=not _unrelated_blank_layout;results[key]={'findings':_unrelated_blank_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_unrelated_blank})
+
+    _whole_blank=analyze_onec(_blank);_whole_blank_layout=[x for x in _whole_blank.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:unscoped_blank_run_remains_review';ok=bool(_whole_blank_layout and all(x.get('severity')=='REVIEW' and x.get('change_attribution')=='WHOLE_FILE_UNATTRIBUTED' for x in _whole_blank_layout) and _whole_blank.get('layout_validation',{}).get('scope')=='WHOLE_FILE_NON_AUTHORITATIVE' and _whole_blank.get('layout_validation',{}).get('authoritative_for_change_attribution') is False);results[key]={'findings':_whole_blank_layout,'layout_validation':_whole_blank.get('layout_validation'),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_whole_blank})
+
+    _long=_td/'long.bsl';_long.write_text('Процедура Тест()\n    Результат = '+('ОченьДлинноеИмяПеременной + '*7)+'Финал;\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_long,changed_line_ranges=[(2,2)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    key='layout:std444_hard_line_length_blocks_in_exact_changed_scope';ok=bool(_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_LINE' for x in _layout));results[key]={'findings':_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _legacy=_td/'legacy_debt.bsl';_legacy_text='Процедура Тест()\n    Результат = '+('ОченьДлинноеИмяПеременной + '*7)+'Финал;\n    А = 1;\n    Б = 2;\nКонецПроцедуры\n';_legacy.write_text(_legacy_text,encoding='utf-8')
+    _whole=analyze_onec(_legacy);_whole_layout=[x for x in _whole.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    _unrelated=analyze_onec(_legacy,changed_line_ranges=[(4,4)]);_unrelated_layout=[x for x in _unrelated.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    _introduced=analyze_onec(_legacy,changed_line_ranges=[(2,2)]);_introduced_layout=[x for x in _introduced.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    key='layout:legacy_untouched_debt_not_attributed_but_new_equivalent_is_blocked';ok=bool(
+        _whole_layout
+        and all(x.get('severity')=='REVIEW' and x.get('change_attribution')=='WHOLE_FILE_UNATTRIBUTED' for x in _whole_layout)
+        and _whole.get('layout_validation',{}).get('scope')=='WHOLE_FILE_NON_AUTHORITATIVE'
+        and _whole.get('layout_validation',{}).get('authoritative_for_change_attribution') is False
+        and not _unrelated_layout
+        and _introduced_layout
+        and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_LINE' for x in _introduced_layout)
+    );results[key]={'whole_file':_whole_layout,'unrelated_changed_scope':_unrelated_layout,'introduced_changed_scope':_introduced_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':results[key]})
+
+    _wrapped=_td/'wrapped.bsl';_wrapped.write_text('Процедура Тест(Флаг1, Флаг2)\n    Если Флаг1\n        И Флаг2 Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_wrapped,changed_line_ranges=[(2,3)]);_layout=[x for x in _r.get('findings',[]) if x.get('type') in {'MULTIPLE_CONSECUTIVE_EMPTY_LINES','BSL_LINE_LENGTH_STD444'}]
+    key='layout:necessary_wrap_allowed';ok=not _layout;results[key]={'layout_findings':_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _string=_td/'string.bsl';_string.write_text('Процедура Тест()\n    Сообщить("'+('ДлинныйПользовательскийТекст'*8)+'");\nКонецПроцедуры\n',encoding='utf-8')
+    _r=analyze_onec(_string,changed_line_ranges=[(2,2)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    key='layout:std444_string_exception_not_mechanically_blocked';ok=not _layout;results[key]={'layout_findings':_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+
+    _crlf=_td/'preserve.bsl';_before='Процедура Тест()\r\n    А = 1;\r\nКонецПроцедуры\r\n'.encode('utf-8');_crlf.write_bytes(_before);analyze_onec(_crlf,changed_line_ranges=[(2,2)]);_after=_crlf.read_bytes()
+    key='layout:analyzer_does_not_normalize_source_bytes';ok=_before==_after and b'\r\n' in _after;results[key]={'before_sha':hashlib.sha256(_before).hexdigest(),'after_sha':hashlib.sha256(_after).hexdigest(),'pass':ok}
+    if not ok:errors.append({'case':key,'details':results[key]})
+
 
 # Existing-capability pre-mutation admission regressions.
 admission=validate_implementation_admission(plan,proved)
