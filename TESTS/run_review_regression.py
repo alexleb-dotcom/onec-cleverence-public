@@ -1799,26 +1799,41 @@ if not ok:errors.append({'case':key,'details':results[key]})
 with tempfile.TemporaryDirectory() as _td:
     _td=Path(_td)
     _blank=_td/'blank.bsl';_blank.write_text('Процедура Тест()\n    А = 1;\n\n\n    Б = 2;\nКонецПроцедуры\n',encoding='utf-8')
-    _r=analyze_onec(_blank);_types={x.get('type') for x in _r.get('findings',[])}
-    key='layout:consecutive_empty_lines_blocking';ok='MULTIPLE_CONSECUTIVE_EMPTY_LINES' in _types;results[key]={'findings':_r.get('findings'),'pass':ok}
+    _r=analyze_onec(_blank,changed_line_ranges=[(4,4)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:consecutive_empty_lines_blocking_in_exact_changed_scope';ok=bool(_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_LINE' for x in _layout) and _r.get('layout_validation',{}).get('authoritative_for_change_attribution') is True);results[key]={'findings':_layout,'layout_validation':_r.get('layout_validation'),'pass':ok}
     if not ok:errors.append({'case':key,'details':_r})
 
     _long=_td/'long.bsl';_long.write_text('Процедура Тест()\n    Результат = '+('ОченьДлинноеИмяПеременной + '*7)+'Финал;\nКонецПроцедуры\n',encoding='utf-8')
-    _r=analyze_onec(_long);_types={x.get('type') for x in _r.get('findings',[])}
-    key='layout:std444_hard_line_length';ok='BSL_LINE_LENGTH_STD444' in _types;results[key]={'findings':_r.get('findings'),'pass':ok}
+    _r=analyze_onec(_long,changed_line_ranges=[(2,2)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    key='layout:std444_hard_line_length_blocks_in_exact_changed_scope';ok=bool(_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_LINE' for x in _layout));results[key]={'findings':_layout,'pass':ok}
     if not ok:errors.append({'case':key,'details':_r})
 
+    _legacy=_td/'legacy_debt.bsl';_legacy_text='Процедура Тест()\n    Результат = '+('ОченьДлинноеИмяПеременной + '*7)+'Финал;\n    А = 1;\n    Б = 2;\nКонецПроцедуры\n';_legacy.write_text(_legacy_text,encoding='utf-8')
+    _whole=analyze_onec(_legacy);_whole_layout=[x for x in _whole.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    _unrelated=analyze_onec(_legacy,changed_line_ranges=[(4,4)]);_unrelated_layout=[x for x in _unrelated.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    _introduced=analyze_onec(_legacy,changed_line_ranges=[(2,2)]);_introduced_layout=[x for x in _introduced.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    key='layout:legacy_untouched_debt_not_attributed_but_new_equivalent_is_blocked';ok=bool(
+        _whole_layout
+        and all(x.get('severity')=='REVIEW' and x.get('change_attribution')=='WHOLE_FILE_UNATTRIBUTED' for x in _whole_layout)
+        and _whole.get('layout_validation',{}).get('scope')=='WHOLE_FILE_NON_AUTHORITATIVE'
+        and _whole.get('layout_validation',{}).get('authoritative_for_change_attribution') is False
+        and not _unrelated_layout
+        and _introduced_layout
+        and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_LINE' for x in _introduced_layout)
+    );results[key]={'whole_file':_whole_layout,'unrelated_changed_scope':_unrelated_layout,'introduced_changed_scope':_introduced_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':results[key]})
+
     _wrapped=_td/'wrapped.bsl';_wrapped.write_text('Процедура Тест(Флаг1, Флаг2)\n    Если Флаг1\n        И Флаг2 Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n',encoding='utf-8')
-    _r=analyze_onec(_wrapped);_layout=[x for x in _r.get('findings',[]) if x.get('type') in {'MULTIPLE_CONSECUTIVE_EMPTY_LINES','BSL_LINE_LENGTH_STD444'}]
+    _r=analyze_onec(_wrapped,changed_line_ranges=[(2,3)]);_layout=[x for x in _r.get('findings',[]) if x.get('type') in {'MULTIPLE_CONSECUTIVE_EMPTY_LINES','BSL_LINE_LENGTH_STD444'}]
     key='layout:necessary_wrap_allowed';ok=not _layout;results[key]={'layout_findings':_layout,'pass':ok}
     if not ok:errors.append({'case':key,'details':_r})
 
     _string=_td/'string.bsl';_string.write_text('Процедура Тест()\n    Сообщить("'+('ДлинныйПользовательскийТекст'*8)+'");\nКонецПроцедуры\n',encoding='utf-8')
-    _r=analyze_onec(_string);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
+    _r=analyze_onec(_string,changed_line_ranges=[(2,2)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
     key='layout:std444_string_exception_not_mechanically_blocked';ok=not _layout;results[key]={'layout_findings':_layout,'pass':ok}
     if not ok:errors.append({'case':key,'details':_r})
 
-    _crlf=_td/'preserve.bsl';_before='Процедура Тест()\r\n    А = 1;\r\nКонецПроцедуры\r\n'.encode('utf-8');_crlf.write_bytes(_before);analyze_onec(_crlf);_after=_crlf.read_bytes()
+    _crlf=_td/'preserve.bsl';_before='Процедура Тест()\r\n    А = 1;\r\nКонецПроцедуры\r\n'.encode('utf-8');_crlf.write_bytes(_before);analyze_onec(_crlf,changed_line_ranges=[(2,2)]);_after=_crlf.read_bytes()
     key='layout:analyzer_does_not_normalize_source_bytes';ok=_before==_after and b'\r\n' in _after;results[key]={'before_sha':hashlib.sha256(_before).hexdigest(),'after_sha':hashlib.sha256(_after).hexdigest(),'pass':ok}
     if not ok:errors.append({'case':key,'details':results[key]})
 
