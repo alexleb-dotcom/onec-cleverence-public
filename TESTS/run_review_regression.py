@@ -187,6 +187,60 @@ ok=(
 results[key]={'release_errors':_escape_deleted_release.get('errors',[]),'work_queue':_escape_deleted_queue.get('work_queue',{}),'pass':ok}
 if not ok:errors.append({'case':key,'details':results[key]})
 
+# ARCH-20260929-029 frozen-fixture + proof-route regression.
+_bare_hashes={'bare_symbol_A_bad.bsl':'55dd5fcfc526311646a80ea8b2fde80ad4d0cbbfe3d7a62215858606f451d2e0','bare_symbol_A_good.bsl':'e71f52f97de55180f691df38e8a38524bb11c1deb62df8736d3d1bf02d21c399','bare_symbol_B_bad.bsl':'be80a3abfcfffe64200b10d1ac6e4dcfc8521be2c0b09be020d8b0ccf51193ed','bare_symbol_B_good.bsl':'d66cc1dff96efc9d26bad0585d8b9962ba3c3501320113d04aac6e4e7b91dcf1'}
+for _name,_sha in _bare_hashes.items():
+    _actual=hashlib.sha256((fixtures/_name).read_bytes()).hexdigest();key='bare_symbol:fixture:'+_name;ok=_actual==_sha;results[key]={'actual':_actual,'pass':ok}
+    if not ok:errors.append({'case':key,'details':results[key]})
+for _name,_want in (('bare_symbol_A_bad.bsl','FAIL'),('bare_symbol_A_good.bsl','PASS'),('bare_symbol_B_bad.bsl','FAIL'),('bare_symbol_B_good.bsl','PASS')):
+    _x=analyze_onec(fixtures/_name,bare_symbol_scope_complete=True);_hits=[f for f in _x.get('findings',[]) if f.get('type')=='UNRESOLVED_BARE_IDENTIFIER_READ'];_got=(_x.get('bare_symbol_validation') or {}).get('status');key='bare_symbol:behavior:'+_name;ok=_got==_want and bool(_hits)==(_want=='FAIL');results[key]={'status':_got,'findings':_hits,'pass':ok}
+    if not ok:errors.append({'case':key,'details':results[key]})
+_x=analyze_onec(fixtures/'bare_symbol_A_bad.bsl');key='bare_symbol:insufficient_context_not_pass';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='NOT_CHECKED' and not [f for f in _x.get('findings',[]) if f.get('type')=='UNRESOLVED_BARE_IDENTIFIER_READ'];results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Процедура Проверить()\n    Если КонтекстныйФлаг Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n');_known=Path(_f.name)
+_x=analyze_onec(_known,bare_symbol_scope_complete=True,known_symbols=['КонтекстныйФлаг']);key='bare_symbol:known_context_symbol';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='PASS';results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':results[key]})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Процедура Проверить(Знач Флаг, Знач Режим = Ложь)\n    Если Флаг Или Режим Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n');_value_params=Path(_f.name)
+_x=analyze_onec(_value_params,bare_symbol_scope_complete=True);key='bare_symbol:value_parameter_and_default_valid';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='PASS' and not [f for f in _x.get('findings',[]) if f.get('type')=='UNRESOLVED_BARE_IDENTIFIER_READ'];results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Асинх Процедура Проверить()\n    Если НеизвестныйФлаг Тогда\n        Возврат;\n    КонецЕсли;\nКонецПроцедуры\n');_async_bad=Path(_f.name)
+_x=analyze_onec(_async_bad,bare_symbol_scope_complete=True);_hits=[f for f in _x.get('findings',[]) if f.get('type')=='UNRESOLVED_BARE_IDENTIFIER_READ'];key='bare_symbol:async_bad_never_passes';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='FAIL' and any(f.get('symbol')=='НеизвестныйФлаг' for f in _hits);results[key]={'validation':_x.get('bare_symbol_validation'),'findings':_hits,'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Асинх Функция Получить(Знач Флаг = Ложь)\n    Возврат Флаг;\nКонецФункции\n');_async_good=Path(_f.name)
+_x=analyze_onec(_async_good,bare_symbol_scope_complete=True);key='bare_symbol:async_good_checked';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='PASS' and len(_x.get('procedures') or [])==1;results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+
+with tempfile.NamedTemporaryFile('w',suffix='.bsl',encoding='utf-8',delete=False) as _f:
+    _f.write('Асинх Процедура НеполныйЗаголовок\n    Возврат;\nКонецПроцедуры\n');_unparsed_header=Path(_f.name)
+_x=analyze_onec(_unparsed_header,bare_symbol_scope_complete=True);key='bare_symbol:recognizable_unparsed_routine_not_checked';ok=(_x.get('bare_symbol_validation') or {}).get('status')=='NOT_CHECKED';results[key]={'validation':_x.get('bare_symbol_validation'),'pass':ok}
+if not ok:errors.append({'case':key,'details':_x})
+with tempfile.TemporaryDirectory() as _td:
+    _td=Path(_td);_candidate=_td/'Module.bsl';_candidate.write_bytes((fixtures/'bare_symbol_A_good.bsl').read_bytes());_plan=build_plan([_candidate]);_ledger=build_ledger(_plan,registry);_logical=_plan['candidate_artifacts'][0]['logical_path'];_ledger['implementation_intent_map']={'rows':[{'artifact':_logical}]}
+    _r=release_evaluate(_plan,_ledger,registry);key='bare_symbol:release_requires_property';ok=any(e.get('type')=='BSL_BARE_SYMBOL_CURRENT_ANALYZER_REQUIRED' for e in _r.get('errors',[]));results[key]={'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+    _gp=_td/'generic.json';_gr=create_receipt('TOOLS/analyze_onec_bsl.py',[str(_candidate)],[str(_candidate)],['STATIC:ONEC_BSL'],_gp);_lg=copy.deepcopy(_ledger);_lg['machine_reports']=[{'id':'MACHINE:BARE:GENERIC','tool':'TOOLS/analyze_onec_bsl.py','receipt_ref':str(_gp),'receipt_sha256':hashlib.sha256(_gp.read_bytes()).hexdigest(),'result':_gr['derived_result'],'supersedes':[]}];_r=release_evaluate(_plan,_lg,registry);key='bare_symbol:generic_receipt_not_promoted';ok=any(e.get('type')=='BSL_BARE_SYMBOL_CURRENT_ANALYZER_REQUIRED' for e in _r.get('errors',[]));results[key]={'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+    _pp=_td/'proof.json';_pr=create_receipt('TOOLS/analyze_onec_bsl.py',[str(_candidate),'--bare-symbol-scope-complete','--require-bare-symbol-proof'],[str(_candidate)],['STATIC:ONEC_BSL_BARE_SYMBOL'],_pp);_lp=copy.deepcopy(_ledger);_lp['machine_reports']=[{'id':'MACHINE:BARE:PASS','tool':'TOOLS/analyze_onec_bsl.py','receipt_ref':str(_pp),'receipt_sha256':hashlib.sha256(_pp.read_bytes()).hexdigest(),'result':_pr['derived_result'],'supersedes':[]}];_r=release_evaluate(_plan,_lp,registry);key='bare_symbol:exact_receipt_closes_requirement';ok=not any(e.get('type')=='BSL_BARE_SYMBOL_CURRENT_ANALYZER_REQUIRED' for e in _r.get('errors',[]));results[key]={'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+    _candidate.write_bytes((fixtures/'bare_symbol_A_bad.bsl').read_bytes());_r=release_evaluate(_plan,_lp,registry);key='bare_symbol:candidate_drift_invalidates_receipt';ok=any(e.get('type')=='BSL_BARE_SYMBOL_CURRENT_ANALYZER_REQUIRED' for e in _r.get('errors',[]));results[key]={'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+with tempfile.TemporaryDirectory() as _td:
+    _td=Path(_td);_bad=_td/'Module.bsl';_bad.write_bytes((fixtures/'bare_symbol_B_bad.bsl').read_bytes());_plan=build_plan([_bad]);_ledger=build_ledger(_plan,registry);_ledger['implementation_intent_map']={'rows':[{'artifact':_plan['candidate_artifacts'][0]['logical_path']}]};_rp=_td/'bad.json';_rr=create_receipt('TOOLS/analyze_onec_bsl.py',[str(_bad),'--bare-symbol-scope-complete','--require-bare-symbol-proof'],[str(_bad)],['STATIC:ONEC_BSL_BARE_SYMBOL'],_rp);_ledger['machine_reports']=[{'id':'MACHINE:BARE:FAIL','tool':'TOOLS/analyze_onec_bsl.py','receipt_ref':str(_rp),'receipt_sha256':hashlib.sha256(_rp.read_bytes()).hexdigest(),'result':_rr['derived_result'],'supersedes':[]}];_r=release_evaluate(_plan,_ledger,registry);key='bare_symbol:blocking_finding_blocks_release';ok=_rr['derived_result']=='FAIL' and any(e.get('type')=='UNSUPERSEDED_MACHINE_FAILURE' for e in _r.get('errors',[]));results[key]={'pass':ok}
+    if not ok:errors.append({'case':key,'details':_r})
+try:
+    with tempfile.TemporaryDirectory() as _td:create_receipt('TOOLS/analyze_onec_bsl.py',[str(fixtures/'bare_symbol_A_good.bsl')],[str(fixtures/'bare_symbol_A_good.bsl')],['STATIC:ONEC_BSL_BARE_SYMBOL'],Path(_td)/'x.json')
+    _rejected=False
+except ValueError:_rejected=True
+key='bare_symbol:property_requires_proof_cli';results[key]={'pass':_rejected}
+if not _rejected:errors.append({'case':key})
+
 # Analyzer zero on Candidate A is not proof for Candidate B after a one-byte/source
 # mutation. Receipt replay and current-candidate identity both fail closed.
 _escape_mut_dir=Path(tempfile.mkdtemp(prefix='query-escape-mutation-'))
@@ -872,9 +926,9 @@ if not ok:errors.append({'case':key,'details':r})
 # Construct a synthetic fully-adjudicated ledger to test release mechanics, not domain correctness.
 proved=copy.deepcopy(ledger)
 _receipt_dir=Path(tempfile.mkdtemp(prefix='onec-skill-receipts-'))
-_machine_input=_receipt_dir/'machine_input.bsl'; _machine_input.write_bytes((fixtures/'query_field_good.bsl').read_bytes())
+_machine_input=release_source_path
 _machine_receipt_path=_receipt_dir/'machine.json'
-_machine_receipt=create_receipt('TOOLS/analyze_onec_bsl.py',[str(_machine_input)],[str(_machine_input)],['STATIC:ONEC_BSL'],_machine_receipt_path)
+_machine_receipt=create_receipt('TOOLS/analyze_onec_bsl.py',[str(_machine_input),'--known-symbol','TestApi','--bare-symbol-scope-complete','--require-bare-symbol-proof'],[str(_machine_input)],['STATIC:ONEC_BSL','STATIC:ONEC_BSL_BARE_SYMBOL'],_machine_receipt_path)
 _machine_receipt_sha=hashlib.sha256(_machine_receipt_path.read_bytes()).hexdigest()
 proved['machine_reports']=[{'id':'MACHINE:SYNTHETIC','tool':'TOOLS/analyze_onec_bsl.py','ref':str(_machine_receipt_path),'receipt_ref':str(_machine_receipt_path),'receipt_sha256':_machine_receipt_sha,'result':_machine_receipt['derived_result'],'supersedes':[]}]
 proved['runtime_cases']=[]

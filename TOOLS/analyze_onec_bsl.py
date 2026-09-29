@@ -5,13 +5,18 @@
 from pathlib import Path
 import re, json, argparse
 
-DEF_RE = re.compile(r'(?im)^\s*(Функция|Процедура)\s+([A-Za-zА-Яа-я_][\wА-Яа-я]*)\s*\(([^)]*)\)([^\r\n]*)')
+DEF_RE = re.compile(r'(?im)^\s*(?:Асинх\s+)?(Функция|Процедура)\s+([A-Za-zА-Яа-я_][\wА-Яа-я]*)\s*\(([^)]*)\)([^\r\n]*)')
+ROUTINE_HEADER_HINT_RE = re.compile(r'(?im)^\s*(?:Асинх\s+)?(?:Функция|Процедура)\b')
 END_RE = re.compile(r'(?im)^\s*Конец(Функции|Процедуры)\b')
 EXECUTION_DIRECTIVE_RE = re.compile(r'(?im)^\s*&(?P<directive>НаКлиентеНаСервереБезКонтекста|НаСервереБезКонтекста|НаСервере|НаКлиенте)\s*$')
 
 def decode(path):
     b = Path(path).read_bytes()
     return b.decode("utf-8-sig", errors="replace")
+
+def _formal_parameter_name(raw):
+    value=raw.strip().split("=",1)[0].strip()
+    return re.sub(r'(?i)^Знач\s+','',value).strip()
 
 def blocks(text):
     defs = list(DEF_RE.finditer(text))
@@ -29,7 +34,7 @@ def blocks(text):
         out.append({
             "kind": m.group(1),
             "name": m.group(2),
-            "params": [x.strip().split("=")[0].strip() for x in m.group(3).split(",") if x.strip()],
+            "params": [_formal_parameter_name(x) for x in m.group(3).split(",") if x.strip()],
             "export": "Экспорт" in m.group(4),
             "execution_context": execution_context,
             "text": text[start:end],
@@ -1426,7 +1431,62 @@ def query_execute_side_effect_analysis(block):
 def query_execute_side_effect_findings(block):
     return query_execute_side_effect_analysis(block)['findings']
 
-def analyze(path):
+_BARE_SYMBOL_IDENT_RE=re.compile(r'[A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*')
+_BARE_SYMBOL_KEYWORDS={x.lower() for x in ("Если Тогда Иначе ИначеЕсли КонецЕсли Для Каждого Из Цикл КонецЦикла Пока По Возврат Продолжить Прервать Перем Экспорт Процедура Функция КонецПроцедуры КонецФункции Новый И Или Не Истина Ложь Неопределено Null Попытка Исключение КонецПопытки ВызватьИсключение Перейти Асинх Ждать Знач").split()}
+
+def _mask_bsl_strings_and_comments(text):
+    chars=list(text);i=0;in_string=False
+    while i<len(chars):
+        ch=chars[i]
+        if in_string:
+            if ch=='"':
+                if i+1<len(chars) and chars[i+1]=='"':chars[i]=chars[i+1]=' ';i+=2;continue
+                chars[i]=' ';in_string=False;i+=1;continue
+            if ch not in '\r\n':chars[i]=' '
+            i+=1;continue
+        if ch=='"':chars[i]=' ';in_string=True;i+=1;continue
+        if ch=='/' and i+1<len(chars) and chars[i+1]=='/':
+            while i<len(chars) and chars[i] not in '\r\n':chars[i]=' ';i+=1
+            continue
+        i+=1
+    return ''.join(chars)
+
+def bare_symbol_read_analysis(block_rows,known_symbols=None,scope_complete=False,routine_headers_complete=True):
+    if not scope_complete:
+        return {"status":"NOT_CHECKED","finding_count":0,"findings":[],"reason":"Exact unqualified-symbol scope is incomplete; missing context is not PASS.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
+    if not routine_headers_complete:
+        return {"status":"NOT_CHECKED","finding_count":0,"findings":[],"reason":"Recognizable BSL routine header syntax was not fully parsed; unchecked routine context is not PASS.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
+    external={str(x).lower() for x in (known_symbols or []) if str(x).strip()};findings=[]
+    for block in block_rows:
+        defined=set(external)|{str(x).lower() for x in block.get("params") or []}
+        masked_lines=_mask_bsl_strings_and_comments(block["text"]).splitlines();raw_lines=block["text"].splitlines()
+        for offset,line in enumerate(masked_lines):
+            raw=raw_lines[offset] if offset<len(raw_lines) else line;stripped=line.strip()
+            if not stripped or offset==0 or re.match(r'(?i)^Конец(?:Процедуры|Функции)\b',stripped):continue
+            decl=re.match(r'(?i)^Перем\s+(.+?);?\s*$',stripped)
+            if decl:
+                defined.update(x.lower() for x in _BARE_SYMBOL_IDENT_RE.findall(decl.group(1)));continue
+            segments=[];define_after=[]
+            each=re.match(r'(?i)^Для\s+Каждого\s+([A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*)\s+Из\s+(.+?)\s+Цикл\b',stripped)
+            if each:
+                expr=each.group(2);segments=[(expr,line.find(expr))];define_after=[each.group(1)]
+            else:
+                loop=re.match(r'(?i)^Для\s+([A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*)\s*=\s*(.+?)\s+По\s+(.+?)\s+Цикл\b',stripped)
+                if loop:
+                    expr=loop.group(2)+" "+loop.group(3);segments=[(expr,line.find(loop.group(2)))];define_after=[loop.group(1)]
+                else:
+                    assign=re.match(r'^\s*([A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*)\s*=\s*(.*)$',line)
+                    if assign:segments=[(assign.group(2),assign.start(2))];define_after=[assign.group(1)]
+                    else:segments=[(line,0)]
+            for expr,shift in segments:
+                for match in _BARE_SYMBOL_IDENT_RE.finditer(expr):
+                    symbol=match.group(0);key=symbol.lower();pos=shift+match.start();before=line[:pos].rstrip();after=line[shift+match.end():].lstrip()
+                    if key in _BARE_SYMBOL_KEYWORDS or key in defined or before.endswith('.') or after.startswith('(') or after.startswith(':'):continue
+                    findings.append({"severity":"HIGH","type":"UNRESOLVED_BARE_IDENTIFIER_READ","symbol":symbol,"line":block["start_line"]+offset,"code":raw.strip()[:180],"procedure":block["name"],"note":"Exact complete unqualified-symbol scope does not establish this bare read."})
+            defined.update(x.lower() for x in define_after)
+    return {"status":"FAIL" if findings else "PASS","finding_count":len(findings),"findings":findings,"reason":"Exact unqualified-symbol scope was declared complete for this analyzer run.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
+
+def analyze(path,bare_symbol_scope_complete=False,known_symbols=None):
     text = decode(path)
     bs = blocks(text)
     names = {b["name"] for b in bs}
@@ -1438,6 +1498,12 @@ def analyze(path):
         "findings": [],
         "standards": set(),
     }
+    bare=bare_symbol_read_analysis(
+        bs,known_symbols=known_symbols,scope_complete=bare_symbol_scope_complete,
+        routine_headers_complete=len(list(ROUTINE_HEADER_HINT_RE.finditer(text)))==len(bs),
+    )
+    result["bare_symbol_validation"]={k:v for k,v in bare.items() if k!="findings"}
+    result["findings"].extend(bare["findings"])
 
     for b in bs:
         refs = known_reference_vars(b)
@@ -1692,9 +1758,14 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("path")
     ap.add_argument("--output")
+    ap.add_argument("--known-symbol",action="append",default=[])
+    ap.add_argument("--bare-symbol-scope-complete",action="store_true")
+    ap.add_argument("--require-bare-symbol-proof",action="store_true")
     args = ap.parse_args()
-    r = analyze(args.path)
+    r = analyze(args.path,bare_symbol_scope_complete=args.bare_symbol_scope_complete,known_symbols=args.known_symbol)
     out = json.dumps(r, ensure_ascii=False, indent=2)
     if args.output:
         Path(args.output).write_text(out, encoding="utf-8")
     print(out)
+    if args.require_bare_symbol_proof and (r.get("bare_symbol_validation") or {}).get("status")!="PASS":
+        raise SystemExit(2)

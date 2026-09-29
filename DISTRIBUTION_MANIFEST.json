@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 442,
+  "file_count": 446,
   "files": [
     {
       "path": ".gitattributes",
@@ -772,6 +772,26 @@
       "path": "TESTS/fixtures/barcode_input_classification_review.bsl",
       "size": 184,
       "sha256": "531c0323120bf29d5c691aeda83347a7c636b27c04c34d0c68d4ec4420bd32e4"
+    },
+    {
+      "path": "TESTS/fixtures/bare_symbol_A_bad.bsl",
+      "size": 307,
+      "sha256": "55dd5fcfc526311646a80ea8b2fde80ad4d0cbbfe3d7a62215858606f451d2e0"
+    },
+    {
+      "path": "TESTS/fixtures/bare_symbol_A_good.bsl",
+      "size": 336,
+      "sha256": "e71f52f97de55180f691df38e8a38524bb11c1deb62df8736d3d1bf02d21c399"
+    },
+    {
+      "path": "TESTS/fixtures/bare_symbol_B_bad.bsl",
+      "size": 320,
+      "sha256": "be80a3abfcfffe64200b10d1ac6e4dcfc8521be2c0b09be020d8b0ccf51193ed"
+    },
+    {
+      "path": "TESTS/fixtures/bare_symbol_B_good.bsl",
+      "size": 375,
+      "sha256": "d66cc1dff96efc9d26bad0585d8b9962ba3c3501320113d04aac6e4e7b91dcf1"
     },
     {
       "path": "TESTS/fixtures/business_identity_representation_key.bsl",
@@ -1875,8 +1895,8 @@
     },
     {
       "path": "TESTS/run_review_regression.py",
-      "size": 148449,
-      "sha256": "542a0f884d1e405d09427175dca7047050ee559a60b8e98e2bf293510bbe0c15"
+      "size": 157291,
+      "sha256": "43b662e8ff8d4624fe685e1b021bb4f73bf677eca27578b0f9fac4450fc9b078"
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
@@ -1935,8 +1955,8 @@
     },
     {
       "path": "TOOLS/analyze_onec_bsl.py",
-      "size": 80773,
-      "sha256": "4887eeb7b10734f68ff44e4145f52eee77a50214327360cd70bf9cc8d0416262"
+      "size": 86576,
+      "sha256": "0cb166010f8c7e9ed4649c79e47d886c67fdc8e0c2c35c9231c191e05c2f19ba"
     },
     {
       "path": "TOOLS/analyze_onec_field_flow.py",
@@ -2030,8 +2050,8 @@
     },
     {
       "path": "TOOLS/machine_receipts.py",
-      "size": 10049,
-      "sha256": "fa507067b646295f00b42af89ee3e0fd0824a8b237627fa963aaa622bf9b689b"
+      "size": 10680,
+      "sha256": "7ddf0384d7cfa52e14415d622b3d29671b3225b9182465a1072ecd63182ac346"
     },
     {
       "path": "TOOLS/materialize_project_snapshot_collector.py",
@@ -2100,8 +2120,8 @@
     },
     {
       "path": "TOOLS/release_gate_core.py",
-      "size": 88813,
-      "sha256": "13b157097bbc9e4fc697163b23f375f054d76ff063091844f05f8d7048c59573"
+      "size": 92229,
+      "sha256": "ed716d1892bc77804250de15e78c8a936d8b9b8fd9c7e11dfce61ec05456e35d"
     },
     {
       "path": "TOOLS/release_gate_hardening.py",
@@ -2220,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "46b3907877adadba2f71dcdb7a1c019a023f814f17974a285aee5321e38d04e8"
+  "snapshot_digest": "9df4fb3d03283e6989b8d6f072fc8a0d618fffa63bd8b45e03d36930d84f988b"
 }
