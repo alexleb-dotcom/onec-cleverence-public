@@ -1229,7 +1229,7 @@
       "always_disposition": true,
       "surface": "ANY",
       "risk_floor": "R0_LOCAL",
-      "description": "Among implementations that fully satisfy requirements, correctness, standards, maintainability and proven contracts, choose the smallest necessary change surface relative to the exact baseline. Minimize changed objects/files/routines/hunks, new executable code and new abstractions; do not minimize raw LOC at the expense of clarity, cohesion, supported mechanisms, runtime safety or delivery closure.",
+      "description": "Among implementations that fully satisfy requirements, correctness, standards, maintainability and proven contracts, choose the smallest necessary change surface relative to the exact baseline. Minimize changed objects/files/routines/hunks, new executable code, new abstractions and unnecessary visual/vertical expansion; do not minimize raw LOC at the expense of clarity, cohesion, supported mechanisms, runtime safety or delivery closure, and do not normalize unrelated formatting.",
       "activation": {
         "mode": "ALWAYS_DISPOSITION",
         "patterns": [],
@@ -1310,6 +1310,20 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "owner_reuse_level_classification"
+        },
+        {
+          "id": "FORMATTING_ONLY_VERTICAL_NOISE",
+          "question": "Does the change avoid formatting-only churn and avoid vertically decomposing a simple readable expression/call/condition without a real line-length/readability reason, while preserving necessary standard-compliant wrapping?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
+        },
+        {
+          "id": "UNTOUCHED_SOURCE_FORMAT_PRESERVATION",
+          "question": "Are unrelated baseline formatting plus exact encoding/newline conventions left untouched unless a proven delivery contract requires a change, rather than globally normalized by a formatter?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
         }
       ],
       "regression": {
@@ -1325,7 +1339,9 @@
           "check:OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE",
           "check:PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS",
           "check:MINIMAL_COHERENT_CHANGE_T04",
-          "check:OWNER_REUSE_LEVEL_CLASSIFICATION"
+          "check:OWNER_REUSE_LEVEL_CLASSIFICATION",
+          "check:FORMATTING_ONLY_VERTICAL_NOISE",
+          "check:UNTOUCHED_SOURCE_FORMAT_PRESERVATION"
         ]
       },
       "proof_policy": {
@@ -1507,7 +1523,7 @@
       "always_disposition": true,
       "surface": "ANY",
       "risk_floor": "R0_LOCAL",
-      "description": "Do not invent author tags, prefixes, regions, comments or placement conventions absent from project evidence.",
+      "description": "Project-specific conventions refine a universal OneC source/layout floor; they cannot authorize invented conventions, arbitrary vertical noise, standard-violating BSL layout or interactive form mutation.",
       "activation": {
         "mode": "ALWAYS_DISPOSITION",
         "patterns": [],
@@ -1517,7 +1533,9 @@
         "SOURCE_REQUIRED",
         "SEMANTIC"
       ],
-      "standards": [],
+      "standards": [
+        "std444"
+      ],
       "checks": [
         {
           "id": "PROJECT_CONVENTION_T01",
@@ -1540,6 +1558,27 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "project_convention_invention"
+        },
+        {
+          "id": "BSL_SOURCE_LAYOUT_STANDARD_FLOOR",
+          "question": "For changed/new BSL, are applicable 1C std444 line-length/wrapping rules enforced, with lines over 120 characters wrapped unless the standard's documented exception applies, no more than one consecutive blank line, and necessary readable/standard-compliant wrapping still allowed?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
+        },
+        {
+          "id": "PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR",
+          "question": "Does project style only refine/tighten the universal BSL layout floor rather than weakening it into arbitrary vertical decomposition, multiple consecutive blank lines or standard-violating line length?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
+        },
+        {
+          "id": "FORM_CHANGE_MODE_PROGRAMMATIC_ONLY",
+          "question": "For form changes, is FORM_CHANGE_MODE fixed to PROGRAMMATIC_ONLY so Designer/Configurator interactive structure/property editing is rejected while reproducible programmatic/static artifact mutation and Form.xml evidence/validation remain allowed?",
+          "kind": "TIER0",
+          "blocking": true,
+          "evidence_required": true
         }
       ],
       "regression": {
@@ -1547,7 +1586,10 @@
           "tier0_disposition_required"
         ],
         "enforcement_cases": [
-          "check:PROJECT_CONVENTION_T01"
+          "check:PROJECT_CONVENTION_T01",
+          "check:BSL_SOURCE_LAYOUT_STANDARD_FLOOR",
+          "check:PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR",
+          "check:FORM_CHANGE_MODE_PROGRAMMATIC_ONLY"
         ]
       }
     },
