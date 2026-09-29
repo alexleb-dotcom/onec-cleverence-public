@@ -9,7 +9,7 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'TOOLS'))
-from build_project_bootstrap import build, _capability_gates, _requests, _author_marker_gate_state, CANONICAL_ONEC_AUTHOR_MARKER, FORM_CHANGE_MODE
+from build_project_bootstrap import build, _capability_gates, _requests, _author_marker_gate_state, CANONICAL_ONEC_AUTHOR_MARKER, AUTHOR_MARKER_VALUE_FIELDS, FORM_CHANGE_MODE
 
 errors=[]; results={}
 
@@ -60,15 +60,15 @@ with tempfile.TemporaryDirectory() as td:
         'author_marker_skill_default_shape',
         marker.get('value',{}).get('syntax_source')=='SKILL_DEFAULT_1C'
         and marker.get('value',{}).get('canonical_shape')==CANONICAL_ONEC_AUTHOR_MARKER
-        and CANONICAL_ONEC_AUTHOR_MARKER.get('field_order')==['ФамилияИО','ПервыйБит','Дата','НомерТЗ','пункты ТЗ']
+        and CANONICAL_ONEC_AUTHOR_MARKER.get('field_order')==['ФамилияИО','ПервыйБит','Дата','НомерТЗ']
         and CANONICAL_ONEC_AUTHOR_MARKER.get('organization_marker')=='ПервыйБит',
         marker,
     )
     record(
         'author_marker_exact_block_and_one_line_forms',
-        CANONICAL_ONEC_AUTHOR_MARKER.get('block_open')=='// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ'
-        and CANONICAL_ONEC_AUTHOR_MARKER.get('block_close')=='// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ'
-        and CANONICAL_ONEC_AUTHOR_MARKER.get('one_line')=='// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ'
+        CANONICAL_ONEC_AUTHOR_MARKER.get('block_open')=='// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ'
+        and CANONICAL_ONEC_AUTHOR_MARKER.get('block_close')=='// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ'
+        and CANONICAL_ONEC_AUTHOR_MARKER.get('one_line')=='// ФамилияИО, ПервыйБит, Дата, НомерТЗ'
         and CANONICAL_ONEC_AUTHOR_MARKER.get('metadata_comment')==CANONICAL_ONEC_AUTHOR_MARKER.get('one_line'),
         CANONICAL_ONEC_AUTHOR_MARKER,
     )
@@ -104,7 +104,7 @@ with tempfile.TemporaryDirectory() as td:
         'author_marker_requests_only_missing_values',
         partial_marker is not None
         and 'Дата' in partial_marker.get('what','')
-        and 'пункты ТЗ' in partial_marker.get('what','')
+        and 'пункты ТЗ' not in partial_marker.get('what','')
         and 'ФамилияИО,' not in partial_marker.get('what','')
         and 'НомерТЗ,' not in partial_marker.get('what',''),
         partial_marker,
@@ -115,7 +115,7 @@ with tempfile.TemporaryDirectory() as td:
         bound[fid]['status']='KNOWN'
         bound[fid]['value']='regression-evidenced'
     bound_values=bound['author_marker']['value']['values']
-    bound_values.update({'ФамилияИО':'ИвановИИ','Дата':'28.09.2026','НомерТЗ':'ТЗ-42','пункты ТЗ':'1.2'})
+    bound_values.update({'ФамилияИО':'ИвановИИ','Дата':'28.09.2026','НомерТЗ':'ТЗ-42'})
     bound['author_marker']['status']='KNOWN'
     bound_requests=_requests(bound,bootstrap['artifact_model'],bootstrap['discovery_candidates'])
     record(
@@ -137,7 +137,8 @@ with tempfile.TemporaryDirectory() as td:
         _author_marker_gate_state(scalar_known)=='AUTHOR_MARKER_BLOCKED'
         and scalar_known_gates['code_output_allowed']['allowed'] is False
         and scalar_known_marker is not None
-        and all(name in scalar_known_marker.get('what','') for name in ('ФамилияИО','Дата','НомерТЗ','пункты ТЗ')),
+        and all(name in scalar_known_marker.get('what','') for name in ('ФамилияИО','Дата','НомерТЗ'))
+        and 'пункты ТЗ' not in scalar_known_marker.get('what',''),
         {'state':_author_marker_gate_state(scalar_known),'gates':scalar_known_gates,'request':scalar_known_marker},
     )
 
@@ -180,7 +181,7 @@ with tempfile.TemporaryDirectory() as td:
     )
 
     incomplete_derived=copy.deepcopy(bound)
-    incomplete_derived['author_marker']['value']['values']['пункты ТЗ']=None
+    incomplete_derived['author_marker']['value']['values']['НомерТЗ']=None
     incomplete_derived['author_marker']['status']='DERIVED_WITH_EVIDENCE'
     incomplete_derived_gates=_capability_gates(incomplete_derived)
     record(
@@ -199,6 +200,19 @@ with tempfile.TemporaryDirectory() as td:
         _author_marker_gate_state(complete_derived)=='AUTHOR_MARKER_READY'
         and complete_derived_gates['code_output_allowed']['allowed'] is True,
         {'state':_author_marker_gate_state(complete_derived),'gates':complete_derived_gates},
+    )
+
+    stale_tz=copy.deepcopy(bound)
+    stale_tz['author_marker']['value']['values']['пункты ТЗ']='legacy-stale-value'
+    stale_tz_requests=_requests(stale_tz,bootstrap['artifact_model'],bootstrap['discovery_candidates'])
+    canonical_text=json.dumps(CANONICAL_ONEC_AUTHOR_MARKER,ensure_ascii=False)
+    record(
+        'author_marker_stale_tz_value_does_not_repromote_default_contract',
+        _author_marker_gate_state(stale_tz)=='AUTHOR_MARKER_READY'
+        and not any(x['id']=='AUTHOR_MARKER' for x in stale_tz_requests)
+        and 'пункты ТЗ' not in AUTHOR_MARKER_VALUE_FIELDS
+        and 'пункты ТЗ' not in canonical_text,
+        {'state':_author_marker_gate_state(stale_tz),'requests':stale_tz_requests,'canonical':CANONICAL_ONEC_AUTHOR_MARKER},
     )
 
     not_applicable=copy.deepcopy(bound)
@@ -245,6 +259,9 @@ with tempfile.TemporaryDirectory() as td:
         and 'AUTHOR_MARKER_READY' in COMMENT_POLICY
         and 'AUTHOR_MARKER_BLOCKED' in COMMENT_POLICY
         and '### 4.5. Resolve 1C AUTHOR_MARKER before development' in SKILL
+        and 'пункты ТЗ' not in COMMENT_POLICY
+        and 'пункты ТЗ' not in SKILL
+        and 'пункты ТЗ' not in json.dumps(PIPELINE,ensure_ascii=False)
         and any(
             'require AUTHOR_MARKER_READY' in action
             for stage in PIPELINE.get('stages') or []

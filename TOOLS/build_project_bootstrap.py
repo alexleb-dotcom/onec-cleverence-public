@@ -20,16 +20,16 @@ from artifact_corpus import inventory_paths, summarize, analyzable_entries
 STATES=("KNOWN","DERIVED_WITH_EVIDENCE","OPEN","NOT_APPLICABLE")
 DECISION_STATUSES=("ACTIVE","TEMPORARY","REVALIDATION_REQUIRED","SUPERSEDED","INVALIDATED")
 
-AUTHOR_MARKER_VALUE_FIELDS=("ФамилияИО","Дата","НомерТЗ","пункты ТЗ")
+AUTHOR_MARKER_VALUE_FIELDS=("ФамилияИО","Дата","НомерТЗ")
 FORM_CHANGE_MODE="PROGRAMMATIC_ONLY"
 CANONICAL_ONEC_AUTHOR_MARKER={
     "syntax_source":"SKILL_DEFAULT_1C",
-    "field_order":["ФамилияИО","ПервыйБит","Дата","НомерТЗ","пункты ТЗ"],
+    "field_order":["ФамилияИО","ПервыйБит","Дата","НомерТЗ"],
     "organization_marker":"ПервыйБит",
-    "block_open":"// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
-    "block_close":"// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
-    "one_line":"// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
-    "metadata_comment":"// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ",
+    "block_open":"// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ",
+    "block_close":"// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ",
+    "one_line":"// ФамилияИО, ПервыйБит, Дата, НомерТЗ",
+    "metadata_comment":"// ФамилияИО, ПервыйБит, Дата, НомерТЗ",
 }
 
 
