@@ -1513,20 +1513,30 @@ def source_layout_analysis(text,changed_line_ranges=None):
     """
     changed_line_ranges=_normalize_changed_line_ranges(changed_line_ranges)
     authoritative=changed_line_ranges is not None
-    findings=[];blank_run=0
+    findings=[];blank_run=0;blank_run_start=None
     for line_no,line in enumerate(text.splitlines(),1):
         stripped=line.strip()
         if not stripped:
+            if blank_run==0:
+                blank_run_start=line_no
             blank_run+=1
-            if blank_run>1 and (not authoritative or _line_is_changed(line_no,changed_line_ranges)):
+            run_intersects_change=(
+                authoritative
+                and any(
+                    _line_is_changed(run_line,changed_line_ranges)
+                    for run_line in range(blank_run_start,line_no+1)
+                )
+            )
+            if blank_run>1 and (not authoritative or run_intersects_change):
                 findings.append({
                     "severity":"HIGH" if authoritative else "REVIEW",
                     "type":"MULTIPLE_CONSECUTIVE_EMPTY_LINES","line":line_no,
-                    "change_attribution":"EXACT_CHANGED_LINE" if authoritative else "WHOLE_FILE_UNATTRIBUTED",
-                    "note":"Changed/new BSL may contain at most one consecutive blank line. Whole-file scan without exact changed-line scope is diagnostic only.",
+                    "blank_run_start":blank_run_start,"blank_run_end":line_no,
+                    "change_attribution":"EXACT_CHANGED_RUN" if authoritative else "WHOLE_FILE_UNATTRIBUTED",
+                    "note":"Changed/new BSL may contain at most one consecutive blank line. Exact attribution applies when any line participating in the violating blank run intersects changed scope; whole-file scan without exact scope is diagnostic only.",
                 })
             continue
-        blank_run=0
+        blank_run=0;blank_run_start=None
         left=line.lstrip()
         # std444 has documented cases where a long source line cannot/should not be
         # mechanically wrapped (notably user-visible/string content). Do not guess there.
