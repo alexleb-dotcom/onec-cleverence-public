@@ -102,6 +102,28 @@ def violates(case, observation):
         opportunistic = observation.get("unrelated_changed_artifacts", 0) > 0
         code_golf = observation.get("loc_reduced", False) and observation.get("cohesion_lost", False)
         return helper_bad or opportunistic or code_golf
+    if oracle == "bsl_layout_semantic":
+        limit = int(case.get("line_limit", 120))
+        if observation.get("unrelated_baseline_reformatted", False):
+            return True
+        if not observation.get("changed_or_new", False):
+            return False
+        length = int(observation.get("compact_line_length", 0))
+        wrapped = observation.get("wrapped", False)
+        exception = observation.get("documented_exception", False)
+        if (
+            wrapped
+            and observation.get("simple_readable", False)
+            and length <= limit
+            and not observation.get("readability_justifies_wrap", False)
+        ):
+            return True
+        if length > limit and not exception:
+            if not wrapped:
+                return True
+            if not observation.get("std444_wrap_compliant", False):
+                return True
+        return False
     if oracle == "cleverence_contract_path":
         return (
             not observation.get("scenario_bound", False)
