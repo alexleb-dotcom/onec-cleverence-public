@@ -17,7 +17,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 SCHEMA_VERSION=2
 TOOL_CAPABILITIES={
-    "TOOLS/analyze_onec_bsl.py":{"STATIC:ONEC_BSL"},
+    "TOOLS/analyze_onec_bsl.py":{"STATIC:ONEC_BSL","STATIC:ONEC_BSL_BARE_SYMBOL"},
     "TOOLS/analyze_onec_xml.py":{"STATIC:ONEC_XML"},
     "TOOLS/analyze_onec_field_flow.py":{"STATIC:FIELD_FLOW"},
     "TOOLS/analyze_onec_reachability.py":{"STATIC:REACHABILITY"},
@@ -68,6 +68,11 @@ def _validate_properties(relative_tool,properties):
     return unique
 
 
+def _validate_property_invocation(relative_tool,properties,argv):
+    if relative_tool=="TOOLS/analyze_onec_bsl.py" and "STATIC:ONEC_BSL_BARE_SYMBOL" in properties and "--require-bare-symbol-proof" not in argv:
+        raise ValueError("STATIC:ONEC_BSL_BARE_SYMBOL requires --require-bare-symbol-proof")
+    return True
+
 def create_receipt(tool,argv,input_paths,properties,receipt_path):
     relative,tool_path=_tool_path(tool)
     properties=_validate_properties(relative,properties)
@@ -75,6 +80,7 @@ def create_receipt(tool,argv,input_paths,properties,receipt_path):
     if not inputs:raise ValueError("machine receipt requires at least one explicit input snapshot")
     argv=list(argv)
     if any(not isinstance(x,str) for x in argv):raise ValueError("machine receipt argv must contain strings")
+    _validate_property_invocation(relative,properties,argv)
     run=_run(relative,tool_path,argv)
     receipt_path=Path(receipt_path); receipt_path.parent.mkdir(parents=True,exist_ok=True)
     stdout_path=receipt_path.with_suffix(receipt_path.suffix+".stdout")
@@ -145,6 +151,9 @@ def verify_receipt(path_value,replay=True):
     _validate_output_file(output.get("stderr_path"),output.get("stderr_sha256"),"stderr",errors)
     argv=receipt.get("argv")
     if not isinstance(argv,list) or any(not isinstance(x,str) for x in argv):errors.append({"type":"MACHINE_RECEIPT_ARGV_INVALID"}); argv=[]
+    if relative:
+        try:_validate_property_invocation(relative,properties,argv)
+        except Exception as exc:errors.append({"type":"MACHINE_RECEIPT_PROPERTY_INVOCATION_INVALID","tool":relative,"error":str(exc)})
     stored_exit=receipt.get("exit_code")
     if not isinstance(stored_exit,int):errors.append({"type":"MACHINE_RECEIPT_EXIT_INVALID","actual":stored_exit})
     derived="PASS" if stored_exit==0 else "FAIL"
