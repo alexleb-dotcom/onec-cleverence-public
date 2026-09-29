@@ -252,18 +252,18 @@ For applicable 1C implementation, read `KNOWLEDGE/COMMENTING_POLICY.md` before e
 Use the canonical Skill default shape unless an explicit project/user override is already bound:
 
 ```bsl
-// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ...
-// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
 A one-line change and object-property / metadata comment attribution use:
 
 ```bsl
-// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
-Before implementation starts, reuse valid bound `ФамилияИО`, date value/policy, `НомерТЗ` and applicable `пункты ТЗ`. `ПервыйБит` is fixed by the Skill contract. Ask only for still-missing values; do not invent them and do not ask for default marker syntax.
+Before implementation starts, reuse valid bound `ФамилияИО`, date value/policy, `НомерТЗ`. `ПервыйБит` is fixed by the Skill contract. Ask only for still-missing values; do not invent them and do not ask for default marker syntax.
 
 `AUTHOR_MARKER_READY` permits implementation. `AUTHOR_MARKER_BLOCKED` forbids implementation/development entry while still allowing requirements clarification, source inspection, evidence acquisition and architecture/design analysis.
 

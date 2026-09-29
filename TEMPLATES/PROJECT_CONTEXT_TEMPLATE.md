@@ -104,7 +104,6 @@ Resolve each independently and bind it to source evidence.
 - organization marker: ПервыйБит (fixed by Skill default when no explicit override applies)
 - Дата value / rendering policy:
 - НомерТЗ:
-- пункты ТЗ:
 - unresolved required values:
 - evidence:
 

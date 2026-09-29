@@ -12,7 +12,6 @@ The fixed field order is:
 2. `ПервыйБит`
 3. `Дата`
 4. `НомерТЗ`
-5. `пункты ТЗ`
 
 `ПервыйБит` is the fixed organization marker.
 
@@ -21,27 +20,27 @@ The fixed field order is:
 Opening marker:
 
 ```bsl
-// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
 Closing marker:
 
 ```bsl
-// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
 Canonical region form:
 
 ```bsl
-// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// ++ ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ...
-// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// -- ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
 ### One-line change
 
 ```bsl
-// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
 ### Object-property / metadata comment attribution
@@ -49,7 +48,7 @@ Canonical region form:
 When AUTHOR_MARKER attribution is written into an object property / metadata comment field, use the same one-line form:
 
 ```text
-// ФамилияИО, ПервыйБит, Дата, НомерТЗ, пункты ТЗ
+// ФамилияИО, ПервыйБит, Дата, НомерТЗ
 ```
 
 `METADATA_ATTRIBUTION` remains a separate project contract for whether/where metadata attribution is required and for any project-specific metadata-comment policy. It does not own the default 1C AUTHOR_MARKER shape.
@@ -59,7 +58,6 @@ A project/user may explicitly override the shape. Preserve that explicit overrid
 The Skill default fixes the structure only. It does **not** invent:
 - exact rendering of `Дата`;
 - spelling/abbreviation rules for `ФамилияИО`;
-- syntax for one or multiple `пункты ТЗ`;
 - task-specific values.
 
 ## AUTHOR_MARKER pre-development gate
@@ -81,7 +79,6 @@ Before implementation starts, enough bound information must exist to render the 
 - `ФамилияИО`;
 - a date value/policy sufficient to render `Дата`;
 - `НомерТЗ`;
-- applicable `пункты ТЗ`.
 
 `ПервыйБит` is already fixed by the Skill contract and must not be requested.
 
@@ -125,7 +122,7 @@ Mine the supplied source/project context first. If a valid value/policy is alrea
 
 AUTHOR_MARKER value gaps block 1C implementation start. Unresolved `TECHNICAL_COMMENT` or `EXISTING_COMMENT_POLICY` continues to block final changed-code output under the existing policy. `PUBLIC_INTERFACE_COMMENT` becomes blocking only when a public/exported interface is actually created or changed.
 
-Never invent missing author/date/task/TZ-point values or arbitrary marker syntax. For 1C, use the canonical Skill shape unless an explicit bound override says otherwise.
+Never invent missing author/date/task values or arbitrary marker syntax. For 1C, use the canonical Skill shape unless an explicit bound override says otherwise.
 
 ## Three independent classes
 

@@ -18,7 +18,7 @@
       "do not treat repository access as proof of deployed baseline, runtime or delivery workflow",
       "when customer configuration evidence is not already sufficient, derive TEMPLATES/PROJECT_SNAPSHOT_REQUEST.json from the accepted requirement and unresolved proof dependencies before asking for a broad configuration export"
     ],
-    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER values or delivery details are unresolved. For applicable 1C implementation, AUTHOR_MARKER_BLOCKED forbids development entry; reuse bound values and ask only still-missing ФамилияИО / Дата value-or-policy / НомерТЗ / пункты ТЗ. ПервыйБит and the default marker shape are Skill-owned. Exact delivery still requires an authoritative baseline/layout."
+    "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER values or delivery details are unresolved. For applicable 1C implementation, AUTHOR_MARKER_BLOCKED forbids development entry; reuse bound values and ask only still-missing ФамилияИО / Дата value-or-policy / НомерТЗ. ПервыйБит and the default marker shape are Skill-owned. Exact delivery still requires an authoritative baseline/layout."
   },
   "stages": [
     {
