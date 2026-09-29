@@ -21,6 +21,7 @@ STATES=("KNOWN","DERIVED_WITH_EVIDENCE","OPEN","NOT_APPLICABLE")
 DECISION_STATUSES=("ACTIVE","TEMPORARY","REVALIDATION_REQUIRED","SUPERSEDED","INVALIDATED")
 
 AUTHOR_MARKER_VALUE_FIELDS=("ФамилияИО","Дата","НомерТЗ","пункты ТЗ")
+FORM_CHANGE_MODE="PROGRAMMATIC_ONLY"
 CANONICAL_ONEC_AUTHOR_MARKER={
     "syntax_source":"SKILL_DEFAULT_1C",
     "field_order":["ФамилияИО","ПервыйБит","Дата","НомерТЗ","пункты ТЗ"],
@@ -189,6 +190,11 @@ def build(paths):
         "artifact_role":field("Artifact family/role/layout",model.get("role") in {"UNKNOWN","MIXED_ARTIFACT"},model, "DERIVED_WITH_EVIDENCE" if model.get("confidence")=="PROVEN_BY_STRUCTURE" else "OPEN",[{"kind":"MACHINE","ref":"artifact structural classification"}]),
         "actual_deployed_baseline":field("Actual deployed/user baseline identity",True),
         "modification_policy":field("Allowed/protected surfaces and unrelated-refactor policy",True),
+        "form_change_mode":field(
+            "Universal form mutation mode",False,FORM_CHANGE_MODE,"KNOWN",
+            [{"kind":"SKILL_CONTRACT","ref":"FORM_CHANGE_MODE=PROGRAMMATIC_ONLY"}],
+            "Interactive Designer/Configurator form structure/property mutation is never an implementation route.",
+        ),
         "metadata_attribution":field("Metadata Comment/Комментарий attribution contract",False),
         "author_marker":field("1C AUTHOR_MARKER values / explicit override",True,_default_author_marker_value(),"OPEN",reason="Canonical Skill syntax is known; task/project values remain unresolved until bound"),
         "technical_comment":field("Technical why/invariant/constraint comment policy",True),
@@ -205,7 +211,7 @@ def build(paths):
         "schema_version":4,
         "result":"PROJECT_BOOTSTRAP_CREATED",
         "source_fingerprint":source_fingerprint,
-        "rule":"Mine repository/artifact evidence first. Ask only unresolved material project contracts. Repository access is evidence, not proof that deployed/project truth is complete. For applicable 1C work the Skill-owned AUTHOR_MARKER shape is already known: reuse bound values and ask only missing values before implementation starts. Metadata/public-interface/delivery contracts block only the capabilities they control.",
+        "rule":"Mine repository/artifact evidence first. Ask only unresolved material project contracts. Repository access is evidence, not proof that deployed/project truth is complete. For applicable 1C work the Skill-owned AUTHOR_MARKER shape is already known: reuse bound values and ask only missing values before implementation starts. FORM_CHANGE_MODE is universally PROGRAMMATIC_ONLY and is not a user preference. Metadata/public-interface/delivery contracts block only the capabilities they control.",
         "artifact_model":model,
         "fields":fields,
         "decision_lifecycle":{
@@ -217,6 +223,14 @@ def build(paths):
         },
         "discovery_candidates":candidates,
         "evidence_requests":requests,
+        "form_change_policy":{
+            "mode":FORM_CHANGE_MODE,
+            "interactive_designer_configurator_mutation_allowed":False,
+            "programmatic_static_artifact_mutation_allowed":True,
+            "form_xml_read_inventory_diff_validation_allowed":True,
+            "missing_programmatic_route_result":"BLOCKED/EVIDENCE_REQUIRED",
+            "rule":"Project context may make form mutation more restrictive but cannot authorize interactive Designer/Configurator form editing.",
+        },
         "capability_gates":capability_gates,
         "gate":{
             "status":"BLOCKED" if not code_gate["allowed"] else ("READY_WITH_CAPABILITY_GAPS" if any(not x["allowed"] for x in capability_gates.values()) else "READY"),
@@ -237,6 +251,7 @@ def compact_summary(result):
         "artifact_model":result.get("artifact_model"),
         "blocking_open_fields":[fid for fid,row in fields.items() if isinstance(row,dict) and row.get("blocking") and row.get("status")=="OPEN"],
         "evidence_requests":result.get("evidence_requests") or [],
+        "form_change_policy":result.get("form_change_policy"),
         "capability_gates":result.get("capability_gates"),
         "gate":result.get("gate"),
         "next_sequence":result.get("next_sequence"),
