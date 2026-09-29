@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "principle": "Concrete positive/negative domain scenarios establish BEHAVIORALLY_SAMPLED only for the named failure mode. They do not constitute target-runtime proof or an LLM-provider/model smoke test.",
   "cases": [
     {
@@ -501,6 +501,107 @@
         "exact_source_contradicts_provider": true,
         "provider_controls_conclusion": false,
         "mutation_allowed": true
+      }
+    },
+    {
+      "id": "BSL_AVOIDABLE_SUB120_VERTICAL_DECOMPOSITION",
+      "oracle": "bsl_layout_semantic",
+      "line_limit": 120,
+      "provenance": "SYNTHETIC_REGRESSION_FROM_USER_REPORTED_EXECUTION_SHAPE_NOT_EXACT_SOURCE",
+      "bad": {
+        "changed_or_new": true,
+        "compact_line_length": 74,
+        "wrapped": true,
+        "simple_readable": true,
+        "readability_justifies_wrap": false,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": false,
+        "example": "Результат = Новый Структура(\\\"Ключ\\\", Значение);"
+      },
+      "good": {
+        "changed_or_new": true,
+        "compact_line_length": 74,
+        "wrapped": false,
+        "simple_readable": true,
+        "readability_justifies_wrap": false,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": false,
+        "example": "Результат = Новый Структура(\\\"Ключ\\\", Значение);"
+      }
+    },
+    {
+      "id": "BSL_COMPLEX_SUB120_WRAP_REMAINS_ALLOWED",
+      "oracle": "bsl_layout_semantic",
+      "line_limit": 120,
+      "provenance": "SYNTHETIC_REGRESSION",
+      "bad": {
+        "changed_or_new": true,
+        "compact_line_length": 92,
+        "wrapped": true,
+        "simple_readable": true,
+        "readability_justifies_wrap": false,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": false
+      },
+      "good": {
+        "changed_or_new": true,
+        "compact_line_length": 108,
+        "wrapped": true,
+        "simple_readable": false,
+        "readability_justifies_wrap": true,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": false,
+        "example": "Если СложноеУсловие1 И СложноеУсловие2 И (СложноеУсловие3 Или СложноеУсловие4) Тогда ..."
+      }
+    },
+    {
+      "id": "BSL_REQUIRED_STD444_WRAP",
+      "oracle": "bsl_layout_semantic",
+      "line_limit": 120,
+      "provenance": "SYNTHETIC_REGRESSION",
+      "bad": {
+        "changed_or_new": true,
+        "compact_line_length": 146,
+        "wrapped": false,
+        "simple_readable": false,
+        "readability_justifies_wrap": true,
+        "documented_exception": false,
+        "std444_wrap_compliant": false,
+        "unrelated_baseline_reformatted": false
+      },
+      "good": {
+        "changed_or_new": true,
+        "compact_line_length": 146,
+        "wrapped": true,
+        "simple_readable": false,
+        "readability_justifies_wrap": true,
+        "documented_exception": false,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": false
+      }
+    },
+    {
+      "id": "BSL_UNRELATED_BASELINE_FORMAT_PRESERVATION",
+      "oracle": "bsl_layout_semantic",
+      "line_limit": 120,
+      "provenance": "SYNTHETIC_REGRESSION",
+      "bad": {
+        "changed_or_new": false,
+        "compact_line_length": 68,
+        "wrapped": false,
+        "simple_readable": true,
+        "readability_justifies_wrap": false,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": true
+      },
+      "good": {
+        "changed_or_new": false,
+        "compact_line_length": 68,
+        "wrapped": false,
+        "simple_readable": true,
+        "readability_justifies_wrap": false,
+        "std444_wrap_compliant": true,
+        "unrelated_baseline_reformatted": false
       }
     }
   ]
