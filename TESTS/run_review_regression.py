@@ -1799,9 +1799,21 @@ if not ok:errors.append({'case':key,'details':results[key]})
 with tempfile.TemporaryDirectory() as _td:
     _td=Path(_td)
     _blank=_td/'blank.bsl';_blank.write_text('Процедура Тест()\n    А = 1;\n\n\n    Б = 2;\nКонецПроцедуры\n',encoding='utf-8')
-    _r=analyze_onec(_blank,changed_line_ranges=[(4,4)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
-    key='layout:consecutive_empty_lines_blocking_in_exact_changed_scope';ok=bool(_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_LINE' for x in _layout) and _r.get('layout_validation',{}).get('authoritative_for_change_attribution') is True);results[key]={'findings':_layout,'layout_validation':_r.get('layout_validation'),'pass':ok}
-    if not ok:errors.append({'case':key,'details':_r})
+    _preceding=analyze_onec(_blank,changed_line_ranges=[(3,3)]);_preceding_layout=[x for x in _preceding.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:blank_run_changed_preceding_blank_blocks';ok=bool(_preceding_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_RUN' and x.get('blank_run_start')==3 and x.get('blank_run_end')==4 for x in _preceding_layout));results[key]={'findings':_preceding_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_preceding})
+
+    _following=analyze_onec(_blank,changed_line_ranges=[(4,4)]);_following_layout=[x for x in _following.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:blank_run_changed_following_blank_blocks';ok=bool(_following_layout and all(x.get('severity')=='HIGH' and x.get('change_attribution')=='EXACT_CHANGED_RUN' and x.get('blank_run_start')==3 and x.get('blank_run_end')==4 for x in _following_layout));results[key]={'findings':_following_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_following})
+
+    _unrelated_blank=analyze_onec(_blank,changed_line_ranges=[(2,2)]);_unrelated_blank_layout=[x for x in _unrelated_blank.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:old_two_blank_debt_unrelated_change_not_blocked';ok=not _unrelated_blank_layout;results[key]={'findings':_unrelated_blank_layout,'pass':ok}
+    if not ok:errors.append({'case':key,'details':_unrelated_blank})
+
+    _whole_blank=analyze_onec(_blank);_whole_blank_layout=[x for x in _whole_blank.get('findings',[]) if x.get('type')=='MULTIPLE_CONSECUTIVE_EMPTY_LINES']
+    key='layout:unscoped_blank_run_remains_review';ok=bool(_whole_blank_layout and all(x.get('severity')=='REVIEW' and x.get('change_attribution')=='WHOLE_FILE_UNATTRIBUTED' for x in _whole_blank_layout) and _whole_blank.get('layout_validation',{}).get('scope')=='WHOLE_FILE_NON_AUTHORITATIVE' and _whole_blank.get('layout_validation',{}).get('authoritative_for_change_attribution') is False);results[key]={'findings':_whole_blank_layout,'layout_validation':_whole_blank.get('layout_validation'),'pass':ok}
+    if not ok:errors.append({'case':key,'details':_whole_blank})
 
     _long=_td/'long.bsl';_long.write_text('Процедура Тест()\n    Результат = '+('ОченьДлинноеИмяПеременной + '*7)+'Финал;\nКонецПроцедуры\n',encoding='utf-8')
     _r=analyze_onec(_long,changed_line_ranges=[(2,2)]);_layout=[x for x in _r.get('findings',[]) if x.get('type')=='BSL_LINE_LENGTH_STD444']
