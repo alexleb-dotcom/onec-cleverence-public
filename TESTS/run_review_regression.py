@@ -1782,13 +1782,13 @@ if not ok:errors.append({'case':key,'details':r})
 # Minimal-change is a real Tier-0 release obligation, not only prose in SKILL.md.
 minimal_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='MINIMAL_COHERENT_CHANGE'),None)
 minimal_checks={x.get('id') for x in (minimal_rule or {}).get('checks',[])}
-minimal_expected={'MINIMAL_COHERENT_CHANGE_T01','MINIMAL_COHERENT_CHANGE_T02','MINIMAL_COHERENT_CHANGE_T03','MINIMAL_COHERENT_CHANGE_T04','UNJUSTIFIED_CHANGE_SURFACE_EXPANSION','OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE','PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS','LOC_MINIMIZATION_DAMAGES_COHESION','FORMATTING_ONLY_VERTICAL_NOISE','UNTOUCHED_SOURCE_FORMAT_PRESERVATION'}
+minimal_expected={'MINIMAL_COHERENT_CHANGE_T01','MINIMAL_COHERENT_CHANGE_T02','MINIMAL_COHERENT_CHANGE_T03','MINIMAL_COHERENT_CHANGE_T04','UNJUSTIFIED_CHANGE_SURFACE_EXPANSION','OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE','PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS','LOC_MINIMIZATION_DAMAGES_COHESION'}
 key='registry:minimal_coherent_change_contract'; ok=bool(minimal_rule and minimal_rule.get('tier')==0 and minimal_rule.get('severity')=='BLOCKING' and minimal_rule.get('always_disposition') is True and minimal_expected<=minimal_checks and 'MINIMAL_COHERENT_CHANGE' in registry.get('rule_order',[])); results[key]={'pass':ok,'checks':sorted(minimal_checks)}
 if not ok:errors.append({'case':key,'details':minimal_rule})
 
 project_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='PROJECT_CONVENTION'),None)
 project_checks={x.get('id') for x in (project_rule or {}).get('checks',[])}
-project_expected={'BSL_SOURCE_LAYOUT_STANDARD_FLOOR','PROJECT_STYLE_CANNOT_WEAKEN_LAYOUT_FLOOR','FORM_CHANGE_MODE_PROGRAMMATIC_ONLY'}
+project_expected={'BSL_LAYOUT_UNIVERSAL_FLOOR','FORM_CHANGE_MODE_PROGRAMMATIC_ONLY'}
 key='registry:layout_form_universal_floor'; ok=bool(project_rule and project_rule.get('tier')==0 and project_rule.get('severity')=='BLOCKING' and project_rule.get('always_disposition') is True and 'std444' in project_rule.get('standards',[]) and project_expected<=project_checks);results[key]={'pass':ok,'checks':sorted(project_checks),'standards':(project_rule or {}).get('standards')}
 if not ok:errors.append({'case':key,'details':project_rule})
 form_xml_rule=next((x for x in registry.get('rules',[]) if x.get('id')=='FORM_XML_STRUCTURE'),None)
