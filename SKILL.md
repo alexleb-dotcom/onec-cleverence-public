@@ -277,7 +277,9 @@ Every changed artifact, routine and material hunk must map to an agreed requirem
 
 This is **not code golf**. Do not reduce LOC by collapsing responsibilities, hiding invariants, weakening names, duplicating dense expressions or bypassing standard/supported mechanisms. Required caller updates, delivery closure, readability, responsibility cohesion, correctness, performance and runtime safety take precedence over a smaller numeric diff.
 
-Preserve source style, encoding and project conventions evidenced by the actual code. Do not invent author/date tags, prefixes, regions or comment formats.
+Preserve source style, encoding and project conventions evidenced by the actual code. For changed/new BSL, the universal floor is official 1C std444: wrap lines over 120 characters unless the standard's documented exception applies, use standard-compliant expression/parameter/condition wrapping, do not introduce more than one consecutive blank line, and do not vertically decompose a simple readable expression/call/condition without a real line-length/readability reason. Project style may tighten this floor but cannot weaken it. Do not normalize unrelated baseline formatting or untouched CRLF/LF/encoding merely to satisfy a formatter. Do not invent author/date tags, prefixes, regions or comment formats.
+
+**FORM_CHANGE_MODE = PROGRAMMATIC_ONLY.** Interactive Designer/Configurator editing of form structure/properties is not an implementation route. Form changes must be represented through reproducible programmatic/static artifact mutation supported by the task/delivery path. Existing Form.xml/form metadata may still be read, inventoried, diffed and structurally/runtime validated. If an authorized programmatic/static route cannot be proven, keep the change BLOCKED/EVIDENCE_REQUIRED; never fall back to interactive form editing.
 
 Keep project `AUTHOR_MARKER` syntax separate from `TECHNICAL_COMMENT` and `PUBLIC_INTERFACE_COMMENT`. Technical comments explain why/invariant/constraint rather than narrating the next line; read `KNOWLEDGE/COMMENTING_POLICY.md` when comments or public interfaces change.
 
