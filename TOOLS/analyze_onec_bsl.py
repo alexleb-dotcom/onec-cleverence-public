@@ -5,13 +5,18 @@
 from pathlib import Path
 import re, json, argparse
 
-DEF_RE = re.compile(r'(?im)^\s*(Функция|Процедура)\s+([A-Za-zА-Яа-я_][\wА-Яа-я]*)\s*\(([^)]*)\)([^\r\n]*)')
+DEF_RE = re.compile(r'(?im)^\s*(?:Асинх\s+)?(Функция|Процедура)\s+([A-Za-zА-Яа-я_][\wА-Яа-я]*)\s*\(([^)]*)\)([^\r\n]*)')
+ROUTINE_HEADER_HINT_RE = re.compile(r'(?im)^\s*(?:Асинх\s+)?(?:Функция|Процедура)\b')
 END_RE = re.compile(r'(?im)^\s*Конец(Функции|Процедуры)\b')
 EXECUTION_DIRECTIVE_RE = re.compile(r'(?im)^\s*&(?P<directive>НаКлиентеНаСервереБезКонтекста|НаСервереБезКонтекста|НаСервере|НаКлиенте)\s*$')
 
 def decode(path):
     b = Path(path).read_bytes()
     return b.decode("utf-8-sig", errors="replace")
+
+def _formal_parameter_name(raw):
+    value=raw.strip().split("=",1)[0].strip()
+    return re.sub(r'(?i)^Знач\s+','',value).strip()
 
 def blocks(text):
     defs = list(DEF_RE.finditer(text))
@@ -29,7 +34,7 @@ def blocks(text):
         out.append({
             "kind": m.group(1),
             "name": m.group(2),
-            "params": [x.strip().split("=")[0].strip() for x in m.group(3).split(",") if x.strip()],
+            "params": [_formal_parameter_name(x) for x in m.group(3).split(",") if x.strip()],
             "export": "Экспорт" in m.group(4),
             "execution_context": execution_context,
             "text": text[start:end],
@@ -1446,9 +1451,11 @@ def _mask_bsl_strings_and_comments(text):
         i+=1
     return ''.join(chars)
 
-def bare_symbol_read_analysis(block_rows,known_symbols=None,scope_complete=False):
+def bare_symbol_read_analysis(block_rows,known_symbols=None,scope_complete=False,routine_headers_complete=True):
     if not scope_complete:
         return {"status":"NOT_CHECKED","finding_count":0,"findings":[],"reason":"Exact unqualified-symbol scope is incomplete; missing context is not PASS.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
+    if not routine_headers_complete:
+        return {"status":"NOT_CHECKED","finding_count":0,"findings":[],"reason":"Recognizable BSL routine header syntax was not fully parsed; unchecked routine context is not PASS.","known_symbols":sorted(set(str(x) for x in (known_symbols or []) if str(x).strip()))}
     external={str(x).lower() for x in (known_symbols or []) if str(x).strip()};findings=[]
     for block in block_rows:
         defined=set(external)|{str(x).lower() for x in block.get("params") or []}
@@ -1491,7 +1498,10 @@ def analyze(path,bare_symbol_scope_complete=False,known_symbols=None):
         "findings": [],
         "standards": set(),
     }
-    bare=bare_symbol_read_analysis(bs,known_symbols=known_symbols,scope_complete=bare_symbol_scope_complete)
+    bare=bare_symbol_read_analysis(
+        bs,known_symbols=known_symbols,scope_complete=bare_symbol_scope_complete,
+        routine_headers_complete=len(list(ROUTINE_HEADER_HINT_RE.finditer(text)))==len(bs),
+    )
     result["bare_symbol_validation"]={k:v for k,v in bare.items() if k!="findings"}
     result["findings"].extend(bare["findings"])
 
