@@ -164,6 +164,12 @@ Rule: `ALTERNATIVE_SCENARIO_COVERAGE`
 
 When the requirement includes forward and reverse/refund/cancel flows, does each pipeline have its own trigger, data/identity trace, state transitions and acceptance oracle instead of assuming reverse behavior by analogy from the forward path?
 
+## PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE
+
+Rule: `ALTERNATIVE_SCENARIO_COVERAGE`
+
+When materially paired flows exist (for example sale/return, posting/unposting, receipt/return receipt), does each side have its own trigger, owner/data/identity trace, state transitions and acceptance oracle, without inferring semantic parity from similarly named procedures or textual symmetry?
+
 ## SILENT_BUSINESS_ASSUMPTION
 
 Rule: `SCOPE_ASSUMPTION_CONTRACT`
