@@ -32,12 +32,6 @@ Rule: `BASELINE_IDENTITY`
 
 When ProjectSnapshot evidence is used, does its manifest bind request/snapshot identity, collector version/backend, baseline identity/fingerprint, requested/collected/missing/unsupported material items and byte hashes where available, without upgrading backend visibility into evidence it cannot observe?
 
-## MANUAL_MUTATION_INVALIDATES_PREVIOUS_SOURCE_SNAPSHOT
-
-Rule: `BASELINE_IDENTITY`
-
-After an unobserved manual target change, reacquire current source closure/fingerprint before another source-relative patch; do not reuse the stale snapshot as current authority.
-
 ## TYPICAL_ANALOG_EVIDENCE_ESCALATION
 
 Rule: `ANALOG_BEFORE_INVENTION`
@@ -54,13 +48,7 @@ When Mobile SMARTS behavior is uncertain, was the nearest stock operation/action
 
 Rule: `ANALOG_BEFORE_INVENTION`
 
-Before source mutation/final implementation generation, is the target configuration/platform/BSP/vendor existing capability resolved from exact current-target evidence (discovery hits/misses/stale indexes/partial graphs are candidate-only), with technical TZ prescriptions kept as PROPOSED_SOLUTION by default, and with any duplicate owner requiring an explicit identity-bound exception?
-
-## STANDARD_NEGATIVE_MODE_BEFORE_CUSTOM_BYPASS
-
-Rule: `ANALOG_BEFORE_INVENTION`
-
-For 'standard behavior except X', inspect and evaluate exact target/typical skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only.
+Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.
 
 ## STANDARD_PIPELINE_SEMANTIC_PRESERVATION
 
@@ -72,7 +60,7 @@ Before accepting a parallel business pipeline, does source evidence prove which 
 
 Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
 
-When a target row/object is assembled from several upstream sources, is ownership proven per material target field (semantic role → authoritative source → match key → calculation owner) instead of treating one upstream document as owner of the whole row?
+When material fields cross several pipeline stages, prove ownership per field and trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer; do not accept an early assignment before the final-value owner is proven.
 
 ## COMPOSITE_ROW_CORRELATION_INTEGRITY
 
@@ -115,12 +103,6 @@ Before changing a standard/vendor business path in an already customized project
 Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
 
 Does a consumer avoid reconstructing multiple private owner stages, temporary tables/private names/helpers or parsing owner query text merely to obtain a narrow derived value; if such reconstruction is detected, is it held for redesign/architecture review rather than treated as ordinary reuse?
-
-## MULTISTAGE_FIELD_OWNER_FINALIZER_RETRACE
-
-Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
-
-For each material field in a multi-stage pipeline, trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer and name the final-value owner.
 
 ## BSP_REUSE_DISCOVERY
 
@@ -175,12 +157,6 @@ When trade-item, individual marking/serial, warehouse fact, internal container, 
 Rule: `BUSINESS_IDENTITY`
 
 When a new business classifier/predicate is introduced, are coverage, mutual exclusion, precedence and unchanged neighboring scenarios proven as a partition of the relevant domain rather than as isolated happy-path IF branches?
-
-## BUSINESS_IDENTITY_SYMMETRY_MATRIX
-
-Rule: `BUSINESS_IDENTITY`
-
-For identity-sensitive changes, cover relevant filled/empty, A/B, new/existing and first/reverse-order counterexamples.
 
 ## REDUNDANT_RESPONSIBILITY
 
@@ -272,12 +248,6 @@ Rule: `GAP_DISCOVERY`
 
 Did zero machine findings remain limited to machine-detectable claims instead of closing semantic, change-set architecture or gap-discovery review?
 
-## FAILED_RUNTIME_PATCH_REQUIRES_CAUSAL_OWNER_RETRACE
-
-Rule: `GAP_DISCOVERY`
-
-If runtime disproves a patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.
-
 ## PROJECT_CONVENTION_INVENTION
 
 Rule: `PROJECT_CONVENTION`
@@ -300,7 +270,7 @@ Does every detected mechanism/profile rule and each L1-L6 review level have evid
 
 Rule: `BIDIRECTIONAL_STANDARDS`
 
-After a material fix, were mechanism detection, CODE_TO_STANDARDS and STANDARDS_TO_CODE rerun instead of checking only edited lines?
+After a material fix, rerun mechanism detection and both proof passes. If runtime disproves the patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.
 
 ## STATIC_ANALYZER_FALSE_POSITIVE
 
@@ -372,7 +342,7 @@ Before producing the development result, is one primary delivery mode explicitly
 
 Rule: `DELIVERY_COHERENCE`
 
-When MANUAL_TRANSFER_INSTRUCTION is the selected result, does the instruction enumerate every applicable create/modify/delete action, metadata object and material property, exact module/procedure/function code and placement/replacement anchor, form/command/role/subsystem/scheduled-job/event wiring, dependency/order or data-transition step, and post-transfer verification so the implementer does not have to invent material implementation details?
+When MANUAL_TRANSFER_INSTRUCTION is selected, enumerate every material create/modify/delete action, property, code anchor, wiring, dependency/order and verification. If replacing a prior failed attempt, bind the current block and exact prior fragment, restore evidenced base when needed, apply the final fragment and preserve unrelated valid changes.
 
 ## DELIVERY_ARTIFACT_VS_APPLIED_TARGET_PROOF
 
@@ -385,12 +355,6 @@ Is readiness of the delivered artifact kept distinct from proof that the target 
 Rule: `DELIVERY_COHERENCE`
 
 Does the delivered ChangePackage reference the exact accepted ProjectSnapshot/baseline and trace every material change item to its target, action, payload/instruction location, dependencies/order and retained verification hooks, while optional post-transfer verification remains non-blocking unless project policy explicitly requires it?
-
-## MANUAL_SECOND_PATCH_PRESERVES_UNRELATED_CHANGES
-
-Rule: `DELIVERY_COHERENCE`
-
-For a later MANUAL_TRANSFER over a prior failed attempt, bind current block and prior fragment, restore evidenced base if needed, apply final fragment, preserve unrelated changes, order and verification.
 
 ## GENERATED_QUERY_VARIANT_SYNTAX
 
@@ -631,12 +595,6 @@ Was XDTO code designed from the actual package namespace/type/import graph, with
 Rule: `TRANSACTION_WRITE`
 
 Does the selected object/document lifecycle event actually cover every required mutation channel? ОбработкаПроверкиЗаполнения is not accepted as a universal write guard because official 1C std463 states that it is not called for every write, in particular programmatic write; persistence-integrity checks require appropriate write-transaction events.
-
-## STANDARD_DTO_FACTORY_CALLSITE_CLOSURE
-
-Rule: `STRUCTURED_CONTRACT`
-
-Before manually assembling a non-trivial owned DTO/structure, prove its standard constructor/factory, one exact real call site, and mandatory runtime fields/initialization.
 
 ## DOMAIN_CONTRACT_LEAKAGE
 
