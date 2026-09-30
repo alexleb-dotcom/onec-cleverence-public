@@ -49,9 +49,15 @@ For implemented changes, the chat summary remains compact and evidence-bound, wh
 
 `ChangePackage` remains the machine delivery envelope and proof owner. DOCX files are human-facing projections only.
 
+### Primary delivery mode is decided first
+
+Resolve the primary implementation delivery mode **before** constructing the final implementation artifact. Base the choice on the explicit user request, project modification policy, target/source topology, actually available mutation/import mechanism, exact validation boundary and whether a human is expected to apply the change.
+
+Technical ability to construct XML does not establish `IMPORTABLE_ARTIFACT`. For an accepted 1C human/Configurator or extension-application route where direct target mutation is unavailable/not authorized and no exact importable artifact mechanism is proven and validated, use `MANUAL_TRANSFER_INSTRUCTION` as the default primary mode. XML remains valid when the selected proven route actually requires it.
+
 ### Инструкция по внедрению
 
-When `MANUAL_TRANSFER_INSTRUCTION` is primary, generate the separate `Инструкция по внедрению.docx` from `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`.
+When `MANUAL_TRANSFER_INSTRUCTION` is primary, generate the separate mandatory `Инструкция по внедрению.docx` from `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`. Chat-only code may preview/support the transfer but is not a complete manual-transfer delivery.
 
 The visible R2 order is fixed:
 
@@ -59,11 +65,11 @@ The visible R2 order is fixed:
 2. `Изменяемые объекты`;
 3. `Код`.
 
-Created objects show exact material properties plus concise rationale/applicable evidenced rule. Modified objects show material property changes as `Было / Стало`. Code changes show exact object/member and minimum sufficient exact `Было / Стало` fragments with the same integration anchor/context. Preserve exact code and the canonical AUTHOR_MARKER when applicable. Do not leave a material implementation decision to the human executor.
+Start from the exact target/baseline, purpose and implementation boundaries, including material “do not change / do not do” constraints when applicable. Created objects show exact material properties plus concise rationale/applicable evidenced rule. Modified objects show material property changes as `Было / Стало`. Code changes show exact object/member, placement anchor and minimum sufficient exact `Было / Стало` fragments with the same integration context; add concise explanation when placement/behavior could be misunderstood. Preserve exact code and the canonical AUTHOR_MARKER when applicable. Finish with an ordered deployment sequence, verification matrix with expected results, final static-control checklist and changed-object map. Do not leave a material implementation decision to the human executor.
 
 ### Особенности реализации
 
-Every non-trivial implementation produces a **separate mandatory** `Особенности реализации.docx` from `TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md`.
+Every non-trivial implementation produces a **separate mandatory** `Особенности реализации.docx` from `TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md`. This obligation is deterministic for non-trivial implementation and must not depend on an extra model judgment that “user-facing documentation is applicable”.
 
 The header is exact and ordered:
 

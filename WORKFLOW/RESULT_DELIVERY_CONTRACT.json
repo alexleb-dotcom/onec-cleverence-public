@@ -108,11 +108,14 @@
         "implementation_notes"
       ],
       "rules": [
+        "select the primary delivery mode before final implementation artifact construction",
+        "do not infer IMPORTABLE_ARTIFACT or XML delivery merely from technical ability to construct XML",
+        "for accepted human Configurator/extension application with no authorized direct mutation and no exact validated import route, use MANUAL_TRANSFER_INSTRUCTION as the default primary mode",
         "do not restate every changed line; summarize by business/technical responsibility",
-        "when manual transfer is primary, preserve the exact ordered object-by-object transfer contract",
+        "when manual transfer is primary, preserve the exact ordered object-by-object transfer contract and deliver a separate Инструкция по внедрению.docx",
+        "every non-trivial implementation delivers a separate Особенности реализации.docx",
         "when an artifact was created, link or identify the exact artifact and its scope",
-        "do not call an artifact deployed or runtime-proven unless that target state was observed",
-        "always include the required human-readable `Особенности реализации` section for non-trivial implementation work"
+        "do not call an artifact deployed or runtime-proven unless that target state was observed"
       ],
       "implementation_notes": {
         "title_ru": "Особенности реализации",
@@ -190,7 +193,9 @@
           "platform/configuration identity comes only from exact evidenced target context",
           "container identity comes from the exact baseline/candidate layout",
           "same-named objects in the main configuration and extensions or different extensions remain separate rows"
-        ]
+        ],
+        "trigger_contract": "NON_TRIVIAL_IMPLEMENTATION is deterministically applicable; it must not depend on a separate model applicability judgment",
+        "completion_gate": "final implementation delivery is incomplete while the separate implementation-notes artifact is missing"
       },
       "performance_review_projection": {
         "title_ru": "Performance Review",
@@ -237,11 +242,15 @@
       },
       "manual_transfer_instruction_template": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
       "manual_transfer_template_rules": [
-        "render object-first R2 structure in the exact owner-approved order",
+        "render purpose/boundaries before the object-first implementation core",
+        "render material do-not-change/do-not-do constraints when applicable",
+        "render object-first core in exact order: Создаваемые объекты -> Изменяемые объекты -> Код",
         "created objects include exact material properties and concise rationale/applicable evidenced standard",
         "modified objects show material property changes as Было/Стало",
-        "code changes show exact object/member and minimum sufficient Было/Стало fragments with the same integration anchor/context",
+        "code changes show exact object/member, placement anchor and minimum sufficient Было/Стало fragments with the same integration context",
+        "add concise explanation when placement or behavioral effect can reasonably be misunderstood",
         "preserve exact code and canonical AUTHOR_MARKER when applicable",
+        "render ordered deployment sequence, verification matrix with expected results, final static-control checklist and changed-object map",
         "leave no material implementation decision silently delegated to the human executor"
       ],
       "manual_transfer_artifact_output": {
@@ -257,7 +266,21 @@
           "Код"
         ],
         "source_of_truth": "ChangePackage plus exact validated candidate/baseline",
-        "proof_boundary": "document does not prove target application, deployment/import or runtime behavior"
+        "proof_boundary": "document does not prove target application, deployment/import or runtime behavior",
+        "required": true,
+        "chat_only_code_complete": false,
+        "completion_gate": "final manual-transfer delivery is incomplete while the separate instruction artifact is missing",
+        "purpose_and_boundaries_required": true,
+        "negative_constraints_conditional": true,
+        "code_anchor_required": true,
+        "ordered_deployment_sequence_required": true,
+        "verification_matrix_required": true,
+        "verification_matrix_columns": [
+          "Действие / сценарий",
+          "Ожидаемый результат"
+        ],
+        "final_static_control_required": true,
+        "changed_object_map_required": true
       },
       "line_by_line_justification": {
         "title_ru": "Построчное обоснование изменений",
@@ -282,6 +305,29 @@
           "diff uses - removed, + added and unmarked unchanged context",
           "generate only when explicit_user_request=true",
           "presentation cannot create or upgrade proof"
+        ]
+      },
+      "delivery_mode_selection": {
+        "must_precede_final_artifact_construction": true,
+        "decision_inputs": [
+          "explicit user request",
+          "project modification policy",
+          "target/source topology",
+          "authorized and actually available direct mutation mechanism",
+          "exact import mechanism and validation boundary",
+          "whether a human is expected to apply the change"
+        ],
+        "xml_capability_rule": "ability to generate XML is not evidence that IMPORTABLE_ARTIFACT is the accepted or validated delivery route",
+        "manual_transfer_default_when": [
+          "1C human Configurator/extension application is the accepted route",
+          "direct target mutation is unavailable or not authorized",
+          "no exact importable artifact route is proven and validated"
+        ],
+        "manual_transfer_default_result": "MANUAL_TRANSFER_INSTRUCTION",
+        "importable_artifact_requires": [
+          "exact import mechanism",
+          "exact artifact semantics/shape",
+          "validation boundary for the produced artifact"
         ]
       }
     },
@@ -370,6 +416,6 @@
     "renderer_dependency": "python-docx==1.2.0",
     "separate_file_default": true,
     "combined_document_only_on_explicit_user_request": true,
-    "contract": "Each applicable user-facing documentation artifact is a separate DOCX projection; canonical machine/proof artifacts remain in native formats and DOCX cannot create or upgrade proof."
+    "contract": "Applicable user-facing documentation artifacts are separate DOCX projections. For non-trivial implementation, implementation_notes is always applicable; for MANUAL_TRANSFER_INSTRUCTION, manual_transfer is always applicable. Canonical machine/proof artifacts remain native and DOCX cannot create or upgrade proof."
   }
 }

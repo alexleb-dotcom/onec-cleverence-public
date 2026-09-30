@@ -41,11 +41,15 @@ Source contract:
 ### manual_transfer
 Generate when `MANUAL_TRANSFER_INSTRUCTION` is the selected delivery mode.
 
+For that mode this artifact is mandatory: chat-only code is not complete delivery. The semantic delivery owner decides the mode before final artifact construction; the renderer only projects the already-selected mode.
+
 Source contract:
 `TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md`
 
 ### implementation_notes
 Generate for every non-trivial implementation.
+
+This trigger is deterministic, not an optional “documentation applicability” judgment. Analysis-only, requirements-only, trivial or no-change work may be `NOT_APPLICABLE` only with an exact task/result reason owned upstream.
 
 Source contract:
 `TEMPLATES/IMPLEMENTATION_NOTES_DOCX_TEMPLATE.md`
@@ -104,7 +108,8 @@ Public regression must prove:
 - requirements conditional sections can be omitted when empty;
 - internal authoring rules are not rendered;
 - manual transfer is object-first, not STEP-first;
-- implementation notes header/table are exact;
+- manual transfer preserves exact target/boundaries, ordered deployment, verification matrix, final static control and changed-object map;
+- implementation notes header/table are exact and remain a separate mandatory file for non-trivial implementation;
 - line-by-line output requires explicit request;
 - code/AUTHOR_MARKER text remains literal;
 - no accidental combined document is produced.

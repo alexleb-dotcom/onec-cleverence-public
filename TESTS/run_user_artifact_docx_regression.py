@@ -29,17 +29,24 @@ requirements={
  "acceptance":[{"case":"Повтор","preconditions":"Факт есть","action":"Повторить","expected":"Дубликата нет","oracle":"Ровно один факт"}],
  "proof_boundary":"Точный runtime не наблюдался.","requirements_status":"REQUIREMENTS_READY"
 }
-marker="// ИвановИИ, ПервыйБит, 28.09.2026, ТЗ-42, 1.2"
+marker="// ИвановИИ, ПервыйБит, 28.09.2026, ТЗ-42"
 manual={
  "project":"Проект А","task":"ТЗ-42","target_identity":"Расширение Приемка baseline abc",
+ "purpose":"Внедрить защиту от повторной фиксации без изменения сторонней логики.",
+ "implementation_boundaries":["Изменяется только расширение Приемка.","Основная конфигурация не изменяется."],
+ "do_not_change":["Не переносить изменение в основную конфигурацию."],
  "preconditions":["Выполнить резервную копию."],
  "migration":["Заполнить существующие ключи при необходимости."],
+ "deployment_sequence":["Открыть расширение Приемка.","Изменить общий модуль.","Выполнить статическую проверку."],
  "static_verification":["Проверить синтаксис модуля."],
+ "verification_matrix":[{"action":"Повторить уже зафиксированную операцию.","expected":"Второй факт не создаётся."}],
  "runtime_verification":["Выполнить контрольный повтор операции."],
+ "final_control_checklist":["AUTHOR_MARKER сохранён.","Изменён только разрешённый объект."],
+ "changed_object_map":[{"object":"ОбщийМодуль.ИнтеграцияCleverenceСервер","change":"Добавлена защита от повторной фиксации."}],
  "blocking_choices":["Нет нерешённых выборов."],
  "created_objects":[{"object":"РегистрСведений.ОбработанныеОперации","properties":[{"name":"Периодичность","value":"Непериодический"}],"rationale":"Хранить бизнес-ключ.","standard_rule":"Проектное правило IDEMPOTENCY"}],
  "modified_objects":[{"object":"ОбщийМодуль.ИнтеграцияCleverenceСервер","properties":[{"name":"Сервер","before":"Ложь","after":"Истина"}],"rationale":"Выполнение на сервере.","standard_rule":"Клиент-серверный контракт"}],
- "code_changes":[{"object":"ОбщийМодуль.ИнтеграцияCleverenceСервер","member":"Процедура ОбработатьРезультатПриемки","before":"Контекст();","after":"Контекст();\n"+marker+"\nПроверитьПовтор();","rationale":"Идемпотентность.","standard_rule":"Проектное правило IDEMPOTENCY"}],
+ "code_changes":[{"object":"ОбщийМодуль.ИнтеграцияCleverenceСервер","member":"Процедура ОбработатьРезультатПриемки","anchor":"перед фиксацией результата","before":"Контекст();","after":"Контекст();\n"+marker+"\nПроверитьПовтор();","rationale":"Идемпотентность.","explanation":"Проверка должна выполняться до записи результата.","standard_rule":"Проектное правило IDEMPOTENCY"}],
  "proof_boundary":"Перенос в целевой базе не наблюдался."
 }
 notes={
@@ -76,13 +83,19 @@ with tempfile.TemporaryDirectory() as td:
     require(headings.index("Создаваемые объекты")<headings.index("Изменяемые объекты")<headings.index("Код"),"manual_owner_order",headings)
     h1=[p.text for p in man.paragraphs if p.style and p.style.name=="Heading 1"]
     expected_h1=[
+      "Назначение и границы",
+      "Не изменять / не делать",
       "Создаваемые объекты",
       "Изменяемые объекты",
       "Код",
       "Предусловия",
       "Миграция / инициализация / одноразовые действия",
+      "Порядок внедрения",
       "Статическая проверка после внедрения",
+      "Матрица проверки",
       "Проверка выполнения",
+      "Финальный статический контроль",
+      "Карта изменённых объектов",
       "Нерешённые выборы / блокеры",
       "Граница доказанности",
     ]
@@ -92,6 +105,18 @@ with tempfile.TemporaryDirectory() as td:
     require(marker in man_text,"author_marker_literal_preserved",man_text)
     table_text=["|".join(cell.text for cell in row.cells) for table in man.tables for row in table.rows]
     require(any("Свойство|Было|Стало" in row for row in table_text),"manual_before_after_properties",table_text)
+    require(any("Действие / сценарий|Ожидаемый результат" in row for row in table_text),"manual_verification_matrix",table_text)
+    require(any("Объект|Изменение" in row for row in table_text),"manual_changed_object_map",table_text)
+    for token in ["Якорь / место изменения: перед фиксацией результата","Пояснение: Проверка должна выполняться до записи результата.","Основная конфигурация не изменяется.","Не переносить изменение в основную конфигурацию."]:
+        require(token in man_text,"manual_quality_token:"+token,man_text)
+
+    missing_closure=dict(manual)
+    missing_closure.pop("deployment_sequence")
+    try:
+        render_artifact("manual_transfer",missing_closure,out)
+        require(False,"manual_transfer_requires_execution_closure")
+    except ValueError:
+        pass
 
     impl=Document(paths["implementation_notes"])
     impl_text=[p.text for p in impl.paragraphs]
@@ -142,6 +167,10 @@ require(impl_contract["implementation_notes"].get("filename_ru")=="Особен�
 require(impl_contract["line_by_line_justification"].get("trigger")=="EXPLICIT_USER_REQUEST_ONLY","contract_optional_line_by_line")
 require(contract["profiles"]["REQUIREMENTS_ARTIFACT"]["artifact_output"].get("separate_file") is True,"requirements_separate_file")
 require(impl_contract["manual_transfer_artifact_output"].get("separate_file") is True,"manual_separate_file")
+require(impl_contract["manual_transfer_artifact_output"].get("required") is True,"manual_required_for_manual_mode")
+require(impl_contract["manual_transfer_artifact_output"].get("chat_only_code_complete") is False,"manual_chat_only_incomplete")
+require(impl_contract["implementation_notes"].get("required") is True and "deterministically applicable" in impl_contract["implementation_notes"].get("trigger_contract",""),"implementation_notes_deterministic_required")
+require(impl_contract["delivery_mode_selection"].get("must_precede_final_artifact_construction") is True,"delivery_mode_before_artifact")
 
-print(json.dumps({"result":"PASS" if not errors else "FAIL","errors":errors,"cases":20},ensure_ascii=False,indent=2))
+print(json.dumps({"result":"PASS" if not errors else "FAIL","errors":errors,"cases":29},ensure_ascii=False,indent=2))
 raise SystemExit(0 if not errors else 2)

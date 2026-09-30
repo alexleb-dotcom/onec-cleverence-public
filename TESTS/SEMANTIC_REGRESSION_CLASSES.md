@@ -336,13 +336,13 @@ Was the exact candidate evaluated by the release gate before it was described as
 
 Rule: `DELIVERY_COHERENCE`
 
-Before producing the development result, is one primary delivery mode explicitly selected (DIRECT_SOURCE_CHANGESET, MANUAL_TRANSFER_INSTRUCTION, PATCH_DIFF, IMPORTABLE_ARTIFACT, FULL_COMPARE_SET, ANALYSIS_REPORT, or justified OTHER), are any supporting modes named, and is the choice consistent with the user request, project modification policy, available artifact shape and actual ability to validate the result?
+Before constructing final implementation artifacts, is one primary delivery mode explicitly selected from user request, project modification policy, target/source topology, proven mutation/import capability and validation boundary? Technical ability to construct XML does not prove IMPORTABLE_ARTIFACT. For accepted human Configurator/extension application with no authorized direct mutation and no exact validated import route, MANUAL_TRANSFER_INSTRUCTION is the default primary mode.
 
 ## MANUAL_TRANSFER_INSTRUCTION_COMPLETENESS
 
 Rule: `DELIVERY_COHERENCE`
 
-When MANUAL_TRANSFER_INSTRUCTION is selected, enumerate every material create/modify/delete action, property, code anchor, wiring, dependency/order and verification. If replacing a prior failed attempt, bind the current block and exact prior fragment, restore evidenced base when needed, apply the final fragment and preserve unrelated valid changes.
+When MANUAL_TRANSFER_INSTRUCTION is primary, is a separate Инструкция по внедрению.docx produced rather than chat-only code, with exact target/baseline and boundaries, material do-not-change constraints when applicable, object-first metadata/code changes, exact placement anchors/resulting code, explanatory notes where needed, ordered deployment sequence, verification matrix with expected results, final static-control checklist, changed-object map, and prior-attempt migration safety when applicable?
 
 ## DELIVERY_ARTIFACT_VS_APPLIED_TARGET_PROOF
 

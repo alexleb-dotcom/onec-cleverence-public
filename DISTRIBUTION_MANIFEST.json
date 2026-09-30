@@ -220,8 +220,8 @@
     },
     {
       "path": "KNOWLEDGE/RESULT_DELIVERY.md",
-      "size": 8941,
-      "sha256": "2d2135fe9a280cbbb0232b51a45066e3fb677b2da78a6f08af19e911f7ae968d"
+      "size": 10377,
+      "sha256": "7b2df073dd0387cd97c3726a7bc8affdcd97d509f9996b17a8a74be596cece90"
     },
     {
       "path": "KNOWLEDGE/SKILL_FRESHNESS.md",
@@ -240,8 +240,8 @@
     },
     {
       "path": "KNOWLEDGE/USER_ARTIFACT_DOCX.md",
-      "size": 3640,
-      "sha256": "859f77f923980d237d6f1f7caaba013427ae9e722a0f05095f254262aca61a0f"
+      "size": 4296,
+      "sha256": "5084e45809e7a75c256b9a399f7b7e6ef8e8ba9c9ec8834bcd3a43fdc65c43c1"
     },
     {
       "path": "KNOWLEDGE/V8STD_SOURCE_POLICY.md",
@@ -630,13 +630,13 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 292892,
-      "sha256": "c0f9031abd283248976b6dc7da8c23381c968e34406e391b156fec10e86220d3"
+      "size": 293881,
+      "sha256": "401b99132691bf557a769c66aaab4f15dcf250d3b3fee5b25ff195521dd513a5"
     },
     {
       "path": "SKILL.md",
-      "size": 43185,
-      "sha256": "a618e3f113a9c67524c07e015547f59cea7e832cd16b861f16d4c8a235a688f9"
+      "size": 43987,
+      "sha256": "8d7ce718da5f325fd475276af1cbcf8b266dd4c4c8aa092ebddf00c5bb05702f"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -660,8 +660,8 @@
     },
     {
       "path": "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
-      "size": 2950,
-      "sha256": "e230e7ecc0a122d33ba7d5cdd9326453b39761b926bc1b6bb297ecc8529f0c37"
+      "size": 5195,
+      "sha256": "8ee4d63d6793c7fae456ca9eebfc5418312b27fc2d648cdf8079313f89ca3c19"
     },
     {
       "path": "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md",
@@ -725,13 +725,13 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 21790,
-      "sha256": "d6b707b7ac6f74bdf82a8802ad6ec14f795df6e3926f9507155194a163b29bec"
+      "size": 26114,
+      "sha256": "63cff8fdad26639b13df668227d4e18cd47b2db78d91739de0525b0b4b37103c"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 40526,
-      "sha256": "02504a52f20fe0959af105493f10b5a534afdaf4f5a9cbbdfee30da713278cf1"
+      "size": 40771,
+      "sha256": "85d0ed37a5573a0eb9ed4046b45ea24bff8cf1557bde47246618bdf89b19c253"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -1890,8 +1890,8 @@
     },
     {
       "path": "TESTS/run_result_delivery_contract_regression.py",
-      "size": 34511,
-      "sha256": "a851aadd2dc5e5e079952af7c939eade54b838e3d716d53643ba070789228554"
+      "size": 40077,
+      "sha256": "1411dd3dda54f7b823a957557ab6f100419aff7eff060ab23531abe461043e83"
     },
     {
       "path": "TESTS/run_review_regression.py",
@@ -1915,8 +1915,8 @@
     },
     {
       "path": "TESTS/run_user_artifact_docx_regression.py",
-      "size": 10361,
-      "sha256": "d2d99e212f7688e879c469b5554e2d01b4a14c63f457eea849946d36e9a3aa75"
+      "size": 13561,
+      "sha256": "1ff4380cc76b44c016589b8f0d938dfbd6ddccc1b836c50c592fec565bebdfe9"
     },
     {
       "path": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
@@ -2135,8 +2135,8 @@
     },
     {
       "path": "TOOLS/render_user_artifact_docx.py",
-      "size": 15891,
-      "sha256": "3e9d0a8eb7bf75e2bed986e812bb426d70f123e8fe77ae3475ac666f47716dfa"
+      "size": 17831,
+      "sha256": "519cceff3329fa57c49f825b80d6cbf34a556f06ef1c22c26474fcbeb7ea6ab9"
     },
     {
       "path": "TOOLS/requirements_gate.py",
@@ -2215,8 +2215,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 24568,
-      "sha256": "c513a9d8c07f800a4d32ce6732ccb7fe5547f8040ca0144fb7d4c3055bd62377"
+      "size": 25201,
+      "sha256": "22eae0b3979a501c85ec2e6a3f46257441dabefa7e36bed4f55468c764426e07"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2225,8 +2225,8 @@
     },
     {
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
-      "size": 18507,
-      "sha256": "2e22615f557e0ec165e895272b3f30a2418588df7944d34fa166ba6a696af8a1"
+      "size": 21643,
+      "sha256": "eaf2edd432ef1ae59f9e16ebb0402b1ced3782066d133d8968f75203f8a329e7"
     },
     {
       "path": "agents/openai.yaml",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "2e2362b4eb6ff9429127a0e1b13c358946c8a2ec0016d6c923f81e50937b0372"
+  "snapshot_digest": "5e22a539a65054b76047e68e4684a11fbc4e441403b8beb5aa1078d86958f5fa"
 }
