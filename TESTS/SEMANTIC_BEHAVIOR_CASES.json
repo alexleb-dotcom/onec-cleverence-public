@@ -603,6 +603,190 @@
         "std444_wrap_compliant": true,
         "unrelated_baseline_reformatted": false
       }
+    },
+    {
+      "id": "MULTISTAGE_FIELD_OWNER_FINALIZER_RETRACE",
+      "oracle": "field_lifecycle_trace",
+      "bad": {
+        "material_multistage_field": true,
+        "writer_proven": true,
+        "dependent_computation_traced": true,
+        "cache_holder_dispositioned": false,
+        "later_rewriter_finalizer_traced": false,
+        "final_consumer_traced": true,
+        "authoritative_final_owner_named": false
+      },
+      "good": {
+        "material_multistage_field": true,
+        "writer_proven": true,
+        "dependent_computation_traced": true,
+        "cache_holder_dispositioned": true,
+        "later_rewriter_finalizer_traced": true,
+        "final_consumer_traced": true,
+        "authoritative_final_owner_named": true
+      }
+    },
+    {
+      "id": "STANDARD_NEGATIVE_MODE_BEFORE_CUSTOM_BYPASS",
+      "oracle": "negative_mode_discovery",
+      "bad": {
+        "standard_except_requirement": true,
+        "custom_bypass_proposed": true,
+        "exact_target_typical_searched": false,
+        "candidate_negative_modes_evaluated": false,
+        "naming_example_only": true
+      },
+      "good": {
+        "standard_except_requirement": true,
+        "custom_bypass_proposed": false,
+        "exact_target_typical_searched": true,
+        "candidate_negative_modes_evaluated": true,
+        "naming_example_only": false
+      }
+    },
+    {
+      "id": "STANDARD_DTO_FACTORY_CALLSITE_CLOSURE",
+      "oracle": "dto_factory_closure",
+      "bad": {
+        "manual_nontrivial_owned_dto": true,
+        "standard_constructor_factory_resolved": false,
+        "exact_real_callsite_read": false,
+        "mandatory_runtime_fields_proven": false,
+        "initialization_semantics_proven": false
+      },
+      "good": {
+        "manual_nontrivial_owned_dto": true,
+        "standard_constructor_factory_resolved": true,
+        "exact_real_callsite_read": true,
+        "mandatory_runtime_fields_proven": true,
+        "initialization_semantics_proven": true
+      }
+    },
+    {
+      "id": "PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE",
+      "oracle": "paired_flow_trace",
+      "bad": {
+        "paired_flows": true,
+        "textual_symmetry_assumed": true,
+        "forward": {
+          "trigger": true,
+          "owner_data_trace": true,
+          "state_transitions": true,
+          "acceptance_oracle": true
+        },
+        "reverse": {
+          "trigger": true,
+          "owner_data_trace": false,
+          "state_transitions": false,
+          "acceptance_oracle": false
+        }
+      },
+      "good": {
+        "paired_flows": true,
+        "textual_symmetry_assumed": false,
+        "forward": {
+          "trigger": true,
+          "owner_data_trace": true,
+          "state_transitions": true,
+          "acceptance_oracle": true
+        },
+        "reverse": {
+          "trigger": true,
+          "owner_data_trace": true,
+          "state_transitions": true,
+          "acceptance_oracle": true
+        }
+      }
+    },
+    {
+      "id": "MANUAL_SECOND_PATCH_PRESERVES_UNRELATED_CHANGES",
+      "oracle": "manual_patch_migration",
+      "bad": {
+        "manual_transfer": true,
+        "prior_failed_attempt_present": true,
+        "current_target_block_bound": false,
+        "exact_prior_fragment_identified": false,
+        "base_restore_required": true,
+        "evidenced_base_restored": false,
+        "final_fragment_applied": true,
+        "unrelated_changes_preserved": false,
+        "ordering_specified": false,
+        "post_transfer_verification_specified": false
+      },
+      "good": {
+        "manual_transfer": true,
+        "prior_failed_attempt_present": true,
+        "current_target_block_bound": true,
+        "exact_prior_fragment_identified": true,
+        "base_restore_required": true,
+        "evidenced_base_restored": true,
+        "final_fragment_applied": true,
+        "unrelated_changes_preserved": true,
+        "ordering_specified": true,
+        "post_transfer_verification_specified": true
+      }
+    },
+    {
+      "id": "MANUAL_MUTATION_INVALIDATES_PREVIOUS_SOURCE_SNAPSHOT",
+      "oracle": "manual_snapshot_freshness",
+      "bad": {
+        "unobserved_manual_target_mutation": true,
+        "subsequent_source_relative_patch": true,
+        "pre_mutation_snapshot_reused": true,
+        "current_source_reacquired": false,
+        "current_fingerprint_reestablished": false
+      },
+      "good": {
+        "unobserved_manual_target_mutation": true,
+        "subsequent_source_relative_patch": true,
+        "pre_mutation_snapshot_reused": false,
+        "current_source_reacquired": true,
+        "current_fingerprint_reestablished": true
+      }
+    },
+    {
+      "id": "BUSINESS_IDENTITY_SYMMETRY_MATRIX",
+      "oracle": "identity_symmetry",
+      "required_dimensions": [
+        "filled_empty",
+        "a_b",
+        "new_existing",
+        "first_reverse_order"
+      ],
+      "bad": {
+        "identity_sensitive_change": true,
+        "covered_dimensions": [
+          "filled_empty",
+          "a_b"
+        ]
+      },
+      "good": {
+        "identity_sensitive_change": true,
+        "covered_dimensions": [
+          "filled_empty",
+          "a_b",
+          "new_existing",
+          "first_reverse_order"
+        ]
+      }
+    },
+    {
+      "id": "FAILED_RUNTIME_PATCH_REQUIRES_CAUSAL_OWNER_RETRACE",
+      "oracle": "failed_patch_retrace",
+      "bad": {
+        "runtime_disproves_causal_hypothesis": true,
+        "second_patch_same_symptom": true,
+        "causal_claim_invalidated": false,
+        "owner_dependency_lifecycle_retraced": false,
+        "reused_evidence_dependencies_valid": false
+      },
+      "good": {
+        "runtime_disproves_causal_hypothesis": true,
+        "second_patch_same_symptom": true,
+        "causal_claim_invalidated": true,
+        "owner_dependency_lifecycle_retraced": true,
+        "reused_evidence_dependencies_valid": true
+      }
     }
   ]
 }
