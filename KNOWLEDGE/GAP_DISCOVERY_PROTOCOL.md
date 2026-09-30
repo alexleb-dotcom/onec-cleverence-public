@@ -64,6 +64,8 @@ RUNTIME_PENDING   — static evidence cannot decide and a named runtime case rem
 `runtime_cases` row. `EVIDENCE_REQUIRED` names the missing evidence; `COVERAGE_GAP`
 records the existing-registry search that failed to find an owner.
 
+When runtime acceptance disproves the causal/design hypothesis behind a patch, invalidate that hypothesis and dependent readiness before another patch to the same symptom. Retrace the exact owner/dependency/lifecycle path and reuse only evidence whose dependencies remain valid.
+
 ## Hallucination controls
 
 - start only from actual deltas, unresolved calls/data flows, contradictory evidence,

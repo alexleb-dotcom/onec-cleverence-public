@@ -218,7 +218,7 @@
         "State error/retry/re-entry/partial completion semantics and idempotency where relevant.",
         "State rights/concurrency and later lifecycle overwrite paths where relevant rather than enumerating theoretical exceptions.",
         "Is there a realistic materially different path that changes result/ownership but has no specified outcome?",
-        "When the requirement includes forward and reverse/refund/cancel flows, does each pipeline have its own trigger, data/identity trace, state transitions and acceptance oracle instead of assuming reverse behavior by analogy from the forward path?"
+        "When materially paired flows exist (forward/reverse, sale/return, posting/unposting, receipt/return receipt), trace each independently: trigger, data/identity owner, state transitions and acceptance oracle; do not infer parity from textual symmetry."
       ],
       "evidence_modes": [
         "SOURCE_REQUIRED",

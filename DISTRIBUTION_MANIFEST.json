@@ -65,8 +65,8 @@
     },
     {
       "path": "KNOWLEDGE/DEVELOPMENT_HANDOFF_WORKFLOW.md",
-      "size": 9997,
-      "sha256": "98a8199bf302d651d5b3df0e7acf9146ef3b28db3175aa9bf580e36309aa1389"
+      "size": 10506,
+      "sha256": "d1effc71f8e850ea04a28f1635b6e796cac14d2d3e15c5dc270ff55366ecf0bd"
     },
     {
       "path": "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
@@ -100,8 +100,8 @@
     },
     {
       "path": "KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md",
-      "size": 4594,
-      "sha256": "c41dc7cebd152a9760e00de1bf74c8c4ec6df9bfa0db8263c71403b26a4fc6d9"
+      "size": 4874,
+      "sha256": "59a6c14364626f3453b5fb090f5c58f0475943a8824cf0b614eeafc414603896"
     },
     {
       "path": "KNOWLEDGE/ITS_GAP_DISCOVERY_PROTOCOL.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 82583,
-      "sha256": "0a84ee9880fd8351e0cd2d863bebbc715f85543742a3f084efb982ddf31dc686"
+      "size": 82897,
+      "sha256": "1445a4a1b43ac09fef6561e22de78c6b1b877f6638c5795bdee4768bbe5778f8"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -385,8 +385,8 @@
     },
     {
       "path": "PROFILES/BUSINESS_IDENTITY.md",
-      "size": 3381,
-      "sha256": "1616216e7f4c1bcd9a6ed3f7cf7d89964807a3419cc5d5107c5bcba998f769ef"
+      "size": 3558,
+      "sha256": "42f9b53962f230916567be4c27aa9ef224cae9879d0417f3864ef84562df6a6b"
     },
     {
       "path": "PROFILES/BUSINESS_RELATION_CARDINALITY.md",
@@ -565,8 +565,8 @@
     },
     {
       "path": "PROFILES/STRUCTURED_CONTRACT.md",
-      "size": 614,
-      "sha256": "2ca59bf523ef4cd222897b0f3710df3c6eb9fd0ec52ec3938d2b884ce88f2ef4"
+      "size": 833,
+      "sha256": "208edf7f90d5c1440a98dc487b7c17da617bd44926275a4dc037044cb37a565f"
     },
     {
       "path": "PROFILES/TRANSACTION_WRITE.md",
@@ -610,8 +610,8 @@
     },
     {
       "path": "REQUIREMENTS/INDEX.json",
-      "size": 18541,
-      "sha256": "ff1b2c3935e5a9195aa69c6d35503a365bee6b74ef697df0084d03e428878d9e"
+      "size": 18547,
+      "sha256": "fea5abfeef5618507b4945952f7c11d8230920f075528f0ad307bc475ee4c544"
     },
     {
       "path": "REQUIREMENTS/README.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 292412,
-      "sha256": "ba415ab6e2905c2432b30230cae673eef5486f31d9a9d602686eb39b386d2542"
+      "size": 292892,
+      "sha256": "c0f9031abd283248976b6dc7da8c23381c968e34406e391b156fec10e86220d3"
     },
     {
       "path": "SKILL.md",
@@ -715,8 +715,8 @@
     },
     {
       "path": "TESTS/REQUIREMENTS_SEMANTIC_CLASSES.md",
-      "size": 8461,
-      "sha256": "a3f2641deecbce6c69dd91cf9ad5ae282087bdf0b8f095d469e6e98073cfd237"
+      "size": 8467,
+      "sha256": "64bcec3e4fca4d08af4ba04077cb9991771122f6082864ac36b623126cab7698"
     },
     {
       "path": "TESTS/RULE_ACTIVATION_CASES.json",
@@ -725,13 +725,13 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 16992,
-      "sha256": "fe4fe0525e6e4634c1c15038ef60622731711d0d7b8cff9acb819949af0ae035"
+      "size": 21790,
+      "sha256": "d6b707b7ac6f74bdf82a8802ad6ec14f795df6e3926f9507155194a163b29bec"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 40512,
-      "sha256": "617efedf27e686be0fb3dca53a15332cf3516a5e57311f6995274cb30a624c4c"
+      "size": 40526,
+      "sha256": "02504a52f20fe0959af105493f10b5a534afdaf4f5a9cbbdfee30da713278cf1"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "e110f0fbeeb3649d79e2ff55f48fd93484dfb545a3692dfe14e28488da20da7a"
+  "snapshot_digest": "2e2362b4eb6ff9429127a0e1b13c358946c8a2ec0016d6c923f81e50937b0372"
 }

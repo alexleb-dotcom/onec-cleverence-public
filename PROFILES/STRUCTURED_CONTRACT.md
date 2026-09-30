@@ -20,6 +20,7 @@
 - export API documents fields/types
 - caller/callee contract names match
 - service fields survive transformations
+- before manually assembling a non-trivial subsystem-owned DTO/structure, resolve the standard constructor/factory, inspect at least one exact real call site, and prove mandatory runtime fields/initialization semantics
 
 ## Completion rule
 

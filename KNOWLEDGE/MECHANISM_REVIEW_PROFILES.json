@@ -115,7 +115,7 @@
         "each included field changes business sameness",
         "excluded intrinsic fields cannot merge distinct entities",
         "producer/mapping/storage/grouping/consumer use the same key",
-        "packaging/unit/barcode variation and equal-presentation counterexamples",
+        "Cover identity counterexamples across relevant packaging/unit/barcode variation, equal presentation, filled/empty input, A/B entities, new/existing state and first/reverse operation order.",
         "one-plan-many-fact and split/merge quantity invariants",
         "Every derived identity/key is fully calculated and validated for type, domain, completeness and required uniqueness before the first Add/Insert/Write or other result mutation.",
         "Is the deduplication/grouping/search/merge key the smallest stable business identity, with packaging, unit, coefficient, barcode and presentation excluded unless domain evidence proves they change sameness?",
@@ -593,7 +593,7 @@
         "std453"
       ],
       "checks": [
-        "<=3 constructor values or explicit filling",
+        "For a non-trivial subsystem-owned DTO/structure, prove the standard constructor/factory, one exact real call site and mandatory runtime fields/initialization before manual assembly; otherwise keep constructor values <=3 or fill explicitly.",
         "fixed schema initialized once",
         "no dynamic property drift",
         "export API documents fields/types",

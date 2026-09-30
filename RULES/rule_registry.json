@@ -362,7 +362,7 @@
         },
         {
           "id": "BASELINE_IDENTITY_T03",
-          "question": "When the recorded candidate/baseline origin is still accessible at release time, do its current bytes still match the plan SHA-256 snapshot?",
+          "question": "When recorded candidate/baseline origin remains accessible, current bytes must match the plan snapshot. After an unobserved manual target change, reacquire current source closure/fingerprint before another source-relative patch instead of treating the old snapshot as current authority.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -441,7 +441,7 @@
         },
         {
           "id": "STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
-          "question": "Before source mutation/final implementation generation, is the target configuration/platform/BSP/vendor existing capability resolved from exact current-target evidence (discovery hits/misses/stale indexes/partial graphs are candidate-only), with technical TZ prescriptions kept as PROPOSED_SOLUTION by default, and with any duplicate owner requiring an explicit identity-bound exception?",
+          "question": "Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -520,7 +520,7 @@
         },
         {
           "id": "FIELD_LEVEL_SOURCE_OWNERSHIP",
-          "question": "When a target row/object is assembled from several upstream sources, is ownership proven per material target field (semantic role → authoritative source → match key → calculation owner) instead of treating one upstream document as owner of the whole row?",
+          "question": "When material fields cross several pipeline stages, prove ownership per field and trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer; do not accept an early assignment before the final-value owner is proven.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1045,7 +1045,7 @@
         },
         {
           "id": "BUSINESS_IDENTITY_P06",
-          "question": "packaging/unit/barcode variation and equal-presentation counterexamples",
+          "question": "Cover identity counterexamples across relevant packaging/unit/barcode variation, equal presentation, filled/empty input, A/B entities, new/existing state and first/reverse operation order.",
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true
@@ -1642,7 +1642,7 @@
         },
         {
           "id": "POST_FIX_COVERAGE_DRIFT",
-          "question": "After a material fix, were mechanism detection, CODE_TO_STANDARDS and STANDARDS_TO_CODE rerun instead of checking only edited lines?",
+          "question": "After a material fix, rerun mechanism detection and both proof passes. If runtime disproves the patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1844,7 +1844,7 @@
         },
         {
           "id": "MANUAL_TRANSFER_INSTRUCTION_COMPLETENESS",
-          "question": "When MANUAL_TRANSFER_INSTRUCTION is the selected result, does the instruction enumerate every applicable create/modify/delete action, metadata object and material property, exact module/procedure/function code and placement/replacement anchor, form/command/role/subsystem/scheduled-job/event wiring, dependency/order or data-transition step, and post-transfer verification so the implementer does not have to invent material implementation details?",
+          "question": "When MANUAL_TRANSFER_INSTRUCTION is selected, enumerate every material create/modify/delete action, property, code anchor, wiring, dependency/order and verification. If replacing a prior failed attempt, bind the current block and exact prior fragment, restore evidenced base when needed, apply the final fragment and preserve unrelated valid changes.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -3641,7 +3641,7 @@
       "checks": [
         {
           "id": "STRUCTURED_CONTRACT_P01",
-          "question": "<=3 constructor values or explicit filling",
+          "question": "For a non-trivial subsystem-owned DTO/structure, prove the standard constructor/factory, one exact real call site and mandatory runtime fields/initialization before manual assembly; otherwise keep constructor values <=3 or fill explicitly.",
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true
@@ -6991,7 +6991,7 @@
         },
         {
           "id": "FORWARD_REVERSE_PIPELINE_PARITY",
-          "question": "When the requirement includes forward and reverse/refund/cancel flows, does each pipeline have its own trigger, data/identity trace, state transitions and acceptance oracle instead of assuming reverse behavior by analogy from the forward path?",
+          "question": "When materially paired flows exist (forward/reverse, sale/return, posting/unposting, receipt/return receipt), trace each independently: trigger, data/identity owner, state transitions and acceptance oracle; do not infer parity from textual symmetry.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,

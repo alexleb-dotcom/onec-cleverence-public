@@ -37,6 +37,7 @@ An internal container is not automatically a logistics/regulatory package, and a
 - verify producer, mapping, storage, grouping/search and consumer use the same invariant;
 - cover changed packaging/unit/barcode with stable identity and distinct identity with equal presentation;
 - preserve one-plan-many-fact and split/merge behavior without quantity loss or duplicate lines;
+- when identity-sensitive behavior changes, cover relevant adversarial symmetry: filled/empty input, entity A/B, new/existing object or fact, and first/reverse operation order;
 - for any derived key that controls row/index/register/object/fact creation, complete all type/domain/completeness/required-uniqueness checks before the first `Добавить()`/`Вставить()`/`Записать()` or other result mutation.
 
 Required order:
