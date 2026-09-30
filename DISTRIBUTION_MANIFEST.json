@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 83090,
-      "sha256": "f39243894e690e1a8d48764928b7e1f0cde5029026442aa4d938b76e1d2a13c8"
+      "size": 82898,
+      "sha256": "51f939966514ca535bde397fbe14a964e22e5249f0ee1e8b143ad720e26a1ed9"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -610,8 +610,8 @@
     },
     {
       "path": "REQUIREMENTS/INDEX.json",
-      "size": 18849,
-      "sha256": "d69a1b57691225a8e156172cf1b9b6a99dbc40f8aa820b34957e00e9fa394854"
+      "size": 18733,
+      "sha256": "2491e55e01ae894791da9099101ea7437454321b14a659fd081a774719328c62"
     },
     {
       "path": "REQUIREMENTS/README.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 297461,
-      "sha256": "40e191dade0f965c038ba3660b7ca83022e959630a5c0f0d4d83c81463f1371d"
+      "size": 296631,
+      "sha256": "6ca673efcba8a5360b3f13b491d605f23e746a63691e63bb216dc218922ba6a1"
     },
     {
       "path": "SKILL.md",
@@ -715,8 +715,8 @@
     },
     {
       "path": "TESTS/REQUIREMENTS_SEMANTIC_CLASSES.md",
-      "size": 8841,
-      "sha256": "a388b23d322433864e49ad21ae0ba99b99f02126396e06e2ada794b96e70adc1"
+      "size": 8725,
+      "sha256": "1fbe40bc92d038a6f3dcc3e0eb4e47c0d2e99213f63640480a902d7d3da370e4"
     },
     {
       "path": "TESTS/RULE_ACTIVATION_CASES.json",
@@ -730,8 +730,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 43004,
-      "sha256": "1e61516f842ffe70c1dc9f8d6b29267da3cbadd3228fb80f3244b31be4d2e4e5"
+      "size": 42290,
+      "sha256": "3c02426c18335b69cd663049295970f9b868b9e684b93035e63d4c9bef026606"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "c277d6459eb3e56d63156fea497c9c4a6dc6ad160b1d8b66da896c80f1031f08"
+  "snapshot_digest": "addc419f8f944320f054252f0a5ff0bc54386d5ac945dcc786dc050bcb2f81ae"
 }
