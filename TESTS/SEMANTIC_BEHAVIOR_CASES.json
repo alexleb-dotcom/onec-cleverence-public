@@ -603,6 +603,204 @@
         "std444_wrap_compliant": true,
         "unrelated_baseline_reformatted": false
       }
+    },
+    {
+      "id": "MULTISTAGE_FIELD_OWNER_FINALIZER_RETRACE",
+      "oracle": "fact_retention",
+      "required": [
+        "writer",
+        "dependent_computation",
+        "cache_or_derived_holder",
+        "later_rewriter_or_finalizer",
+        "final_consumer"
+      ],
+      "bad": {
+        "output": [
+          "writer",
+          "dependent_computation",
+          "final_consumer"
+        ]
+      },
+      "good": {
+        "output": [
+          "writer",
+          "dependent_computation",
+          "cache_or_derived_holder",
+          "later_rewriter_or_finalizer",
+          "final_consumer"
+        ]
+      }
+    },
+    {
+      "id": "STANDARD_NEGATIVE_MODE_BEFORE_CUSTOM_BYPASS",
+      "oracle": "fact_retention",
+      "required": [
+        "exact_target_or_typical_search",
+        "skip_disable_mode_evaluated"
+      ],
+      "bad": {
+        "output": [
+          "custom_bypass_design"
+        ]
+      },
+      "good": {
+        "output": [
+          "exact_target_or_typical_search",
+          "skip_disable_mode_evaluated"
+        ]
+      }
+    },
+    {
+      "id": "STANDARD_DTO_FACTORY_CALLSITE_CLOSURE",
+      "oracle": "fact_retention",
+      "required": [
+        "standard_constructor_or_factory",
+        "exact_real_callsite",
+        "mandatory_runtime_fields",
+        "initialization_semantics"
+      ],
+      "bad": {
+        "output": [
+          "visible_field_names"
+        ]
+      },
+      "good": {
+        "output": [
+          "standard_constructor_or_factory",
+          "exact_real_callsite",
+          "mandatory_runtime_fields",
+          "initialization_semantics"
+        ]
+      }
+    },
+    {
+      "id": "PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE",
+      "oracle": "fact_retention",
+      "required": [
+        "forward_trigger",
+        "forward_owner_data_trace",
+        "forward_states",
+        "forward_oracle",
+        "reverse_trigger",
+        "reverse_owner_data_trace",
+        "reverse_states",
+        "reverse_oracle"
+      ],
+      "bad": {
+        "output": [
+          "forward_trigger",
+          "forward_owner_data_trace",
+          "forward_states",
+          "forward_oracle",
+          "reverse_trigger"
+        ]
+      },
+      "good": {
+        "output": [
+          "forward_trigger",
+          "forward_owner_data_trace",
+          "forward_states",
+          "forward_oracle",
+          "reverse_trigger",
+          "reverse_owner_data_trace",
+          "reverse_states",
+          "reverse_oracle"
+        ]
+      }
+    },
+    {
+      "id": "MANUAL_SECOND_PATCH_PRESERVES_UNRELATED_CHANGES",
+      "oracle": "fact_retention",
+      "required": [
+        "current_target_block",
+        "exact_prior_attempt_fragment",
+        "evidenced_base_when_needed",
+        "final_fragment",
+        "unrelated_valid_changes_preserved",
+        "execution_order",
+        "post_transfer_verification"
+      ],
+      "bad": {
+        "output": [
+          "exact_prior_attempt_fragment",
+          "final_fragment"
+        ]
+      },
+      "good": {
+        "output": [
+          "current_target_block",
+          "exact_prior_attempt_fragment",
+          "evidenced_base_when_needed",
+          "final_fragment",
+          "unrelated_valid_changes_preserved",
+          "execution_order",
+          "post_transfer_verification"
+        ]
+      }
+    },
+    {
+      "id": "MANUAL_MUTATION_INVALIDATES_PREVIOUS_SOURCE_SNAPSHOT",
+      "oracle": "fact_retention",
+      "required": [
+        "current_source_closure_or_fingerprint",
+        "dependency_valid_evidence_only"
+      ],
+      "bad": {
+        "output": [
+          "pre_mutation_snapshot"
+        ]
+      },
+      "good": {
+        "output": [
+          "current_source_closure_or_fingerprint",
+          "dependency_valid_evidence_only"
+        ]
+      }
+    },
+    {
+      "id": "BUSINESS_IDENTITY_SYMMETRY_MATRIX",
+      "oracle": "fact_retention",
+      "required": [
+        "filled_empty",
+        "a_b",
+        "new_existing",
+        "first_reverse_order"
+      ],
+      "bad": {
+        "output": [
+          "filled_empty",
+          "a_b"
+        ]
+      },
+      "good": {
+        "output": [
+          "filled_empty",
+          "a_b",
+          "new_existing",
+          "first_reverse_order"
+        ]
+      }
+    },
+    {
+      "id": "FAILED_RUNTIME_PATCH_REQUIRES_CAUSAL_OWNER_RETRACE",
+      "oracle": "fact_retention",
+      "required": [
+        "causal_claim_invalidated",
+        "owner_dependency_lifecycle_retraced",
+        "dependency_valid_evidence_only"
+      ],
+      "bad": {
+        "output": [
+          "second_symptom_patch"
+        ]
+      },
+      "good": {
+        "output": [
+          "causal_claim_invalidated",
+          "owner_dependency_lifecycle_retraced",
+          "dependency_valid_evidence_only"
+        ]
+      }
     }
   ]
 }
