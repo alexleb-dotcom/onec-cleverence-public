@@ -36,7 +36,7 @@ When ProjectSnapshot evidence is used, does its manifest bind request/snapshot i
 
 Rule: `BASELINE_IDENTITY`
 
-After an unobserved/manual target mutation, is every pre-mutation source snapshot treated as stale for subsequent source-relative patch generation until the smallest relevant current source closure or equivalent current fingerprint/source evidence is reacquired?
+After an unobserved manual target change, reacquire current source closure/fingerprint before another source-relative patch; do not reuse the stale snapshot as current authority.
 
 ## TYPICAL_ANALOG_EVIDENCE_ESCALATION
 
@@ -60,7 +60,7 @@ Before source mutation/final implementation generation, is the target configurat
 
 Rule: `ANALOG_BEFORE_INVENTION`
 
-For a requirement equivalent to standard behavior except/without X, were exact current-target/typical modes, flags or parameters that skip/disable that behavior discovered and evaluated before custom bypass logic, treating naming examples as search heuristics rather than proof?
+For 'standard behavior except X', inspect and evaluate exact target/typical skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only.
 
 ## STANDARD_PIPELINE_SEMANTIC_PRESERVATION
 
@@ -120,7 +120,7 @@ Does a consumer avoid reconstructing multiple private owner stages, temporary ta
 
 Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
 
-When a material field participates in a multi-stage standard/project pipeline, is its complete lifecycle traced from establisher/writer through dependent computation and any cache/derived holder to later rewriter/finalizer and final consumer, so an early assignment is not accepted before the authoritative final-value path is proven?
+For each material field in a multi-stage pipeline, trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer and name the final-value owner.
 
 ## BSP_REUSE_DISCOVERY
 
@@ -180,7 +180,7 @@ When a new business classifier/predicate is introduced, are coverage, mutual exc
 
 Rule: `BUSINESS_IDENTITY`
 
-When identity-sensitive behavior changes, do adversarial acceptance cases cover the relevant filled/empty, A/B, new/existing and first/reverse operation-order dimensions so identity remains stable across scenario symmetry rather than only one happy path?
+For identity-sensitive changes, cover relevant filled/empty, A/B, new/existing and first/reverse-order counterexamples.
 
 ## REDUNDANT_RESPONSIBILITY
 
@@ -276,7 +276,7 @@ Did zero machine findings remain limited to machine-detectable claims instead of
 
 Rule: `GAP_DISCOVERY`
 
-When runtime acceptance disproves a patch's causal/design hypothesis, is that claim marked unproven and the exact owner/dependency/lifecycle path retraced before a second patch to the same symptom, reusing only evidence whose dependencies remain valid?
+If runtime disproves a patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.
 
 ## PROJECT_CONVENTION_INVENTION
 
@@ -390,7 +390,7 @@ Does the delivered ChangePackage reference the exact accepted ProjectSnapshot/ba
 
 Rule: `DELIVERY_COHERENCE`
 
-When a MANUAL_TRANSFER result replaces a prior failed manual attempt, does it bind the current target block, remove only the exact prior-attempt fragment, restore the evidenced base fragment where needed, apply the final fragment, preserve unrelated valid changes, and state ordering plus post-transfer verification?
+For a later MANUAL_TRANSFER over a prior failed attempt, bind current block and prior fragment, restore evidenced base if needed, apply final fragment, preserve unrelated changes, order and verification.
 
 ## GENERATED_QUERY_VARIANT_SYNTAX
 
@@ -636,7 +636,7 @@ Does the selected object/document lifecycle event actually cover every required 
 
 Rule: `STRUCTURED_CONTRACT`
 
-Before manually assembling a non-trivial subsystem-owned DTO/structure, were the standard constructor/factory, at least one exact real call site, and the mandatory runtime fields/initialization semantics proven from exact source?
+Before manually assembling a non-trivial owned DTO/structure, prove its standard constructor/factory, one exact real call site, and mandatory runtime fields/initialization.
 
 ## DOMAIN_CONTRACT_LEAKAGE
 
