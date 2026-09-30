@@ -122,7 +122,8 @@
         "When CurrentItems/DeclaredItems/BindedLine or writer/grouping logic changes, are one-plan-many-fact identity, quantity, marks/SN/SSCC and re-entry semantics preserved?",
         "When a result row, index entry, register record, object or fact distribution depends on a derived key, are all key components validated before the first mutation so invalid input cannot leave partial state?",
         "When trade-item, individual marking/serial, warehouse fact, internal container, logistics/SSCC or regulatory aggregation identifiers meet in one flow, is each identifier classified by domain role and is every claimed equivalence backed by an explicit end-to-end mapping/lifecycle contract rather than assumed from co-location?",
-        "When a new business classifier/predicate is introduced, are coverage, mutual exclusion, precedence and unchanged neighboring scenarios proven as a partition of the relevant domain rather than as isolated happy-path IF branches?"
+        "When a new business classifier/predicate is introduced, are coverage, mutual exclusion, precedence and unchanged neighboring scenarios proven as a partition of the relevant domain rather than as isolated happy-path IF branches?",
+        "When identity-sensitive behavior changes, do adversarial acceptance cases cover the relevant filled/empty, A/B, new/existing and first/reverse operation-order dimensions so identity remains stable across scenario symmetry rather than only one happy path?"
       ],
       "rule_id": "BUSINESS_IDENTITY",
       "proof_policy": {
@@ -598,7 +599,8 @@
         "no dynamic property drift",
         "export API documents fields/types",
         "caller/callee contract names match",
-        "service fields survive transformations"
+        "service fields survive transformations",
+        "Before manually assembling a non-trivial subsystem-owned DTO/structure, were the standard constructor/factory, at least one exact real call site, and the mandatory runtime fields/initialization semantics proven from exact source?"
       ],
       "rule_id": "STRUCTURED_CONTRACT",
       "proof_policy": {
