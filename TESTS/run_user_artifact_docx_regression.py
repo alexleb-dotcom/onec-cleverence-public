@@ -29,7 +29,7 @@ requirements={
  "acceptance":[{"case":"Повтор","preconditions":"Факт есть","action":"Повторить","expected":"Дубликата нет","oracle":"Ровно один факт"}],
  "proof_boundary":"Точный runtime не наблюдался.","requirements_status":"REQUIREMENTS_READY"
 }
-marker="// ИвановИИ, ПервыйБит, 28.09.2026, ТЗ-42, 1.2"
+marker="// ИвановИИ, ПервыйБит, 28.09.2026, ТЗ-42"
 manual={
  "project":"Проект А","task":"ТЗ-42","target_identity":"Расширение Приемка baseline abc",
  "purpose":"Внедрить защиту от повторной фиксации без изменения сторонней логики.",
@@ -167,6 +167,10 @@ require(impl_contract["implementation_notes"].get("filename_ru")=="Особен�
 require(impl_contract["line_by_line_justification"].get("trigger")=="EXPLICIT_USER_REQUEST_ONLY","contract_optional_line_by_line")
 require(contract["profiles"]["REQUIREMENTS_ARTIFACT"]["artifact_output"].get("separate_file") is True,"requirements_separate_file")
 require(impl_contract["manual_transfer_artifact_output"].get("separate_file") is True,"manual_separate_file")
+require(impl_contract["manual_transfer_artifact_output"].get("required") is True,"manual_required_for_manual_mode")
+require(impl_contract["manual_transfer_artifact_output"].get("chat_only_code_complete") is False,"manual_chat_only_incomplete")
+require(impl_contract["implementation_notes"].get("required") is True and "deterministically applicable" in impl_contract["implementation_notes"].get("trigger_contract",""),"implementation_notes_deterministic_required")
+require(impl_contract["delivery_mode_selection"].get("must_precede_final_artifact_construction") is True,"delivery_mode_before_artifact")
 
-print(json.dumps({"result":"PASS" if not errors else "FAIL","errors":errors,"cases":25},ensure_ascii=False,indent=2))
+print(json.dumps({"result":"PASS" if not errors else "FAIL","errors":errors,"cases":29},ensure_ascii=False,indent=2))
 raise SystemExit(0 if not errors else 2)
