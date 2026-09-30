@@ -362,7 +362,7 @@
         },
         {
           "id": "BASELINE_IDENTITY_T03",
-          "question": "When the recorded candidate/baseline origin is still accessible at release time, do its current bytes still match the plan SHA-256 snapshot?",
+          "question": "When recorded candidate/baseline origin remains accessible, current bytes must match the plan snapshot. After an unobserved manual target change, reacquire current source closure/fingerprint before another source-relative patch instead of treating the old snapshot as current authority.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -374,14 +374,6 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "project_snapshot_provenance"
-        },
-        {
-          "id": "MANUAL_MUTATION_INVALIDATES_PREVIOUS_SOURCE_SNAPSHOT",
-          "question": "After an unobserved manual target change, reacquire current source closure/fingerprint before another source-relative patch; do not reuse the stale snapshot as current authority.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "manual_mutation_invalidates_previous_source_snapshot"
         }
       ],
       "regression": {
@@ -392,8 +384,7 @@
           "check:BASELINE_IDENTITY_T01",
           "release_gate:current_candidate_bytes_drift_blocks",
           "release_gate:current_baseline_bytes_drift_blocks",
-          "check:PROJECT_SNAPSHOT_PROVENANCE",
-          "check:MANUAL_MUTATION_INVALIDATES_PREVIOUS_SOURCE_SNAPSHOT"
+          "check:PROJECT_SNAPSHOT_PROVENANCE"
         ]
       }
     },
@@ -450,19 +441,11 @@
         },
         {
           "id": "STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
-          "question": "Before source mutation/final implementation generation, is the target configuration/platform/BSP/vendor existing capability resolved from exact current-target evidence (discovery hits/misses/stale indexes/partial graphs are candidate-only), with technical TZ prescriptions kept as PROPOSED_SOLUTION by default, and with any duplicate owner requiring an explicit identity-bound exception?",
+          "question": "Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "standard_capability_before_customization"
-        },
-        {
-          "id": "STANDARD_NEGATIVE_MODE_BEFORE_CUSTOM_BYPASS",
-          "question": "For 'standard behavior except X', inspect and evaluate exact target/typical skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "standard_negative_mode_before_custom_bypass"
         }
       ],
       "regression": {
@@ -471,8 +454,7 @@
         ],
         "enforcement_cases": [
           "check:ANALOG_BEFORE_INVENTION_T01",
-          "check:STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
-          "check:STANDARD_NEGATIVE_MODE_BEFORE_CUSTOM_BYPASS"
+          "check:STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION"
         ]
       },
       "proof_policy": {
@@ -538,7 +520,7 @@
         },
         {
           "id": "FIELD_LEVEL_SOURCE_OWNERSHIP",
-          "question": "When a target row/object is assembled from several upstream sources, is ownership proven per material target field (semantic role → authoritative source → match key → calculation owner) instead of treating one upstream document as owner of the whole row?",
+          "question": "When material fields cross several pipeline stages, prove ownership per field and trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer; do not accept an early assignment before the final-value owner is proven.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -602,14 +584,6 @@
           "machine_finding_types": [
             "INTERNAL_PIPELINE_RECONSTRUCTION_REVIEW"
           ]
-        },
-        {
-          "id": "MULTISTAGE_FIELD_OWNER_FINALIZER_RETRACE",
-          "question": "For each material field in a multi-stage pipeline, trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer and name the final-value owner.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "multistage_field_owner_finalizer_retrace"
         }
       ],
       "regression": {
@@ -625,8 +599,7 @@
           "check:FACT_SET_COMPLETENESS_PRESERVATION",
           "check:FIELD_LEVEL_SOURCE_OWNERSHIP",
           "check:LOCAL_CUSTOMIZATION_COMPATIBILITY",
-          "check:INTERNAL_PIPELINE_RECONSTRUCTION",
-          "check:MULTISTAGE_FIELD_OWNER_FINALIZER_RETRACE"
+          "check:INTERNAL_PIPELINE_RECONSTRUCTION"
         ]
       },
       "proof_policy": {
@@ -1072,7 +1045,7 @@
         },
         {
           "id": "BUSINESS_IDENTITY_P06",
-          "question": "packaging/unit/barcode variation and equal-presentation counterexamples",
+          "question": "Cover identity counterexamples across relevant packaging/unit/barcode variation, equal presentation, filled/empty input, A/B entities, new/existing state and first/reverse operation order.",
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true
@@ -1130,14 +1103,6 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "business_classification_partition"
-        },
-        {
-          "id": "BUSINESS_IDENTITY_SYMMETRY_MATRIX",
-          "question": "For identity-sensitive changes, cover relevant filled/empty, A/B, new/existing and first/reverse-order counterexamples.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "business_identity_symmetry_matrix"
         }
       ],
       "regression": {
@@ -1149,8 +1114,7 @@
           "check:BUSINESS_IDENTITY_P01",
           "check:BUSINESS_IDENTITY_P08",
           "check:CROSS_DOMAIN_IDENTITY_COLLAPSE",
-          "check:BUSINESS_CLASSIFICATION_PARTITION",
-          "check:BUSINESS_IDENTITY_SYMMETRY_MATRIX"
+          "check:BUSINESS_CLASSIFICATION_PARTITION"
         ]
       }
     },
@@ -1520,14 +1484,6 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "deterministic_zero_is_not_semantic_pass"
-        },
-        {
-          "id": "FAILED_RUNTIME_PATCH_REQUIRES_CAUSAL_OWNER_RETRACE",
-          "question": "If runtime disproves a patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "failed_runtime_patch_requires_causal_owner_retrace"
         }
       ],
       "regression": {
@@ -1538,8 +1494,7 @@
           "check:GAP_DISCOVERY_T02",
           "release:unresolved_gap_hypothesis_blocks",
           "release:machine_zero_does_not_close_gap_discovery",
-          "release:unrouted_existing_rule_cannot_close_hypothesis",
-          "check:FAILED_RUNTIME_PATCH_REQUIRES_CAUSAL_OWNER_RETRACE"
+          "release:unrouted_existing_rule_cannot_close_hypothesis"
         ]
       }
     },
@@ -1687,7 +1642,7 @@
         },
         {
           "id": "POST_FIX_COVERAGE_DRIFT",
-          "question": "After a material fix, were mechanism detection, CODE_TO_STANDARDS and STANDARDS_TO_CODE rerun instead of checking only edited lines?",
+          "question": "After a material fix, rerun mechanism detection and both proof passes. If runtime disproves the patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1889,7 +1844,7 @@
         },
         {
           "id": "MANUAL_TRANSFER_INSTRUCTION_COMPLETENESS",
-          "question": "When MANUAL_TRANSFER_INSTRUCTION is the selected result, does the instruction enumerate every applicable create/modify/delete action, metadata object and material property, exact module/procedure/function code and placement/replacement anchor, form/command/role/subsystem/scheduled-job/event wiring, dependency/order or data-transition step, and post-transfer verification so the implementer does not have to invent material implementation details?",
+          "question": "When MANUAL_TRANSFER_INSTRUCTION is selected, enumerate every material create/modify/delete action, property, code anchor, wiring, dependency/order and verification. If replacing a prior failed attempt, bind the current block and exact prior fragment, restore evidenced base when needed, apply the final fragment and preserve unrelated valid changes.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1910,14 +1865,6 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "change_package_snapshot_binding"
-        },
-        {
-          "id": "MANUAL_SECOND_PATCH_PRESERVES_UNRELATED_CHANGES",
-          "question": "For a later MANUAL_TRANSFER over a prior failed attempt, bind current block and prior fragment, restore evidenced base if needed, apply final fragment, preserve unrelated changes, order and verification.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "manual_second_patch_preserves_unrelated_changes"
         }
       ],
       "regression": {
@@ -1930,8 +1877,7 @@
           "check:DELIVERY_RESULT_MODE_CONTRACT",
           "check:MANUAL_TRANSFER_INSTRUCTION_COMPLETENESS",
           "check:DELIVERY_ARTIFACT_VS_APPLIED_TARGET_PROOF",
-          "check:CHANGE_PACKAGE_SNAPSHOT_BINDING",
-          "check:MANUAL_SECOND_PATCH_PRESERVES_UNRELATED_CHANGES"
+          "check:CHANGE_PACKAGE_SNAPSHOT_BINDING"
         ]
       }
     },
@@ -3695,7 +3641,7 @@
       "checks": [
         {
           "id": "STRUCTURED_CONTRACT_P01",
-          "question": "<=3 constructor values or explicit filling",
+          "question": "For a non-trivial subsystem-owned DTO/structure, prove the standard constructor/factory, one exact real call site and mandatory runtime fields/initialization before manual assembly; otherwise keep constructor values <=3 or fill explicitly.",
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true
@@ -3734,14 +3680,6 @@
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true
-        },
-        {
-          "id": "STANDARD_DTO_FACTORY_CALLSITE_CLOSURE",
-          "question": "Before manually assembling a non-trivial owned DTO/structure, prove its standard constructor/factory, one exact real call site, and mandatory runtime fields/initialization.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "standard_dto_factory_callsite_closure"
         }
       ],
       "regression": {
@@ -3749,8 +3687,7 @@
           "all_onec_profile_rules_route"
         ],
         "enforcement_cases": [
-          "check:STRUCTURED_CONTRACT_P01",
-          "check:STANDARD_DTO_FACTORY_CALLSITE_CLOSURE"
+          "check:STRUCTURED_CONTRACT_P01"
         ]
       }
     },
@@ -7054,19 +6991,11 @@
         },
         {
           "id": "FORWARD_REVERSE_PIPELINE_PARITY",
-          "question": "When the requirement includes forward and reverse/refund/cancel flows, does each pipeline have its own trigger, data/identity trace, state transitions and acceptance oracle instead of assuming reverse behavior by analogy from the forward path?",
+          "question": "When materially paired flows exist (forward/reverse, sale/return, posting/unposting, receipt/return receipt), trace each independently: trigger, data/identity owner, state transitions and acceptance oracle; do not infer parity from textual symmetry.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "forward_reverse_pipeline_parity"
-        },
-        {
-          "id": "PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE",
-          "question": "For paired flows such as sale/return or posting/unposting, trace each independently: trigger, owner/data/identity, states and acceptance; do not infer parity from textual symmetry.",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "paired_flow_independent_pipeline_trace"
         }
       ],
       "regression": {
@@ -7075,8 +7004,7 @@
         ],
         "enforcement_cases": [
           "check:REQ_ALT_P02",
-          "check:FORWARD_REVERSE_PIPELINE_PARITY",
-          "check:PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE"
+          "check:FORWARD_REVERSE_PIPELINE_PARITY"
         ]
       }
     },
