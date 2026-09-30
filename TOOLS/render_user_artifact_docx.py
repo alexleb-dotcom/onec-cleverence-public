@@ -197,53 +197,114 @@ def _requirements(payload: dict) -> Document:
 
 
 def _manual(payload: dict) -> Document:
-    _require(payload, "project", "task", "target_identity", "proof_boundary")
+    _require(
+        payload,
+        "project",
+        "task",
+        "target_identity",
+        "purpose",
+        "implementation_boundaries",
+        "deployment_sequence",
+        "verification_matrix",
+        "final_control_checklist",
+        "changed_object_map",
+        "proof_boundary",
+    )
     doc = _base(payload.get("title") or "Инструкция по внедрению")
     _meta(doc, [("Проект", payload["project"]), ("Задача", payload["task"]),
                 ("Целевая база / артефакт", payload["target_identity"])])
+
+    _heading(doc, "Назначение и границы")
+    _body(doc, payload["purpose"])
+    _body(doc, payload["implementation_boundaries"])
+    if payload.get("do_not_change"):
+        _heading(doc, "Не изменять / не делать")
+        _body(doc, payload["do_not_change"])
+
     _heading(doc, "Создаваемые объекты")
     created = payload.get("created_objects") or []
-    if not created: doc.add_paragraph("Нет")
+    if not created:
+        doc.add_paragraph("Нет")
     for item in created:
         _require(item, "object", "properties", "rationale")
         _heading(doc, "Объект: " + item["object"], 2)
         _table(doc, ["Свойство","Значение"],
                [[p.get("name",""), p.get("value","")] for p in item["properties"]])
         _rationale(doc, item["rationale"], item.get("standard_rule"))
+
     _heading(doc, "Изменяемые объекты")
     modified = payload.get("modified_objects") or []
-    if not modified: doc.add_paragraph("Нет")
+    if not modified:
+        doc.add_paragraph("Нет")
     for item in modified:
         _require(item, "object", "properties", "rationale")
         _heading(doc, "Объект: " + item["object"], 2)
         _table(doc, ["Свойство","Было","Стало"],
                [[p.get("name",""), p.get("before",""), p.get("after","")] for p in item["properties"]])
         _rationale(doc, item["rationale"], item.get("standard_rule"))
+
     _heading(doc, "Код")
     changes = payload.get("code_changes") or []
-    if not changes: doc.add_paragraph("Нет")
+    if not changes:
+        doc.add_paragraph("Нет")
     for item in changes:
-        _require(item, "object", "member", "before", "after", "rationale")
+        _require(item, "object", "member", "anchor", "before", "after", "rationale")
         _heading(doc, "Объект: " + item["object"], 2)
-        _meta(doc, [("Изменения", item["member"])])
+        _meta(doc, [("Изменения", item["member"]), ("Якорь / место изменения", item["anchor"])])
         if item.get("dependencies"):
             _meta(doc, [("Зависимости / порядок", "; ".join(map(_text, item["dependencies"])))])
-        _heading(doc, "Было", 2); _code(doc, item["before"])
-        _heading(doc, "Стало", 2); _code(doc, item["after"])
+        _heading(doc, "Было", 2)
+        _code(doc, item["before"])
+        _heading(doc, "Стало", 2)
+        _code(doc, item["after"])
         _rationale(doc, item["rationale"], item.get("standard_rule"))
-    if payload.get("preconditions"):
-        _heading(doc, "Предусловия"); _body(doc, payload["preconditions"])
-    for title, key in (
-        ("Миграция / инициализация / одноразовые действия", "migration"),
-        ("Статическая проверка после внедрения", "static_verification"),
-        ("Проверка выполнения", "runtime_verification"),
-        ("Нерешённые выборы / блокеры", "blocking_choices"),
-    ):
-        if payload.get(key):
-            _heading(doc, title); _body(doc, payload[key])
-    _heading(doc, "Граница доказанности"); _body(doc, payload["proof_boundary"])
-    return doc
+        if item.get("explanation"):
+            p = doc.add_paragraph()
+            p.add_run("Пояснение: ").bold = True
+            p.add_run(_text(item["explanation"]))
 
+    if payload.get("preconditions"):
+        _heading(doc, "Предусловия")
+        _body(doc, payload["preconditions"])
+    if payload.get("migration"):
+        _heading(doc, "Миграция / инициализация / одноразовые действия")
+        _body(doc, payload["migration"])
+
+    _heading(doc, "Порядок внедрения")
+    _body(doc, payload["deployment_sequence"])
+
+    if payload.get("static_verification"):
+        _heading(doc, "Статическая проверка после внедрения")
+        _body(doc, payload["static_verification"])
+
+    _heading(doc, "Матрица проверки")
+    verification_rows = []
+    for row in payload["verification_matrix"]:
+        _require(row, "action", "expected")
+        verification_rows.append([row["action"], row["expected"]])
+    _table(doc, ["Действие / сценарий", "Ожидаемый результат"], verification_rows)
+
+    if payload.get("runtime_verification"):
+        _heading(doc, "Проверка выполнения")
+        _body(doc, payload["runtime_verification"])
+
+    _heading(doc, "Финальный статический контроль")
+    _body(doc, payload["final_control_checklist"])
+
+    _heading(doc, "Карта изменённых объектов")
+    changed_rows = []
+    for row in payload["changed_object_map"]:
+        _require(row, "object", "change")
+        changed_rows.append([row["object"], row["change"]])
+    _table(doc, ["Объект", "Изменение"], changed_rows)
+
+    if payload.get("blocking_choices"):
+        _heading(doc, "Нерешённые выборы / блокеры")
+        _body(doc, payload["blocking_choices"])
+
+    _heading(doc, "Граница доказанности")
+    _body(doc, payload["proof_boundary"])
+    return doc
 
 def _implementation_notes(payload: dict) -> Document:
     _require(payload, "tz_number", "project", "task", "platform_version",
