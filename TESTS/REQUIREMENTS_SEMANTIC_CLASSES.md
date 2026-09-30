@@ -168,7 +168,7 @@ When the requirement includes forward and reverse/refund/cancel flows, does each
 
 Rule: `ALTERNATIVE_SCENARIO_COVERAGE`
 
-When materially paired flows exist (for example sale/return, posting/unposting, receipt/return receipt), does each side have its own trigger, owner/data/identity trace, state transitions and acceptance oracle, without inferring semantic parity from similarly named procedures or textual symmetry?
+For paired flows such as sale/return or posting/unposting, trace each independently: trigger, owner/data/identity, states and acceptance; do not infer parity from textual symmetry.
 
 ## SILENT_BUSINESS_ASSUMPTION
 
