@@ -162,13 +162,7 @@ Is there a realistic materially different path that changes result/ownership but
 
 Rule: `ALTERNATIVE_SCENARIO_COVERAGE`
 
-When the requirement includes forward and reverse/refund/cancel flows, does each pipeline have its own trigger, data/identity trace, state transitions and acceptance oracle instead of assuming reverse behavior by analogy from the forward path?
-
-## PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE
-
-Rule: `ALTERNATIVE_SCENARIO_COVERAGE`
-
-For paired flows such as sale/return or posting/unposting, trace each independently: trigger, owner/data/identity, states and acceptance; do not infer parity from textual symmetry.
+When materially paired flows exist (forward/reverse, sale/return, posting/unposting, receipt/return receipt), trace each independently: trigger, data/identity owner, state transitions and acceptance oracle; do not infer parity from textual symmetry.
 
 ## SILENT_BUSINESS_ASSUMPTION
 
