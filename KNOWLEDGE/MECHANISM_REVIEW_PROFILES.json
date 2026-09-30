@@ -115,15 +115,14 @@
         "each included field changes business sameness",
         "excluded intrinsic fields cannot merge distinct entities",
         "producer/mapping/storage/grouping/consumer use the same key",
-        "packaging/unit/barcode variation and equal-presentation counterexamples",
+        "Cover identity counterexamples across relevant packaging/unit/barcode variation, equal presentation, filled/empty input, A/B entities, new/existing state and first/reverse operation order.",
         "one-plan-many-fact and split/merge quantity invariants",
         "Every derived identity/key is fully calculated and validated for type, domain, completeness and required uniqueness before the first Add/Insert/Write or other result mutation.",
         "Is the deduplication/grouping/search/merge key the smallest stable business identity, with packaging, unit, coefficient, barcode and presentation excluded unless domain evidence proves they change sameness?",
         "When CurrentItems/DeclaredItems/BindedLine or writer/grouping logic changes, are one-plan-many-fact identity, quantity, marks/SN/SSCC and re-entry semantics preserved?",
         "When a result row, index entry, register record, object or fact distribution depends on a derived key, are all key components validated before the first mutation so invalid input cannot leave partial state?",
         "When trade-item, individual marking/serial, warehouse fact, internal container, logistics/SSCC or regulatory aggregation identifiers meet in one flow, is each identifier classified by domain role and is every claimed equivalence backed by an explicit end-to-end mapping/lifecycle contract rather than assumed from co-location?",
-        "When a new business classifier/predicate is introduced, are coverage, mutual exclusion, precedence and unchanged neighboring scenarios proven as a partition of the relevant domain rather than as isolated happy-path IF branches?",
-        "For identity-sensitive changes, cover relevant filled/empty, A/B, new/existing and first/reverse-order counterexamples."
+        "When a new business classifier/predicate is introduced, are coverage, mutual exclusion, precedence and unchanged neighboring scenarios proven as a partition of the relevant domain rather than as isolated happy-path IF branches?"
       ],
       "rule_id": "BUSINESS_IDENTITY",
       "proof_policy": {
@@ -594,13 +593,12 @@
         "std453"
       ],
       "checks": [
-        "<=3 constructor values or explicit filling",
+        "For a non-trivial subsystem-owned DTO/structure, prove the standard constructor/factory, one exact real call site and mandatory runtime fields/initialization before manual assembly; otherwise keep constructor values <=3 or fill explicitly.",
         "fixed schema initialized once",
         "no dynamic property drift",
         "export API documents fields/types",
         "caller/callee contract names match",
-        "service fields survive transformations",
-        "Before manually assembling a non-trivial owned DTO/structure, prove its standard constructor/factory, one exact real call site, and mandatory runtime fields/initialization."
+        "service fields survive transformations"
       ],
       "rule_id": "STRUCTURED_CONTRACT",
       "proof_policy": {
