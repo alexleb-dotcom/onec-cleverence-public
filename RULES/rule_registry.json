@@ -1530,7 +1530,7 @@
         },
         {
           "id": "PROJECT_CONVENTION_T02",
-          "question": "No author/date/company marker or naming convention was invented.",
+          "question": "No author/date/company marker or naming convention was invented. For applicable 1C implementation, final changed-code generation/patch/manual-transfer code requires AUTHOR_MARKER_READY from the existing bootstrap/comment-policy contract: reuse bound ФамилияИО/date policy/НомерТЗ, ask only unresolved values, and never request fixed ПервыйБит.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1565,7 +1565,8 @@
         "enforcement_cases": [
           "check:PROJECT_CONVENTION_T01",
           "check:BSL_LAYOUT_FLOOR",
-          "check:FORM_PROGRAMMATIC_ONLY"
+          "check:FORM_PROGRAMMATIC_ONLY",
+          "check:PROJECT_CONVENTION_T02"
         ]
       }
     },
@@ -1807,7 +1808,7 @@
         },
         {
           "id": "DELIVERY_COHERENCE_T02",
-          "question": "Exact final bytes match validated bytes and archive/file-name encoding is valid.",
+          "question": "Exact final delivery bytes match validated bytes, required user-facing artifacts are complete and separate, and archive/file-name encoding is valid. Every non-trivial implementation includes separate Особенности реализации.docx; when MANUAL_TRANSFER_INSTRUCTION is primary it also includes separate Инструкция по внедрению.docx, unless the user explicitly requested a combined alternate output.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -1836,7 +1837,7 @@
         },
         {
           "id": "DELIVERY_RESULT_MODE_CONTRACT",
-          "question": "Before producing the development result, is one primary delivery mode explicitly selected (DIRECT_SOURCE_CHANGESET, MANUAL_TRANSFER_INSTRUCTION, PATCH_DIFF, IMPORTABLE_ARTIFACT, FULL_COMPARE_SET, ANALYSIS_REPORT, or justified OTHER), are any supporting modes named, and is the choice consistent with the user request, project modification policy, available artifact shape and actual ability to validate the result?",
+          "question": "Before constructing final implementation artifacts, is one primary delivery mode explicitly selected from user request, project modification policy, target/source topology, proven mutation/import capability and validation boundary? Technical ability to construct XML does not prove IMPORTABLE_ARTIFACT. For accepted human Configurator/extension application with no authorized direct mutation and no exact validated import route, MANUAL_TRANSFER_INSTRUCTION is the default primary mode.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1844,7 +1845,7 @@
         },
         {
           "id": "MANUAL_TRANSFER_INSTRUCTION_COMPLETENESS",
-          "question": "When MANUAL_TRANSFER_INSTRUCTION is selected, enumerate every material create/modify/delete action, property, code anchor, wiring, dependency/order and verification. If replacing a prior failed attempt, bind the current block and exact prior fragment, restore evidenced base when needed, apply the final fragment and preserve unrelated valid changes.",
+          "question": "When MANUAL_TRANSFER_INSTRUCTION is primary, is a separate Инструкция по внедрению.docx produced rather than chat-only code, with exact target/baseline and boundaries, material do-not-change constraints when applicable, object-first metadata/code changes, exact placement anchors/resulting code, explanatory notes where needed, ordered deployment sequence, verification matrix with expected results, final static-control checklist, changed-object map, and prior-attempt migration safety when applicable?",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1877,7 +1878,8 @@
           "check:DELIVERY_RESULT_MODE_CONTRACT",
           "check:MANUAL_TRANSFER_INSTRUCTION_COMPLETENESS",
           "check:DELIVERY_ARTIFACT_VS_APPLIED_TARGET_PROOF",
-          "check:CHANGE_PACKAGE_SNAPSHOT_BINDING"
+          "check:CHANGE_PACKAGE_SNAPSHOT_BINDING",
+          "check:DELIVERY_COHERENCE_T02"
         ]
       }
     },
