@@ -377,7 +377,7 @@
         },
         {
           "id": "MANUAL_MUTATION_INVALIDATES_PREVIOUS_SOURCE_SNAPSHOT",
-          "question": "After an unobserved/manual target mutation, is every pre-mutation source snapshot treated as stale for subsequent source-relative patch generation until the smallest relevant current source closure or equivalent current fingerprint/source evidence is reacquired?",
+          "question": "After an unobserved manual target change, reacquire current source closure/fingerprint before another source-relative patch; do not reuse the stale snapshot as current authority.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -458,7 +458,7 @@
         },
         {
           "id": "STANDARD_NEGATIVE_MODE_BEFORE_CUSTOM_BYPASS",
-          "question": "For a requirement equivalent to standard behavior except/without X, were exact current-target/typical modes, flags or parameters that skip/disable that behavior discovered and evaluated before custom bypass logic, treating naming examples as search heuristics rather than proof?",
+          "question": "For 'standard behavior except X', inspect and evaluate exact target/typical skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -605,7 +605,7 @@
         },
         {
           "id": "MULTISTAGE_FIELD_OWNER_FINALIZER_RETRACE",
-          "question": "When a material field participates in a multi-stage standard/project pipeline, is its complete lifecycle traced from establisher/writer through dependent computation and any cache/derived holder to later rewriter/finalizer and final consumer, so an early assignment is not accepted before the authoritative final-value path is proven?",
+          "question": "For each material field in a multi-stage pipeline, trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer and name the final-value owner.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1133,7 +1133,7 @@
         },
         {
           "id": "BUSINESS_IDENTITY_SYMMETRY_MATRIX",
-          "question": "When identity-sensitive behavior changes, do adversarial acceptance cases cover the relevant filled/empty, A/B, new/existing and first/reverse operation-order dimensions so identity remains stable across scenario symmetry rather than only one happy path?",
+          "question": "For identity-sensitive changes, cover relevant filled/empty, A/B, new/existing and first/reverse-order counterexamples.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1523,7 +1523,7 @@
         },
         {
           "id": "FAILED_RUNTIME_PATCH_REQUIRES_CAUSAL_OWNER_RETRACE",
-          "question": "When runtime acceptance disproves a patch's causal/design hypothesis, is that claim marked unproven and the exact owner/dependency/lifecycle path retraced before a second patch to the same symptom, reusing only evidence whose dependencies remain valid?",
+          "question": "If runtime disproves a patch hypothesis, invalidate it and retrace owner/dependency/lifecycle before another patch to the same symptom; reuse only dependency-valid evidence.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1913,7 +1913,7 @@
         },
         {
           "id": "MANUAL_SECOND_PATCH_PRESERVES_UNRELATED_CHANGES",
-          "question": "When a MANUAL_TRANSFER result replaces a prior failed manual attempt, does it bind the current target block, remove only the exact prior-attempt fragment, restore the evidenced base fragment where needed, apply the final fragment, preserve unrelated valid changes, and state ordering plus post-transfer verification?",
+          "question": "For a later MANUAL_TRANSFER over a prior failed attempt, bind current block and prior fragment, restore evidenced base if needed, apply final fragment, preserve unrelated changes, order and verification.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -3737,7 +3737,7 @@
         },
         {
           "id": "STANDARD_DTO_FACTORY_CALLSITE_CLOSURE",
-          "question": "Before manually assembling a non-trivial subsystem-owned DTO/structure, were the standard constructor/factory, at least one exact real call site, and the mandatory runtime fields/initialization semantics proven from exact source?",
+          "question": "Before manually assembling a non-trivial owned DTO/structure, prove its standard constructor/factory, one exact real call site, and mandatory runtime fields/initialization.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -7062,7 +7062,7 @@
         },
         {
           "id": "PAIRED_FLOW_INDEPENDENT_PIPELINE_TRACE",
-          "question": "When materially paired flows exist (for example sale/return, posting/unposting, receipt/return receipt), does each side have its own trigger, owner/data/identity trace, state transitions and acceptance oracle, without inferring semantic parity from similarly named procedures or textual symmetry?",
+          "question": "For paired flows such as sale/return or posting/unposting, trace each independently: trigger, owner/data/identity, states and acceptance; do not infer parity from textual symmetry.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
