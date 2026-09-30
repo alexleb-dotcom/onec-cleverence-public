@@ -98,6 +98,10 @@ The package manifest must bind the result to the exact ProjectSnapshot/baseline 
 
 The package does **not** prove that customer target bytes were changed merely because the package itself is complete.
 
+### Fresh source after external target changes
+
+When the target is changed outside the observed Skill flow after the accepted snapshot/baseline, that older source snapshot is not current authority for another source-relative patch. Before producing the next source-relative patch/instruction, reacquire the smallest relevant current source closure or an equivalent exact current fingerprint. Reuse only evidence whose dependencies are unchanged; do not introduce a persistent source-freshness state machine.
+
 ## 7. Post-transfer verification seed
 
 The schema reserves `post_transfer_verification` with policy:
