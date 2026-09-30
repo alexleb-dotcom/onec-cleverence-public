@@ -171,11 +171,42 @@ def validate_contract(contract: dict) -> list[str]:
         if required not in implementation_modes:
             errors.append(f"implementation_result_mode_missing:{required}")
 
+    mode_selection = implementation.get("delivery_mode_selection") or {}
+    if mode_selection.get("must_precede_final_artifact_construction") is not True:
+        errors.append("delivery_mode_must_precede_artifact_construction")
+    decision_inputs = set(mode_selection.get("decision_inputs") or [])
+    for required in {
+        "explicit user request",
+        "project modification policy",
+        "target/source topology",
+        "authorized and actually available direct mutation mechanism",
+        "exact import mechanism and validation boundary",
+        "whether a human is expected to apply the change",
+    }:
+        if required not in decision_inputs:
+            errors.append(f"delivery_mode_decision_input_missing:{required}")
+    if "ability to generate XML is not evidence" not in str(mode_selection.get("xml_capability_rule") or ""):
+        errors.append("xml_capability_must_not_imply_importable_delivery")
+    if mode_selection.get("manual_transfer_default_result") != "MANUAL_TRANSFER_INSTRUCTION":
+        errors.append("manual_transfer_default_result_missing")
+    manual_default = "\n".join(mode_selection.get("manual_transfer_default_when") or [])
+    for anchor in ["human Configurator/extension", "direct target mutation", "no exact importable artifact route"]:
+        if anchor not in manual_default:
+            errors.append(f"manual_transfer_default_condition_missing:{anchor}")
+    import_requirements = "\n".join(mode_selection.get("importable_artifact_requires") or [])
+    for anchor in ["exact import mechanism", "artifact semantics/shape", "validation boundary"]:
+        if anchor not in import_requirements:
+            errors.append(f"importable_artifact_proof_missing:{anchor}")
+
     if "implementation_notes" not in (implementation.get("result_shape") or []):
         errors.append("implementation_notes_result_shape_missing")
     notes = implementation.get("implementation_notes") or {}
     if notes.get("title_ru") != "Особенности реализации" or notes.get("required") is not True:
         errors.append("implementation_notes_required_contract_missing")
+    if "deterministically applicable" not in str(notes.get("trigger_contract") or ""):
+        errors.append("implementation_notes_deterministic_trigger_missing")
+    if "incomplete" not in str(notes.get("completion_gate") or ""):
+        errors.append("implementation_notes_completion_gate_missing")
     if notes.get("header_order") != EXPECTED_IMPLEMENTATION_NOTES_HEADER_ORDER:
         errors.append(f"implementation_notes_header_order:{notes.get('header_order')}")
     if notes.get("header_labels_ru") != EXPECTED_IMPLEMENTATION_NOTES_HEADER_LABELS:
@@ -218,6 +249,36 @@ def validate_contract(contract: dict) -> list[str]:
     for anchor in ["Project Context or requirements", "exact evidenced target context", "exact baseline/candidate layout", "same-named objects"]:
         if anchor not in identity_rules:
             errors.append(f"implementation_notes_identity_rule_missing:{anchor}")
+
+    manual_output = implementation.get("manual_transfer_artifact_output") or {}
+    if manual_output.get("required") is not True or manual_output.get("separate_file") is not True:
+        errors.append("manual_transfer_separate_required_artifact_missing")
+    if manual_output.get("chat_only_code_complete") is not False:
+        errors.append("manual_transfer_chat_only_must_be_incomplete")
+    for key in [
+        "purpose_and_boundaries_required",
+        "code_anchor_required",
+        "ordered_deployment_sequence_required",
+        "verification_matrix_required",
+        "final_static_control_required",
+        "changed_object_map_required",
+    ]:
+        if manual_output.get(key) is not True:
+            errors.append(f"manual_transfer_closure_flag_missing:{key}")
+    if manual_output.get("verification_matrix_columns") != ["Действие / сценарий", "Ожидаемый результат"]:
+        errors.append("manual_transfer_verification_matrix_columns")
+    manual_rules = "\n".join(implementation.get("manual_transfer_template_rules") or [])
+    for anchor in [
+        "purpose/boundaries",
+        "do-not-change/do-not-do",
+        "placement anchor",
+        "ordered deployment sequence",
+        "verification matrix",
+        "final static-control checklist",
+        "changed-object map",
+    ]:
+        if anchor not in manual_rules:
+            errors.append(f"manual_transfer_rule_missing:{anchor}")
 
     performance = implementation.get("performance_review_projection") or {}
     if performance.get("title_ru") != "Performance Review":
@@ -356,6 +417,14 @@ def main() -> int:
         "object-first",
         "ChangePackage",
         "Граница доказанности",
+        "Назначение и границы",
+        "Не изменять / не делать",
+        "Якорь / место изменения",
+        "Порядок внедрения",
+        "Матрица проверки",
+        "Ожидаемый результат",
+        "Финальный статический контроль",
+        "Карта изменённых объектов",
     ]:
         if token not in manual_template:
             errors.append(f"manual_transfer_template_missing:{token}")
@@ -373,6 +442,14 @@ def main() -> int:
     no_implementation_notes["profiles"]["IMPLEMENTATION_DELIVERY"].pop("implementation_notes", None)
     if not validate_contract(no_implementation_notes):
         errors.append("negative_control_missing_implementation_notes_not_rejected")
+    no_mode_selection = copy.deepcopy(contract)
+    no_mode_selection["profiles"]["IMPLEMENTATION_DELIVERY"].pop("delivery_mode_selection", None)
+    if not validate_contract(no_mode_selection):
+        errors.append("negative_control_missing_delivery_mode_selection_not_rejected")
+    chat_only_manual = copy.deepcopy(contract)
+    chat_only_manual["profiles"]["IMPLEMENTATION_DELIVERY"]["manual_transfer_artifact_output"]["chat_only_code_complete"] = True
+    if not validate_contract(chat_only_manual):
+        errors.append("negative_control_chat_only_manual_delivery_not_rejected")
     incomplete_implementation_notes = copy.deepcopy(contract)
     incomplete_implementation_notes["profiles"]["IMPLEMENTATION_DELIVERY"]["implementation_notes"]["row_order"].remove("status")
     if not validate_contract(incomplete_implementation_notes):
@@ -479,6 +556,10 @@ def main() -> int:
         "Do not dump the complete validation ledger",
         "Before final presentation, **load and obey**",
         "Presentation never upgrades canonical requirements/evidence/release status.",
+        "Особенности реализации.docx",
+        "Инструкция по внедрению.docx",
+        "ability to generate XML does not by itself justify",
+        "default to `MANUAL_TRANSFER_INSTRUCTION`",
     ]:
         if anchor not in skill:
             errors.append(f"skill_result_contract_missing:{anchor}")
@@ -505,14 +586,28 @@ def main() -> int:
     requirements_actions = "\n".join(requirements_stage.get("actions") or [])
     if "TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md" not in requirements_actions or "never upgrade the requirements gate" not in requirements_actions or "Функциональная спецификация.docx" not in requirements_actions:
         errors.append("pipeline_requirements_artifact_rendering_contract_missing")
+    implementation_stage = next((row for row in pipeline.get("stages") or [] if row.get("id") == "IMPLEMENTATION"), {})
+    implementation_actions = "\n".join(implementation_stage.get("actions") or [])
+    for anchor in ["before constructing final implementation artifacts", "technical ability to generate XML does not imply IMPORTABLE_ARTIFACT", "default to MANUAL_TRANSFER_INSTRUCTION"]:
+        if anchor not in implementation_actions:
+            errors.append(f"pipeline_delivery_mode_selection_missing:{anchor}")
     final_stage = next((row for row in pipeline.get("stages") or [] if row.get("id") == "FINAL_ARTIFACT_VALIDATION"), {})
     final_actions = "\n".join(final_stage.get("actions") or [])
     if "RESULT_DELIVERY_CONTRACT.json" not in final_actions:
         errors.append("pipeline_final_stage_must_apply_result_delivery_contract")
     if "must not upgrade the canonical gate outcome" not in final_actions:
         errors.append("pipeline_final_stage_readiness_guard_missing")
-    if "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" not in final_actions or "object-first R2 contract" not in final_actions or "ChangePackage remains the machine delivery/proof owner" not in final_actions:
-        errors.append("pipeline_manual_transfer_rendering_contract_missing")
+    for anchor in [
+        "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md",
+        "separate mandatory Инструкция по внедрению.docx",
+        "Создаваемые объекты -> Изменяемые объекты -> Код",
+        "ChangePackage remains the machine delivery/proof owner",
+        "separate Особенности реализации.docx",
+        "verification matrix with expected results",
+        "changed-object map",
+    ]:
+        if anchor not in final_actions:
+            errors.append(f"pipeline_manual_transfer_rendering_contract_missing:{anchor}")
     for anchor in ["COLLECTION_ALGORITHM", "Performance Review", "Измеренное ускорение не доказано.", "RUNTIME_ADAPTER", "separate DOCX artifact proof boundary"]:
         if anchor not in final_actions:
             errors.append(f"pipeline_performance_projection_missing:{anchor}")
