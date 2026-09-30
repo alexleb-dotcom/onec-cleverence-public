@@ -801,6 +801,174 @@
           "dependency_valid_evidence_only"
         ]
       }
+    },
+    {
+      "id": "NONTRIVIAL_IMPLEMENTATION_REQUIRES_IMPLEMENTATION_NOTES",
+      "oracle": "fact_retention",
+      "required": [
+        "nontrivial_implementation",
+        "separate_implementation_notes_artifact"
+      ],
+      "bad": {
+        "output": [
+          "implementation_code_only"
+        ]
+      },
+      "good": {
+        "output": [
+          "nontrivial_implementation",
+          "separate_implementation_notes_artifact"
+        ]
+      }
+    },
+    {
+      "id": "MANUAL_TRANSFER_REQUIRES_SEPARATE_DEPLOYMENT_INSTRUCTION",
+      "oracle": "fact_retention",
+      "required": [
+        "manual_transfer_primary",
+        "separate_manual_transfer_artifact"
+      ],
+      "bad": {
+        "output": [
+          "manual_transfer_primary",
+          "chat_code_only"
+        ]
+      },
+      "good": {
+        "output": [
+          "manual_transfer_primary",
+          "separate_manual_transfer_artifact"
+        ]
+      }
+    },
+    {
+      "id": "DELIVERY_MODE_SELECTED_BEFORE_ARTIFACT_CONSTRUCTION",
+      "oracle": "fact_retention",
+      "required": [
+        "primary_delivery_mode_selected",
+        "selection_precedes_final_artifact_construction"
+      ],
+      "bad": {
+        "output": [
+          "artifact_construction_started",
+          "delivery_mode_unresolved"
+        ]
+      },
+      "good": {
+        "output": [
+          "primary_delivery_mode_selected",
+          "selection_precedes_final_artifact_construction"
+        ]
+      }
+    },
+    {
+      "id": "XML_CAPABILITY_DOES_NOT_IMPLY_XML_DELIVERY",
+      "oracle": "fact_retention",
+      "required": [
+        "delivery_route_proven",
+        "xml_capability_not_delivery_evidence",
+        "manual_transfer_when_human_route_without_validated_import"
+      ],
+      "bad": {
+        "output": [
+          "xml_generation_possible",
+          "importable_artifact_selected"
+        ]
+      },
+      "good": {
+        "output": [
+          "delivery_route_proven",
+          "xml_capability_not_delivery_evidence",
+          "manual_transfer_when_human_route_without_validated_import"
+        ]
+      }
+    },
+    {
+      "id": "AUTHOR_MARKER_MISSING_VALUES_BLOCK_IMPLEMENTATION",
+      "oracle": "fact_retention",
+      "required": [
+        "author_marker_blocked",
+        "final_implementation_generation_blocked",
+        "only_missing_values_requested"
+      ],
+      "bad": {
+        "output": [
+          "missing_author_marker_values",
+          "final_code_generated"
+        ]
+      },
+      "good": {
+        "output": [
+          "author_marker_blocked",
+          "final_implementation_generation_blocked",
+          "only_missing_values_requested"
+        ]
+      }
+    },
+    {
+      "id": "AUTHOR_MARKER_REUSES_BOUND_VALUES",
+      "oracle": "fact_retention",
+      "required": [
+        "bound_author_marker_values_reused",
+        "only_unresolved_values_requested",
+        "fixed_firstbit_not_requested"
+      ],
+      "bad": {
+        "output": [
+          "bound_values_asked_again",
+          "firstbit_requested"
+        ]
+      },
+      "good": {
+        "output": [
+          "bound_author_marker_values_reused",
+          "only_unresolved_values_requested",
+          "fixed_firstbit_not_requested"
+        ]
+      }
+    },
+    {
+      "id": "MANUAL_TRANSFER_HAS_EXECUTION_AND_ACCEPTANCE_CLOSURE",
+      "oracle": "fact_retention",
+      "required": [
+        "ordered_deployment_sequence",
+        "verification_matrix_expected_results",
+        "final_static_control_checklist",
+        "changed_object_map"
+      ],
+      "bad": {
+        "output": [
+          "object_edits",
+          "code_edits"
+        ]
+      },
+      "good": {
+        "output": [
+          "ordered_deployment_sequence",
+          "verification_matrix_expected_results",
+          "final_static_control_checklist",
+          "changed_object_map"
+        ]
+      }
+    },
+    {
+      "id": "USER_ARTIFACTS_REMAIN_SEPARATE",
+      "oracle": "fact_retention",
+      "required": [
+        "implementation_notes_separate_file",
+        "manual_instruction_separate_file"
+      ],
+      "bad": {
+        "output": [
+          "combined_default_document"
+        ]
+      },
+      "good": {
+        "output": [
+          "implementation_notes_separate_file",
+          "manual_instruction_separate_file"
+        ]
+      }
     }
   ]
 }
