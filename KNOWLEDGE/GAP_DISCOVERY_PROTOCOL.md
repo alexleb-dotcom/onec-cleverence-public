@@ -23,6 +23,14 @@ Unanchored concerns such as “there may be another handler” are discarded. A 
 anchor may expose an unresolved boundary; it is not proof of what exists beyond that
 boundary.
 
+## Bounded expansion and stall
+
+Gap discovery may widen the current evidence path only for a source-anchored dependency necessary to the already accepted outcome, with a finite exit condition. A newly interesting but outcome-independent mechanism is recorded as a follow-up candidate instead of silently growing scope.
+
+Active investigation normally keeps one causal question in focus; a second may be active only to discriminate between competing explanations. This focus does not discard required writers, lenses, paired flows, routed obligations or acceptance checks: they remain in the existing work queue and are handled sequentially.
+
+Repeated non-progress triggers source/strategy reassessment and at most one bounded discriminating retrace for the same claim. If that retrace still does not change the accepted uncertainty/next engineering choice, preserve the unresolved disposition and return the smallest exact evidence/input/experiment request while completing independent work. Do not create a universal tool-call/iteration stop rule.
+
 ## Independent lenses
 
 Run the lenses independently from routed profiles and machine findings:

@@ -106,6 +106,12 @@ Show the current and proposed algorithms with passes over primary data, nested s
 - Missing, stale, wrong-candidate, generic-PASS/prose or otherwise invalid Performance Review remains visibly blocked/incomplete; omitting it must never make the delivery appear ready.
 - The projection cannot change `implementation_readiness` or the final `release_outcome`.
 
+### Settled-state projection
+
+Delivery and documentation project the settled current Implementation Intent, `change_items` and evidence into the selected result shape. Rendering is not a reason to rediscover already settled facts or restart source discovery.
+
+Reopen only the exact dependency whose current bytes/evidence contradict the settled state or whose required freshness can no longer be established. Required delivery checks and separate-document obligations still run normally; this rule prevents unjustified rediscovery, not validation.
+
 ## Requirements artifact profile
 
 When a human-readable requirements / LT / TZ / functional specification artifact is applicable, generate the separate `Функциональная спецификация.docx` through `TEMPLATES/REQUIREMENTS_ARTIFACT_TEMPLATE.md` and `TOOLS/render_user_artifact_docx.py`.

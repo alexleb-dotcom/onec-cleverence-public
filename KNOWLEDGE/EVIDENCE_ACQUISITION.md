@@ -20,6 +20,16 @@ material claim / suspected mechanism
 
 Never replace a missing source with an implementation guess. Never say only “I cannot prove this” when the missing proof is reasonably requestable from the user. Continue unaffected parts of the task, but keep the affected gate unresolved.
 
+## Bounded evidence work
+
+Before additional search/read/test for an already accepted task, bind the current material/evidence obligation, the exact decision/property being established, the smallest justified closure, the expected discriminating evidence and the sufficiency/blocker condition. Use a small finite evidence plan rather than an open-ended discovery goal.
+
+Repeat a search/read/test only when the question/property changed, the source/baseline changed, a new dependency/call edge was proven, prior output was truncated/paginated/incomplete, or current evidence contradicts the prior closure. Cosmetic rephrasing is not a new reason. Truncation, pagination and an incomplete index justify completing the bounded read/search; they never prove absence.
+
+Finding another unrelated file/symbol, repeating a green result on unchanged bytes, rewriting the explanation, or observing a search miss does not by itself count as material progress. Extend the evidence budget only for a source-anchored dependency necessary to the accepted outcome and give the extension a finite exit condition. Novelty outside that outcome is a follow-up candidate, not automatic scope growth.
+
+After repeated non-progress, reassess source/strategy and allow one bounded discriminating retrace for the same claim. If it still does not advance, keep the affected claim unresolved, close independent work and request the smallest exact evidence/input/experiment that can decide it.
+
 ## Returned requested input resumes the active task
 
 When the user returns an answer, source file, archive, log, runtime result or other artifact that was previously requested for the active task:
