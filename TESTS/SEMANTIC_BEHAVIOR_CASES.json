@@ -969,6 +969,238 @@
           "manual_instruction_separate_file"
         ]
       }
+    },
+    {
+      "id": "WORK_CONTROL_BINDS_CLAIM_BEFORE_EXPLORATION",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "additional_exploration": true,
+        "obligation_bound": true,
+        "property_bound": true,
+        "smallest_closure_bound": false,
+        "expected_evidence_bound": true,
+        "exit_condition_bound": true
+      },
+      "good": {
+        "additional_exploration": true,
+        "obligation_bound": true,
+        "property_bound": true,
+        "smallest_closure_bound": true,
+        "expected_evidence_bound": true,
+        "exit_condition_bound": true
+      }
+    },
+    {
+      "id": "REPEATED_SEARCH_REQUIRES_REAL_REASON_OR_RETRACE",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "repeated_search_read_test": true,
+        "repeat_reason": "COSMETIC_REPHRASING",
+        "bounded_discriminating_retrace": false
+      },
+      "good": {
+        "repeated_search_read_test": true,
+        "repeat_reason": "NEWLY_PROVEN_DEPENDENCY_OR_CALL_EDGE",
+        "bounded_discriminating_retrace": false
+      }
+    },
+    {
+      "id": "STALL_CANNOT_SELF_EXTEND_WITHOUT_PROGRESS",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "repeated_nonprogress": true,
+        "self_extends_without_progress": true,
+        "discriminating_retrace_count": 2
+      },
+      "good": {
+        "repeated_nonprogress": true,
+        "self_extends_without_progress": false,
+        "discriminating_retrace_count": 1
+      }
+    },
+    {
+      "id": "INTERNAL_CHECKPOINT_DOES_NOT_REQUIRE_USER_CONFIRMATION",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "internal_boundary": true,
+        "requires_user_confirmation": true,
+        "material_user_boundary": false
+      },
+      "good": {
+        "internal_boundary": true,
+        "requires_user_confirmation": false,
+        "material_user_boundary": false
+      }
+    },
+    {
+      "id": "ROUTINE_PHASE_TRANSITION_CONTINUES_AUTONOMOUSLY",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "routine_phase_transition": true,
+        "stops_for_user_confirmation": true,
+        "material_user_boundary": false
+      },
+      "good": {
+        "routine_phase_transition": true,
+        "stops_for_user_confirmation": false,
+        "material_user_boundary": false
+      }
+    },
+    {
+      "id": "MATERIAL_DECISION_BOUNDARY_RETURNS_TO_USER",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "material_user_boundary": true,
+        "returns_to_user": false
+      },
+      "good": {
+        "material_user_boundary": true,
+        "returns_to_user": true
+      }
+    },
+    {
+      "id": "SOURCE_BUDGET_EXTENDS_ONLY_FOR_NECESSARY_ACCEPTED_SCOPE",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "source_budget_extended": true,
+        "necessary_accepted_scope_dependency": false,
+        "finite_exit_condition": false
+      },
+      "good": {
+        "source_budget_extended": true,
+        "necessary_accepted_scope_dependency": true,
+        "finite_exit_condition": true
+      }
+    },
+    {
+      "id": "VALIDATION_FAILURE_REOPENS_INVALIDATED_CLOSURE_ONLY",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "validation_failure": true,
+        "reopens_unaffected_closures": true
+      },
+      "good": {
+        "validation_failure": true,
+        "reopens_unaffected_closures": false
+      }
+    },
+    {
+      "id": "MATERIAL_FIX_REROUTES_DEPENDENT_OBLIGATIONS",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "material_fix": true,
+        "reroutes_dependent_obligations": false
+      },
+      "good": {
+        "material_fix": true,
+        "reroutes_dependent_obligations": true
+      }
+    },
+    {
+      "id": "DELIVERY_USES_SETTLED_STATE_WITHOUT_REDISCOVERY",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "delivery_projection": true,
+        "rediscovery_without_contradiction": true
+      },
+      "good": {
+        "delivery_projection": true,
+        "rediscovery_without_contradiction": false
+      }
+    },
+    {
+      "id": "NEW_FILE_OR_SYMBOL_ALONE_IS_NOT_MATERIAL_PROGRESS",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "claims_material_progress": true,
+        "new_file_symbol_only": true
+      },
+      "good": {
+        "claims_material_progress": false,
+        "new_file_symbol_only": true
+      }
+    },
+    {
+      "id": "MATERIAL_PROGRESS_DOES_NOT_AUTHORIZE_SCOPE_GROWTH",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "material_progress": true,
+        "expands_scope_without_followup": true
+      },
+      "good": {
+        "material_progress": true,
+        "expands_scope_without_followup": false
+      }
+    },
+    {
+      "id": "TRUNCATION_OR_PARTIAL_OUTPUT_IS_NOT_ABSENCE_PROOF",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "truncated_or_partial_output": true,
+        "claims_absence": true
+      },
+      "good": {
+        "truncated_or_partial_output": true,
+        "claims_absence": false
+      }
+    },
+    {
+      "id": "FOCUSED_QUESTION_DOES_NOT_DROP_REQUIRED_OBLIGATIONS",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "focused_question": true,
+        "drops_required_obligations": true
+      },
+      "good": {
+        "focused_question": true,
+        "drops_required_obligations": false
+      }
+    },
+    {
+      "id": "SECOND_ACTIVE_QUESTION_REQUIRES_DISCRIMINATING_COMPARISON",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "secondary_active_question": true,
+        "discriminating_comparison": false
+      },
+      "good": {
+        "secondary_active_question": true,
+        "discriminating_comparison": true
+      }
+    },
+    {
+      "id": "BATCHING_OR_RENAMING_CANNOT_BYPASS_WORK_CONTROL",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "batching_or_renaming": true,
+        "bypasses_work_control": true
+      },
+      "good": {
+        "batching_or_renaming": true,
+        "bypasses_work_control": false
+      }
+    },
+    {
+      "id": "INTERRUPTED_MUTATION_RECOVERS_NATIVE_STATE_BEFORE_RETRY",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "interrupted_mutation": true,
+        "retry_before_native_recovery": true
+      },
+      "good": {
+        "interrupted_mutation": true,
+        "retry_before_native_recovery": false
+      }
+    },
+    {
+      "id": "WORK_CONTROL_DOES_NOT_CLAIM_PLATFORM_RESET_OR_HARD_BOUNDARY",
+      "oracle": "bounded_work_control",
+      "bad": {
+        "claims_platform_reset_or_hard_boundary": true
+      },
+      "good": {
+        "claims_platform_reset_or_hard_boundary": false
+      }
     }
   ]
 }

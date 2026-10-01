@@ -20,6 +20,81 @@
     ],
     "blocking_semantics": "Open project fields block only the actions they control. Source analysis may continue while AUTHOR_MARKER values or delivery details are unresolved. For applicable 1C implementation, AUTHOR_MARKER_BLOCKED forbids development entry; reuse bound values and ask only still-missing ФамилияИО / Дата value-or-policy / НомерТЗ. ПервыйБит and the default marker shape are Skill-owned. Exact delivery still requires an authoritative baseline/layout."
   },
+  "bounded_work_policy": {
+    "owner": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
+    "scope": "Non-trivial authorized work control inside the existing development pipeline; not a scheduler, iteration ledger, conversation state machine or platform execution boundary.",
+    "bind_before_additional_exploration": {
+      "required": [
+        "current accepted material/evidence obligation",
+        "decision/property being established",
+        "smallest justified closure",
+        "expected discriminating evidence",
+        "sufficiency or blocker condition"
+      ],
+      "rule": "Before another query, read or test for an accepted task, bind these five items so exploration has a finite claim-centred exit rather than an open-ended search goal."
+    },
+    "material_progress": {
+      "definition": "Evidence is material progress only when it changes an existing accepted obligation or uncertainty enough that the next engineering choice changes.",
+      "counts": [
+        "owner/writer/finalizer proven",
+        "hypothesis rejected",
+        "exact artifact/callsite found",
+        "patch/test localizes the defect",
+        "required deliverable becomes complete"
+      ],
+      "does_not_count": [
+        "another unrelated file or symbol",
+        "repeated green result on unchanged bytes",
+        "rewritten explanation",
+        "incomplete-index/search miss",
+        "novelty unrelated to the accepted outcome"
+      ]
+    },
+    "bounded_evidence_plan": {
+      "rule": "Use a small finite query/read/test plan for the bound claim.",
+      "extension": "Extend only for a source-anchored dependency necessary to the accepted task and give every extension a finite exit condition.",
+      "novelty": "Material novelty outside the accepted outcome becomes a follow-up candidate; it does not automatically widen current scope."
+    },
+    "repeat_and_stall": {
+      "repeat_reasons": [
+        "changed question/property",
+        "changed source/baseline",
+        "newly proven dependency/call edge",
+        "truncation/pagination/incomplete prior output",
+        "contradiction"
+      ],
+      "rule": "Cosmetic rephrasing is not a new reason to repeat search/read/test. After repeated non-progress, reassess source/strategy and allow one bounded discriminating retrace or strategy change for the same claim.",
+      "stall": "If the retrace still does not advance the claim, preserve unresolved state, close independent work and return the smallest exact evidence/input/experiment request.",
+      "no_universal_numeric_cap": true
+    },
+    "focus": {
+      "rule": "Active investigation normally focuses on one causal question; a second active question is allowed only for discriminating comparison.",
+      "obligations": "Focused investigation never drops required writers, lenses, paired flows, routed obligations or acceptance checks; those remain in the existing queue and are handled sequentially."
+    },
+    "user_checkpoint": {
+      "rule": "An internal goal or phase boundary is not a user checkpoint. Continue autonomously through routine authorized discovery -> design -> implementation -> validation -> delivery.",
+      "return_only_for": [
+        "material business decision",
+        "material implementation fork not decidable by accepted policy/evidence",
+        "genuinely missing decisive input/evidence",
+        "new external authority",
+        "hard unresolved stall",
+        "completed requested outcome"
+      ]
+    },
+    "validation_reopen": {
+      "rule": "A validation failure reopens only the affected or invalidated closure. After a material fix, reroute and re-evaluate dependent obligations/fingerprints; do not reopen all discovery by default."
+    },
+    "delivery_projection": {
+      "rule": "Delivery and documentation project settled current Implementation Intent/change_items/evidence. Reopen only an exact dependency contradicted by current evidence; do not rediscover settled facts merely to render final artifacts."
+    },
+    "interrupted_mutation": {
+      "rule": "After interrupted mutation, apply RECOVER_FIRST_NOT_REPLAY_FIRST and reconcile durable/native state before any retry."
+    },
+    "platform_boundary": {
+      "rule": "This policy does not reset stream/cache/history, guarantee wall-clock execution bounds, preempt model reasoning or create a platform execution boundary."
+    }
+  },
   "stages": [
     {
       "id": "BOOTSTRAP_INTEGRITY",

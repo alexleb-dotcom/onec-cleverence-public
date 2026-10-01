@@ -81,6 +81,8 @@ Mixed/unrelated prior chat or source is non-authoritative until exact current ta
 
 Do not persist `USER_JOURNEY_STATE`, `conversation_state`, `task_session_state`, or a second interaction registry/state machine. This turn classification is recomputed from current observable context.
 
+For non-trivial authorized work, `WORKFLOW/DEVELOPMENT_PIPELINE.json::bounded_work_policy` is mandatory: bind the active obligation/property/closure/evidence/exit condition before additional exploration, treat routine internal stage boundaries as autonomous by default, and return to the user only at the material decision/input/authority/stall/final boundaries defined there. This is work-control semantics, not a persisted iteration/conversation state machine or a platform execution limit.
+
 ### Recovery after interrupted assistant/tool response
 
 **RECOVER_FIRST_NOT_REPLAY_FIRST.** A chat/stream/tool/transport/LLM interruption means the previous turn's completion state is **UNKNOWN**, not failed.
