@@ -312,7 +312,8 @@ def structure_property_out_param_boolean_findings(block):
 
     For a proven Structure receiver, a simple out identifier remains unsafe for
     bare Boolean consumption until an unconditional reassignment/normalization or
-    while an exact Boolean type guard is active. Presence is not value-domain proof.
+    while an exact Boolean type guard is active in the current reachable branch.
+    Guard facts are cleared/replaced on Иначе/ИначеЕсли. Presence is not value-domain proof.
     """
     masked_lines=_mask_bsl_strings_and_comments(block["text"]).splitlines()
     raw_lines=block["text"].splitlines()
@@ -350,9 +351,16 @@ def structure_property_out_param_boolean_findings(block):
         raw=raw_lines[offset] if offset<len(raw_lines) else masked
         stripped=masked.strip()
         raw_code=raw.split("//",1)[0]
-        is_if=bool(re.match(r'(?i)^\s*Если\b',raw_code.strip()))
+        branch_text=raw_code.strip()
+        is_if=bool(re.match(r'(?i)^\s*Если\b',branch_text))
+        is_elseif=bool(re.match(r'(?i)^\s*ИначеЕсли\b',branch_text))
+        is_else=bool(re.match(r'(?i)^\s*Иначе\b',branch_text))
+        is_endif=bool(re.match(r'(?i)^\s*КонецЕсли\b',stripped))
 
-        if re.match(r'(?i)^\s*КонецЕсли\b',stripped):
+        # Guard facts are branch-local. On Else/ElseIf the previous branch is
+        # false and its exact type guards must not leak into the new branch.
+        # This is deliberately a bounded If-branch stack, not a generic CFG.
+        if is_endif or is_elseif or is_else:
             if boolean_guard_stack:
                 boolean_guard_stack.pop()
             if structure_guard_stack:
@@ -362,7 +370,7 @@ def structure_property_out_param_boolean_findings(block):
         active_structure_guards=set().union(*structure_guard_stack) if structure_guard_stack else set()
 
         current_structure_guards=set()
-        if is_if:
+        if is_if or is_elseif:
             for gm in structure_guard_re.finditer(raw_code):
                 gv=gm.group("a") or gm.group("b")
                 if gv:
@@ -447,11 +455,14 @@ def structure_property_out_param_boolean_findings(block):
                         })
 
         current_boolean_guards=set()
-        if is_if:
+        if is_if or is_elseif:
             for gm in boolean_guard_re.finditer(raw_code):
                 gv=gm.group("a") or gm.group("b")
                 if gv and gv.lower() in tracked:
                     current_boolean_guards.add(gv.lower())
+        if is_if or is_elseif or is_else:
+            # Keep one frame for every active branch. Else gets an empty frame,
+            # explicitly proving that the prior true-branch guards are absent.
             boolean_guard_stack.append(current_boolean_guards)
             structure_guard_stack.append(current_structure_guards)
 
