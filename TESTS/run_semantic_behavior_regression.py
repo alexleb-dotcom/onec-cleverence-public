@@ -247,6 +247,22 @@ def violates(case, observation):
             )
             or observation.get("claims_platform_reset_or_hard_boundary", False)
         )
+    if oracle == "structure_property_boolean_contract":
+        uses_out = observation.get("structure_property_out_param", False)
+        bare_bool = observation.get("bare_boolean_consumption", False)
+        claims_ready = observation.get("claims_ready", False)
+        recognizes_absent = observation.get("absent_key_undefined_path_recognized", False)
+        presence_as_type = observation.get("presence_used_as_type_proof", False)
+        safe_contract = (
+            observation.get("boolean_domain_proven", False)
+            or observation.get("boolean_normalized", False)
+        )
+        return bool(
+            uses_out
+            and bare_bool
+            and claims_ready
+            and (presence_as_type or not recognizes_absent or not safe_contract)
+        )
     raise ValueError(f"unknown oracle: {oracle}")
 
 
