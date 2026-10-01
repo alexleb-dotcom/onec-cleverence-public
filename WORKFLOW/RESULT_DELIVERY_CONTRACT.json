@@ -9,7 +9,8 @@
     "show the outcome before implementation detail",
     "do not expose internal ledgers, routing tables or gate inventories by default",
     "omit empty sections and omit user action when the user has nothing to do",
-    "artifact links and exact delivery instructions remain part of the result when artifacts were produced"
+    "artifact links and exact delivery instructions remain part of the result when artifacts were produced",
+    "final mandatory DOCX artifacts are qualified from actual post-render/post-publish bytes before final user delivery"
   ],
   "common_sections": [
     {
@@ -416,6 +417,83 @@
     "renderer_dependency": "python-docx==1.2.0",
     "separate_file_default": true,
     "combined_document_only_on_explicit_user_request": true,
-    "contract": "Applicable user-facing documentation artifacts are separate DOCX projections. For non-trivial implementation, implementation_notes is always applicable; for MANUAL_TRANSFER_INSTRUCTION, manual_transfer is always applicable. Canonical machine/proof artifacts remain native and DOCX cannot create or upgrade proof."
+    "contract": "Applicable user-facing documentation artifacts are separate DOCX projections. For non-trivial implementation, implementation_notes is always applicable; for MANUAL_TRANSFER_INSTRUCTION, manual_transfer is always applicable. Canonical machine/proof artifacts remain native and DOCX cannot create or upgrade proof.",
+    "final_set_validator": "TOOLS/final_docx_set.py",
+    "final_set_order": "POST_RENDER_POST_PUBLISH_PRE_DELIVERY"
+  },
+  "final_docx_set_validation": {
+    "owner": "RESULT_DELIVERY",
+    "applies_to": "IMPLEMENTATION_DELIVERY_WITH_USER_FACING_DOCX",
+    "validator": "TOOLS/final_docx_set.py",
+    "verification_phase": "POST_RENDER_POST_PUBLISH_PRE_DELIVERY",
+    "purpose": "Prove the actual final mandatory DOCX set from current published bytes; pre-render release evidence cannot qualify files that did not yet exist.",
+    "required_kind_derivation": {
+      "implementation_notes": "required when nontrivial_implementation=true",
+      "manual_transfer": "required when result_mode=MANUAL_TRANSFER_INSTRUCTION",
+      "requirements": "required only when requirements_artifact_required=true under the existing requirements artifact trigger",
+      "line_by_line": "required only when line_by_line_requested=true under EXPLICIT_USER_REQUEST_ONLY",
+      "combined_alternate": "never substitutes for any required separate kind"
+    },
+    "canonical_path_contract": {
+      "root": "package_root",
+      "output_directory": "Output",
+      "rule": "every required kind maps exactly to Output/<owner filename>.docx; paths must be canonical relative package paths and regular non-symlink files"
+    },
+    "file_checks": [
+      "required kind resolves to the exact owner-approved relative Output path",
+      "regular non-symlink .docx file exists and is non-zero",
+      "size and SHA-256 are computed from final bytes after publish",
+      "immediate read-back bytes and SHA-256 match the verified bytes",
+      "OOXML ZIP container contains valid [Content_Types].xml, _rels/.rels, word/document.xml and docProps/core.xml with a valid main-document relationship",
+      "distinct required kinds resolve to distinct files",
+      "exact duplicate bytes cannot satisfy semantically distinct required kinds"
+    ],
+    "current_binding": {
+      "marker": "ONEC_RESULT_DELIVERY_BINDING_V1:",
+      "embedded_in": "DOCX core property dc:identifier at render time",
+      "fields": [
+        "task_id",
+        "candidate_sha256",
+        "package_binding_sha256",
+        "change_items_sha256",
+        "result_mode",
+        "artifact_kind"
+      ],
+      "package_binding_rule": "package_binding_sha256 binds the already-settled delivery/change package identity before final DOCX receipt construction; it is not a hash of the final receipt and must not create circular hashing",
+      "rule": "the final verifier requires exact equality to the current task/candidate/package/change_items/result_mode/artifact kind so stale prior-task/prior-candidate/prior-change DOCX bytes cannot close the obligation"
+    },
+    "publication_binding": {
+      "local_file": "verify the declared publication path resolves inside package_root and hashes to the same final bytes",
+      "platform_attachment": "record the attachment/reference and mark byte identity REQUIRES_ROUTE_E2E when repository CI cannot independently read the platform attachment bytes",
+      "missing_reference": "invalid; final verification is post-publish and requires a declared publication reference"
+    },
+    "receipt": {
+      "schema_version": 1,
+      "receipt_kind": "FINAL_DOCX_SET",
+      "minimal_fields": [
+        "binding",
+        "required_kinds",
+        "final relative path/size/sha256/readback",
+        "OOXML/binding result",
+        "publication result",
+        "route_e2e_required",
+        "proof_boundary"
+      ],
+      "rule": "receipt projects final byte identity only; it does not duplicate requirements/design/change maps and is not included in package_binding_sha256"
+    },
+    "proof_boundary": [
+      "DOCX byte hash and OOXML structure do not prove semantic fidelity to settled Intent/change_items",
+      "semantic fidelity and literal changed-code/anchor agreement remain under existing delivery semantic review",
+      "final DOCX proof does not prove applied target, deployment/import or runtime behavior",
+      "platform attachment byte identity remains REQUIRES_ROUTE_E2E unless the platform exposes independently readable bytes"
+    ],
+    "ordering_rules": [
+      "primary result mode is selected before final artifact construction",
+      "render all required separate DOCX artifacts",
+      "publish/resolve their final references",
+      "run final_docx_set validator against actual final bytes",
+      "only then deliver the final user result",
+      "a pre-render release receipt, filename label or file-existence claim cannot replace final byte verification"
+    ]
   }
 }
