@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 447,
+  "file_count": 449,
   "files": [
     {
       "path": ".gitattributes",
@@ -220,8 +220,8 @@
     },
     {
       "path": "KNOWLEDGE/RESULT_DELIVERY.md",
-      "size": 10926,
-      "sha256": "866f9509f83c6cc5ee56cef7313b3bccecdf37dc543e3f7fc7eda4a1f5c8adbd"
+      "size": 14546,
+      "sha256": "e191528a917cb9782bcb3f3cc06fabbf273bee278eb95593b40221a4f1974603"
     },
     {
       "path": "KNOWLEDGE/SKILL_FRESHNESS.md",
@@ -1794,6 +1794,11 @@
       "sha256": "0aa431183b5c939d288cb09074d933e714859dbb0a0b00c25f2699cafa02ed21"
     },
     {
+      "path": "TESTS/run_final_docx_set_regression.py",
+      "size": 18544,
+      "sha256": "3f2a05a78ff90088d768cee9724bd56f08c59491467228f37edf2e1d4e1dd0a9"
+    },
+    {
       "path": "TESTS/run_llm_bypass_regression.py",
       "size": 20420,
       "sha256": "5d6a66a45e09ba674bdf84a1950eec3eb4a7cdef5d5f423111c6d1d16208b1ed"
@@ -1895,8 +1900,8 @@
     },
     {
       "path": "TESTS/run_result_delivery_contract_regression.py",
-      "size": 40077,
-      "sha256": "1411dd3dda54f7b823a957557ab6f100419aff7eff060ab23531abe461043e83"
+      "size": 43643,
+      "sha256": "e99ce8363d0a244251994fa54d6bace2d3ec46ca944a11f7f7ae79c778fcf544"
     },
     {
       "path": "TESTS/run_review_regression.py",
@@ -1935,8 +1940,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 9116,
-      "sha256": "6be55582cd24c0857fcc28d6ec99e6744668749f98a2118355672b947b0241c1"
+      "size": 9343,
+      "sha256": "db5a899f553543aabe30ce3d26c029fbfd37124eda80c6fa935fe03297e39b2c"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -2044,6 +2049,11 @@
       "sha256": "22e326c133c0e427e3ccb4005bd8f6c8650e21907c64cd7928fee683928ab51b"
     },
     {
+      "path": "TOOLS/final_docx_set.py",
+      "size": 17583,
+      "sha256": "533ad720c240af4ae46e0474f6a9f41de603289b41088f9e401696a36046610d"
+    },
+    {
       "path": "TOOLS/generate_registry_views.py",
       "size": 2027,
       "sha256": "5bed9ecffe7598b3a3739a82def81ca56114a965b02108343daf0b8d2854a7db"
@@ -2140,8 +2150,8 @@
     },
     {
       "path": "TOOLS/render_user_artifact_docx.py",
-      "size": 17831,
-      "sha256": "519cceff3329fa57c49f825b80d6cbf34a556f06ef1c22c26474fcbeb7ea6ab9"
+      "size": 19400,
+      "sha256": "162a7a6b1102fa56064dce44bbf21560797f94e94a11823aace51f7fe4344224"
     },
     {
       "path": "TOOLS/requirements_gate.py",
@@ -2230,8 +2240,8 @@
     },
     {
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
-      "size": 21643,
-      "sha256": "eaf2edd432ef1ae59f9e16ebb0402b1ced3782066d133d8968f75203f8a329e7"
+      "size": 26352,
+      "sha256": "d5b7c50ad636585730bad2a75b850f07ee999257a69454d64ea858101cf12dc8"
     },
     {
       "path": "agents/openai.yaml",
@@ -2245,5 +2255,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "9b817a2e41cabc3278e89c9e6fa88441cf24db33f48e9de6d5b109ee914cea8e"
+  "snapshot_digest": "f2178745211181b6e6c633b4fac444ae6100df5cd715cc591a26fa075fdf09c8"
 }
