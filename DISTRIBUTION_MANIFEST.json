@@ -220,8 +220,8 @@
     },
     {
       "path": "KNOWLEDGE/RESULT_DELIVERY.md",
-      "size": 14546,
-      "sha256": "e191528a917cb9782bcb3f3cc06fabbf273bee278eb95593b40221a4f1974603"
+      "size": 14792,
+      "sha256": "3a31850df3fb43c2409a6aef8413091cd9ee63132050a3c9774db0f37887866d"
     },
     {
       "path": "KNOWLEDGE/SKILL_FRESHNESS.md",
@@ -2050,8 +2050,8 @@
     },
     {
       "path": "TOOLS/final_docx_set.py",
-      "size": 17583,
-      "sha256": "533ad720c240af4ae46e0474f6a9f41de603289b41088f9e401696a36046610d"
+      "size": 17926,
+      "sha256": "6cd6fec722c4f5523a10ec82bdb965c92006234bcbc8bb76eed4318f9968d8d4"
     },
     {
       "path": "TOOLS/generate_registry_views.py",
@@ -2150,8 +2150,8 @@
     },
     {
       "path": "TOOLS/render_user_artifact_docx.py",
-      "size": 19400,
-      "sha256": "162a7a6b1102fa56064dce44bbf21560797f94e94a11823aace51f7fe4344224"
+      "size": 19714,
+      "sha256": "44fe2b7c6103e0e702eeeba5edf1ae8016b4d4f76203c67e7d26484cebeb6774"
     },
     {
       "path": "TOOLS/requirements_gate.py",
@@ -2240,8 +2240,8 @@
     },
     {
       "path": "WORKFLOW/RESULT_DELIVERY_CONTRACT.json",
-      "size": 26352,
-      "sha256": "d5b7c50ad636585730bad2a75b850f07ee999257a69454d64ea858101cf12dc8"
+      "size": 26496,
+      "sha256": "f5e3dde622dcbdd9c39e49a1f43db7b477acd8ca0357581eb542acfd005eed02"
     },
     {
       "path": "agents/openai.yaml",
@@ -2255,5 +2255,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "f2178745211181b6e6c633b4fac444ae6100df5cd715cc591a26fa075fdf09c8"
+  "snapshot_digest": "c16c446f51f216cf5610313554689252ada09d2d4d03830327d077e2b31e6e4a"
 }
