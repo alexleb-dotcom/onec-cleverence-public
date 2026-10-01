@@ -450,7 +450,7 @@
     ],
     "current_binding": {
       "marker": "ONEC_RESULT_DELIVERY_BINDING_V1:",
-      "embedded_in": "DOCX core property dc:identifier at render time",
+      "embedded_in": "DOCX core property dc:identifier as marker + SHA-256 fingerprint of the canonical binding fields",
       "fields": [
         "task_id",
         "candidate_sha256",
@@ -460,7 +460,8 @@
         "artifact_kind"
       ],
       "package_binding_rule": "package_binding_sha256 binds the already-settled delivery/change package identity before final DOCX receipt construction; it is not a hash of the final receipt and must not create circular hashing",
-      "rule": "the final verifier requires exact equality to the current task/candidate/package/change_items/result_mode/artifact kind so stale prior-task/prior-candidate/prior-change DOCX bytes cannot close the obligation"
+      "rule": "the renderer fingerprints exact current task/candidate/package/change_items/result_mode/artifact kind; the final verifier recomputes the same fingerprint, so stale prior-task/prior-candidate/prior-change DOCX bytes cannot close the obligation",
+      "fingerprint_algorithm": "sha256(canonical-json-v1)"
     },
     "publication_binding": {
       "local_file": "verify the declared publication path resolves inside package_root and hashes to the same final bytes",
