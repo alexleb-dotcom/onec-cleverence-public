@@ -302,30 +302,47 @@ def loop_execute_findings(block):
     return findings
 
 def structure_property_out_param_boolean_findings(block):
-    """Detect bounded same-routine Structure.Property out-param Boolean hazards.
+    """Detect bounded Structure.Property out-param Boolean hazards.
 
-    A simple out identifier from .Свойство(..., outVar) remains unsafe for bare
-    Boolean consumption until an unconditional reassignment/normalization or while
-    an exact Boolean type guard is active. Presence is not value-domain proof.
+    HIGH/blocking classification requires a bounded local proof that the receiver
+    is Structure-like: either an exact local `Новый Структура` assignment or an
+    active exact `ТипЗнч(receiver) = Тип("Структура")` guard. A syntactically
+    generic `.Свойство(..., outVar)` method name alone is REVIEW-only and does
+    not inherit the platform Structure absent-key contract.
+
+    For a proven Structure receiver, a simple out identifier remains unsafe for
+    bare Boolean consumption until an unconditional reassignment/normalization or
+    while an exact Boolean type guard is active. Presence is not value-domain proof.
     """
     masked_lines=_mask_bsl_strings_and_comments(block["text"]).splitlines()
     raw_lines=block["text"].splitlines()
     tracked={}
-    if_stack=[]
+    boolean_guard_stack=[]
+    structure_guard_stack=[]
+    structure_vars=set()
 
     ident=r'[A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*'
     out_call_re=re.compile(
-        rf'(?P<receiver>{ident}(?:\s*\.\s*{ident})*)\s*\.\s*Свойство\s*\(\s*[^,\n]+,\s*(?P<out>{ident})\s*\)',
+        rf'(?P<receiver>{ident})\s*\.\s*Свойство\s*\(\s*[^,\n]+,\s*(?P<out>{ident})\s*\)',
         re.I,
     )
     assignment_re=re.compile(rf'^\s*(?P<lhs>{ident})\s*=\s*(?P<rhs>.*?)\s*;?\s*$')
-    bare_bool_re=re.compile(rf'^\s*(?:Если|ИначеЕсли)\s+(?:НЕ\s+)?\(?\s*(?P<var>{ident})\s*\)?\s+Тогда\b', re.I)
-    guard_re=re.compile(
+    bare_bool_re=re.compile(
+        rf'^\s*(?:Если|ИначеЕсли)\s+(?:НЕ\s+)?\(?\s*(?P<var>{ident})\s*\)?\s+Тогда\b',
+        re.I,
+    )
+    boolean_guard_re=re.compile(
         rf'(?:ТипЗнч\s*\(\s*(?P<a>{ident})\s*\)\s*=\s*Тип\s*\(\s*"Булево"\s*\)'
         rf'|Тип\s*\(\s*"Булево"\s*\)\s*=\s*ТипЗнч\s*\(\s*(?P<b>{ident})\s*\))',
         re.I,
     )
+    structure_guard_re=re.compile(
+        rf'(?:ТипЗнч\s*\(\s*(?P<a>{ident})\s*\)\s*=\s*Тип\s*\(\s*"Структура"\s*\)'
+        rf'|Тип\s*\(\s*"Структура"\s*\)\s*=\s*ТипЗнч\s*\(\s*(?P<b>{ident})\s*\))',
+        re.I,
+    )
     simple_ident_re=re.compile(rf'^\s*(?P<var>{ident})\s*$')
+    new_structure_re=re.compile(r'^\s*Новый\s+Структура\b',re.I)
 
     findings=[]
     seen=set()
@@ -333,26 +350,59 @@ def structure_property_out_param_boolean_findings(block):
         raw=raw_lines[offset] if offset<len(raw_lines) else masked
         stripped=masked.strip()
         raw_code=raw.split("//",1)[0]
+        is_if=bool(re.match(r'(?i)^\s*Если\b',raw_code.strip()))
 
-        if re.match(r'(?i)^\s*КонецЕсли\b', stripped) and if_stack:
-            if_stack.pop()
-        active_guards=set().union(*if_stack) if if_stack else set()
+        if re.match(r'(?i)^\s*КонецЕсли\b',stripped):
+            if boolean_guard_stack:
+                boolean_guard_stack.pop()
+            if structure_guard_stack:
+                structure_guard_stack.pop()
+
+        active_boolean_guards=set().union(*boolean_guard_stack) if boolean_guard_stack else set()
+        active_structure_guards=set().union(*structure_guard_stack) if structure_guard_stack else set()
+
+        current_structure_guards=set()
+        if is_if:
+            for gm in structure_guard_re.finditer(raw_code):
+                gv=gm.group("a") or gm.group("b")
+                if gv:
+                    current_structure_guards.add(gv.lower())
+        structure_proof_scope=active_structure_guards|current_structure_guards
+
+        assign=assignment_re.match(masked)
+        if assign and not re.match(r'(?i)^\s*(?:Если|ИначеЕсли)\b',stripped):
+            lhs=assign.group("lhs")
+            rhs=assign.group("rhs").strip()
+            lhs_key=lhs.lower()
+            if not boolean_guard_stack:
+                if new_structure_re.match(rhs):
+                    structure_vars.add(lhs_key)
+                else:
+                    structure_vars.discard(lhs_key)
 
         for call in out_call_re.finditer(masked):
+            receiver=call.group("receiver")
+            receiver_key=receiver.lower()
             var=call.group("out")
+            receiver_proven=receiver_key in structure_vars or receiver_key in structure_proof_scope
             tracked[var.lower()]={
                 "source_line":block["start_line"]+offset,
                 "out_var":var,
-                "receiver":re.sub(r'\s+',"",call.group("receiver")),
+                "receiver":receiver,
+                "receiver_proven_structure":receiver_proven,
+                "receiver_proof":(
+                    "LOCAL_NEW_STRUCTURE"
+                    if receiver_key in structure_vars
+                    else ("ACTIVE_TYPE_GUARD" if receiver_key in structure_proof_scope else "UNRESOLVED")
+                ),
             }
 
-        assign=assignment_re.match(masked)
-        if assign and not re.match(r'(?i)^\s*(?:Если|ИначеЕсли)\b', stripped):
+        if assign and not re.match(r'(?i)^\s*(?:Если|ИначеЕсли)\b',stripped):
             lhs=assign.group("lhs")
             rhs=assign.group("rhs").strip()
             lhs_key=lhs.lower()
             rhs_ident=simple_ident_re.match(rhs)
-            if not if_stack:
+            if not boolean_guard_stack:
                 if rhs_ident and rhs_ident.group("var").lower() in tracked:
                     tracked[lhs_key]=dict(tracked[rhs_ident.group("var").lower()])
                     tracked[lhs_key]["alias"]=lhs
@@ -364,33 +414,48 @@ def structure_property_out_param_boolean_findings(block):
         if bare:
             var=bare.group("var")
             key=var.lower()
-            if key in tracked and key not in active_guards:
+            if key in tracked and key not in active_boolean_guards:
                 src=tracked[key]
-                identity=(block["start_line"]+offset,key,src["source_line"])
+                identity=(block["start_line"]+offset,key,src["source_line"],src["receiver_proven_structure"])
                 if identity not in seen:
                     seen.add(identity)
-                    findings.append({
-                        "severity":"HIGH",
-                        "type":"STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN",
-                        "procedure":block["name"],
-                        "line":block["start_line"]+offset,
-                        "source_line":src["source_line"],
-                        "out_var":var,
-                        "receiver":src.get("receiver"),
-                        "code":raw.strip()[:220],
-                        "note":"Structure-like .Свойство(..., outVar) presence does not prove the out value is Boolean. Normalize the exact local value to Boolean or guard this consumption with a proven Boolean type contract; absent/unknown value paths must not reach a bare Boolean condition.",
-                    })
+                    if src["receiver_proven_structure"]:
+                        findings.append({
+                            "severity":"HIGH",
+                            "type":"STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN",
+                            "procedure":block["name"],
+                            "line":block["start_line"]+offset,
+                            "source_line":src["source_line"],
+                            "out_var":var,
+                            "receiver":src.get("receiver"),
+                            "receiver_proof":src.get("receiver_proof"),
+                            "code":raw.strip()[:220],
+                            "note":"Proven Structure-like .Свойство(..., outVar) presence does not prove the out value is Boolean. Normalize the exact local value to Boolean, guard the consumption with a proven Boolean type contract, or resolve the exact machine-finding obligation with valid source/semantic proof of the Boolean value contract.",
+                        })
+                    else:
+                        findings.append({
+                            "severity":"REVIEW",
+                            "type":"STRUCTURE_PROPERTY_RECEIVER_TYPE_REVIEW",
+                            "procedure":block["name"],
+                            "line":block["start_line"]+offset,
+                            "source_line":src["source_line"],
+                            "out_var":var,
+                            "receiver":src.get("receiver"),
+                            "receiver_proof":"UNRESOLVED",
+                            "code":raw.strip()[:220],
+                            "note":"A generic .Свойство(..., outVar) method name is followed by bare Boolean consumption, but this bounded analyzer has not proven the receiver is a platform Structure. Review the receiver/API contract; do not apply Structure absent-key semantics from the method name alone.",
+                        })
 
-        guard_vars=set()
-        if re.match(r'(?i)^\s*Если\b', raw_code.strip()):
-            for gm in guard_re.finditer(raw_code):
+        current_boolean_guards=set()
+        if is_if:
+            for gm in boolean_guard_re.finditer(raw_code):
                 gv=gm.group("a") or gm.group("b")
                 if gv and gv.lower() in tracked:
-                    guard_vars.add(gv.lower())
-            if_stack.append(guard_vars)
+                    current_boolean_guards.add(gv.lower())
+            boolean_guard_stack.append(current_boolean_guards)
+            structure_guard_stack.append(current_structure_guards)
 
     return findings
-
 
 def structure_constructor_findings(block):
     findings=[]
