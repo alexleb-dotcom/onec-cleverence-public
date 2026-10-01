@@ -148,17 +148,23 @@ def _parse_ooxml(path: Path) -> tuple[list[str], str | None]:
     return errors, identifier
 
 
-def _parse_binding(identifier: str | None) -> tuple[dict | None, str | None]:
+def _binding_fingerprint(binding: dict) -> str:
+    canonical = json.dumps(
+        binding,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _parse_binding(identifier: str | None) -> tuple[str | None, str | None]:
     if not identifier or not identifier.startswith(BINDING_PREFIX):
         return None, "DOCX_DELIVERY_BINDING_MISSING"
     raw = identifier[len(BINDING_PREFIX):]
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError:
-        return None, "DOCX_DELIVERY_BINDING_INVALID_JSON"
-    if not isinstance(value, dict):
-        return None, "DOCX_DELIVERY_BINDING_INVALID_SHAPE"
-    return value, None
+    if not SHA256_RE.fullmatch(raw):
+        return None, "DOCX_DELIVERY_BINDING_INVALID_FINGERPRINT"
+    return raw, None
 
 
 def _validate_context(context: dict, contract: dict, errors: list[dict]) -> None:
@@ -343,16 +349,17 @@ def validate_final_docx_set(manifest: dict, package_root: Path, contract: dict |
         ooxml_errors, identifier = _parse_ooxml(path)
         for item in ooxml_errors:
             errors.append({"type": item, "kind": kind, "path": actual_rel})
-        binding, binding_error = _parse_binding(identifier)
+        binding_fingerprint, binding_error = _parse_binding(identifier)
         if binding_error:
             errors.append({"type": binding_error, "kind": kind, "path": actual_rel})
         expected_binding = _expected_binding(context, kind)
-        if binding is not None and binding != expected_binding:
+        expected_fingerprint = _binding_fingerprint(expected_binding)
+        if binding_fingerprint is not None and binding_fingerprint != expected_fingerprint:
             errors.append({
                 "type": "FINAL_DOCX_BINDING_MISMATCH",
                 "kind": kind,
-                "expected": expected_binding,
-                "actual": binding,
+                "expected_fingerprint": expected_fingerprint,
+                "actual_fingerprint": binding_fingerprint,
             })
 
         publication = _validate_publication(
@@ -369,7 +376,8 @@ def validate_final_docx_set(manifest: dict, package_root: Path, contract: dict |
             "sha256": first_sha,
             "readback_sha256": second_sha,
             "ooxml_valid": not ooxml_errors,
-            "binding_match": binding == expected_binding,
+            "binding_match": binding_fingerprint == expected_fingerprint,
+            "binding_fingerprint": binding_fingerprint,
             "publication": publication,
         }
         observed_paths[kind] = str(path)
