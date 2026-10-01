@@ -1201,6 +1201,28 @@
       "good": {
         "claims_platform_reset_or_hard_boundary": false
       }
+    },
+    {
+      "id": "STRUCTURE_PROPERTY_OUT_PARAM_BOOLEAN_DOMAIN",
+      "oracle": "structure_property_boolean_contract",
+      "bad": {
+        "structure_property_out_param": true,
+        "bare_boolean_consumption": true,
+        "claims_ready": true,
+        "absent_key_undefined_path_recognized": false,
+        "presence_used_as_type_proof": true,
+        "boolean_domain_proven": false,
+        "boolean_normalized": false
+      },
+      "good": {
+        "structure_property_out_param": true,
+        "bare_boolean_consumption": true,
+        "claims_ready": true,
+        "absent_key_undefined_path_recognized": true,
+        "presence_used_as_type_proof": false,
+        "boolean_domain_proven": false,
+        "boolean_normalized": true
+      }
     }
   ]
 }
