@@ -94,6 +94,20 @@ It is grouped by exact object and then procedure/function/change unit, contains 
 
 Do not silently combine requirements, manual-transfer, implementation-notes or line-by-line artifacts into one Word file unless the user explicitly requests a combined/alternate format.
 
+### Финальная проверка набора DOCX
+
+После того как все обязательные отдельные DOCX уже отрендерены и опубликованы/разрешены в финальные ссылки, но **до** окончательной пользовательской доставки, прогоняй `TOOLS/final_docx_set.py` по фактическим финальным байтам. Release receipt или утверждение о существовании файла, полученные до рендера, не квалифицируют документ, которого в тот момент ещё не было.
+
+Обязательные виды выводятся только из уже принятого task/result mode: `implementation_notes` для любой нетривиальной реализации, `manual_transfer` для `MANUAL_TRANSFER_INSTRUCTION`, `requirements` только по существующему requirements-trigger, `line_by_line` только по явному запросу. Явно запрошенный combined/alternate документ не заменяет ни один обязательный отдельный файл.
+
+Для каждого обязательного файла verifier проверяет точное соответствие kind -> `Output/<owner filename>.docx`, обычный ненулевой файл, финальные size/SHA-256 и повторное чтение тех же байтов, минимальную структуру OOXML/DOCX, разные пути и разные байты для семантически разных обязательных документов. В DOCX core property `dc:identifier` рендерер помещает невидимую binding-метку `ONEC_RESULT_DELIVERY_BINDING_V1:`, которая связывает файл с текущими `task_id`, `candidate_sha256`, `package_binding_sha256`, `change_items_sha256`, `result_mode` и `artifact_kind`. Это защищает от stale prior-task/prior-candidate/prior-change документа.
+
+`package_binding_sha256` — fingerprint уже settled delivery/ChangePackage identity **до** построения финального DOCX receipt; сам receipt в этот fingerprint не входит, чтобы не создавать circular hashing.
+
+Финальный receipt `FINAL_DOCX_SET` остаётся минимальной проекцией byte identity. Он не дублирует requirements/design/change maps и не доказывает семантическую корректность текста. Совпадение literal changed code/anchors и changed-object mapping с settled Intent/change_items остаётся обязанностью существующей delivery semantic review.
+
+Для локально доступной publication path verifier сравнивает опубликованные байты с финальным SHA-256. Если реальная платформа даёт только opaque attachment/reference без независимо читаемых байтов, receipt обязан вернуть `REQUIRES_ROUTE_E2E` для byte-identity этой attachment; нельзя подменять такое доказательство совпадением имени или ссылкой. Финальная DOCX-проверка также не доказывает применение в целевой базе, deployment/import или runtime.
+
 ### Performance Review
 
 When the canonical exact-candidate plan routes `COLLECTION_ALGORITHM`, add a compact `Performance Review` projection **outside** the mandatory `Проект`/`Задача` header and five-column `Особенности реализации` table. It is supplementary presentation of already validated evidence; it cannot create or upgrade proof.
