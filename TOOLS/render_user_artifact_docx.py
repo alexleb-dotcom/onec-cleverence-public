@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import argparse
+import hashlib
 import json
 import re
 
@@ -77,12 +78,16 @@ def _delivery_binding_token(artifact: str, payload: dict) -> str | None:
             raise ValueError(f"delivery_binding {field} must be lowercase sha256")
     normalized = {field: str(binding[field]) for field in DELIVERY_BINDING_FIELDS}
     normalized["artifact_kind"] = artifact
-    return DELIVERY_BINDING_PREFIX + json.dumps(
+    canonical = json.dumps(
         normalized,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
-    )
+    ).encode("utf-8")
+    # Core properties are limited by python-docx to 255 characters. Persist
+    # only a collision-resistant fingerprint; the final receipt carries the
+    # human-readable binding fields and the verifier recomputes this digest.
+    return DELIVERY_BINDING_PREFIX + hashlib.sha256(canonical).hexdigest()
 
 
 def _base(title: str) -> Document:
