@@ -1860,6 +1860,24 @@ r=validate_implementation_admission(plan,default_admission); key='existing_capab
 if not ok:errors.append({'case':key,'details':r})
 
 analog_exact_ref=analog_source_ref
+
+source_unproven=copy.deepcopy(proved); a=next(x for x in source_unproven['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+a['existing_capability_disposition']['source_dependencies']=[{
+    'id':'SRCDEP:QUERY_MODE','fact_kind':'QUERY_MODE',
+    'statement':'Narrative claims an empty parameter disables the later filter.',
+    'status':'EVIDENCE_REQUIRED','change_scope':copy.deepcopy(admitted_scope),'proof_refs':[],
+}]
+r=validate_implementation_admission(plan,source_unproven); key='source_dependency:narrative_fact_blocks_final_implementation'; ok=(r['result']=='IMPLEMENTATION_ADMISSION_BLOCKED' and any(x['type']=='IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_UNPROVEN' for x in r['errors'])); results[key]={'result':r['result'],'errors':r['errors'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
+
+source_proven=copy.deepcopy(proved); a=next(x for x in source_proven['rules'] if x['id']=='ANALOG_BEFORE_INVENTION')
+a['existing_capability_disposition']['source_dependencies']=[{
+    'id':'SRCDEP:QUERY_MODE','fact_kind':'QUERY_MODE',
+    'statement':'Exact current source proves the parameter mode used by this bounded change.',
+    'status':'PROVEN','change_scope':copy.deepcopy(admitted_scope),'proof_refs':[analog_exact_ref],
+}]
+r=validate_implementation_admission(plan,source_proven); key='source_dependency:exact_current_source_closes_same_bounded_claim'; ok=r['result']=='IMPLEMENTATION_ADMISSION_READY'; results[key]={'result':r['result'],'errors':r['errors'],'pass':ok}
+if not ok:errors.append({'case':key,'details':r})
 def _owner():
     return {'owner_ref':'CommonModule.SyntheticOwner','target_identity_ref':target_identity,'coverage':[{'requirement_dimension_id':'REQ:SYNTHETIC','exact_source_refs':[analog_exact_ref]}]}
 

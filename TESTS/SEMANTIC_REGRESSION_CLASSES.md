@@ -48,7 +48,7 @@ When Mobile SMARTS behavior is uncertain, was the nearest stock operation/action
 
 Rule: `ANALOG_BEFORE_INVENTION`
 
-Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.
+Before implementation, prove the standard/existing capability boundary and enumerate any material source-dependent implementation facts; unresolved facts remain EVIDENCE_REQUIRED and block mutation.
 
 ## STANDARD_PIPELINE_SEMANTIC_PRESERVATION
 
@@ -60,7 +60,7 @@ Before accepting a parallel business pipeline, does source evidence prove which 
 
 Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
 
-When material fields cross several pipeline stages, prove ownership per field and trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer; do not accept an early assignment before the final-value owner is proven.
+Trace each material field from requirement/source and typical producer through writers/derived state to final owner/finalizer/consumer; preserve standard-owned fields.
 
 ## COMPOSITE_ROW_CORRELATION_INTEGRITY
 
@@ -438,7 +438,7 @@ When NULL/missing joined rows or missing source facts are replaced with 0/false/
 
 Rule: `QUERY`
 
-Across INNER/LEFT joins, WHERE/HAVING predicates, subqueries, virtual-table filters, pre-aggregation and DISTINCT/GROUP stages, is retention of every required business-grain fact proven with expected input/output coverage, and are all dropped facts attributable to an explicit intended exclusion rule?
+Across every material selection/reselection, join, filter and aggregation stage, prove required business-grain facts and identity filters survive unless exclusion is explicit.
 
 ## QUERY_TEXT_REPLACEMENT_DRIFT
 

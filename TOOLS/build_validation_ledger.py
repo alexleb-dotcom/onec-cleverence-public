@@ -214,6 +214,7 @@ def build_ledger(plan:dict, registry:dict|None=None)->dict:
                 "change_scope":[],
                 "why_not_existing":None,
                 "proof_refs":[],
+                "source_dependencies":[],
                 "owner_exception":None,
             }
         rule_rows.append(rule_row)

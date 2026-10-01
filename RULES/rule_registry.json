@@ -441,7 +441,7 @@
         },
         {
           "id": "STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
-          "question": "Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.",
+          "question": "Before implementation, prove the standard/existing capability boundary and enumerate any material source-dependent implementation facts; unresolved facts remain EVIDENCE_REQUIRED and block mutation.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -491,14 +491,14 @@
       "checks": [
         {
           "id": "STANDARD_PIPELINE_SEMANTIC_PRESERVATION_T01",
-          "question": "The actual standard/project pipeline for the same business operation is traced before a parallel document, calculation, row-building or write chain is proposed.",
+          "question": "Before a parallel chain, trace source/business identity, entry/caller, target init, every material selection/reselection, field ownership, and later writers/finalizers.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
         },
         {
           "id": "STANDARD_PIPELINE_SEMANTIC_PRESERVATION_T02",
-          "question": "A source business dimension → standard intermediate representation → target mapping explicitly identifies every preserved and lost dimension.",
+          "question": "Map each material target field to requirement/source, typical producer, final owner/finalizer, and standard-owned preserve vs requirement-owned overlay.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -520,7 +520,7 @@
         },
         {
           "id": "FIELD_LEVEL_SOURCE_OWNERSHIP",
-          "question": "When material fields cross several pipeline stages, prove ownership per field and trace writer -> dependent computation -> cache/derived holder -> later rewriter/finalizer -> final consumer; do not accept an early assignment before the final-value owner is proven.",
+          "question": "Trace each material field from requirement/source and typical producer through writers/derived state to final owner/finalizer/consumer; preserve standard-owned fields.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -2201,7 +2201,7 @@
         },
         {
           "id": "QUERY_REQUIRED_FACT_RETENTION",
-          "question": "Across INNER/LEFT joins, WHERE/HAVING predicates, subqueries, virtual-table filters, pre-aggregation and DISTINCT/GROUP stages, is retention of every required business-grain fact proven with expected input/output coverage, and are all dropped facts attributable to an explicit intended exclusion rule?",
+          "question": "Across every material selection/reselection, join, filter and aggregation stage, prove required business-grain facts and identity filters survive unless exclusion is explicit.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -3694,6 +3694,16 @@
           "machine_finding_types": [
             "STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN"
           ]
+        },
+        {
+          "id": "STRUCTURED_CONTRACT_P08",
+          "question": "For a proven local ValueTable value used as Boolean, is Undefined excluded by Boolean type+initialization, normalization, exact comparison/type guard, or exact source contract?",
+          "kind": "PROFILE",
+          "blocking": true,
+          "evidence_required": true,
+          "machine_finding_types": [
+            "VALUE_TABLE_TRI_STATE_BOOLEAN"
+          ]
         }
       ],
       "regression": {
@@ -3702,7 +3712,8 @@
         ],
         "enforcement_cases": [
           "check:STRUCTURED_CONTRACT_P01",
-          "check:STRUCTURED_CONTRACT_P07"
+          "check:STRUCTURED_CONTRACT_P07",
+          "check:STRUCTURED_CONTRACT_P08"
         ]
       }
     },

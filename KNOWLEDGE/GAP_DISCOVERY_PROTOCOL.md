@@ -47,6 +47,24 @@ Run the lenses independently from routed profiles and machine findings:
 Each lens receives evidence-backed `PASS`, reasoned `NOT_APPLICABLE` or a pending /
 blocking status. A clean known-rule analyzer is not evidence that these lenses were run.
 
+## Standard pipeline closure projection
+
+For a non-trivial standard-document transformation, reuse the existing `STANDARD_PIPELINE_SEMANTIC_PRESERVATION` ledger evidence rather than creating a `MECHANISM_TRACE` state/artifact. The minimum useful projection is:
+
+- source/business identity;
+- entry/caller;
+- target initialization;
+- every material selection/reselection stage that can rebuild the set;
+- standard-owned fields;
+- requirement-owned fields;
+- later writers/finalizers/post-process.
+
+A business filter or identity proven only at an early/header stage does not close the obligation when a later stage reselects the data. `QUERY_REQUIRED_FACT_RETENTION` and the standard-pipeline stage closure must cover the later rebuild as well.
+
+For material fields, project `target field -> requirement/source-of-truth -> typical producer -> final owner/finalizer`. Preserve standard-owned technical/business fields. Apply requirement-owned values as an overlay on the Typical skeleton whenever possible.
+
+After a standard fill creates rows, destructive clear/rebuild is a blocking semantic concern until all required standard fields and stable row identity are proven restored. Preferred shape: **Typical skeleton + requirement-owned overlay** / **Preserve Typical Row Identity**.
+
 ## Hypothesis lifecycle
 
 Allowed resolved statuses:

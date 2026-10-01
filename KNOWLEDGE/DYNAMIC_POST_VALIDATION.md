@@ -45,6 +45,8 @@ Classify each dot access as:
 - query multi-hop dereference;
 - unresolved.
 - Structure-like `.Свойство(..., outVar)` reads: presence and out-value type are separate facts; track the local out value to any later bare Boolean condition and require Boolean normalization/type proof on the reachable path.
+- locally proven `ТаблицаЗначений` columns consumed as bare Boolean: distinguish Boolean schema from row initialization and reject the bounded path when `Неопределено` can still reach the condition;
+- a same-routine standard/typical-named fill followed by destructive tabular clear/rebuild is a REVIEW signal only; generic `.Очистить()` by method name alone is not evidence of a standard-pipeline defect.
 
 ## Pass C — trigger official standards
 
@@ -81,7 +83,7 @@ Try to invalidate the chosen solution:
 ## Pass F — post-change rescan
 
 Repeat Pass A on the final code.
-Delivery is blocked if a HIGH finding remains without explicit justification. `STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN` is a property-scoped HIGH finding only when the receiver is locally proven Structure-like (`Новый Структура` or an active exact `ТипЗнч(...)=Тип("Структура")` guard); a generic `.Свойство` method name with unresolved receiver type is REVIEW-only and does not import Structure absent-key semantics. The exact finding may be resolved through the existing claim-bound SOURCE_REQUIRED/SEMANTIC evidence path when current source/API evidence proves the specific out value is Boolean. This proves only the bounded same-routine property, not general BSL type safety.
+Delivery is blocked if a HIGH finding remains without explicit justification. `STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN` is a property-scoped HIGH finding only when the receiver is locally proven Structure-like (`Новый Структура` or an active exact `ТипЗнч(...)=Тип("Структура")` guard); a generic `.Свойство` method name with unresolved receiver type is REVIEW-only and does not import Structure absent-key semantics. `VALUE_TABLE_TRI_STATE_BOOLEAN` is likewise bounded to a locally proven `ТаблицаЗначений`, a declared column and a row variable from that table; it does not infer Boolean contracts for unrelated object properties by name. Exact current source/API evidence may resolve the specific finding through the existing claim-bound proof path. `STANDARD_FILL_DESTRUCTIVE_REWRITE_REVIEW` remains diagnostic REVIEW and routes to the blocking standard-pipeline semantic check; the analyzer does not claim to prove restoration semantics. These checks prove only their bounded local properties, not general BSL type safety or full pipeline correctness.
 Previously gathered evidence may be cited again only when its declared dependency hashes/versions remain unchanged.
 
 

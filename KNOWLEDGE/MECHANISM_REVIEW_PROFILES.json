@@ -182,7 +182,7 @@
         "When numeric facts from different sources/representations are compared, joined, summed or substituted, is a common proven measure basis used (unit/currency/scale/sign), with conversion coefficients applied in the correct direction exactly once?",
         "When rounding/precision changes are present, is the required rounding mode and stage (per row, per package/unit conversion, after aggregation, at persistence/output boundary) proven so early/double rounding cannot alter material totals?",
         "When NULL/missing joined rows or missing source facts are replaced with 0/false/empty reference/empty string/other fallback, is semantic equivalence proven for the downstream business decision, rather than using defaulting merely to simplify query shape or arithmetic?",
-        "Across INNER/LEFT joins, WHERE/HAVING predicates, subqueries, virtual-table filters, pre-aggregation and DISTINCT/GROUP stages, is retention of every required business-grain fact proven with expected input/output coverage, and are all dropped facts attributable to an explicit intended exclusion rule?",
+        "Across every material selection/reselection, join, filter and aggregation stage, prove required business-grain facts and identity filters survive unless exclusion is explicit.",
         "When СтрЗаменить modifies query text, is the source a complete readable template and is the replacement marker unique/stable enough not to alter unrelated occurrences?",
         "Do repeated physical sources use role-specific aliases and fully-qualified fields so generated variants cannot become ambiguous?",
         "Can optional fragment boundaries accidentally add/remove separators, UNION, semicolons or malformed query syntax?",
@@ -601,7 +601,8 @@
         "export API documents fields/types",
         "caller/callee contract names match",
         "service fields survive transformations",
-        "For Structure-like .Свойство(..., outVar), is presence kept separate from value type so every reachable bare Boolean consumption is preceded by a proven Boolean domain or explicit Boolean normalization?"
+        "For Structure-like .Свойство(..., outVar), is presence kept separate from value type so every reachable bare Boolean consumption is preceded by a proven Boolean domain or explicit Boolean normalization?",
+        "For a proven local ValueTable value used as Boolean, is Undefined excluded by Boolean type+initialization, normalization, exact comparison/type guard, or exact source contract?"
       ],
       "rule_id": "STRUCTURED_CONTRACT",
       "proof_policy": {

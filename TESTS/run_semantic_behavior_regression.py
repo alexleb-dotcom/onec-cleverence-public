@@ -247,6 +247,41 @@ def violates(case, observation):
             )
             or observation.get("claims_platform_reset_or_hard_boundary", False)
         )
+    if oracle == "source_dependent_implementation":
+        return bool(
+            observation.get("material_source_dependency", False)
+            and observation.get("final_implementation_admitted", False)
+            and not observation.get("exact_current_source_proven", False)
+        )
+    if oracle == "standard_pipeline_stage_closure":
+        required=set(observation.get("material_stages", []))
+        propagated=set(observation.get("identity_filter_proven_stages", []))
+        trace_required={"source_business_identity","entry_caller","target_initialization","selection_reselection_stages","standard_owned_fields","requirement_owned_fields","later_writers_finalizers"}
+        trace=set(observation.get("mechanism_trace", []))
+        return bool(required-propagated) or bool(trace_required-trace)
+    if oracle == "field_ownership_projection":
+        rows=observation.get("fields", [])
+        if not rows:
+            return True
+        for row in rows:
+            if not isinstance(row,dict) or any(not row.get(key) for key in ("target_field","requirement_source","typical_producer","final_owner_finalizer","ownership")):
+                return True
+            if row.get("ownership")=="STANDARD_OWNED" and row.get("action")!="PRESERVE_TYPICAL":
+                return True
+            if row.get("ownership")=="REQUIREMENT_OWNED" and (row.get("action")!="OVERLAY_FROM_SOURCE" or not row.get("source_of_truth_proven",False)):
+                return True
+        return False
+    if oracle == "standard_row_rewrite":
+        if not observation.get("standard_fill_created_rows", False) or not observation.get("destructive_rewrite_after_fill", False):
+            return False
+        return not (observation.get("all_standard_fields_restored", False) and observation.get("business_fields_restored", False) and observation.get("row_identity_preserved", False))
+    if oracle == "value_table_tri_state_contract":
+        return bool(
+            observation.get("proven_value_table_column", False)
+            and observation.get("direct_boolean_consumption", False)
+            and observation.get("undefined_reachable", False)
+            and not (observation.get("boolean_type_and_initialization_proven", False) or observation.get("boolean_normalized", False) or observation.get("explicit_boolean_comparison_or_type_guard", False) or observation.get("exact_boolean_source_contract", False))
+        )
     if oracle == "structure_property_boolean_contract":
         uses_out = observation.get("structure_property_out_param", False)
         bare_bool = observation.get("bare_boolean_consumption", False)

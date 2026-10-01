@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 449,
+  "file_count": 450,
   "files": [
     {
       "path": ".gitattributes",
@@ -70,13 +70,13 @@
     },
     {
       "path": "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
-      "size": 3731,
-      "sha256": "bc1462995e0f57b417807ce8d6941e58dc6719c1bb0d52c7c24ce7d4f21dbfb2"
+      "size": 4562,
+      "sha256": "a20a1e0f50fcdf2319fa6e47724ccc9a55ebaa06b79d1321609a5d785c4d2ea2"
     },
     {
       "path": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
-      "size": 16920,
-      "sha256": "bebd6c9f89c0d30a645e0ee2461ff81143c2dec79f63662a049b63f0bc68ec64"
+      "size": 17956,
+      "sha256": "dfb3131ab63df8e9a40237fa8523687574cd781686f495d78b73c2684ceb4a22"
     },
     {
       "path": "KNOWLEDGE/EXECUTION_CHECKPOINT.md",
@@ -100,8 +100,8 @@
     },
     {
       "path": "KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md",
-      "size": 5923,
-      "sha256": "19fd08ca2a4787c2b49e678f43ab023885796e4392c6602a82bb2c40c27f0389"
+      "size": 7205,
+      "sha256": "cb16c326024102c22cde75e76e9c57981e7b973f6f66e9a2c8dc1f5aa374b255"
     },
     {
       "path": "KNOWLEDGE/ITS_GAP_DISCOVERY_PROTOCOL.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 83399,
-      "sha256": "54dcb2150a1f4ff7301cc7993671d269a49b37b6b7a3809190b7f3f1bf9c4495"
+      "size": 83461,
+      "sha256": "dc321ba18adb06c73dcec4085d4a5d2d6738b1d2d8b32f37723413aef02d190a"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -565,8 +565,8 @@
     },
     {
       "path": "PROFILES/STRUCTURED_CONTRACT.md",
-      "size": 2983,
-      "sha256": "112e39eefb919af2f8b1edce43cb32caab3194477962962bb267275093dff965"
+      "size": 4005,
+      "sha256": "ee3b638fcb1df9583641b065f054076c02859bd6a892b87210388f6816831cdf"
     },
     {
       "path": "PROFILES/TRANSACTION_WRITE.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 294709,
-      "sha256": "639ea3af2debd2501a40a9d968932fdf87c7887c893f1d7010d3bca606d19ba7"
+      "size": 294814,
+      "sha256": "901c380ce36aebb782212c23a5b912a882f04bdd8014b977b01c7174aa7276af"
     },
     {
       "path": "SKILL.md",
@@ -725,13 +725,13 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 33495,
-      "sha256": "a1bc5f4f85a2efeda0cf77c72d54d495a259e8043c132085c1f15a75af365a4d"
+      "size": 38267,
+      "sha256": "fc3dbefffc544cc3d068427b1fcdf51892cf2820c1c85d3c9503e3dbb28e78da"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 40771,
-      "sha256": "85d0ed37a5573a0eb9ed4046b45ea24bff8cf1557bde47246618bdf89b19c253"
+      "size": 40365,
+      "sha256": "066ff17ce422666b3af833b97607bad9a343d65a74af9fd07a4fb58413d0f2d7"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -1814,6 +1814,11 @@
       "sha256": "267f41e76d52abebd043a3d7b3a982587ded9ab1caa37f4c7ba2bfc0f41877b7"
     },
     {
+      "path": "TESTS/run_onec_mechanism_safety_regression.py",
+      "size": 8280,
+      "sha256": "50cf2d8f36adfd1613dab43973502301e170473d5ea101dcc601e0854b6c76f6"
+    },
+    {
       "path": "TESTS/run_pattern_regression.py",
       "size": 2313,
       "sha256": "52b2e6facfbaa734aaa9ed8697a86f209631cea62f21a032ffe03ca0d8c7c547"
@@ -1905,13 +1910,13 @@
     },
     {
       "path": "TESTS/run_review_regression.py",
-      "size": 165004,
-      "sha256": "ad54312c33ec10c854a5bfb0311313ee2bffb4a689ce6d24aab7f18feeb93a46"
+      "size": 166547,
+      "sha256": "b2e7cb0c12c6af260ed86eec1cd9e56921f560044e25eea29496879df20f36bf"
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
-      "size": 13897,
-      "sha256": "ee6651bf59fcc0c460400feedf9e4d54dcb69f0e3045eb089f73e20f794c1b5a"
+      "size": 16319,
+      "sha256": "4341ba6ed1fd352adabefe3fa603af679351ffd94e385b19d101259bb368c912"
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
@@ -1940,8 +1945,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 9343,
-      "sha256": "db5a899f553543aabe30ce3d26c029fbfd37124eda80c6fa935fe03297e39b2c"
+      "size": 9584,
+      "sha256": "d01bb361fb37b8c23d2c2be0d6c7b4f7f65b8b7430b9e5dd74b9925f25936a37"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -1965,8 +1970,8 @@
     },
     {
       "path": "TOOLS/analyze_onec_bsl.py",
-      "size": 100241,
-      "sha256": "6f608e4ae51776673fd97875cc4cb14b2d6222adb1e0063a0fd288a8a27fbd91"
+      "size": 108541,
+      "sha256": "62d5a41cee2be673900b0adc739d8d5d87c77947e69edacec7cb384d9b3b7c9d"
     },
     {
       "path": "TOOLS/analyze_onec_field_flow.py",
@@ -2020,8 +2025,8 @@
     },
     {
       "path": "TOOLS/build_validation_ledger.py",
-      "size": 17906,
-      "sha256": "b3bb2391c1e14143558801842bf9eeaaaf6d35d469669b56aea26baf737d3a78"
+      "size": 17948,
+      "sha256": "fa7445312bf48d58081a3a793857245f237a92fae4dbde47b9e5aaed232a171c"
     },
     {
       "path": "TOOLS/capability_compliance_projection.py",
@@ -2060,8 +2065,8 @@
     },
     {
       "path": "TOOLS/implementation_intent.py",
-      "size": 39168,
-      "sha256": "bb9607ff095cc0a1dc8d23c901a84226ce963ae64195d834607e286c023c2fc5"
+      "size": 41993,
+      "sha256": "62dcee8a4759ad0b05812d8239b410f544d8c0765605d4883821585c638390b3"
     },
     {
       "path": "TOOLS/machine_receipts.py",
@@ -2255,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "bad34185dfc3342807095886adeb20105a712e2d5c660a9c630303d4df1589f5"
+  "snapshot_digest": "13c496541764e5b74bf4123550af2f1c8cc0bdc92a14343b9246e9a1ca8b8478"
 }
