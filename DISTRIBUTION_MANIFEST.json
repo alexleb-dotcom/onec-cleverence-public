@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 449,
+  "file_count": 450,
   "files": [
     {
       "path": ".gitattributes",
@@ -1814,6 +1814,11 @@
       "sha256": "267f41e76d52abebd043a3d7b3a982587ded9ab1caa37f4c7ba2bfc0f41877b7"
     },
     {
+      "path": "TESTS/run_onec_mechanism_safety_regression.py",
+      "size": 8280,
+      "sha256": "50cf2d8f36adfd1613dab43973502301e170473d5ea101dcc601e0854b6c76f6"
+    },
+    {
       "path": "TESTS/run_pattern_regression.py",
       "size": 2313,
       "sha256": "52b2e6facfbaa734aaa9ed8697a86f209631cea62f21a032ffe03ca0d8c7c547"
@@ -2255,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "0a0709fb9dd714b96e1ce37b65d68b53b327191de683283a55c02ae6758b235a"
+  "snapshot_digest": "ee439289e78d26fb06cc6f0c474c1b6a41eaa497e74a0274a36e4ce5935fe2ae"
 }
