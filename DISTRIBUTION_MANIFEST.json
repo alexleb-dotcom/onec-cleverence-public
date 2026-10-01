@@ -75,8 +75,8 @@
     },
     {
       "path": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
-      "size": 15455,
-      "sha256": "299506a6d7d9cc985c852f9b946555e7ee1d3284b093f60227bc5b8eb598c27b"
+      "size": 16920,
+      "sha256": "bebd6c9f89c0d30a645e0ee2461ff81143c2dec79f63662a049b63f0bc68ec64"
     },
     {
       "path": "KNOWLEDGE/EXECUTION_CHECKPOINT.md",
@@ -100,8 +100,8 @@
     },
     {
       "path": "KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md",
-      "size": 4874,
-      "sha256": "59a6c14364626f3453b5fb090f5c58f0475943a8824cf0b614eeafc414603896"
+      "size": 5923,
+      "sha256": "19fd08ca2a4787c2b49e678f43ab023885796e4392c6602a82bb2c40c27f0389"
     },
     {
       "path": "KNOWLEDGE/ITS_GAP_DISCOVERY_PROTOCOL.md",
@@ -220,8 +220,8 @@
     },
     {
       "path": "KNOWLEDGE/RESULT_DELIVERY.md",
-      "size": 10377,
-      "sha256": "7b2df073dd0387cd97c3726a7bc8affdcd97d509f9996b17a8a74be596cece90"
+      "size": 10926,
+      "sha256": "866f9509f83c6cc5ee56cef7313b3bccecdf37dc543e3f7fc7eda4a1f5c8adbd"
     },
     {
       "path": "KNOWLEDGE/SKILL_FRESHNESS.md",
@@ -250,8 +250,8 @@
     },
     {
       "path": "KNOWLEDGE/VALIDATION_ENGINE.md",
-      "size": 8605,
-      "sha256": "95496bfa0f71442ce6fdc4f4a827c80afd762560acf3951ec9606b9ddf7686b8"
+      "size": 9125,
+      "sha256": "8c232cc390b45cc4b9beec2997aefeca534ae4d08d80d884f065a372bb85f7b7"
     },
     {
       "path": "PATTERNS/CLEVERENCE/PLAN_FACT_IDENTITY/bad.mslx",
@@ -635,8 +635,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 43987,
-      "sha256": "8d7ce718da5f325fd475276af1cbcf8b266dd4c4c8aa092ebddf00c5bb05702f"
+      "size": 44481,
+      "sha256": "cd967aaef868bd5c3239fb7c413d582e2e2e765ef9b016889482aeb7db0daba5"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -725,8 +725,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 26114,
-      "sha256": "63cff8fdad26639b13df668227d4e18cd47b2db78d91739de0525b0b4b37103c"
+      "size": 32733,
+      "sha256": "e43cb538dfdc3894c64d712b7efab65648623eca8c27e7f0ebddad4ffdd29ada"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -1900,8 +1900,8 @@
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
-      "size": 8863,
-      "sha256": "371dc2f499746f34fee74ccac6f4a5b789d02f319fe78d52f08826ed5e285335"
+      "size": 13118,
+      "sha256": "80b295d72dff4123eb0419acd2a1ec7bd37055b60ff3d63c2aa4de3c4f8f8b33"
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
@@ -2215,8 +2215,8 @@
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
-      "size": 25201,
-      "sha256": "22eae0b3979a501c85ec2e6a3f46257441dabefa7e36bed4f55468c764426e07"
+      "size": 29578,
+      "sha256": "07f71d1e8f4284148d542f7957c5e967c59edf230d5d625f756d01955a96d920"
     },
     {
       "path": "WORKFLOW/PROJECT_SNAPSHOT_CHAT_ORCHESTRATION.json",
@@ -2240,5 +2240,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "5e22a539a65054b76047e68e4684a11fbc4e441403b8beb5aa1078d86958f5fa"
+  "snapshot_digest": "4de57d911acc00ce176e190a5bd90e2a262e68568d13f4fb9b4e3502d182b66c"
 }
