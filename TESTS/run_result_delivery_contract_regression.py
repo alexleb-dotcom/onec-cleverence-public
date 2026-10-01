@@ -16,6 +16,7 @@ MANUAL_TRANSFER_TEMPLATE_PATH = ROOT / "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TE
 README_PATH = ROOT / "README.md"
 PUBLIC_WORKFLOW_PATH = ROOT / ".github/workflows/shareable-validation.yml"
 PUBLIC_CI_INVENTORY_PATH = ROOT / "TOOLS/PUBLIC_CI_INVENTORY.json"
+FINAL_DOCX_VALIDATOR_PATH = ROOT / "TOOLS/final_docx_set.py"
 
 EXPECTED_SECTIONS = ["OUTCOME", "RESULT", "VERIFICATION", "PROOF_BOUNDARY", "ARTIFACTS", "USER_ACTION"]
 EXPECTED_PROFILES = {"ANALYSIS_REPORT", "IMPLEMENTATION_DELIVERY", "REQUIREMENTS_ARTIFACT", "BLOCKED_OR_PARTIAL"}
@@ -340,6 +341,60 @@ def validate_contract(contract: dict) -> list[str]:
             errors.append(f"conciseness_contract_missing:{key}")
     if conciseness.get("internal_gate_dump_by_default") is not False:
         errors.append("internal_gate_dump_must_be_false_by_default")
+
+    final_docx = contract.get("final_docx_set_validation") or {}
+    if final_docx.get("owner") != "RESULT_DELIVERY":
+        errors.append("final_docx_owner_must_be_result_delivery")
+    if final_docx.get("validator") != "TOOLS/final_docx_set.py":
+        errors.append("final_docx_validator_binding_missing")
+    if final_docx.get("verification_phase") != "POST_RENDER_POST_PUBLISH_PRE_DELIVERY":
+        errors.append("final_docx_verification_phase_invalid")
+    derivation = final_docx.get("required_kind_derivation") or {}
+    for kind in ["implementation_notes", "manual_transfer", "requirements", "line_by_line", "combined_alternate"]:
+        if not derivation.get(kind):
+            errors.append(f"final_docx_required_kind_derivation_missing:{kind}")
+    if "never substitutes" not in str(derivation.get("combined_alternate") or ""):
+        errors.append("final_docx_combined_alternate_must_not_replace_separate_docs")
+    binding = final_docx.get("current_binding") or {}
+    if binding.get("marker") != "ONEC_RESULT_DELIVERY_BINDING_V1:":
+        errors.append("final_docx_binding_marker_invalid")
+    expected_binding_fields = [
+        "task_id",
+        "candidate_sha256",
+        "package_binding_sha256",
+        "change_items_sha256",
+        "result_mode",
+        "artifact_kind",
+    ]
+    if binding.get("fields") != expected_binding_fields:
+        errors.append(f"final_docx_binding_fields:{binding.get('fields')}")
+    if "circular hashing" not in str(binding.get("package_binding_rule") or ""):
+        errors.append("final_docx_package_binding_circularity_rule_missing")
+    publication = final_docx.get("publication_binding") or {}
+    if "REQUIRES_ROUTE_E2E" not in str(publication.get("platform_attachment") or ""):
+        errors.append("final_docx_platform_attachment_route_e2e_missing")
+    receipt = final_docx.get("receipt") or {}
+    if receipt.get("receipt_kind") != "FINAL_DOCX_SET" or receipt.get("schema_version") != 1:
+        errors.append("final_docx_receipt_contract_invalid")
+    proof_boundary = "\n".join(final_docx.get("proof_boundary") or [])
+    for anchor in [
+        "do not prove semantic fidelity",
+        "existing delivery semantic review",
+        "does not prove applied target",
+        "REQUIRES_ROUTE_E2E",
+    ]:
+        if anchor not in proof_boundary:
+            errors.append(f"final_docx_proof_boundary_missing:{anchor}")
+    ordering = "\n".join(final_docx.get("ordering_rules") or [])
+    for anchor in [
+        "render all required separate DOCX",
+        "publish/resolve their final references",
+        "run final_docx_set validator",
+        "only then deliver",
+        "pre-render release receipt",
+    ]:
+        if anchor not in ordering:
+            errors.append(f"final_docx_ordering_rule_missing:{anchor}")
     return errors
 
 
@@ -361,7 +416,7 @@ def main() -> int:
             controls[case_id]["details"] = details
         if not ok:
             errors.append(f"control_failed:{case_id}")
-    for path in [CONTRACT_PATH, GUIDE_PATH, SKILL_PATH, PIPELINE_PATH, CHANGE_PACKAGE_PATH, REQUIREMENTS_ARTIFACT_TEMPLATE_PATH, MANUAL_TRANSFER_TEMPLATE_PATH, README_PATH, PUBLIC_WORKFLOW_PATH, PUBLIC_CI_INVENTORY_PATH]:
+    for path in [CONTRACT_PATH, GUIDE_PATH, SKILL_PATH, PIPELINE_PATH, CHANGE_PACKAGE_PATH, REQUIREMENTS_ARTIFACT_TEMPLATE_PATH, MANUAL_TRANSFER_TEMPLATE_PATH, README_PATH, PUBLIC_WORKFLOW_PATH, PUBLIC_CI_INVENTORY_PATH, FINAL_DOCX_VALIDATOR_PATH]:
         if not path.is_file():
             errors.append(f"missing:{path.relative_to(ROOT)}")
     if errors:
@@ -648,6 +703,11 @@ def main() -> int:
         "Измеренное ускорение не доказано.",
         "RUNTIME_ADAPTER",
         "The projection cannot change `implementation_readiness` or the final `release_outcome`",
+        "### Финальная проверка набора DOCX",
+        "TOOLS/final_docx_set.py",
+        "POST_RENDER_POST_PUBLISH_PRE_DELIVERY",
+        "ONEC_RESULT_DELIVERY_BINDING_V1:",
+        "REQUIRES_ROUTE_E2E",
     ]:
         if anchor not in guide:
             errors.append(f"result_delivery_guide_implementation_notes_missing:{anchor}")
@@ -670,6 +730,16 @@ def main() -> int:
         or len(result_delivery_inventory_rows) != 1
     ):
         errors.append("result_delivery_regression_not_executed_by_public_fast")
+
+    final_docx_inventory_rows = [
+        row for row in public_inventory.get("checks", [])
+        if row.get("id") == "final_docx_set"
+        and row.get("phase") == "FAST"
+        and row.get("scope") == "PUBLIC_SHAREABLE_CORE_ONLY"
+        and row.get("command") == ["{python}", "TESTS/run_final_docx_set_regression.py"]
+    ]
+    if len(final_docx_inventory_rows) != 1:
+        errors.append("final_docx_set_regression_not_executed_by_public_fast")
 
     print(json.dumps({"result": "PASS" if not errors else "FAIL", "errors": errors, "controls": controls}, ensure_ascii=False, indent=2))
     return 0 if not errors else 2
