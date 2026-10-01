@@ -3628,7 +3628,9 @@
         "patterns": [
           "Новый\\s+Структура",
           "ТаблицаЗначений",
-          "Соответствие"
+          "Соответствие",
+          "ТипЗнч\\s*\\(\\s*[A-Za-zА-Яа-яЁё_][\\wА-Яа-яЁё]*\\s*\\)\\s*=\\s*Тип\\s*\\(\\s*\"Структура\"\\s*\\)",
+          "Тип\\s*\\(\\s*\"Структура\"\\s*\\)\\s*=\\s*ТипЗнч\\s*\\(\\s*[A-Za-zА-Яа-яЁё_][\\wА-Яа-яЁё]*\\s*\\)"
         ],
         "status_on_match": "REQUIRED"
       },
@@ -3682,6 +3684,16 @@
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true
+        },
+        {
+          "id": "STRUCTURED_CONTRACT_P07",
+          "question": "For Structure-like .Свойство(..., outVar), is presence kept separate from value type so every reachable bare Boolean consumption is preceded by a proven Boolean domain or explicit Boolean normalization?",
+          "kind": "PROFILE",
+          "blocking": true,
+          "evidence_required": true,
+          "machine_finding_types": [
+            "STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN"
+          ]
         }
       ],
       "regression": {
@@ -3689,7 +3701,8 @@
           "all_onec_profile_rules_route"
         ],
         "enforcement_cases": [
-          "check:STRUCTURED_CONTRACT_P01"
+          "check:STRUCTURED_CONTRACT_P01",
+          "check:STRUCTURED_CONTRACT_P07"
         ]
       }
     },

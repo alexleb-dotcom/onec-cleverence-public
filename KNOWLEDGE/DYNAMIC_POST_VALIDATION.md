@@ -44,6 +44,7 @@ Classify each dot access as:
 - query alias field;
 - query multi-hop dereference;
 - unresolved.
+- Structure-like `.Свойство(..., outVar)` reads: presence and out-value type are separate facts; track the local out value to any later bare Boolean condition and require Boolean normalization/type proof on the reachable path.
 
 ## Pass C — trigger official standards
 
@@ -80,7 +81,7 @@ Try to invalidate the chosen solution:
 ## Pass F — post-change rescan
 
 Repeat Pass A on the final code.
-Delivery is blocked if a HIGH finding remains without explicit justification.
+Delivery is blocked if a HIGH finding remains without explicit justification. `STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN` is a property-scoped HIGH finding only when the receiver is locally proven Structure-like (`Новый Структура` or an active exact `ТипЗнч(...)=Тип("Структура")` guard); a generic `.Свойство` method name with unresolved receiver type is REVIEW-only and does not import Structure absent-key semantics. The exact finding may be resolved through the existing claim-bound SOURCE_REQUIRED/SEMANTIC evidence path when current source/API evidence proves the specific out value is Boolean. This proves only the bounded same-routine property, not general BSL type safety.
 Previously gathered evidence may be cited again only when its declared dependency hashes/versions remain unchanged.
 
 

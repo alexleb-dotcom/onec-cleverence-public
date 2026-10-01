@@ -164,6 +164,16 @@
       ]
     },
     {
+      "id": "onec_bsl_structure_property_boolean",
+      "order": 115,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_onec_bsl_structure_property_regression.py"
+      ]
+    },
+    {
       "id": "llm_anti_bypass",
       "order": 120,
       "phase": "FAST",
