@@ -6,6 +6,16 @@ import argparse
 import json
 import re
 
+DELIVERY_BINDING_PREFIX = "ONEC_RESULT_DELIVERY_BINDING_V1:"
+DELIVERY_BINDING_FIELDS = (
+    "task_id",
+    "candidate_sha256",
+    "package_binding_sha256",
+    "change_items_sha256",
+    "result_mode",
+)
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
 try:
     from docx import Document
     from docx.enum.section import WD_ORIENT
@@ -50,6 +60,29 @@ def _safe_filename(name: str) -> str:
 def canonical_filename(artifact: str, payload: dict) -> str:
     requested = payload.get("filename")
     return _safe_filename(requested) if requested else ARTIFACTS[artifact]
+
+
+def _delivery_binding_token(artifact: str, payload: dict) -> str | None:
+    binding = payload.get("delivery_binding")
+    if binding in (None, {}):
+        return None
+    if not isinstance(binding, dict):
+        raise ValueError("delivery_binding must be an object")
+    missing = [field for field in DELIVERY_BINDING_FIELDS if binding.get(field) in (None, "")]
+    if missing:
+        raise ValueError("delivery_binding missing fields: " + ", ".join(missing))
+    for field in ("candidate_sha256", "package_binding_sha256", "change_items_sha256"):
+        value = str(binding.get(field) or "")
+        if not SHA256_RE.fullmatch(value):
+            raise ValueError(f"delivery_binding {field} must be lowercase sha256")
+    normalized = {field: str(binding[field]) for field in DELIVERY_BINDING_FIELDS}
+    normalized["artifact_kind"] = artifact
+    return DELIVERY_BINDING_PREFIX + json.dumps(
+        normalized,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 def _base(title: str) -> Document:
@@ -382,6 +415,11 @@ def render_artifact(artifact: str, payload: dict, output_dir: Path) -> Path:
         raise ValueError("output filename escapes output directory")
     doc = RENDERERS[artifact](payload)
     doc.core_properties.subject = "User-facing projection; canonical requirements/proof owners remain external"
+    binding_token = _delivery_binding_token(artifact, payload)
+    if binding_token is not None:
+        # Invisible file-bound identity used only by the existing Result Delivery
+        # final-set verifier. It does not create semantic or release proof.
+        doc.core_properties.identifier = binding_token
     doc.save(output)
     return output
 
