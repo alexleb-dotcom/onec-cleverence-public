@@ -1805,8 +1805,8 @@
     },
     {
       "path": "TESTS/run_onec_bsl_structure_property_regression.py",
-      "size": 11003,
-      "sha256": "42ce2cd60dcf7f1c31925fb044349d6e3ed1009c4d92adf8098895c067206477"
+      "size": 14381,
+      "sha256": "267f41e76d52abebd043a3d7b3a982587ded9ab1caa37f4c7ba2bfc0f41877b7"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -1960,8 +1960,8 @@
     },
     {
       "path": "TOOLS/analyze_onec_bsl.py",
-      "size": 99445,
-      "sha256": "22d91924fda950099637f309384e04a7ab153660fb34c2c3062d9b8f84735710"
+      "size": 100241,
+      "sha256": "6f608e4ae51776673fd97875cc4cb14b2d6222adb1e0063a0fd288a8a27fbd91"
     },
     {
       "path": "TOOLS/analyze_onec_field_flow.py",
@@ -2245,5 +2245,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "423fad871189083341155a6b1cf784736f30b416b26eed40fbd102b52c5d956f"
+  "snapshot_digest": "9b817a2e41cabc3278e89c9e6fa88441cf24db33f48e9de6d5b109ee914cea8e"
 }
