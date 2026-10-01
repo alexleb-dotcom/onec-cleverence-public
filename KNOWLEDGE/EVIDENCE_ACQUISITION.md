@@ -30,6 +30,17 @@ Finding another unrelated file/symbol, repeating a green result on unchanged byt
 
 After repeated non-progress, reassess source/strategy and allow one bounded discriminating retrace for the same claim. If it still does not advance, keep the affected claim unresolved, close independent work and request the smallest exact evidence/input/experiment that can decide it.
 
+## Hard source-dependent implementation admission
+
+A diagnostic hypothesis may remain `EVIDENCE_REQUIRED`, but final implementation may not consume it as fact. Before final code, an Implementation Intent/change item, or a manual-transfer changed-code step is admitted, enumerate every material dependency on an attribute, parameter, signature, query mode, standard object/API behavior or equivalent source fact under the existing `ANALOG_BEFORE_INVENTION / SOURCE_DEPENDENT_IMPLEMENTATION_GATE` owner.
+
+Each dependency is bound to the exact admitted change scope and is either:
+
+- `PROVEN` by exact current source evidence already accepted by the existing proof path; or
+- `EVIDENCE_REQUIRED`, which keeps implementation admission blocked while still allowing diagnosis/evidence acquisition to continue.
+
+Narrative, provider summaries, naming conventions and a search miss are not exact current source. Do not convert them into code literals, parameter modes, signatures, query filters or standard-mechanism assumptions.
+
 ## Returned requested input resumes the active task
 
 When the user returns an answer, source file, archive, log, runtime result or other artifact that was previously requested for the active task:

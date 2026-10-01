@@ -468,6 +468,166 @@ def structure_property_out_param_boolean_findings(block):
 
     return findings
 
+def value_table_tri_state_boolean_findings(block):
+    """Bounded local ValueTable tri-state Boolean detector."""
+    raw_lines=block["text"].splitlines()
+    ident=r'[A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*'
+    table_new_re=re.compile(rf'^\s*(?P<table>{ident})\s*=\s*Новый\s+ТаблицаЗначений\b',re.I)
+    column_re=re.compile(rf'(?P<table>{ident})\s*\.\s*Колонки\s*\.\s*Добавить\s*\(\s*"(?P<col>[^"]+)"(?P<tail>.*)$',re.I)
+    add_re=re.compile(rf'^\s*(?P<row>{ident})\s*=\s*(?P<table>{ident})\s*\.\s*Добавить\s*\(\s*\)',re.I)
+    row_assign_re=re.compile(rf'^\s*(?P<row>{ident})\s*\.\s*(?P<col>{ident})\s*=\s*(?P<rhs>.*?)\s*;?\s*$',re.I)
+    loop_re=re.compile(rf'^\s*Для\s+Каждого\s+(?P<row>{ident})\s+Из\s+(?P<table>{ident})\s+Цикл\b',re.I)
+    bare_re=re.compile(rf'^\s*(?:Если|ИначеЕсли)\s+(?:НЕ\s+)?(?P<row>{ident})\s*\.\s*(?P<col>{ident})\s+Тогда\b',re.I)
+    bool_guard_re=re.compile(
+        rf'(?:ТипЗнч\s*\(\s*(?P<r1>{ident})\s*\.\s*(?P<c1>{ident})\s*\)\s*=\s*Тип\s*\(\s*"Булево"\s*\)'
+        rf'|Тип\s*\(\s*"Булево"\s*\)\s*=\s*ТипЗнч\s*\(\s*(?P<r2>{ident})\s*\.\s*(?P<c2>{ident})\s*\))',
+        re.I,
+    )
+
+    tables={}
+    row_events={}
+    active_loop=None
+    if_guard_stack=[]
+    findings=[]
+
+    def bool_rhs(rhs):
+        value=str(rhs or "").strip().rstrip(";")
+        return bool(
+            re.fullmatch(r'(?i)(Истина|Ложь)',value)
+            or (value.startswith("?(") and "Ложь" in value and ("Истина" in value or "Тип(\"Булево\")" in value))
+            or re.match(r'(?i)^Булево\s*\(',value)
+        )
+
+    for offset,raw in enumerate(raw_lines):
+        code=raw.split("//",1)[0].strip()
+        if not code:
+            continue
+        m=table_new_re.match(code)
+        if m:
+            tables[m.group("table").lower()]={"name":m.group("table"),"columns":{},"events":[]}
+            continue
+        m=column_re.search(code)
+        if m and m.group("table").lower() in tables:
+            table=tables[m.group("table").lower()]
+            table["columns"][m.group("col").lower()]={
+                "name":m.group("col"),
+                "boolean_typed":bool(re.search(r'(?i)\bБулево\b',m.group("tail") or "")),
+                "line":block["start_line"]+offset,
+            }
+            continue
+        m=add_re.match(code)
+        if m and m.group("table").lower() in tables:
+            event={"table":m.group("table").lower(),"initialized":set(),"line":block["start_line"]+offset}
+            tables[event["table"]]["events"].append(event)
+            row_events[m.group("row").lower()]=event
+            continue
+        m=row_assign_re.match(code)
+        if m:
+            row_key=m.group("row").lower()
+            col_key=m.group("col").lower()
+            if row_key in row_events and bool_rhs(m.group("rhs")):
+                row_events[row_key]["initialized"].add(col_key)
+            if active_loop and row_key==active_loop["row"] and bool_rhs(m.group("rhs")):
+                active_loop["normalized"].add(col_key)
+
+        if re.match(r'(?i)^КонецЦикла\b',code):
+            active_loop=None
+            if_guard_stack=[]
+            continue
+        lm=loop_re.match(code)
+        if lm and lm.group("table").lower() in tables:
+            active_loop={"row":lm.group("row").lower(),"table":lm.group("table").lower(),"normalized":set()}
+            if_guard_stack=[]
+            continue
+        if active_loop is None:
+            continue
+
+        is_if=bool(re.match(r'(?i)^Если\b',code))
+        is_elseif=bool(re.match(r'(?i)^ИначеЕсли\b',code))
+        is_else=bool(re.match(r'(?i)^Иначе\b',code))
+        is_endif=bool(re.match(r'(?i)^КонецЕсли\b',code))
+        if is_endif or is_elseif or is_else:
+            if if_guard_stack:
+                if_guard_stack.pop()
+        active_guards=set().union(*if_guard_stack) if if_guard_stack else set()
+        current_guards=set()
+        if is_if or is_elseif:
+            for gm in bool_guard_re.finditer(code):
+                row=(gm.group("r1") or gm.group("r2") or "").lower()
+                col=(gm.group("c1") or gm.group("c2") or "").lower()
+                if row==active_loop["row"] and col:
+                    current_guards.add(col)
+
+        bm=bare_re.match(code)
+        if bm and bm.group("row").lower()==active_loop["row"]:
+            col=bm.group("col").lower()
+            table=tables[active_loop["table"]]
+            schema=table["columns"].get(col)
+            if schema is not None:
+                all_initialized=bool(table["events"]) and all(col in event["initialized"] for event in table["events"])
+                safe=(schema["boolean_typed"] and all_initialized) or col in active_loop["normalized"] or col in active_guards or col in current_guards
+                if not safe:
+                    findings.append({
+                        "severity":"HIGH",
+                        "type":"VALUE_TABLE_TRI_STATE_BOOLEAN",
+                        "procedure":block["name"],
+                        "line":block["start_line"]+offset,
+                        "table":table["name"],
+                        "row_variable":bm.group("row"),
+                        "column":schema["name"],
+                        "column_line":schema["line"],
+                        "boolean_typed":schema["boolean_typed"],
+                        "all_local_added_rows_initialized":all_initialized,
+                        "code":raw.strip()[:220],
+                        "note":"A locally proven ValueTable column reaches bare Boolean consumption without a bounded proof that Undefined is impossible.",
+                    })
+        if is_if or is_elseif or is_else:
+            if_guard_stack.append(current_guards)
+    return findings
+
+
+def standard_fill_destructive_rewrite_findings(block):
+    """Review-only lexical signal for standard fill followed by destructive rebuild."""
+    raw_lines=block["text"].splitlines()
+    ident=r'[A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*'
+    fill_re=re.compile(rf'(?P<owner>{ident}(?:\s*\.\s*{ident})*)\s*\.\s*(?P<method>{ident})\s*\(\s*(?P<table>{ident})\b',re.I)
+    clear_re=re.compile(rf'^\s*(?P<table>{ident})\s*\.\s*Очистить\s*\(\s*\)',re.I)
+    rebuild_re=re.compile(rf'^\s*(?P<table>{ident})\s*=\s*Новый\s+ТаблицаЗначений\b',re.I)
+    filled={}
+    findings=[]
+    for offset,raw in enumerate(raw_lines):
+        code=raw.split("//",1)[0].strip()
+        for fm in fill_re.finditer(code):
+            owner=re.sub(r'\s+','',fm.group("owner"))
+            method=fm.group("method")
+            if re.search(r'(?i)(Стандарт|Типов)',owner) and re.search(r'(?i)Заполн',method):
+                filled[fm.group("table").lower()]={
+                    "table":fm.group("table"),
+                    "fill_line":block["start_line"]+offset,
+                    "owner":owner,
+                    "method":method,
+                }
+        cm=clear_re.match(code)
+        rm=rebuild_re.match(code)
+        match=cm or rm
+        if match and match.group("table").lower() in filled:
+            src=filled[match.group("table").lower()]
+            findings.append({
+                "severity":"REVIEW",
+                "type":"STANDARD_FILL_DESTRUCTIVE_REWRITE_REVIEW",
+                "procedure":block["name"],
+                "line":block["start_line"]+offset,
+                "fill_line":src["fill_line"],
+                "table":src["table"],
+                "fill_owner":src["owner"],
+                "fill_method":src["method"],
+                "rewrite_kind":"CLEAR" if cm else "REBUILD_NEW_VALUE_TABLE",
+                "code":raw.strip()[:220],
+                "note":"A same-routine standard/typical-named fill is followed by destructive row reset. Review under STANDARD_PIPELINE_SEMANTIC_PRESERVATION.",
+            })
+    return findings
+
+
 def structure_constructor_findings(block):
     findings=[]
     # Safe heuristic for common pattern Новый Структура("A,B,C,D", value...).
@@ -1782,6 +1942,14 @@ def analyze(path,bare_symbol_scope_complete=False,known_symbols=None,changed_lin
         structure_property_bool_hits = structure_property_out_param_boolean_findings(b)
         if structure_property_bool_hits:
             result["findings"].extend(structure_property_bool_hits)
+
+        value_table_bool_hits = value_table_tri_state_boolean_findings(b)
+        if value_table_bool_hits:
+            result["findings"].extend(value_table_bool_hits)
+
+        standard_rewrite_hits = standard_fill_destructive_rewrite_findings(b)
+        if standard_rewrite_hits:
+            result["findings"].extend(standard_rewrite_hits)
 
         structure_hits = structure_constructor_findings(b)
         if structure_hits:

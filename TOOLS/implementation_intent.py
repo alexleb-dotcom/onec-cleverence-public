@@ -23,7 +23,10 @@ from semantic_proof_verifier import validate_independent_reviews
 SCHEMA_VERSION=3
 EXISTING_CAPABILITY_RULE_ID="ANALOG_BEFORE_INVENTION"
 STANDARD_CAPABILITY_CHECK_ID="STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION"
+SOURCE_DEPENDENT_CHECK_ID="SOURCE_DEPENDENT_IMPLEMENTATION_GATE"
 STANDARD_PIPELINE_RULE_ID="STANDARD_PIPELINE_SEMANTIC_PRESERVATION"
+SOURCE_DEPENDENCY_STATUSES={"PROVEN","EVIDENCE_REQUIRED"}
+SOURCE_DEPENDENCY_FACT_KINDS={"ATTRIBUTE","PARAMETER","SIGNATURE","QUERY_MODE","STANDARD_API_BEHAVIOR","OBJECT_BEHAVIOR","SOURCE_FACT"}
 EXISTING_CAPABILITY_DISPOSITIONS={"REUSE_EXISTING","EXTEND_EXISTING","CUSTOM_REQUIRED","EVIDENCE_REQUIRED"}
 SOURCE_PROVENANCE_VERIFIER_ID="release_gate_core.source_identity"
 SOURCE_PROVENANCE_VERSION=1
@@ -426,6 +429,9 @@ def validate_implementation_admission(plan:dict,ledger:dict|None)->dict:
     standard_check=next((x for x in analog.get("checks") or [] if isinstance(x,dict) and x.get("id")==STANDARD_CAPABILITY_CHECK_ID),None)
     if standard_check is None:errors.append({"type":"IMPLEMENTATION_ADMISSION_STANDARD_CAPABILITY_CHECK_MISSING"})
     else:exact_refs.update(_claim_ready(standard_check,ledger,plan,errors,"standard_capability_check",EXISTING_CAPABILITY_RULE_ID,STANDARD_CAPABILITY_CHECK_ID))
+    source_gate=next((x for x in analog.get("checks") or [] if isinstance(x,dict) and x.get("id")==SOURCE_DEPENDENT_CHECK_ID),None)
+    if source_gate is None:errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENT_CHECK_MISSING"})
+    else:exact_refs.update(_claim_ready(source_gate,ledger,plan,errors,"source_dependent_implementation_check",EXISTING_CAPABILITY_RULE_ID,SOURCE_DEPENDENT_CHECK_ID))
 
     disposition=analog.get("existing_capability_disposition")
     if not isinstance(disposition,dict):errors.append({"type":"IMPLEMENTATION_ADMISSION_DISPOSITION_MISSING"});disposition={}
@@ -466,6 +472,41 @@ def validate_implementation_admission(plan:dict,ledger:dict|None)->dict:
     gaps=disposition.get("gap")
     if not isinstance(gaps,list):errors.append({"type":"IMPLEMENTATION_ADMISSION_GAP_INVALID"});gaps=[]
     global_scope=_normalize_scope(disposition.get("change_scope") or [],errors,"change_scope");gap_scope=[]
+
+    source_dependencies=disposition.get("source_dependencies",[])
+    source_dependency_ids=[]
+    if not isinstance(source_dependencies,list):
+        errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCIES_INVALID"});source_dependencies=[]
+    seen_dependency_ids=set()
+    for index,dependency in enumerate(source_dependencies):
+        if not isinstance(dependency,dict):
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_ROW_INVALID","index":index});continue
+        dep_id=dependency.get("id");fact_kind=dependency.get("fact_kind");statement=dependency.get("statement");status=dependency.get("status")
+        if not _text(dep_id) or dep_id in seen_dependency_ids:
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_ID_INVALID","index":index,"id":dep_id});continue
+        seen_dependency_ids.add(dep_id);source_dependency_ids.append(dep_id)
+        if fact_kind not in SOURCE_DEPENDENCY_FACT_KINDS:
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_FACT_KIND_INVALID","index":index,"id":dep_id,"actual":fact_kind})
+        if not _text(statement):
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_STATEMENT_MISSING","index":index,"id":dep_id})
+        if status not in SOURCE_DEPENDENCY_STATUSES:
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_STATUS_INVALID","index":index,"id":dep_id,"actual":status})
+        dep_scope=_normalize_scope(dependency.get("change_scope") or [],errors,f"source_dependency:{dep_id}")
+        if not dep_scope:
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_SCOPE_MISSING","index":index,"id":dep_id})
+        for item in dep_scope:
+            if item not in global_scope:
+                errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_SCOPE_OUTSIDE_CHANGE","index":index,"id":dep_id,"scope":item})
+        refs=_refs_list(dependency.get("proof_refs"))
+        if status=="EVIDENCE_REQUIRED":
+            errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_UNPROVEN","index":index,"id":dep_id,"fact_kind":fact_kind})
+        elif status=="PROVEN":
+            if not refs:
+                errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_PROOF_MISSING","index":index,"id":dep_id})
+            for ref in refs:
+                if ref not in exact_refs:
+                    errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENCY_PROOF_REF_NOT_EXACT_CURRENT_SOURCE","index":index,"id":dep_id,"ref":ref})
+
     if value in {"EXTEND_EXISTING","CUSTOM_REQUIRED"}:
         if not gaps:errors.append({"type":"IMPLEMENTATION_ADMISSION_GAP_MISSING"})
         for index,gap in enumerate(gaps):
@@ -509,7 +550,7 @@ def validate_implementation_admission(plan:dict,ledger:dict|None)->dict:
                 if isinstance(check,dict):_claim_ready(check,ledger,plan,errors,"standard_pipeline_check",STANDARD_PIPELINE_RULE_ID,check.get("id"))
 
     if value=="EVIDENCE_REQUIRED":errors.append({"type":"IMPLEMENTATION_ADMISSION_EVIDENCE_REQUIRED"})
-    return {"result":"IMPLEMENTATION_ADMISSION_READY" if not errors else "IMPLEMENTATION_ADMISSION_BLOCKED","claim_id":expected_claim,"disposition":value,"target_identity_ref":target_identity,"change_scope":global_scope,"owner_exception_scope":duplicate_scope,"errors":errors}
+    return {"result":"IMPLEMENTATION_ADMISSION_READY" if not errors else "IMPLEMENTATION_ADMISSION_BLOCKED","claim_id":expected_claim,"disposition":value,"target_identity_ref":target_identity,"change_scope":global_scope,"owner_exception_scope":duplicate_scope,"source_dependency_ids":source_dependency_ids,"errors":errors}
 
 
 def validate_intent_map(intent:dict|None,plan:dict,ledger:dict|None=None)->dict:

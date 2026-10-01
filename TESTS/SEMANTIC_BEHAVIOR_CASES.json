@@ -1223,6 +1223,150 @@
         "boolean_domain_proven": false,
         "boolean_normalized": true
       }
+    },
+    {
+      "id": "SOURCE_DEPENDENT_IMPLEMENTATION_REQUIRES_EXACT_SOURCE",
+      "oracle": "source_dependent_implementation",
+      "bad": {
+        "material_source_dependency": true,
+        "final_implementation_admitted": true,
+        "exact_current_source_proven": false,
+        "narrative_only": true
+      },
+      "good": {
+        "material_source_dependency": true,
+        "final_implementation_admitted": true,
+        "exact_current_source_proven": true,
+        "narrative_only": false
+      }
+    },
+    {
+      "id": "MULTISTAGE_RESELECTION_REQUIRES_END_TO_END_IDENTITY_FILTER",
+      "oracle": "standard_pipeline_stage_closure",
+      "bad": {
+        "material_stages": [
+          "header_selection",
+          "line_reselection",
+          "final_reselection"
+        ],
+        "identity_filter_proven_stages": [
+          "header_selection"
+        ],
+        "mechanism_trace": [
+          "source_business_identity",
+          "entry_caller",
+          "target_initialization",
+          "selection_reselection_stages"
+        ]
+      },
+      "good": {
+        "material_stages": [
+          "header_selection",
+          "line_reselection",
+          "final_reselection"
+        ],
+        "identity_filter_proven_stages": [
+          "header_selection",
+          "line_reselection",
+          "final_reselection"
+        ],
+        "mechanism_trace": [
+          "source_business_identity",
+          "entry_caller",
+          "target_initialization",
+          "selection_reselection_stages",
+          "standard_owned_fields",
+          "requirement_owned_fields",
+          "later_writers_finalizers"
+        ]
+      }
+    },
+    {
+      "id": "FIELD_OWNERSHIP_PRESERVE_STANDARD_OVERLAY_REQUIREMENT",
+      "oracle": "field_ownership_projection",
+      "bad": {
+        "fields": [
+          {
+            "target_field": "Номенклатура",
+            "requirement_source": "standard pipeline",
+            "typical_producer": "typical fill",
+            "final_owner_finalizer": "postprocess",
+            "ownership": "STANDARD_OWNED",
+            "action": "OVERWRITE_CUSTOM"
+          },
+          {
+            "target_field": "Количество",
+            "requirement_source": "requirement source",
+            "typical_producer": "typical fill",
+            "final_owner_finalizer": "postprocess",
+            "ownership": "REQUIREMENT_OWNED",
+            "action": "OVERLAY_FROM_SOURCE",
+            "source_of_truth_proven": false
+          }
+        ]
+      },
+      "good": {
+        "fields": [
+          {
+            "target_field": "Номенклатура",
+            "requirement_source": "standard pipeline",
+            "typical_producer": "typical fill",
+            "final_owner_finalizer": "postprocess",
+            "ownership": "STANDARD_OWNED",
+            "action": "PRESERVE_TYPICAL"
+          },
+          {
+            "target_field": "Количество",
+            "requirement_source": "requirement source",
+            "typical_producer": "typical fill",
+            "final_owner_finalizer": "postprocess",
+            "ownership": "REQUIREMENT_OWNED",
+            "action": "OVERLAY_FROM_SOURCE",
+            "source_of_truth_proven": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "STANDARD_FILL_DESTRUCTIVE_REWRITE_REQUIRES_RESTORATION",
+      "oracle": "standard_row_rewrite",
+      "bad": {
+        "standard_fill_created_rows": true,
+        "destructive_rewrite_after_fill": true,
+        "all_standard_fields_restored": false,
+        "business_fields_restored": true,
+        "row_identity_preserved": false
+      },
+      "good": {
+        "standard_fill_created_rows": true,
+        "destructive_rewrite_after_fill": false,
+        "all_standard_fields_restored": false,
+        "business_fields_restored": false,
+        "row_identity_preserved": true,
+        "preferred_pattern": "Typical skeleton + requirement-owned overlay"
+      }
+    },
+    {
+      "id": "VALUE_TABLE_TRI_STATE_DIRECT_BOOLEAN",
+      "oracle": "value_table_tri_state_contract",
+      "bad": {
+        "proven_value_table_column": true,
+        "direct_boolean_consumption": true,
+        "undefined_reachable": true,
+        "boolean_type_and_initialization_proven": false,
+        "boolean_normalized": false,
+        "explicit_boolean_comparison_or_type_guard": false,
+        "exact_boolean_source_contract": false
+      },
+      "good": {
+        "proven_value_table_column": true,
+        "direct_boolean_consumption": true,
+        "undefined_reachable": false,
+        "boolean_type_and_initialization_proven": true,
+        "boolean_normalized": false,
+        "explicit_boolean_comparison_or_type_guard": false,
+        "exact_boolean_source_contract": false
+      }
     }
   ]
 }
