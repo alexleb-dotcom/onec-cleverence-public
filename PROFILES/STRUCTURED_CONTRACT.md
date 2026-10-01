@@ -34,7 +34,7 @@ Safe patterns keep these facts separate:
 - after a two-argument read, normalize the value to an explicit Boolean before a later bare Boolean condition; or
 - guard the exact consumption path with a simple proven Boolean type contract, such as `ТипЗнч(value) = Тип("Булево")`.
 
-A prior variable name, a presence check, or an initialization that does not survive the method result is not Boolean-domain proof. Ambiguous aliases/interprocedural contracts remain semantic review; the deterministic analyzer only blocks the bounded high-confidence local pattern.
+A prior variable name, a presence check, or an initialization that does not survive the method result is not Boolean-domain proof. The deterministic HIGH finding applies only when the receiver is mechanically Structure-like through a local `Новый Структура` value or an active exact `ТипЗнч(receiver) = Тип("Структура")` guard. A generic API method named `.Свойство` does not inherit the platform Structure contract from its name; unresolved receiver type is review-only. If exact current source/API evidence proves that the specific out value is Boolean, resolve the exact machine-finding claim through the existing SOURCE_REQUIRED/SEMANTIC proof path rather than adding a new suppression/state mechanism. Ambiguous aliases/interprocedural contracts remain semantic review.
 
 Supporting typification guidance is indexed as `V8_CODE_STYLE_TYPIFICATION` in `KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json`. It is supporting guidance, not a replacement for the actual platform/Syntax Assistant method contract.
 
