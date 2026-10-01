@@ -584,7 +584,8 @@
       "detect": [
         "Новый\\s+Структура",
         "ТаблицаЗначений",
-        "Соответствие"
+        "Соответствие",
+        "\\.Свойство\\s*\\([^\\n,]+,\\s*[A-Za-zА-Яа-яЁё_][\\wА-Яа-яЁё]*\\s*\\)"
       ],
       "detect_paths": [],
       "standards": [
@@ -598,7 +599,8 @@
         "no dynamic property drift",
         "export API documents fields/types",
         "caller/callee contract names match",
-        "service fields survive transformations"
+        "service fields survive transformations",
+        "For Structure-like .Свойство(..., outVar), is presence kept separate from value type so every reachable bare Boolean consumption is preceded by a proven Boolean domain or explicit Boolean normalization?"
       ],
       "rule_id": "STRUCTURED_CONTRACT",
       "proof_policy": {
