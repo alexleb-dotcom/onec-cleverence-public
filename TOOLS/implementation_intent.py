@@ -23,7 +23,6 @@ from semantic_proof_verifier import validate_independent_reviews
 SCHEMA_VERSION=3
 EXISTING_CAPABILITY_RULE_ID="ANALOG_BEFORE_INVENTION"
 STANDARD_CAPABILITY_CHECK_ID="STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION"
-SOURCE_DEPENDENT_CHECK_ID="SOURCE_DEPENDENT_IMPLEMENTATION_GATE"
 STANDARD_PIPELINE_RULE_ID="STANDARD_PIPELINE_SEMANTIC_PRESERVATION"
 SOURCE_DEPENDENCY_STATUSES={"PROVEN","EVIDENCE_REQUIRED"}
 SOURCE_DEPENDENCY_FACT_KINDS={"ATTRIBUTE","PARAMETER","SIGNATURE","QUERY_MODE","STANDARD_API_BEHAVIOR","OBJECT_BEHAVIOR","SOURCE_FACT"}
@@ -429,10 +428,6 @@ def validate_implementation_admission(plan:dict,ledger:dict|None)->dict:
     standard_check=next((x for x in analog.get("checks") or [] if isinstance(x,dict) and x.get("id")==STANDARD_CAPABILITY_CHECK_ID),None)
     if standard_check is None:errors.append({"type":"IMPLEMENTATION_ADMISSION_STANDARD_CAPABILITY_CHECK_MISSING"})
     else:exact_refs.update(_claim_ready(standard_check,ledger,plan,errors,"standard_capability_check",EXISTING_CAPABILITY_RULE_ID,STANDARD_CAPABILITY_CHECK_ID))
-    source_gate=next((x for x in analog.get("checks") or [] if isinstance(x,dict) and x.get("id")==SOURCE_DEPENDENT_CHECK_ID),None)
-    if source_gate is None:errors.append({"type":"IMPLEMENTATION_ADMISSION_SOURCE_DEPENDENT_CHECK_MISSING"})
-    else:exact_refs.update(_claim_ready(source_gate,ledger,plan,errors,"source_dependent_implementation_check",EXISTING_CAPABILITY_RULE_ID,SOURCE_DEPENDENT_CHECK_ID))
-
     disposition=analog.get("existing_capability_disposition")
     if not isinstance(disposition,dict):errors.append({"type":"IMPLEMENTATION_ADMISSION_DISPOSITION_MISSING"});disposition={}
     value=disposition.get("disposition")

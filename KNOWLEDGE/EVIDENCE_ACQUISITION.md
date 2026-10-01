@@ -32,7 +32,7 @@ After repeated non-progress, reassess source/strategy and allow one bounded disc
 
 ## Hard source-dependent implementation admission
 
-A diagnostic hypothesis may remain `EVIDENCE_REQUIRED`, but final implementation may not consume it as fact. Before final code, an Implementation Intent/change item, or a manual-transfer changed-code step is admitted, enumerate every material dependency on an attribute, parameter, signature, query mode, standard object/API behavior or equivalent source fact under the existing `ANALOG_BEFORE_INVENTION / SOURCE_DEPENDENT_IMPLEMENTATION_GATE` owner.
+A diagnostic hypothesis may remain `EVIDENCE_REQUIRED`, but final implementation may not consume it as fact. Before final code, an Implementation Intent/change item, or a manual-transfer changed-code step is admitted, enumerate every material dependency on an attribute, parameter, signature, query mode, standard object/API behavior or equivalent source fact under the existing `ANALOG_BEFORE_INVENTION / STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION` admission owner.
 
 Each dependency is bound to the exact admitted change scope and is either:
 

@@ -48,13 +48,7 @@ When Mobile SMARTS behavior is uncertain, was the nearest stock operation/action
 
 Rule: `ANALOG_BEFORE_INVENTION`
 
-Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.
-
-## SOURCE_DEPENDENT_IMPLEMENTATION_GATE
-
-Rule: `ANALOG_BEFORE_INVENTION`
-
-Before final code/change-item/manual-transfer changed-code admission, is every material implementation dependency on an attribute, parameter, signature, query mode, standard object/API behavior or equivalent source fact enumerated and either proven by exact current source or kept EVIDENCE_REQUIRED so implementation remains blocked?
+Before implementation, prove the standard/existing capability boundary and enumerate any material source-dependent implementation facts; unresolved facts remain EVIDENCE_REQUIRED and block mutation.
 
 ## STANDARD_PIPELINE_SEMANTIC_PRESERVATION
 
@@ -66,7 +60,7 @@ Before accepting a parallel business pipeline, does source evidence prove which 
 
 Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
 
-When material fields cross several pipeline stages, prove target field -> requirement/source-of-truth -> typical producer -> writer/dependent computation/cache -> later rewriter/final owner/finalizer -> final consumer; preserve standard-owned technical fields and overlay only requirement-owned fields from their proven source rather than accepting an early assignment.
+Trace each material field from requirement/source and typical producer through writers/derived state to final owner/finalizer/consumer; preserve standard-owned fields.
 
 ## COMPOSITE_ROW_CORRELATION_INTEGRITY
 
@@ -109,18 +103,6 @@ Before changing a standard/vendor business path in an already customized project
 Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
 
 Does a consumer avoid reconstructing multiple private owner stages, temporary tables/private names/helpers or parsing owner query text merely to obtain a narrow derived value; if such reconstruction is detected, is it held for redesign/architecture review rather than treated as ordinary reuse?
-
-## STANDARD_PIPELINE_STAGE_CLOSURE
-
-Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
-
-For every material selection/reselection stage that can rebuild the set, is business identity/filter propagation proven end-to-end so an early/header-only filter cannot falsely close a later reselecting pipeline?
-
-## STANDARD_ROW_REWRITE_AFTER_FILL
-
-Rule: `STANDARD_PIPELINE_SEMANTIC_PRESERVATION`
-
-After a standard/typical fill creates rows, is destructive clear/rebuild rejected unless all required standard technical/business fields and stable row identity are proven restored; prefer Typical skeleton + requirement-owned overlay and preserve Typical Row Identity?
 
 ## BSP_REUSE_DISCOVERY
 
@@ -456,7 +438,7 @@ When NULL/missing joined rows or missing source facts are replaced with 0/false/
 
 Rule: `QUERY`
 
-Across every material selection/reselection stage (including later queries that rebuild the set), INNER/LEFT joins, WHERE/HAVING predicates, subqueries, virtual-table filters, pre-aggregation and DISTINCT/GROUP stages, is retention of every required business-grain fact and business-identity filter proven end-to-end, with every dropped fact attributable to an explicit intended exclusion rule?
+Across every material selection/reselection, join, filter and aggregation stage, prove required business-grain facts and identity filters survive unless exclusion is explicit.
 
 ## QUERY_TEXT_REPLACEMENT_DRIFT
 

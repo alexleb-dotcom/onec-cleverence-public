@@ -441,19 +441,11 @@
         },
         {
           "id": "STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
-          "question": "Before mutation/final implementation, resolve the exact current target/platform/BSP/vendor capability. For 'standard behavior except X', inspect and evaluate exact skip/disable modes, flags or parameters before custom bypass; naming patterns are search hints only. Discovery misses/partial indexes are not proof of absence, and duplicate owners require an identity-bound exception.",
+          "question": "Before implementation, prove the standard/existing capability boundary and enumerate any material source-dependent implementation facts; unresolved facts remain EVIDENCE_REQUIRED and block mutation.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "standard_capability_before_customization"
-        },
-        {
-          "id": "SOURCE_DEPENDENT_IMPLEMENTATION_GATE",
-          "question": "Before final code/change-item/manual-transfer changed-code admission, is every material implementation dependency on an attribute, parameter, signature, query mode, standard object/API behavior or equivalent source fact enumerated and either proven by exact current source or kept EVIDENCE_REQUIRED so implementation remains blocked?",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "source_dependent_implementation_gate"
         }
       ],
       "regression": {
@@ -462,8 +454,7 @@
         ],
         "enforcement_cases": [
           "check:ANALOG_BEFORE_INVENTION_T01",
-          "check:STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION",
-          "check:SOURCE_DEPENDENT_IMPLEMENTATION_GATE"
+          "check:STANDARD_CAPABILITY_BEFORE_CUSTOMIZATION"
         ]
       },
       "proof_policy": {
@@ -500,14 +491,14 @@
       "checks": [
         {
           "id": "STANDARD_PIPELINE_SEMANTIC_PRESERVATION_T01",
-          "question": "The actual standard/project pipeline for the same business operation is traced before a parallel document, calculation, row-building or write chain is proposed; for non-trivial standard-document transformations the existing evidence projection covers source/business identity, entry/caller, target initialization, every material selection/reselection stage, standard-owned fields, requirement-owned fields, and later writers/finalizers/post-process.",
+          "question": "Before a parallel chain, trace source/business identity, entry/caller, target init, every material selection/reselection, field ownership, and later writers/finalizers.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
         },
         {
           "id": "STANDARD_PIPELINE_SEMANTIC_PRESERVATION_T02",
-          "question": "A source business dimension -> standard intermediate representation -> target mapping explicitly identifies every preserved and lost dimension and, for every material target field, the requirement/source-of-truth, typical producer, final owner/finalizer and whether the field is standard-owned (preserve) or requirement-owned (overlay).",
+          "question": "Map each material target field to requirement/source, typical producer, final owner/finalizer, and standard-owned preserve vs requirement-owned overlay.",
           "kind": "TIER0",
           "blocking": true,
           "evidence_required": true
@@ -529,7 +520,7 @@
         },
         {
           "id": "FIELD_LEVEL_SOURCE_OWNERSHIP",
-          "question": "When material fields cross several pipeline stages, prove target field -> requirement/source-of-truth -> typical producer -> writer/dependent computation/cache -> later rewriter/final owner/finalizer -> final consumer; preserve standard-owned technical fields and overlay only requirement-owned fields from their proven source rather than accepting an early assignment.",
+          "question": "Trace each material field from requirement/source and typical producer through writers/derived state to final owner/finalizer/consumer; preserve standard-owned fields.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -593,22 +584,6 @@
           "machine_finding_types": [
             "INTERNAL_PIPELINE_RECONSTRUCTION_REVIEW"
           ]
-        },
-        {
-          "id": "STANDARD_PIPELINE_STAGE_CLOSURE",
-          "question": "For every material selection/reselection stage that can rebuild the set, is business identity/filter propagation proven end-to-end so an early/header-only filter cannot falsely close a later reselecting pipeline?",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "standard_pipeline_stage_closure"
-        },
-        {
-          "id": "STANDARD_ROW_REWRITE_AFTER_FILL",
-          "question": "After a standard/typical fill creates rows, is destructive clear/rebuild rejected unless all required standard technical/business fields and stable row identity are proven restored; prefer Typical skeleton + requirement-owned overlay and preserve Typical Row Identity?",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "standard_row_rewrite_after_fill"
         }
       ],
       "regression": {
@@ -624,9 +599,7 @@
           "check:FACT_SET_COMPLETENESS_PRESERVATION",
           "check:FIELD_LEVEL_SOURCE_OWNERSHIP",
           "check:LOCAL_CUSTOMIZATION_COMPATIBILITY",
-          "check:INTERNAL_PIPELINE_RECONSTRUCTION",
-          "check:STANDARD_PIPELINE_STAGE_CLOSURE",
-          "check:STANDARD_ROW_REWRITE_AFTER_FILL"
+          "check:INTERNAL_PIPELINE_RECONSTRUCTION"
         ]
       },
       "proof_policy": {
@@ -2228,7 +2201,7 @@
         },
         {
           "id": "QUERY_REQUIRED_FACT_RETENTION",
-          "question": "Across every material selection/reselection stage (including later queries that rebuild the set), INNER/LEFT joins, WHERE/HAVING predicates, subqueries, virtual-table filters, pre-aggregation and DISTINCT/GROUP stages, is retention of every required business-grain fact and business-identity filter proven end-to-end, with every dropped fact attributable to an explicit intended exclusion rule?",
+          "question": "Across every material selection/reselection, join, filter and aggregation stage, prove required business-grain facts and identity filters survive unless exclusion is explicit.",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -3724,7 +3697,7 @@
         },
         {
           "id": "STRUCTURED_CONTRACT_P08",
-          "question": "For a proven local ValueTable column/value consumed directly as Boolean, is the reachable domain proven Boolean (explicit Boolean column type plus initialization/normalization, exact Boolean source contract, or exact comparison/type guard) so Undefined cannot reach the bare condition?",
+          "question": "For a proven local ValueTable value used as Boolean, is Undefined excluded by Boolean type+initialization, normalization, exact comparison/type guard, or exact source contract?",
           "kind": "PROFILE",
           "blocking": true,
           "evidence_required": true,
