@@ -301,6 +301,97 @@ def loop_execute_findings(block):
             stack.pop()
     return findings
 
+def structure_property_out_param_boolean_findings(block):
+    """Detect bounded same-routine Structure.Property out-param Boolean hazards.
+
+    A simple out identifier from .Свойство(..., outVar) remains unsafe for bare
+    Boolean consumption until an unconditional reassignment/normalization or while
+    an exact Boolean type guard is active. Presence is not value-domain proof.
+    """
+    masked_lines=_mask_bsl_strings_and_comments(block["text"]).splitlines()
+    raw_lines=block["text"].splitlines()
+    tracked={}
+    if_stack=[]
+
+    ident=r'[A-Za-zА-Яа-яЁё_][\wА-Яа-яЁё]*'
+    out_call_re=re.compile(
+        rf'(?P<receiver>{ident}(?:\s*\.\s*{ident})*)\s*\.\s*Свойство\s*\(\s*[^,\n]+,\s*(?P<out>{ident})\s*\)',
+        re.I,
+    )
+    assignment_re=re.compile(rf'^\s*(?P<lhs>{ident})\s*=\s*(?P<rhs>.*?)\s*;?\s*$')
+    bare_bool_re=re.compile(rf'^\s*(?:Если|ИначеЕсли)\s+(?:НЕ\s+)?\(?\s*(?P<var>{ident})\s*\)?\s+Тогда\b', re.I)
+    guard_re=re.compile(
+        rf'(?:ТипЗнч\s*\(\s*(?P<a>{ident})\s*\)\s*=\s*Тип\s*\(\s*"Булево"\s*\)'
+        rf'|Тип\s*\(\s*"Булево"\s*\)\s*=\s*ТипЗнч\s*\(\s*(?P<b>{ident})\s*\))',
+        re.I,
+    )
+    simple_ident_re=re.compile(rf'^\s*(?P<var>{ident})\s*$')
+
+    findings=[]
+    seen=set()
+    for offset, masked in enumerate(masked_lines):
+        raw=raw_lines[offset] if offset<len(raw_lines) else masked
+        stripped=masked.strip()
+        raw_code=raw.split("//",1)[0]
+
+        if re.match(r'(?i)^\s*КонецЕсли\b', stripped) and if_stack:
+            if_stack.pop()
+        active_guards=set().union(*if_stack) if if_stack else set()
+
+        for call in out_call_re.finditer(masked):
+            var=call.group("out")
+            tracked[var.lower()]={
+                "source_line":block["start_line"]+offset,
+                "out_var":var,
+                "receiver":re.sub(r'\s+',"",call.group("receiver")),
+            }
+
+        assign=assignment_re.match(masked)
+        if assign and not re.match(r'(?i)^\s*(?:Если|ИначеЕсли)\b', stripped):
+            lhs=assign.group("lhs")
+            rhs=assign.group("rhs").strip()
+            lhs_key=lhs.lower()
+            rhs_ident=simple_ident_re.match(rhs)
+            if not if_stack:
+                if rhs_ident and rhs_ident.group("var").lower() in tracked:
+                    tracked[lhs_key]=dict(tracked[rhs_ident.group("var").lower()])
+                    tracked[lhs_key]["alias"]=lhs
+                elif lhs_key in tracked:
+                    # Any unconditional overwrite ends the exact out-param value flow.
+                    tracked.pop(lhs_key,None)
+
+        bare=bare_bool_re.match(masked)
+        if bare:
+            var=bare.group("var")
+            key=var.lower()
+            if key in tracked and key not in active_guards:
+                src=tracked[key]
+                identity=(block["start_line"]+offset,key,src["source_line"])
+                if identity not in seen:
+                    seen.add(identity)
+                    findings.append({
+                        "severity":"HIGH",
+                        "type":"STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN",
+                        "procedure":block["name"],
+                        "line":block["start_line"]+offset,
+                        "source_line":src["source_line"],
+                        "out_var":var,
+                        "receiver":src.get("receiver"),
+                        "code":raw.strip()[:220],
+                        "note":"Structure-like .Свойство(..., outVar) presence does not prove the out value is Boolean. Normalize the exact local value to Boolean or guard this consumption with a proven Boolean type contract; absent/unknown value paths must not reach a bare Boolean condition.",
+                    })
+
+        guard_vars=set()
+        if re.match(r'(?i)^\s*Если\b', raw_code.strip()):
+            for gm in guard_re.finditer(raw_code):
+                gv=gm.group("a") or gm.group("b")
+                if gv and gv.lower() in tracked:
+                    guard_vars.add(gv.lower())
+            if_stack.append(guard_vars)
+
+    return findings
+
+
 def structure_constructor_findings(block):
     findings=[]
     # Safe heuristic for common pattern Новый Структура("A,B,C,D", value...).
@@ -1611,6 +1702,10 @@ def analyze(path,bare_symbol_scope_complete=False,known_symbols=None,changed_lin
         if proc["execute_in_loop"]:
             result["standards"].update(["std436", "std729"])
             result["findings"].append({"severity":"HIGH","type":"QUERY_IN_LOOP","procedure":b["name"],"items":proc["execute_in_loop"]})
+
+        structure_property_bool_hits = structure_property_out_param_boolean_findings(b)
+        if structure_property_bool_hits:
+            result["findings"].extend(structure_property_bool_hits)
 
         structure_hits = structure_constructor_findings(b)
         if structure_hits:
