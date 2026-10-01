@@ -70,8 +70,8 @@
     },
     {
       "path": "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
-      "size": 3270,
-      "sha256": "fd4a2f9702275a4486e99d5db4c21906c9e954a7b379bc39e2dfd5b7f860676d"
+      "size": 3731,
+      "sha256": "bc1462995e0f57b417807ce8d6941e58dc6719c1bb0d52c7c24ce7d4f21dbfb2"
     },
     {
       "path": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 83220,
-      "sha256": "b1dd3c4912f41b1c2e315ea4e29124761e0cf5af1c506c6b9ccb7f489b265e73"
+      "size": 83399,
+      "sha256": "54dcb2150a1f4ff7301cc7993671d269a49b37b6b7a3809190b7f3f1bf9c4495"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -505,8 +505,8 @@
     },
     {
       "path": "PROFILES/INDEX.json",
-      "size": 34363,
-      "sha256": "ca36711d0b8a8a022cbebb8be3b00f880e593f510ca8f3671c8ff7eb3d6e842d"
+      "size": 34542,
+      "sha256": "7527a64df8741fa46141e7688dac31e11c5cf699b79ddd5c559ac068916e4655"
     },
     {
       "path": "PROFILES/METADATA_XML_STRUCTURE.md",
@@ -565,8 +565,8 @@
     },
     {
       "path": "PROFILES/STRUCTURED_CONTRACT.md",
-      "size": 2449,
-      "sha256": "2177a8c7593341daa94215309e105d28c1ec7a15eee56097144faac30393f3cd"
+      "size": 2983,
+      "sha256": "112e39eefb919af2f8b1edce43cb32caab3194477962962bb267275093dff965"
     },
     {
       "path": "PROFILES/TRANSACTION_WRITE.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 294528,
-      "sha256": "66a57762b6a149970076506c34869a382abd2a844ed1563f0c47370a2065370f"
+      "size": 294709,
+      "sha256": "639ea3af2debd2501a40a9d968932fdf87c7887c893f1d7010d3bca606d19ba7"
     },
     {
       "path": "SKILL.md",
@@ -1805,8 +1805,8 @@
     },
     {
       "path": "TESTS/run_onec_bsl_structure_property_regression.py",
-      "size": 6421,
-      "sha256": "fbc0571fb2f177587637c62059f1f38806d3f09cbd7bd7396b303ead83e74ed6"
+      "size": 11003,
+      "sha256": "42ce2cd60dcf7f1c31925fb044349d6e3ed1009c4d92adf8098895c067206477"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -1960,8 +1960,8 @@
     },
     {
       "path": "TOOLS/analyze_onec_bsl.py",
-      "size": 95805,
-      "sha256": "68e337e0bf2d8ea16bf35dfe177d6db25cb5658641dcac56e5e17e48c3f1d10e"
+      "size": 99445,
+      "sha256": "22d91924fda950099637f309384e04a7ab153660fb34c2c3062d9b8f84735710"
     },
     {
       "path": "TOOLS/analyze_onec_field_flow.py",
@@ -2245,5 +2245,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "9322b42dddcdac0b285b0c0e7b36c07b684be1f22d6111bae5293539916c9978"
+  "snapshot_digest": "423fad871189083341155a6b1cf784736f30b416b26eed40fbd102b52c5d956f"
 }
