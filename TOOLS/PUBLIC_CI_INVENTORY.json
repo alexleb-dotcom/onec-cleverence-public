@@ -214,6 +214,16 @@
       ]
     },
     {
+      "id": "final_docx_set",
+      "order": 147,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_final_docx_set_regression.py"
+      ]
+    },
+    {
       "id": "proof_contract",
       "order": 150,
       "phase": "FAST",
