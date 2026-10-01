@@ -192,6 +192,88 @@ record(
     },
 )
 
+boolean_guard_else_source = """
+    Процедура Тест()
+        Параметры = Новый Структура;
+        Параметры.Свойство("Признак", Флаг);
+        Если ТипЗнч(Флаг) = Тип("Булево") Тогда
+            Сообщить("Булево");
+        Иначе
+            Если Флаг Тогда
+                Сообщить("Опасно");
+            КонецЕсли;
+        КонецЕсли;
+    КонецПроцедуры
+"""
+rows, review_rows, report = finding_rows(boolean_guard_else_source)
+record(
+    "boolean_guard_does_not_leak_into_else",
+    len(rows) == 1 and len(review_rows) == 0,
+    {"findings": rows, "review_findings": review_rows, "summary": report.get("summary")},
+)
+
+structure_guard_else_source = """
+    Процедура Тест(Получатель)
+        Если ТипЗнч(Получатель) = Тип("Структура") Тогда
+            Сообщить("Структура");
+        Иначе
+            Получатель.Свойство("Признак", Флаг);
+            Если Флаг Тогда
+                Сообщить("Неизвестный API");
+            КонецЕсли;
+        КонецЕсли;
+    КонецПроцедуры
+"""
+rows, review_rows, report = finding_rows(structure_guard_else_source)
+record(
+    "structure_guard_does_not_leak_into_else",
+    len(rows) == 0
+    and len(review_rows) == 1
+    and review_rows[0].get("receiver_proof") == "UNRESOLVED",
+    {"findings": rows, "review_findings": review_rows, "summary": report.get("summary")},
+)
+
+boolean_guard_elseif_source = """
+    Процедура Тест()
+        Параметры = Новый Структура;
+        Параметры.Свойство("Признак", Флаг);
+        Если ТипЗнч(Флаг) = Тип("Булево") Тогда
+            Сообщить("Булево");
+        ИначеЕсли Истина Тогда
+            Если Флаг Тогда
+                Сообщить("Опасно");
+            КонецЕсли;
+        КонецЕсли;
+    КонецПроцедуры
+"""
+rows, review_rows, report = finding_rows(boolean_guard_elseif_source)
+record(
+    "boolean_guard_does_not_leak_into_elseif",
+    len(rows) == 1 and len(review_rows) == 0,
+    {"findings": rows, "review_findings": review_rows, "summary": report.get("summary")},
+)
+
+structure_guard_elseif_source = """
+    Процедура Тест(Получатель)
+        Если ТипЗнч(Получатель) = Тип("Структура") Тогда
+            Сообщить("Структура");
+        ИначеЕсли Истина Тогда
+            Получатель.Свойство("Признак", Флаг);
+            Если Флаг Тогда
+                Сообщить("Неизвестный API");
+            КонецЕсли;
+        КонецЕсли;
+    КонецПроцедуры
+"""
+rows, review_rows, report = finding_rows(structure_guard_elseif_source)
+record(
+    "structure_guard_does_not_leak_into_elseif",
+    len(rows) == 0
+    and len(review_rows) == 1
+    and review_rows[0].get("receiver_proof") == "UNRESOLVED",
+    {"findings": rows, "review_findings": review_rows, "summary": report.get("summary")},
+)
+
 registry = load_registry()
 rules = rule_map(registry)
 structured = rules["STRUCTURED_CONTRACT"]
