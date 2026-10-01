@@ -44,6 +44,7 @@ Classify each dot access as:
 - query alias field;
 - query multi-hop dereference;
 - unresolved.
+- Structure-like `.Свойство(..., outVar)` reads: presence and out-value type are separate facts; track the local out value to any later bare Boolean condition and require Boolean normalization/type proof on the reachable path.
 
 ## Pass C — trigger official standards
 
@@ -80,7 +81,7 @@ Try to invalidate the chosen solution:
 ## Pass F — post-change rescan
 
 Repeat Pass A on the final code.
-Delivery is blocked if a HIGH finding remains without explicit justification.
+Delivery is blocked if a HIGH finding remains without explicit justification. `STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN` is a property-scoped HIGH finding: it proves only the bounded same-routine out-param → bare-Boolean hazard, not general BSL type safety.
 Previously gathered evidence may be cited again only when its declared dependency hashes/versions remain unchanged.
 
 
