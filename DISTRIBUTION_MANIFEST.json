@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 446,
+  "file_count": 447,
   "files": [
     {
       "path": ".gitattributes",
@@ -70,8 +70,8 @@
     },
     {
       "path": "KNOWLEDGE/DYNAMIC_POST_VALIDATION.md",
-      "size": 2850,
-      "sha256": "11f80fac06d1a0dd255b05e2ad5d87c4a6b6e9cb52eb2e4195c796b7e8568739"
+      "size": 3270,
+      "sha256": "fd4a2f9702275a4486e99d5db4c21906c9e954a7b379bc39e2dfd5b7f860676d"
     },
     {
       "path": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
@@ -95,8 +95,8 @@
     },
     {
       "path": "KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json",
-      "size": 2136,
-      "sha256": "17565380be6b52d1c54e08d215c44ba047f52f99c0aca67c059b7bbc2629d599"
+      "size": 2982,
+      "sha256": "087c01309b983a92f51ce44fd767edf03757c4aa900b93ba70bf11ddb629390d"
     },
     {
       "path": "KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 82897,
-      "sha256": "1445a4a1b43ac09fef6561e22de78c6b1b877f6638c5795bdee4768bbe5778f8"
+      "size": 83220,
+      "sha256": "b1dd3c4912f41b1c2e315ea4e29124761e0cf5af1c506c6b9ccb7f489b265e73"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -505,8 +505,8 @@
     },
     {
       "path": "PROFILES/INDEX.json",
-      "size": 34262,
-      "sha256": "c3d10c5caa9a2b69c74538953263f822144035ef2350033252ea1ea29a599abc"
+      "size": 34363,
+      "sha256": "ca36711d0b8a8a022cbebb8be3b00f880e593f510ca8f3671c8ff7eb3d6e842d"
     },
     {
       "path": "PROFILES/METADATA_XML_STRUCTURE.md",
@@ -565,8 +565,8 @@
     },
     {
       "path": "PROFILES/STRUCTURED_CONTRACT.md",
-      "size": 833,
-      "sha256": "208edf7f90d5c1440a98dc487b7c17da617bd44926275a4dc037044cb37a565f"
+      "size": 2449,
+      "sha256": "2177a8c7593341daa94215309e105d28c1ec7a15eee56097144faac30393f3cd"
     },
     {
       "path": "PROFILES/TRANSACTION_WRITE.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 293881,
-      "sha256": "401b99132691bf557a769c66aaab4f15dcf250d3b3fee5b25ff195521dd513a5"
+      "size": 294528,
+      "sha256": "66a57762b6a149970076506c34869a382abd2a844ed1563f0c47370a2065370f"
     },
     {
       "path": "SKILL.md",
@@ -725,8 +725,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 32733,
-      "sha256": "e43cb538dfdc3894c64d712b7efab65648623eca8c27e7f0ebddad4ffdd29ada"
+      "size": 33495,
+      "sha256": "a1bc5f4f85a2efeda0cf77c72d54d495a259e8043c132085c1f15a75af365a4d"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -1804,6 +1804,11 @@
       "sha256": "42c1210e9cce598eec09e6671aa722a1b27b7de9b065d2120b07a63fad867a1e"
     },
     {
+      "path": "TESTS/run_onec_bsl_structure_property_regression.py",
+      "size": 6421,
+      "sha256": "fbc0571fb2f177587637c62059f1f38806d3f09cbd7bd7396b303ead83e74ed6"
+    },
+    {
       "path": "TESTS/run_pattern_regression.py",
       "size": 2313,
       "sha256": "52b2e6facfbaa734aaa9ed8697a86f209631cea62f21a032ffe03ca0d8c7c547"
@@ -1900,8 +1905,8 @@
     },
     {
       "path": "TESTS/run_semantic_behavior_regression.py",
-      "size": 13118,
-      "sha256": "80b295d72dff4123eb0419acd2a1ec7bd37055b60ff3d63c2aa4de3c4f8f8b33"
+      "size": 13897,
+      "sha256": "ee6651bf59fcc0c460400feedf9e4d54dcb69f0e3045eb089f73e20f794c1b5a"
     },
     {
       "path": "TESTS/run_semantic_proof_phase1_regression.py",
@@ -1930,8 +1935,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 8855,
-      "sha256": "43587bba4f8491d9ec260ccedf9737e8eb6248af9584663bb975c6a72b005a30"
+      "size": 9116,
+      "sha256": "6be55582cd24c0857fcc28d6ec99e6744668749f98a2118355672b947b0241c1"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -1955,8 +1960,8 @@
     },
     {
       "path": "TOOLS/analyze_onec_bsl.py",
-      "size": 91414,
-      "sha256": "acea71ea497096591d94f7536ee873ee32ac6a7729f8f1607a4f69b06c5a729f"
+      "size": 95805,
+      "sha256": "68e337e0bf2d8ea16bf35dfe177d6db25cb5658641dcac56e5e17e48c3f1d10e"
     },
     {
       "path": "TOOLS/analyze_onec_field_flow.py",
@@ -2240,5 +2245,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "4de57d911acc00ce176e190a5bd90e2a262e68568d13f4fb9b4e3502d182b66c"
+  "snapshot_digest": "9322b42dddcdac0b285b0c0e7b36c07b684be1f22d6111bae5293539916c9978"
 }
