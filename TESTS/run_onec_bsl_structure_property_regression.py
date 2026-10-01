@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 import json
 import sys
 import tempfile
@@ -11,11 +12,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TOOLS"))
 
 from analyze_onec_bsl import analyze
-from rule_registry import load_registry, proof_policy_for, rule_map
+from rule_registry import load_registry, proof_policy_for, rule_map, regex_hits
 from build_validation_ledger import machine_finding_mapping
-from release_gate_core import _validate_machine_findings
+from release_gate_core import (
+    _validate_machine_findings,
+    SOURCE_PROVENANCE_VERIFIER_ID,
+    SOURCE_PROVENANCE_VERSION,
+)
 
 FINDING = "STRUCTURE_PROPERTY_OUT_PARAM_UNSAFE_BOOLEAN"
+REVIEW_FINDING = "STRUCTURE_PROPERTY_RECEIVER_TYPE_REVIEW"
 errors = []
 results = {}
 
@@ -31,12 +37,17 @@ def finding_rows(source):
         path = Path(td) / "Module.bsl"
         path.write_text(textwrap.dedent(source).strip() + "\n", encoding="utf-8")
         report = analyze(path)
-    return [row for row in report.get("findings", []) if row.get("type") == FINDING], report
+    return (
+        [row for row in report.get("findings", []) if row.get("type") == FINDING],
+        [row for row in report.get("findings", []) if row.get("type") == REVIEW_FINDING],
+        report,
+    )
 
 
 negative = {
     "basic_bare_boolean": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Параметры.Свойство("Признак", Флаг);
             Если Флаг Тогда
                 Сообщить("Да");
@@ -45,6 +56,7 @@ negative = {
     """,
     "negated_bare_boolean": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Параметры.Свойство("Признак", Флаг);
             Если НЕ Флаг Тогда
                 Сообщить("Нет");
@@ -53,6 +65,7 @@ negative = {
     """,
     "undefined_initialized_then_overwritten": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Флаг = Неопределено;
             Параметры.Свойство("Признак", Флаг);
             Если Флаг Тогда
@@ -62,6 +75,7 @@ negative = {
     """,
     "presence_does_not_prove_value_domain": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Если Параметры.Свойство("Признак", Флаг) Тогда
                 Сообщить("Ключ есть");
             КонецЕсли;
@@ -72,10 +86,21 @@ negative = {
     """,
     "simple_alias": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Параметры.Свойство("Признак", Флаг);
             ЛокальныйФлаг = Флаг;
             Если ЛокальныйФлаг Тогда
                 Сообщить("Да");
+            КонецЕсли;
+        КонецПроцедуры
+    """,
+    "incoming_structure_exact_type_guard": """
+        Процедура Тест(Параметры)
+            Если ТипЗнч(Параметры) = Тип("Структура") Тогда
+                Параметры.Свойство("Признак", Флаг);
+                Если Флаг Тогда
+                    Сообщить("Да");
+                КонецЕсли;
             КонецЕсли;
         КонецПроцедуры
     """,
@@ -84,6 +109,7 @@ negative = {
 positive = {
     "presence_only": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Если Параметры.Свойство("Ключ") Тогда
                 Сообщить("Есть");
             КонецЕсли;
@@ -91,6 +117,7 @@ positive = {
     """,
     "explicit_boolean_normalization": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Параметры.Свойство("Признак", Флаг);
             Флаг = ?(ТипЗнч(Флаг) = Тип("Булево"), Флаг, Ложь);
             Если Флаг Тогда
@@ -100,6 +127,7 @@ positive = {
     """,
     "simple_boolean_type_guard": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Параметры.Свойство("Признак", Флаг);
             Если ТипЗнч(Флаг) = Тип("Булево") Тогда
                 Если Флаг Тогда
@@ -110,6 +138,7 @@ positive = {
     """,
     "presence_plus_exact_type_guard": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Если Параметры.Свойство("Признак", Значение) И ТипЗнч(Значение) = Тип("Булево") Тогда
                 Если Значение Тогда
                     Сообщить("Да");
@@ -119,6 +148,7 @@ positive = {
     """,
     "unrelated_out_use": """
         Процедура Тест()
+            Параметры = Новый Структура;
             Параметры.Свойство("Код", Значение);
             Сообщить(Строка(Значение));
         КонецПроцедуры
@@ -126,15 +156,45 @@ positive = {
 }
 
 for name, source in negative.items():
-    rows, report = finding_rows(source)
-    record("negative:" + name, len(rows) == 1, {"findings": rows, "summary": report.get("summary")})
+    rows, review_rows, report = finding_rows(source)
+    record(
+        "negative:" + name,
+        len(rows) == 1 and len(review_rows) == 0,
+        {"findings": rows, "review_findings": review_rows, "summary": report.get("summary")},
+    )
 
 for name, source in positive.items():
-    rows, report = finding_rows(source)
-    record("positive:" + name, len(rows) == 0, {"findings": rows, "summary": report.get("summary")})
+    rows, review_rows, report = finding_rows(source)
+    record(
+        "positive:" + name,
+        len(rows) == 0,
+        {"findings": rows, "review_findings": review_rows, "summary": report.get("summary")},
+    )
+
+unrelated_source = """
+    Процедура Тест(Сервис)
+        Сервис.Свойство("Признак", Флаг);
+        Если Флаг Тогда
+            Сообщить("Да");
+        КонецЕсли;
+    КонецПроцедуры
+"""
+unrelated_rows, unrelated_review, unrelated_report = finding_rows(unrelated_source)
+record(
+    "unrelated_receiver_is_review_not_structure_block",
+    len(unrelated_rows) == 0
+    and len(unrelated_review) == 1
+    and unrelated_review[0].get("receiver_proof") == "UNRESOLVED",
+    {
+        "findings": unrelated_rows,
+        "review_findings": unrelated_review,
+        "summary": unrelated_report.get("summary"),
+    },
+)
 
 registry = load_registry()
 rules = rule_map(registry)
+structured = rules["STRUCTURED_CONTRACT"]
 mapping = machine_finding_mapping(registry)
 owner = mapping.get(FINDING)
 record(
@@ -143,7 +203,19 @@ record(
     {"owner": owner[:2] if owner else None},
 )
 
-policy = proof_policy_for(rules["STRUCTURED_CONTRACT"], registry)
+incoming_source = textwrap.dedent(negative["incoming_structure_exact_type_guard"]).strip()
+record(
+    "incoming_structure_type_guard_routes_owner",
+    bool(regex_hits(structured, incoming_source)),
+    {"hits": regex_hits(structured, incoming_source)},
+)
+record(
+    "unrelated_method_name_does_not_activate_structure_owner",
+    not regex_hits(structured, textwrap.dedent(unrelated_source).strip()),
+    {"hits": regex_hits(structured, textwrap.dedent(unrelated_source).strip())},
+)
+
+policy = proof_policy_for(structured, registry)
 expected_row = {
     "id": "MF:test",
     "claim_id": "MF:test",
@@ -157,6 +229,7 @@ expected_row = {
     "finding_sha256": "c" * 64,
     "proof_policy": policy,
 }
+
 errors_probe = []
 pending_probe = []
 _validate_machine_findings(
@@ -175,6 +248,61 @@ record(
     "unresolved_machine_finding_blocks_release",
     any(row.get("type") == "MACHINE_FINDING_BLOCKING_OR_UNRESOLVED" for row in errors_probe),
     {"errors": errors_probe},
+)
+
+with tempfile.TemporaryDirectory() as td:
+    contract_path = Path(td) / "ExactBooleanContract.bsl"
+    contract_bytes = (
+        "// Exact source/API contract for this candidate: property Признак is Boolean.\n"
+        "// This evidence closes only the exact machine-finding claim; it is not a generic suppression.\n"
+    ).encode("utf-8")
+    contract_path.write_bytes(contract_bytes)
+    contract_sha = hashlib.sha256(contract_bytes).hexdigest()
+    plan = {
+        "candidate_artifacts": [
+            {
+                "logical_path": "ExactBooleanContract.bsl",
+                "origin": str(contract_path),
+                "sha256": contract_sha,
+            }
+        ]
+    }
+    exact_source_evidence = {
+        "kind": "SOURCE_REQUIRED",
+        "ref": str(contract_path),
+        "claim_id": "MF:test",
+        "source_provenance": {
+            "type": "CURRENT_CORPUS",
+            "verifier": SOURCE_PROVENANCE_VERIFIER_ID,
+            "version": SOURCE_PROVENANCE_VERSION,
+            "source_sha256": contract_sha,
+        },
+    }
+    resolved_errors = []
+    resolved_pending = []
+    _validate_machine_findings(
+        [
+            {
+                **expected_row,
+                "status": "PASS",
+                "reason": "Exact current source/API contract proves this out value is Boolean.",
+                "evidence": [exact_source_evidence],
+            }
+        ],
+        {"MF:test": expected_row},
+        rules,
+        resolved_errors,
+        resolved_pending,
+        {},
+        [],
+        plan,
+        {},
+        "R1_CONTRACT",
+    )
+record(
+    "exact_boolean_source_contract_resolves_finding",
+    not resolved_errors and not resolved_pending,
+    {"errors": resolved_errors, "pending": resolved_pending, "proof_policy": policy},
 )
 
 out = {"result": "PASS" if not errors else "FAIL", "errors": errors, "results": results}
