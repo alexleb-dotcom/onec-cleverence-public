@@ -75,8 +75,8 @@
     },
     {
       "path": "KNOWLEDGE/EVIDENCE_ACQUISITION.md",
-      "size": 17942,
-      "sha256": "cd2943250a607ec96990e99012046ee75c7d9f9dd457e677beef1611ad4562e8"
+      "size": 17956,
+      "sha256": "dfb3131ab63df8e9a40237fa8523687574cd781686f495d78b73c2684ceb4a22"
     },
     {
       "path": "KNOWLEDGE/EXECUTION_CHECKPOINT.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 83789,
-      "sha256": "29a595a269fcc56d28f5dc995a416ebb915bc717db71f3ac24804bb902cd5f82"
+      "size": 83461,
+      "sha256": "dc321ba18adb06c73dcec4085d4a5d2d6738b1d2d8b32f37723413aef02d190a"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 297777,
-      "sha256": "fafa7ee232352de336b1bf3976a50e3586ff7fc95a75a1d5b5492d1789bfc3b8"
+      "size": 294814,
+      "sha256": "901c380ce36aebb782212c23a5b912a882f04bdd8014b977b01c7174aa7276af"
     },
     {
       "path": "SKILL.md",
@@ -730,8 +730,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
-      "size": 42032,
-      "sha256": "4ae9cc7427430b2dffd409a69bfe70c1bb5f401efd1a30a73d18a31b53464076"
+      "size": 40365,
+      "sha256": "066ff17ce422666b3af833b97607bad9a343d65a74af9fd07a4fb58413d0f2d7"
     },
     {
       "path": "TESTS/SKILL_FRESHNESS_CASES.json",
@@ -2065,8 +2065,8 @@
     },
     {
       "path": "TOOLS/implementation_intent.py",
-      "size": 42467,
-      "sha256": "e661dfc7ea3dae611767bae2ea4d8feebdf27d8e2668a78c86b1c7ff0a847f50"
+      "size": 41993,
+      "sha256": "62dcee8a4759ad0b05812d8239b410f544d8c0765605d4883821585c638390b3"
     },
     {
       "path": "TOOLS/machine_receipts.py",
@@ -2260,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "ee439289e78d26fb06cc6f0c474c1b6a41eaa497e74a0274a36e4ce5935fe2ae"
+  "snapshot_digest": "13c496541764e5b74bf4123550af2f1c8cc0bdc92a14343b9246e9a1ca8b8478"
 }
