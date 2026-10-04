@@ -35,8 +35,8 @@
     },
     {
       "path": "KNOWLEDGE/BSP_USAGE_POLICY.md",
-      "size": 11616,
-      "sha256": "4ea2a164e06e97f445da3b5c2e5a8839b0d78f5284b6b0f919f78c350deaccfc"
+      "size": 12779,
+      "sha256": "effb70d64b0ca0c5978a9bc6b7cda4c21ff82211baafb552b7b45986e427470f"
     },
     {
       "path": "KNOWLEDGE/BUSINESS_STATE_AND_RELATION_CONTRACTS.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 83760,
-      "sha256": "44a13cd525a9af75c5d19c33fb7c666b7fab91fec34748ac7e2ffab1400aecb9"
+      "size": 84133,
+      "sha256": "b4b2bce434e8f45a3401847dda2dab4903f4034166e2c522872483a745a44f81"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -150,8 +150,8 @@
     },
     {
       "path": "KNOWLEDGE/PROJECT_BOOTSTRAP.md",
-      "size": 16924,
-      "sha256": "fdcbcb5281f0bd71a06e03d210ecc5ca3154ff4bacce05fd8d48225da1c4c0a4"
+      "size": 17365,
+      "sha256": "59a4f828000db95ca400472abf385e60ae4ec90775bbb1414b4985457bd8dd3b"
     },
     {
       "path": "KNOWLEDGE/PROJECT_CONTEXT_LIFECYCLE.md",
@@ -380,8 +380,8 @@
     },
     {
       "path": "PROFILES/BSP_REUSE.md",
-      "size": 2577,
-      "sha256": "f38f756a4cc39745fdc409bcddc2c22c87dda5a8a709be06dfa41b2d38a4f1e7"
+      "size": 2835,
+      "sha256": "5f271f9043a2a4c697fd08e96e0412642e869170b3dbaf910be2506c8a2f0f50"
     },
     {
       "path": "PROFILES/BUSINESS_IDENTITY.md",
@@ -595,8 +595,8 @@
     },
     {
       "path": "REFERENCE/CATALOGS/bsp_discovery.json",
-      "size": 9572,
-      "sha256": "6b69f64d8ccc72216c818c199da71b9a5396a89d0f9613e94d469d5951e01bb5"
+      "size": 12381,
+      "sha256": "7758c22aac45d2343241c7c4c9f3b813d22ae57ce97a081c91eb42196e0838e5"
     },
     {
       "path": "REFERENCE/CATALOGS/cleverence_discovery.json",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 296931,
-      "sha256": "d9d0fdb3b05fdbafe4e322adfd8a8fe6c250df9c353a83df48d521acca8f9473"
+      "size": 297625,
+      "sha256": "52018e54533f9ded50fd00e20c98374f0aa8dee12c43be3cc50b108d3956d07c"
     },
     {
       "path": "SKILL.md",
@@ -665,8 +665,8 @@
     },
     {
       "path": "TEMPLATES/PROJECT_CONTEXT_TEMPLATE.md",
-      "size": 11691,
-      "sha256": "8c2148cccd5c6f74ec0c29595e1729d764fb16bf388f9bee50ca80d9eb6dcb6d"
+      "size": 12324,
+      "sha256": "6979b2ce4c17afeb2dba79aa0d19e3ee23b2de847853e0e4a38c249ead4e3b6d"
     },
     {
       "path": "TEMPLATES/PROJECT_SNAPSHOT_COLLECTION_PLAN.json",
@@ -725,8 +725,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 43427,
-      "sha256": "5709f5ad703900e7e80be581b4a9278473be9e7be200e24e13aedd80e4118342"
+      "size": 46834,
+      "sha256": "a382cc1ce9d547c93d6a31fff44b0a0367eeac589292e438a92950d568722894"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -1830,8 +1830,8 @@
     },
     {
       "path": "TESTS/run_project_context_lifecycle_regression.py",
-      "size": 8196,
-      "sha256": "f72e2a8e9e2b8f21ec83bfe12406a0d9897f39dea972bdbba41d0240e1122dd8"
+      "size": 8536,
+      "sha256": "b1a75b8c463549f3d45766e89a83b94e55a0348316d23eb300ebc3172aadceca"
     },
     {
       "path": "TESTS/run_project_snapshot_collection_regression.py",
@@ -1895,8 +1895,8 @@
     },
     {
       "path": "TESTS/run_reference_discovery_regression.py",
-      "size": 23321,
-      "sha256": "5f09e1aaa88237abea145311abcdd632f8194377027a5e67aaa2eac9884b330d"
+      "size": 25548,
+      "sha256": "4813c7ac40b671f505b4937f6faedb3449d482d9789fcf1ef2b352f8540d5aaf"
     },
     {
       "path": "TESTS/run_release_trust_boundary_phase2.py",
@@ -2125,8 +2125,8 @@
     },
     {
       "path": "TOOLS/reference_locator.py",
-      "size": 5042,
-      "sha256": "a4bf22992ccd875888a946d022cddc7fe4f1c911ba4b958d411d9f32cd60d86e"
+      "size": 8551,
+      "sha256": "3faa9557961f8ed71ac6a4c0a24c9178ba09ed76f66a2b7666239e1e8cb8be4b"
     },
     {
       "path": "TOOLS/release_evidence_receipts.py",
@@ -2260,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "859730e6190349426b8a5cc3dc20ed70b75423922e9b5647134836839ca9b951"
+  "snapshot_digest": "d3b11e8c1133b528ed45eb16be795a189e85cf269d323034a213e98ef50026d8"
 }
