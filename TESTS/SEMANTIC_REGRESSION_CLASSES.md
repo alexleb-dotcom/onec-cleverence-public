@@ -32,6 +32,12 @@ Rule: `BASELINE_IDENTITY`
 
 When ProjectSnapshot evidence is used, does its manifest bind request/snapshot identity, collector version/backend, baseline identity/fingerprint, requested/collected/missing/unsupported material items and byte hashes where available, without upgrading backend visibility into evidence it cannot observe?
 
+## PARTICIPANT_ARTIFACT_PROVENANCE
+
+Rule: `BASELINE_IDENTITY`
+
+When a project has multiple participants or artifacts, are baseline/candidate/evidence identities bound to the exact Project + Participant + Artifact + source-root tuple so same-named source from Main, an Extension, or another participant cannot satisfy the wrong obligation?
+
 ## TYPICAL_ANALOG_EVIDENCE_ESCALATION
 
 Rule: `ANALOG_BEFORE_INVENTION`
@@ -218,6 +224,18 @@ Rule: `MINIMAL_COHERENT_CHANGE`
 
 Is owner reuse explicitly classified as PUBLIC_API_REUSE, SUPPORTED_EXTENSION_POINT_REUSE, INTERNAL_IMPLEMENTATION_REUSE or INTERNAL_PIPELINE_RECONSTRUCTION, with INTERNAL_PIPELINE_RECONSTRUCTION treated as a blocking architecture-review obligation unless exact-source evidence and independent review justify it?
 
+## CHANGE_PRESERVATION_CONTRACT
+
+Rule: `MINIMAL_COHERENT_CHANGE`
+
+For a refactor, move or behavior relocation, are all relevant pre-change contracts explicitly preserved or intentionally changed through their existing specialized owners: caller/callee reachability, client/server context, provenance/task markers, metadata/XML/event/form bindings, local dependencies, standard/vendor ownership and state/write/repeat semantics, without treating this check as a substitute for those owners?
+
+## RELOCATION_RESIDUE_CLOSURE
+
+Rule: `MINIMAL_COHERENT_CHANGE`
+
+When behavior is moved or replaced, is every superseded active code/caller/event/command/binding path removed, disabled, or explicitly retained for a distinct proven responsibility so the new path cannot coexist with duplicate active residue?
+
 ## EVIDENCE_PROPERTY_BINDING
 
 Rule: `PROOF_CLAIM_INTEGRITY`
@@ -235,6 +253,12 @@ After a parser/runtime failure, user-discovered counterexample or review defect,
 Rule: `PROOF_CLAIM_INTEGRITY`
 
 Does final reporting preserve the canonical gate boundary: static/machine/manual evidence is labeled by scope, pending runtime/profiling remains pending, and READY/PROVEN language matches the actual gate outcome?
+
+## MANUAL_SKILL_EXECUTION_HONESTY
+
+Rule: `PROOF_CLAIM_INTEGRITY`
+
+When deterministic tooling is unavailable and MANUAL_SKILL_EXECUTION is used, are manual observations scoped honestly, candidate evidence kept distinct from exact proof, and every unexecuted machine/runtime/release requirement left pending rather than reported as PASS?
 
 ## UNANCHORED_GAP_HYPOTHESIS
 
@@ -733,6 +757,12 @@ For a multi-field or piecewise business rule, was an explicit accepted/rejected 
 Rule: `HOOK_ORCHESTRATION`
 
 Does each changed hook/event handler keep only event-specific routing/adaptation and delegate reusable business validation/calculation/query/persistence to a named owner API unless a proven typical/project pattern justifies local ownership?
+
+## FORM_UI_OWNER_AND_SETTINGS_PLACEMENT
+
+Rule: `HOOK_ORCHESTRATION`
+
+When form/UI behavior changes, is required form/client/UI execution context kept with the form/event owner while reusable business/settings responsibility moves only to an evidenced existing owner or supported extension point, without a blanket doctrine of moving all logic out of forms?
 
 ## EXTERNAL_COMPONENT_HEALTHCHECK_LADDER
 

@@ -374,6 +374,14 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "project_snapshot_provenance"
+        },
+        {
+          "id": "PARTICIPANT_ARTIFACT_PROVENANCE",
+          "question": "When a project has multiple participants or artifacts, are baseline/candidate/evidence identities bound to the exact Project + Participant + Artifact + source-root tuple so same-named source from Main, an Extension, or another participant cannot satisfy the wrong obligation?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "MULTI_PARTICIPANT_EVIDENCE_RETAINS_PARTICIPANT_ARTIFACT_IDENTITY"
         }
       ],
       "regression": {
@@ -384,7 +392,8 @@
           "check:BASELINE_IDENTITY_T01",
           "release_gate:current_candidate_bytes_drift_blocks",
           "release_gate:current_baseline_bytes_drift_blocks",
-          "check:PROJECT_SNAPSHOT_PROVENANCE"
+          "check:PROJECT_SNAPSHOT_PROVENANCE",
+          "check:PARTICIPANT_ARTIFACT_PROVENANCE"
         ]
       }
     },
@@ -1310,6 +1319,22 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "owner_reuse_level_classification"
+        },
+        {
+          "id": "CHANGE_PRESERVATION_CONTRACT",
+          "question": "For a refactor, move or behavior relocation, are all relevant pre-change contracts explicitly preserved or intentionally changed through their existing specialized owners: caller/callee reachability, client/server context, provenance/task markers, metadata/XML/event/form bindings, local dependencies, standard/vendor ownership and state/write/repeat semantics, without treating this check as a substitute for those owners?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "REFACTOR_PRESERVES_CALL_CONTEXT_PROVENANCE_BINDINGS"
+        },
+        {
+          "id": "RELOCATION_RESIDUE_CLOSURE",
+          "question": "When behavior is moved or replaced, is every superseded active code/caller/event/command/binding path removed, disabled, or explicitly retained for a distinct proven responsibility so the new path cannot coexist with duplicate active residue?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "RELOCATED_LOGIC_LEAVES_NO_OLD_ACTIVE_RESIDUE"
         }
       ],
       "regression": {
@@ -1325,7 +1350,9 @@
           "check:OPPORTUNISTIC_REFACTOR_IN_TASK_CHANGE",
           "check:PARALLEL_MECHANISM_WHEN_EXISTING_EXTENSION_POINT_EXISTS",
           "check:MINIMAL_COHERENT_CHANGE_T04",
-          "check:OWNER_REUSE_LEVEL_CLASSIFICATION"
+          "check:OWNER_REUSE_LEVEL_CLASSIFICATION",
+          "check:CHANGE_PRESERVATION_CONTRACT",
+          "check:RELOCATION_RESIDUE_CLOSURE"
         ]
       },
       "proof_policy": {
@@ -1396,6 +1423,14 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "canonical_status_reporting"
+        },
+        {
+          "id": "MANUAL_SKILL_EXECUTION_HONESTY",
+          "question": "When deterministic tooling is unavailable and MANUAL_SKILL_EXECUTION is used, are manual observations scoped honestly, candidate evidence kept distinct from exact proof, and every unexecuted machine/runtime/release requirement left pending rather than reported as PASS?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "TOOL_UNAVAILABLE_MANUAL_EXECUTION_NEVER_FAKES_MACHINE_PASS"
         }
       ],
       "regression": {
@@ -1407,7 +1442,8 @@
           "check:EVIDENCE_PROPERTY_BINDING",
           "check:POST_FAILURE_PROOF_INVALIDATION",
           "check:CANONICAL_STATUS_REPORTING",
-          "check:PROOF_CLAIM_INTEGRITY_T02"
+          "check:PROOF_CLAIM_INTEGRITY_T02",
+          "check:MANUAL_SKILL_EXECUTION_HONESTY"
         ]
       }
     },
@@ -5097,6 +5133,14 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "hook_orchestration_boundary"
+        },
+        {
+          "id": "FORM_UI_OWNER_AND_SETTINGS_PLACEMENT",
+          "question": "When form/UI behavior changes, is required form/client/UI execution context kept with the form/event owner while reusable business/settings responsibility moves only to an evidenced existing owner or supported extension point, without a blanket doctrine of moving all logic out of forms?",
+          "kind": "SEMANTIC_REGRESSION",
+          "blocking": true,
+          "evidence_required": true,
+          "semantic_case_id": "FORM_REQUIRED_CONTEXT_STAYS_LOCAL_WHILE_SHARED_SETTING_USES_PROVEN_OWNER"
         }
       ],
       "regression": {
@@ -5104,7 +5148,8 @@
           "all_onec_profile_rules_route"
         ],
         "enforcement_cases": [
-          "check:HOOK_ORCHESTRATION_P01"
+          "check:HOOK_ORCHESTRATION_P01",
+          "check:FORM_UI_OWNER_AND_SETTINGS_PLACEMENT"
         ]
       }
     },

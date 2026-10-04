@@ -55,6 +55,11 @@ Rules:
 - source roles: deployed | candidate | reference | historical | unknown
 
 ## Artifact/source topology
+- participants: participant-id / role / platform / evidence:
+- artifact identity per participant: MAIN | EXTENSION:<extension-id> | OTHER:<artifact-id>
+- artifact source root(s), bound to participant/artifact:
+- ordinary unpacked 1C direct roots: Target/Main | Target/Extensions/<extension-id> | NOT_APPLICABLE
+- provenance binding: project + participant + artifact + exact source root + baseline/candidate identity
 - artifact family / role / layout / confidence:
 - authoritative source root(s):
 - nested container structure:
