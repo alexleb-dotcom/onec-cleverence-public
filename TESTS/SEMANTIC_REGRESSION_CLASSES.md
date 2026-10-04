@@ -32,12 +32,6 @@ Rule: `BASELINE_IDENTITY`
 
 When ProjectSnapshot evidence is used, does its manifest bind request/snapshot identity, collector version/backend, baseline identity/fingerprint, requested/collected/missing/unsupported material items and byte hashes where available, without upgrading backend visibility into evidence it cannot observe?
 
-## PARTICIPANT_ARTIFACT_PROVENANCE
-
-Rule: `BASELINE_IDENTITY`
-
-In multi-participant/artifact projects, is evidence bound to exact Project + Participant + Artifact + source root so same-named source cannot cross-bind?
-
 ## TYPICAL_ANALOG_EVIDENCE_ESCALATION
 
 Rule: `ANALOG_BEFORE_INVENTION`

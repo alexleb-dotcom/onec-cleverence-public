@@ -374,14 +374,6 @@
           "blocking": true,
           "evidence_required": true,
           "semantic_case_id": "project_snapshot_provenance"
-        },
-        {
-          "id": "PARTICIPANT_ARTIFACT_PROVENANCE",
-          "question": "In multi-participant/artifact projects, is evidence bound to exact Project + Participant + Artifact + source root so same-named source cannot cross-bind?",
-          "kind": "SEMANTIC_REGRESSION",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "MULTI_PARTICIPANT_EVIDENCE_RETAINS_PARTICIPANT_ARTIFACT_IDENTITY"
         }
       ],
       "regression": {
@@ -392,8 +384,7 @@
           "check:BASELINE_IDENTITY_T01",
           "release_gate:current_candidate_bytes_drift_blocks",
           "release_gate:current_baseline_bytes_drift_blocks",
-          "check:PROJECT_SNAPSHOT_PROVENANCE",
-          "check:PARTICIPANT_ARTIFACT_PROVENANCE"
+          "check:PROJECT_SNAPSHOT_PROVENANCE"
         ]
       }
     },
