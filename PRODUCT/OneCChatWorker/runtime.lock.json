@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "product_version": "1.0.0-preview1",
+  "dependencies": {
+    "node": {
+      "winget_id": "OpenJS.NodeJS",
+      "version": "26.7.0",
+      "reference_sha256": "e921fe5307e29bf6fd00000dd594356affd3a7b044e52720c7f10decbdc305b9"
+    },
+    "ripgrep": {
+      "winget_id": "BurntSushi.ripgrep.MSVC",
+      "version": "15.2.0",
+      "reference_sha256": "14231169855ec5205cf5a1b6f1db358ff4aed4247c86b69ce8aae647c77f6680"
+    }
+  },
+  "components": {
+    "runtime/source-reader-integration.mjs": "bd89c210e586cb8ce2f8cb3adcded55db8998e08a81c937dc1e41fab8ad25215",
+    "runtime/hosted-helper.mjs": "81c0bcaafd2e55370aef211b04dab65cfa5019c03c77084190170e32b719687b",
+    "core/OneCChatWorker.Core.psm1": "08a0a0fc084a27734e2b734e58ae5de41314a6c95e2df00411c039f811648acc",
+    "OneCChatWorker.ps1": "6d0e23f56c174b7269ae341bacf35a739ef65a21affe1f7e0906d3f8ebe92461"
+  },
+  "hosted_mcp": {
+    "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
+    "helper_url": "wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper",
+    "model_surface": [
+      "source_context",
+      "source_search",
+      "source_read",
+      "proposal_write",
+      "proposal_read"
+    ]
+  }
+}

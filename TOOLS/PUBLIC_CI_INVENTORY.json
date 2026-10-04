@@ -294,6 +294,16 @@
       ]
     },
     {
+      "id": "onecchatworker_product_contract",
+      "order": 198,
+      "phase": "FAST",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_onecchatworker_product_regression.py"
+      ]
+    },
+    {
       "id": "bootstrap_capability",
       "order": 200,
       "phase": "FAST",
