@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "catalog_id": "BSP_DISCOVERY",
   "role": "DISCOVERY_ONLY",
   "source_family": "BSP",
@@ -9,138 +9,823 @@
   "entries": [
     {
       "id": "bsp.general",
-      "intent_terms": ["общего назначения", "реквизиты объекта", "сообщение пользователю", "общий helper", "general purpose", "object attributes"],
-      "candidate_modules": ["ОбщегоНазначения", "ОбщегоНазначенияКлиент", "ОбщегоНазначенияКлиентСервер"]
+      "intent_terms": [
+        "общего назначения",
+        "реквизиты объекта",
+        "сообщение пользователю",
+        "общий helper",
+        "general purpose",
+        "object attributes"
+      ],
+      "candidate_modules": [
+        "ОбщегоНазначения",
+        "ОбщегоНазначенияКлиент",
+        "ОбщегоНазначенияКлиентСервер"
+      ],
+      "purpose": "general",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.string_functions",
-      "intent_terms": ["строковые функции", "строка", "string functions", "string formatting", "string conversion"],
-      "candidate_modules": ["СтроковыеФункции", "СтроковыеФункцииКлиент", "СтроковыеФункцииКлиентСервер"]
+      "intent_terms": [
+        "строковые функции",
+        "строка",
+        "string functions",
+        "string formatting",
+        "string conversion"
+      ],
+      "candidate_modules": [
+        "СтроковыеФункции",
+        "СтроковыеФункцииКлиент",
+        "СтроковыеФункцииКлиентСервер"
+      ],
+      "purpose": "string functions",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.long_operations",
-      "intent_terms": ["длительная операция", "фоновые задания", "progress", "long operation", "background execution"],
-      "candidate_modules": ["ДлительныеОперации", "ДлительныеОперацииКлиент"]
+      "intent_terms": [
+        "длительная операция",
+        "фоновые задания",
+        "progress",
+        "long operation",
+        "background execution"
+      ],
+      "candidate_modules": [
+        "ДлительныеОперации",
+        "ДлительныеОперацииКлиент"
+      ],
+      "purpose": "long operations",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.filesystem",
-      "intent_terms": ["файлы", "каталог", "временный файл", "файловая система", "file", "filesystem", "temporary directory"],
-      "candidate_modules": ["ФайловаяСистема", "ФайловаяСистемаКлиент", "РаботаСФайлами", "РаботаСФайламиКлиент", "РаботаСФайламиКлиентСервер"]
+      "intent_terms": [
+        "файлы",
+        "каталог",
+        "временный файл",
+        "файловая система",
+        "file",
+        "filesystem",
+        "temporary directory"
+      ],
+      "candidate_modules": [
+        "ФайловаяСистема",
+        "ФайловаяСистемаКлиент",
+        "РаботаСФайлами",
+        "РаботаСФайламиКлиент",
+        "РаботаСФайламиКлиентСервер"
+      ],
+      "purpose": "filesystem",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.users",
-      "intent_terms": ["пользователь", "users", "current user", "user data"],
-      "candidate_modules": ["Пользователи", "ПользователиКлиент", "ПользователиКлиентСервер"]
+      "intent_terms": [
+        "пользователь",
+        "users",
+        "current user",
+        "user data"
+      ],
+      "candidate_modules": [
+        "Пользователи",
+        "ПользователиКлиент",
+        "ПользователиКлиентСервер"
+      ],
+      "purpose": "users",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.standard_subsystems",
-      "intent_terms": ["стандартные подсистемы", "служебный механизм БСП", "standard subsystems", "BSP infrastructure"],
-      "candidate_modules": ["СтандартныеПодсистемыСервер", "СтандартныеПодсистемыКлиент", "СтандартныеПодсистемыКлиентСервер"]
+      "intent_terms": [
+        "стандартные подсистемы",
+        "служебный механизм БСП",
+        "standard subsystems",
+        "BSP infrastructure"
+      ],
+      "candidate_modules": [
+        "СтандартныеПодсистемыСервер",
+        "СтандартныеПодсистемыКлиент",
+        "СтандартныеПодсистемыКлиентСервер"
+      ],
+      "purpose": "standard subsystems",
+      "candidate_api_hints": [
+        {
+          "name": "ВерсияБиблиотеки",
+          "module": "СтандартныеПодсистемыСервер",
+          "kind": "Function"
+        }
+      ],
+      "version_evidence_refs": [
+        "bsp.version_api.standard_subsystems_server"
+      ],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "ВерсияБиблиотеки can identify EXACT only when its returned value is deterministically resolved from exact current Source.",
+        "Presence of one module/API alone does not prove an exact BSP version."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.connected_commands",
-      "intent_terms": ["подключаемые команды", "команды формы", "connected commands", "command integration"],
-      "candidate_modules": ["ПодключаемыеКоманды", "ПодключаемыеКомандыКлиент", "ПодключаемыеКомандыКлиентСервер"]
+      "intent_terms": [
+        "подключаемые команды",
+        "команды формы",
+        "connected commands",
+        "command integration"
+      ],
+      "candidate_modules": [
+        "ПодключаемыеКоманды",
+        "ПодключаемыеКомандыКлиент",
+        "ПодключаемыеКомандыКлиентСервер"
+      ],
+      "purpose": "connected commands",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.printing",
-      "intent_terms": ["печать", "печатная форма", "printing", "print form"],
-      "candidate_modules": ["УправлениеПечатью", "УправлениеПечатьюКлиент"]
+      "intent_terms": [
+        "печать",
+        "печатная форма",
+        "printing",
+        "print form"
+      ],
+      "candidate_modules": [
+        "УправлениеПечатью",
+        "УправлениеПечатьюКлиент"
+      ],
+      "purpose": "printing",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.properties",
-      "intent_terms": ["дополнительные реквизиты", "свойства", "properties", "additional attributes"],
-      "candidate_modules": ["УправлениеСвойствами", "УправлениеСвойствамиКлиент"]
+      "intent_terms": [
+        "дополнительные реквизиты",
+        "свойства",
+        "properties",
+        "additional attributes"
+      ],
+      "candidate_modules": [
+        "УправлениеСвойствами",
+        "УправлениеСвойствамиКлиент"
+      ],
+      "purpose": "properties",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.additional_reports",
-      "intent_terms": ["дополнительный отчет", "дополнительная обработка", "external report", "additional processing"],
-      "candidate_modules": ["ДополнительныеОтчетыИОбработки", "ДополнительныеОтчетыИОбработкиКлиент", "ДополнительныеОтчетыИОбработкиКлиентСервер"]
+      "intent_terms": [
+        "дополнительный отчет",
+        "дополнительная обработка",
+        "external report",
+        "additional processing"
+      ],
+      "candidate_modules": [
+        "ДополнительныеОтчетыИОбработки",
+        "ДополнительныеОтчетыИОбработкиКлиент",
+        "ДополнительныеОтчетыИОбработкиКлиентСервер"
+      ],
+      "purpose": "additional reports",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.report_variants",
-      "intent_terms": ["варианты отчетов", "report variants", "report settings"],
-      "candidate_modules": ["ВариантыОтчетов", "ВариантыОтчетовКлиент", "ВариантыОтчетовКлиентСервер"]
+      "intent_terms": [
+        "варианты отчетов",
+        "report variants",
+        "report settings"
+      ],
+      "candidate_modules": [
+        "ВариантыОтчетов",
+        "ВариантыОтчетовКлиент",
+        "ВариантыОтчетовКлиентСервер"
+      ],
+      "purpose": "report variants",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.scheduled_jobs",
-      "intent_terms": ["регламентное задание", "scheduled job", "background schedule"],
-      "candidate_modules": ["РегламентныеЗаданияСервер"]
+      "intent_terms": [
+        "регламентное задание",
+        "scheduled job",
+        "background schedule"
+      ],
+      "candidate_modules": [
+        "РегламентныеЗаданияСервер"
+      ],
+      "purpose": "scheduled jobs",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.registration_log",
-      "intent_terms": ["журнал регистрации", "registration log", "event log"],
-      "candidate_modules": ["ЖурналРегистрации", "ЖурналРегистрацииКлиент"]
+      "intent_terms": [
+        "журнал регистрации",
+        "registration log",
+        "event log"
+      ],
+      "candidate_modules": [
+        "ЖурналРегистрации",
+        "ЖурналРегистрацииКлиент"
+      ],
+      "purpose": "registration log",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.configuration_update",
-      "intent_terms": ["обновление информационной базы", "обработчик обновления", "configuration update", "database update"],
-      "candidate_modules": ["ОбновлениеИнформационнойБазы", "ОбновлениеИнформационнойБазыКлиент"]
+      "intent_terms": [
+        "обновление информационной базы",
+        "обработчик обновления",
+        "configuration update",
+        "database update"
+      ],
+      "candidate_modules": [
+        "ОбновлениеИнформационнойБазы",
+        "ОбновлениеИнформационнойБазыКлиент"
+      ],
+      "purpose": "configuration update",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.safe_mode",
-      "intent_terms": ["безопасный режим", "safe mode"],
-      "candidate_modules": ["РаботаВБезопасномРежиме", "РаботаВБезопасномРежимеКлиент"]
+      "intent_terms": [
+        "безопасный режим",
+        "safe mode"
+      ],
+      "candidate_modules": [
+        "РаботаВБезопасномРежиме",
+        "РаботаВБезопасномРежимеКлиент"
+      ],
+      "purpose": "safe mode",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.access_control",
-      "intent_terms": ["управление доступом", "права доступа", "access control", "permissions"],
-      "candidate_modules": ["УправлениеДоступом"]
+      "intent_terms": [
+        "управление доступом",
+        "права доступа",
+        "access control",
+        "permissions"
+      ],
+      "candidate_modules": [
+        "УправлениеДоступом"
+      ],
+      "purpose": "access control",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.service_model",
-      "intent_terms": ["модель сервиса", "область данных", "разделение данных", "service model", "data separation"],
-      "candidate_modules": ["РаботаВМоделиСервиса"]
+      "intent_terms": [
+        "модель сервиса",
+        "область данных",
+        "разделение данных",
+        "service model",
+        "data separation"
+      ],
+      "candidate_modules": [
+        "РаботаВМоделиСервиса"
+      ],
+      "purpose": "service model",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.server_notifications",
-      "intent_terms": ["серверные оповещения", "уведомление клиента", "server notification", "notifications"],
-      "candidate_modules": ["СерверныеОповещения", "СерверныеОповещенияКлиент"]
+      "intent_terms": [
+        "серверные оповещения",
+        "уведомление клиента",
+        "server notification",
+        "notifications"
+      ],
+      "candidate_modules": [
+        "СерверныеОповещения",
+        "СерверныеОповещенияКлиент"
+      ],
+      "purpose": "server notifications",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.internet_files",
-      "intent_terms": ["получение файла из интернета", "download file", "internet file", "http file"],
-      "candidate_modules": ["ПолучениеФайловИзИнтернета", "ПолучениеФайловИзИнтернетаКлиент", "ПолучениеФайловИзИнтернетаКлиентСервер"]
+      "intent_terms": [
+        "получение файла из интернета",
+        "download file",
+        "internet file",
+        "http file"
+      ],
+      "candidate_modules": [
+        "ПолучениеФайловИзИнтернета",
+        "ПолучениеФайловИзИнтернетаКлиент",
+        "ПолучениеФайловИзИнтернетаКлиентСервер"
+      ],
+      "purpose": "internet files",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.external_components",
-      "intent_terms": ["внешняя компонента", "external component", "native component"],
-      "candidate_modules": ["ВнешниеКомпонентыКлиент", "ВнешниеКомпонентыСервер"]
+      "intent_terms": [
+        "внешняя компонента",
+        "external component",
+        "native component"
+      ],
+      "candidate_modules": [
+        "ВнешниеКомпонентыКлиент",
+        "ВнешниеКомпонентыСервер"
+      ],
+      "purpose": "external components",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.object_filling",
-      "intent_terms": ["заполнение объекта", "object filling", "fill object"],
-      "candidate_modules": ["ЗаполнениеОбъектов"]
+      "intent_terms": [
+        "заполнение объекта",
+        "object filling",
+        "fill object"
+      ],
+      "candidate_modules": [
+        "ЗаполнениеОбъектов"
+      ],
+      "purpose": "object filling",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.versioning",
-      "intent_terms": ["версионирование объектов", "object versioning", "version history"],
-      "candidate_modules": ["ВерсионированиеОбъектов", "ВерсионированиеОбъектовКлиент"]
+      "intent_terms": [
+        "версионирование объектов",
+        "object versioning",
+        "version history"
+      ],
+      "candidate_modules": [
+        "ВерсионированиеОбъектов",
+        "ВерсионированиеОбъектовКлиент"
+      ],
+      "purpose": "versioning",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.change_prohibition_dates",
-      "intent_terms": ["дата запрета изменения", "запрет изменения данных", "change prohibition date", "data change lock"],
-      "candidate_modules": ["ДатыЗапретаИзменения"]
+      "intent_terms": [
+        "дата запрета изменения",
+        "запрет изменения данных",
+        "change prohibition date",
+        "data change lock"
+      ],
+      "candidate_modules": [
+        "ДатыЗапретаИзменения"
+      ],
+      "purpose": "change prohibition dates",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.data_exchange",
-      "intent_terms": ["обмен данными", "data exchange", "exchange infrastructure"],
-      "candidate_modules": ["ОбменДаннымиСервер", "ОбменДаннымиКлиент"]
+      "intent_terms": [
+        "обмен данными",
+        "data exchange",
+        "exchange infrastructure"
+      ],
+      "candidate_modules": [
+        "ОбменДаннымиСервер",
+        "ОбменДаннымиКлиент"
+      ],
+      "purpose": "data exchange",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.bulk_change",
-      "intent_terms": ["групповое изменение объектов", "bulk edit", "bulk object change"],
-      "candidate_modules": ["ГрупповоеИзменениеОбъектов", "ГрупповоеИзменениеОбъектовКлиент"]
+      "intent_terms": [
+        "групповое изменение объектов",
+        "bulk edit",
+        "bulk object change"
+      ],
+      "candidate_modules": [
+        "ГрупповоеИзменениеОбъектов",
+        "ГрупповоеИзменениеОбъектовКлиент"
+      ],
+      "purpose": "bulk change",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.delivered_data",
-      "intent_terms": ["поставляемые данные", "delivered data", "vendor supplied data"],
-      "candidate_modules": ["ПоставляемыеДанные"]
+      "intent_terms": [
+        "поставляемые данные",
+        "delivered data",
+        "vendor supplied data"
+      ],
+      "candidate_modules": [
+        "ПоставляемыеДанные"
+      ],
+      "purpose": "delivered data",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     },
     {
       "id": "bsp.full_text_search",
-      "intent_terms": ["полнотекстовый поиск", "full text search", "search index"],
-      "candidate_modules": ["ПолнотекстовыйПоискСервер", "ПолнотекстовыйПоискКлиент"]
+      "intent_terms": [
+        "полнотекстовый поиск",
+        "full text search",
+        "search index"
+      ],
+      "candidate_modules": [
+        "ПолнотекстовыйПоискСервер",
+        "ПолнотекстовыйПоискКлиент"
+      ],
+      "purpose": "full text search",
+      "candidate_api_hints": [],
+      "version_evidence_refs": [],
+      "discovery_probes": [
+        "search exact current Source for candidate module name",
+        "read exact declaration before treating any API as callable"
+      ],
+      "caveats": [
+        "Catalog hit is a candidate only; catalog miss is not proof of absence."
+      ],
+      "proof_required_after_locator_match": [
+        "exact target module source",
+        "exact exported declaration when API is used",
+        "client/server/module metadata where execution context matters",
+        "nearby call site when behavior/side effects remain ambiguous",
+        "version/runtime evidence when source differences can affect correctness"
+      ]
     }
   ],
   "proof_required_after_locator_match": [
@@ -149,5 +834,32 @@
     "client/server/module metadata where execution context matters",
     "nearby call site when behavior/side effects remain ambiguous",
     "version/runtime evidence when source differences can affect correctness"
+  ],
+  "default_limit": 5,
+  "version_identity_contract": {
+    "statuses": [
+      "EXACT",
+      "RANGE_ONLY",
+      "UNKNOWN",
+      "NOT_DETECTED"
+    ],
+    "exact_requires": [
+      "EXACT_CURRENT_SOURCE_VERSION_MARKER",
+      "UNIQUE_AUTHORIZED_REFERENCE_FINGERPRINT"
+    ],
+    "rule": "A module/API presence alone never proves an exact BSP version. Ambiguous evidence remains RANGE_ONLY or UNKNOWN. Identity is baseline-bound and invalidated on participant/artifact/source-root/baseline change."
+  },
+  "version_evidence": [
+    {
+      "id": "bsp.version_api.standard_subsystems_server",
+      "kind": "CURRENT_SOURCE_MARKER",
+      "module": "СтандартныеПодсистемыСервер",
+      "api": "ВерсияБиблиотеки",
+      "introduced_range_hint": {
+        "min_inclusive": "2.3"
+      },
+      "authority": "Exact current Source value only; this hint is routing metadata and never proves the current version.",
+      "reference": "https://its.1c.ru/db/content/updlib/src/bsp2/2.3/updatessl_2.3.htm"
+    }
   ]
 }
