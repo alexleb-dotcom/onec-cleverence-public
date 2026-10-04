@@ -218,6 +218,18 @@ Rule: `MINIMAL_COHERENT_CHANGE`
 
 Is owner reuse explicitly classified as PUBLIC_API_REUSE, SUPPORTED_EXTENSION_POINT_REUSE, INTERNAL_IMPLEMENTATION_REUSE or INTERNAL_PIPELINE_RECONSTRUCTION, with INTERNAL_PIPELINE_RECONSTRUCTION treated as a blocking architecture-review obligation unless exact-source evidence and independent review justify it?
 
+## CHANGE_PRESERVATION_CONTRACT
+
+Rule: `MINIMAL_COHERENT_CHANGE`
+
+For refactor/move, are all relevant pre-change contracts preserved or explicitly changed through existing call/context/provenance/binding/dependency/owner/state/write/repeat owners?
+
+## RELOCATION_RESIDUE_CLOSURE
+
+Rule: `MINIMAL_COHERENT_CHANGE`
+
+After move/replacement, is every old active caller/event/command/binding removed, disabled, or justified as distinct, with no duplicate active path?
+
 ## EVIDENCE_PROPERTY_BINDING
 
 Rule: `PROOF_CLAIM_INTEGRITY`
@@ -235,6 +247,12 @@ After a parser/runtime failure, user-discovered counterexample or review defect,
 Rule: `PROOF_CLAIM_INTEGRITY`
 
 Does final reporting preserve the canonical gate boundary: static/machine/manual evidence is labeled by scope, pending runtime/profiling remains pending, and READY/PROVEN language matches the actual gate outcome?
+
+## MANUAL_SKILL_EXECUTION_HONESTY
+
+Rule: `PROOF_CLAIM_INTEGRITY`
+
+Under MANUAL_SKILL_EXECUTION, are manual observations scoped honestly and all unexecuted machine/runtime/release proof kept pending?
 
 ## UNANCHORED_GAP_HYPOTHESIS
 
@@ -733,6 +751,12 @@ For a multi-field or piecewise business rule, was an explicit accepted/rejected 
 Rule: `HOOK_ORCHESTRATION`
 
 Does each changed hook/event handler keep only event-specific routing/adaptation and delegate reusable business validation/calculation/query/persistence to a named owner API unless a proven typical/project pattern justifies local ownership?
+
+## FORM_UI_OWNER_AND_SETTINGS_PLACEMENT
+
+Rule: `HOOK_ORCHESTRATION`
+
+When form/UI behavior changes, is required form/client/UI execution context kept with the form/event owner while reusable business/settings responsibility moves only to an evidenced existing owner or supported extension point, without a blanket doctrine of moving all logic out of forms?
 
 ## EXTERNAL_COMPONENT_HEALTHCHECK_LADDER
 

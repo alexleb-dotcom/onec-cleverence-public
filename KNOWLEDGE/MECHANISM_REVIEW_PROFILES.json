@@ -1027,7 +1027,8 @@
         "verify hook name/owner and callee responsibility are cohesive",
         "verify client/server context and Отказ/return/mutation/event-order semantics",
         "compare with nearest project/typical hook pattern when placement is uncertain",
-        "Does each changed hook/event handler keep only event-specific routing/adaptation and delegate reusable business validation/calculation/query/persistence to a named owner API unless a proven typical/project pattern justifies local ownership?"
+        "Does each changed hook/event handler keep only event-specific routing/adaptation and delegate reusable business validation/calculation/query/persistence to a named owner API unless a proven typical/project pattern justifies local ownership?",
+        "When form/UI behavior changes, is required form/client/UI execution context kept with the form/event owner while reusable business/settings responsibility moves only to an evidenced existing owner or supported extension point, without a blanket doctrine of moving all logic out of forms?"
       ],
       "rule_id": "HOOK_ORCHESTRATION",
       "proof_policy": {

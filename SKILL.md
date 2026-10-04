@@ -121,6 +121,26 @@ TASK + SOURCE + PROJECT CONTEXT
 → KNOWLEDGE EXTRACTION
 ```
 
+### Ordinary 1C minimum execution profile
+
+For a normal bounded 1C development task, project the canonical workflow into the shortest path that preserves its proof owners:
+
+```text
+natural task / TZ
+→ Project + Participant + Artifact + exact baseline/source identity
+→ compact requirement/change map
+→ existing owner/extension-point + analog discovery
+→ exact evidence
+→ Implementation Intent for the bounded change
+→ minimum coherent implementation
+→ only relevant deterministic/semantic/runtime validation
+→ delivery with the actual proof boundary
+```
+
+This is a projection of the existing workflow, not a second workflow or state machine. `R0_LOCAL` work stays compact: do not activate unrelated form/query/state/runtime ceremony merely because those mechanisms exist elsewhere in the project. Widen only when the touched surface/risk requires it: uncertain platform/API behavior routes to `ANALOG_BEFORE_INVENTION`; cross-module/refactor/move work routes to call/reachability/preservation owners; form/UI work routes to form owners; state/write/repeat semantics route to their existing owners; runtime-uncertain behavior remains `RUNTIME_PENDING`.
+
+For 1C project identity, keep evidence bound as `Project → Participant → Artifact`. For ordinary unpacked 1C, the artifact directory itself is the source root: `Target/Main` for Main and `Target/Extensions/<extension-id>` for an extension. Do not add redundant `Main/Main` or `<extension-id>/<extension-id>` wrappers and do not bake project-specific paths into universal semantics.
+
 Requirements depth is risk-scaled. R0 stays compact; R1 adds invariant/source-of-truth/scope; R2 adds state/repeat/error lifecycle; R3 requires the full cross-system functional contract. Do **not** turn this into a generic questionnaire. Mine the available evidence first and ask only remaining blocking questions that can change behavior, ownership, scope or acceptance.
 
 Requirements analysis / LT / TZ / specification drafting is a first-class workflow even when no implementation is requested. For a non-trivial requirements artifact, read `KNOWLEDGE/REQUIREMENTS_ARTIFACT_INTEGRITY.md`, build the contract with `--purpose REQUIREMENTS_ARTIFACT`, run `requirements_gate.py`, and do not describe the artifact as ready/complete while the gate is blocked. `ANALYSIS_ONLY` changes technical review mode; it does not waive requirements-artifact integrity.
@@ -216,6 +236,12 @@ For an applicable rule:
 - `NOT_APPLICABLE` requires a reason;
 - `EVIDENCE_REQUIRED`, `BLOCKING_DEFECT`, `NEEDS_REVISION` block release;
 - `RUNTIME_PENDING`/`NEEDS_PROFILING` may allow a test build but never `PROVEN`.
+
+### MANUAL_SKILL_EXECUTION
+
+When a deterministic tool, hook or canonical machine runner is unavailable or cannot be executed, mark the path `MANUAL_SKILL_EXECUTION` and use the smallest manual exact-evidence path that can advance the task. This label is an execution disposition, not a persisted state machine and not a weaker proof mode.
+
+Manual source inspection may support only the exact source property actually observed. Do not claim a machine check, release gate, runtime case or profiler ran when it did not. Any required `MACHINE`/`RUNTIME` proof stays pending until its real verifier/evidence exists; provider/search/summary output remains candidate evidence until exact proof closes the claim.
 
 A rule-level PASS does not hide child checks: its registered checks also require explicit dispositions. Proof rows are identity-bearing records, not prose: duplicate IDs are invalid; `PASS` evidence must contain concrete `{kind, ref}` anchors; `MACHINE` evidence must link a named `machine_reports.id`, and `RUNTIME` evidence must link a named PASS `runtime_cases.id`.
 

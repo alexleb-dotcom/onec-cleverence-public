@@ -10,6 +10,16 @@ If these artifacts were not built or are incomplete, say exactly that. You may s
 
 A model-authored checklist, prose recap, or ad-hoc `N/N` count is supplementary review material only. It cannot replace registry routing, child-check disposition, reverse review, adversarial cases, runtime/profiling evidence, or the release gate.
 
+## MANUAL_SKILL_EXECUTION
+
+If a deterministic tool/hook/verifier cannot be executed, state `MANUAL_SKILL_EXECUTION` explicitly and perform only the smallest manual evidence path needed for the current claim. This does not reduce proof requirements.
+
+- Manual exact-source inspection may prove only the source property actually observed.
+- A tool/search/provider hit remains candidate/supporting evidence until the existing proof owner accepts exact evidence.
+- Do not emit a machine/release/runtime PASS for an operation that did not run.
+- Required machine/runtime/profile evidence remains pending until the actual canonical executor/evidence is available.
+- Manual execution is a task/turn disposition, not a new persisted workflow state or alternate release gate.
+
 ## Evidence-property binding
 
 Every material evidence item must be bound to the exact property it supports. Evidence does not inherit stronger meaning merely because it is authoritative or similar.

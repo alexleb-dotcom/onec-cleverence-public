@@ -1367,6 +1367,194 @@
         "explicit_boolean_comparison_or_type_guard": false,
         "exact_boolean_source_contract": false
       }
+    },
+    {
+      "id": "SIMPLE_BOUNDED_1C_CHANGE_USES_MINIMUM_PROFILE",
+      "oracle": "fact_retention",
+      "required": [
+        "project_participant_artifact_bound",
+        "compact_requirement_change_map",
+        "existing_owner_checked",
+        "exact_evidence",
+        "implementation_intent",
+        "bounded_change",
+        "relevant_validation_only",
+        "delivery",
+        "unrelated_form_query_state_runtime_ceremony_avoided"
+      ],
+      "bad": {
+        "output": [
+          "project_participant_artifact_bound",
+          "compact_requirement_change_map",
+          "existing_owner_checked",
+          "exact_evidence",
+          "implementation_intent",
+          "bounded_change",
+          "relevant_validation_only",
+          "delivery",
+          "unrelated_form_query_state_runtime_ceremony"
+        ]
+      },
+      "good": {
+        "output": [
+          "project_participant_artifact_bound",
+          "compact_requirement_change_map",
+          "existing_owner_checked",
+          "exact_evidence",
+          "implementation_intent",
+          "bounded_change",
+          "relevant_validation_only",
+          "delivery",
+          "unrelated_form_query_state_runtime_ceremony_avoided"
+        ]
+      }
+    },
+    {
+      "id": "REFACTOR_PRESERVES_CALL_CONTEXT_PROVENANCE_BINDINGS",
+      "oracle": "fact_retention",
+      "required": [
+        "caller_callee_route",
+        "client_server_context",
+        "provenance_task_markers",
+        "metadata_xml_event_form_bindings",
+        "local_dependencies",
+        "standard_vendor_owner",
+        "state_write_repeat_semantics"
+      ],
+      "bad": {
+        "output": [
+          "caller_callee_route",
+          "standard_vendor_owner",
+          "state_write_repeat_semantics"
+        ]
+      },
+      "good": {
+        "output": [
+          "caller_callee_route",
+          "client_server_context",
+          "provenance_task_markers",
+          "metadata_xml_event_form_bindings",
+          "local_dependencies",
+          "standard_vendor_owner",
+          "state_write_repeat_semantics"
+        ]
+      }
+    },
+    {
+      "id": "FORM_RUNTIME_VALUE_SHAPE_PRESERVED",
+      "oracle": "fact_retention",
+      "required": [
+        "binding_point_runtime_shape",
+        "nested_member_proven",
+        "runtime_oracle_when_static_insufficient"
+      ],
+      "bad": {
+        "output": [
+          "metadata_member_exists",
+          "binding_declared"
+        ]
+      },
+      "good": {
+        "output": [
+          "binding_point_runtime_shape",
+          "nested_member_proven",
+          "runtime_oracle_when_static_insufficient"
+        ]
+      }
+    },
+    {
+      "id": "FORM_REQUIRED_CONTEXT_STAYS_LOCAL_WHILE_SHARED_SETTING_USES_PROVEN_OWNER",
+      "oracle": "fact_retention",
+      "required": [
+        "required_form_client_context_preserved",
+        "shared_setting_uses_proven_owner",
+        "no_move_everything_out_of_forms_doctrine"
+      ],
+      "bad": {
+        "output": [
+          "shared_setting_uses_proven_owner"
+        ]
+      },
+      "good": {
+        "output": [
+          "required_form_client_context_preserved",
+          "shared_setting_uses_proven_owner",
+          "no_move_everything_out_of_forms_doctrine"
+        ]
+      }
+    },
+    {
+      "id": "RELOCATED_LOGIC_LEAVES_NO_OLD_ACTIVE_RESIDUE",
+      "oracle": "fact_retention",
+      "required": [
+        "new_route_reachable",
+        "old_route_removed_disabled_or_distinct",
+        "no_duplicate_active_superseded_path"
+      ],
+      "bad": {
+        "output": [
+          "new_route_reachable"
+        ]
+      },
+      "good": {
+        "output": [
+          "new_route_reachable",
+          "old_route_removed_disabled_or_distinct",
+          "no_duplicate_active_superseded_path"
+        ]
+      }
+    },
+    {
+      "id": "TOOL_UNAVAILABLE_MANUAL_EXECUTION_NEVER_FAKES_MACHINE_PASS",
+      "oracle": "fact_retention",
+      "required": [
+        "manual_skill_execution_marked",
+        "manual_exact_evidence_scoped",
+        "machine_pass_not_claimed",
+        "runtime_pending_preserved",
+        "candidate_not_promoted"
+      ],
+      "bad": {
+        "output": [
+          "manual_review_done",
+          "claims_machine_pass"
+        ]
+      },
+      "good": {
+        "output": [
+          "manual_skill_execution_marked",
+          "manual_exact_evidence_scoped",
+          "machine_pass_not_claimed",
+          "runtime_pending_preserved",
+          "candidate_not_promoted"
+        ]
+      }
+    },
+    {
+      "id": "MULTI_PARTICIPANT_EVIDENCE_RETAINS_PARTICIPANT_ARTIFACT_IDENTITY",
+      "oracle": "fact_retention",
+      "required": [
+        "project_identity",
+        "participant_identity",
+        "artifact_identity",
+        "source_root_identity",
+        "no_cross_artifact_rebind"
+      ],
+      "bad": {
+        "output": [
+          "project_identity",
+          "object_name_match"
+        ]
+      },
+      "good": {
+        "output": [
+          "project_identity",
+          "participant_identity",
+          "artifact_identity",
+          "source_root_identity",
+          "no_cross_artifact_rebind"
+        ]
+      }
     }
   ]
 }

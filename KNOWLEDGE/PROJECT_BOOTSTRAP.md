@@ -80,6 +80,18 @@ Bootstrap should attempt to resolve at least the following durable contracts.
 - Cleverence product/configuration/platform versions when evidenced;
 - deployed vs reference vs historical source roles.
 
+### Participant and artifact identity
+
+A project may contain one or more **Participants**. Bind exact source/evidence to the tuple `Project → Participant → Artifact` whenever more than one participant or artifact can exist; same-named metadata/code in another participant or artifact is not interchangeable evidence.
+
+For ordinary unpacked 1C, treat artifact directories as direct source roots:
+
+- `Target/Main` — Main artifact root;
+- `Target/Extensions/<extension-id>` — one Extension artifact root;
+- other artifact families keep their evidenced project-specific roots.
+
+Do not add redundant `Target/Main/Main` or `Target/Extensions/<extension-id>/<extension-id>` wrappers. Project-specific physical prefixes remain Project Context, not universal Skill semantics. Preserve participant/artifact provenance through evidence, Implementation Intent/change scope and delivery binding.
+
 ### Mutable project decisions
 
 Material project facts/policies that may change over time must have a stable `decision_key` and lifecycle status:

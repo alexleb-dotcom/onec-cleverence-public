@@ -82,6 +82,17 @@ template_tokens = ["## Project decision lifecycle", "decision_key", "TEMPORARY",
 missing_template = [x for x in template_tokens if x not in template]
 record("template_integration", not missing_template, {"missing": missing_template})
 
+# Project context must model Project -> Participants -> Artifacts and direct unpacked 1C artifact roots.
+participant_tokens = ["participants:", "artifact identity per participant:", "Target/Main", "Target/Extensions/<extension-id>", "project + participant + artifact"]
+missing_participant_template = [x for x in participant_tokens if x not in template]
+bootstrap_participant_tokens = ["Participant and artifact identity", "Project → Participant → Artifact", "Target/Main", "Target/Extensions/<extension-id>"]
+missing_participant_bootstrap = [x for x in bootstrap_participant_tokens if x not in bootstrap_knowledge]
+record(
+    "participant_artifact_provenance_integration",
+    not missing_participant_template and not missing_participant_bootstrap,
+    {"template_missing": missing_participant_template, "bootstrap_missing": missing_participant_bootstrap},
+)
+
 # Entrypoint must route long-lived project work into lifecycle validation without polluting URL-only first-turn behavior.
 entry_tokens = ["## Project-context freshness for long-lived projects", "KNOWLEDGE/PROJECT_CONTEXT_LIFECYCLE.md", "decision_key", "SUPERSEDED", "technical proxy"]
 missing_entry = [x for x in entry_tokens if x not in first]
