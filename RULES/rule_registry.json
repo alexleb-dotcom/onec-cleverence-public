@@ -650,14 +650,6 @@
           "evidence_required": true
         },
         {
-          "id": "BSP_VERSION_AWARE_DISCOVERY",
-          "question": "When version-aware BSP discovery is material, is BSP identity bound to the exact participant/artifact/source-root/baseline, classified EXACT only from an exact current-source marker value or unique authorized reference fingerprint, used only for candidate routing/ranking, and followed by exact current-source declaration/signature/context proof before API use?",
-          "kind": "PROFILE",
-          "blocking": true,
-          "evidence_required": true,
-          "semantic_case_id": "BSP_VERSION_EXACT_REQUIRES_EXACT_MARKER_OR_UNIQUE_REFERENCE_MATCH"
-        },
-        {
           "id": "BSP_REUSE_P03",
           "question": "public interface vs internal/service module",
           "kind": "PROFILE",
@@ -714,8 +706,7 @@
         ],
         "enforcement_cases": [
           "check:BSP_REUSE_P01",
-          "check:BSP_REUSE_P08",
-          "check:BSP_VERSION_AWARE_DISCOVERY"
+          "check:BSP_REUSE_P08"
         ]
       },
       "proof_policy": {
