@@ -45,8 +45,8 @@
     },
     {
       "path": "KNOWLEDGE/CHAT_MCP_EXECUTION.md",
-      "size": 2908,
-      "sha256": "97bebd24775915f34e15076d2f43ecb00b5f2011f49e56247a74c8570726537d"
+      "size": 3856,
+      "sha256": "2a936e624cca540587ef8c85adbe0a0386bd4e41583ae9d292883145d2fece44"
     },
     {
       "path": "KNOWLEDGE/CLEVERENCE_COVERAGE_AUDIT.json",
@@ -640,8 +640,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 47299,
-      "sha256": "2e81acef71c7e0581081900748cc07e41eaaa6a3e456ffc3645893395a5c6097"
+      "size": 47362,
+      "sha256": "2384e59a1dcce2c43d0a7a6436518295b68a54a3c89e9bbb1be67aba6de08a19"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -730,8 +730,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 51471,
-      "sha256": "f6628b693132ab072639923a930e6bb8f46987d9d2f86046268db674c0000287"
+      "size": 54450,
+      "sha256": "ded5f52014cad7388c9be877cd9f3f6cbee10d30da54c115b5ce8af670a4d31c"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -1930,8 +1930,8 @@
     },
     {
       "path": "TESTS/run_skill_freshness_regression.py",
-      "size": 4603,
-      "sha256": "0a5f8cdbb2327b65518f911c25a8331341e2a701df357e829cc4b16bdc35598f"
+      "size": 4870,
+      "sha256": "9a8735a2d0d794bbc4f7374d25355c0cdc9fb7f46ac6d646e45dcf5f5c7e4543"
     },
     {
       "path": "TESTS/run_user_artifact_docx_regression.py",
@@ -2265,5 +2265,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6721cde286253a258d390a9083447bad539f3362a1760b2318235c7719838a8b"
+  "snapshot_digest": "ac889deb7a0b23921d53642e405188b62e3fea1a5f47771d64e3554a73c7ca97"
 }
