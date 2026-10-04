@@ -40,6 +40,7 @@
           "INDEPENDENT_REVIEW"
         ]
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "CALL_CONTRACT": {
@@ -67,6 +68,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "IMPLEMENTATION_REACHABILITY": {
@@ -91,6 +93,7 @@
           "INDEPENDENT_REVIEW"
         ]
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "BUSINESS_IDENTITY": {
@@ -128,6 +131,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "QUERY": {
@@ -198,6 +202,7 @@
           "INDEPENDENT_REVIEW"
         ]
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "DYNAMIC_LIST": {
@@ -237,6 +242,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "CLIENT_SERVER_FORM": {
@@ -271,6 +277,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "POST_WRITE_STANDARD_OVERWRITE": {
@@ -293,6 +300,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "ONEC_XML_STRUCTURE": {
@@ -316,6 +324,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "FORM_XML_STRUCTURE": {
@@ -340,6 +349,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "FORM_DATA_BINDING": {
@@ -364,6 +374,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "METADATA_XML_STRUCTURE": {
@@ -385,6 +396,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "REFERENCE_SELECTION_CONTRACT": {
@@ -414,6 +426,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "ROLE_RIGHTS_STRUCTURE": {
@@ -439,6 +452,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "CFE_EXTENSION_STRUCTURE": {
@@ -465,6 +479,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "XDTO_STRUCTURE": {
@@ -490,6 +505,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "TRANSACTION_WRITE": {
@@ -534,6 +550,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "EXCEPTION": {
@@ -561,6 +578,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "STRUCTURED_CONTRACT": {
@@ -593,6 +611,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "POLYMORPHIC_DOMAIN": {
@@ -620,6 +639,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "DUPLICATION_INVARIANT": {
@@ -647,6 +667,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "CROSS_OBJECT_DUPLICATION_REVIEW": {
@@ -671,6 +692,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "SERVER_API_SECURITY": {
@@ -697,6 +719,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "COLLECTION_ALGORITHM": {
@@ -777,6 +800,7 @@
           "PRODUCER_MAPPING_WRITER_CONSUMER"
         ]
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "CLEVERENCE_MSLX": {
@@ -828,6 +852,7 @@
         ],
         "runtime_required_from": "R2_STATEFUL_RUNTIME"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "DIFF_ATTRIBUTION": {
@@ -854,6 +879,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "DOCUMENTATION_CONTRACT": {
@@ -882,6 +908,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "REPRESENTATION_CONTRACT": {
@@ -906,6 +933,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "CLEVERENCE_INTEGRATION": {
@@ -950,6 +978,7 @@
         ],
         "runtime_required_from": "R3_CROSS_SYSTEM"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "DOMAIN_VALIDATION": {
@@ -977,6 +1006,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "HOOK_ORCHESTRATION": {
@@ -1007,6 +1037,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "EXTERNAL_COMPONENT_LIFECYCLE": {
@@ -1056,6 +1087,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "VERSION_GATED_CAPABILITY": {
@@ -1083,6 +1115,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "REFERENCE_DATA_FRESHNESS": {
@@ -1112,6 +1145,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "BARCODE_INPUT_AND_CLASSIFICATION": {
@@ -1142,6 +1176,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "STATEFUL_UI_MODE": {
@@ -1171,6 +1206,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "EXTERNAL_SIDE_EFFECT_IDENTITY": {
@@ -1201,6 +1237,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "DECISION_DEPENDENCY_INVALIDATION": {
@@ -1226,6 +1263,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "BUSINESS_RELATION_CARDINALITY": {
@@ -1250,6 +1288,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     },
     "FACT_PRESERVING_REALLOCATION": {
@@ -1276,6 +1315,7 @@
         "required_roles": [],
         "migration": "REGISTRY_LEGACY_COMPATIBILITY"
       },
+      "performance_review": null,
       "generated_from": "RULES/rule_registry.json"
     }
   },
