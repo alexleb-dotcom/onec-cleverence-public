@@ -331,7 +331,7 @@ def build_work_queue(ledger:dict,ledger_sha256:str|None=None)->dict:
         "requirements":{k:requirements.get(k) for k in ("required","technical_design_allowed","gate_outcome") if k in requirements},
         "implementation_readiness":compact_implementation_readiness,
         "active_profiles":_compact_profiles(ledger.get("active_profiles")),"work_queue":work,"counts":counts,"verifier":verifier,
-        "policy":{"declared_status_is_not_proof":True,"omit_only_on_explicit_accepted_verdict":True,"global_verifier_error_is_fail_closed":True,"system_status_requires_reverification":True,"registry_owner":"RULES/rule_registry.json is read by executable tools, not loaded wholesale into normal LLM context."},
+        "policy":{"contract":"verifier-owned; status!=proof; omit only ACCEPTED; fail closed; reverify system status","registry_owner":"RULES/rule_registry.json"},
     }
     if proof_requirements:result["proof_requirements"]=proof_requirements
     proof=[]; intent=[]; seen_proof=set(); seen_intent=set()

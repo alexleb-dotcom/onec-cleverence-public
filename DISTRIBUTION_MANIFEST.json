@@ -2230,8 +2230,8 @@
     },
     {
       "path": "TOOLS/validation_work_queue.py",
-      "size": 20594,
-      "sha256": "4cc5d5f5a13ef357e889cda7a3823343430541dd28639b2d2817458a1ea66af0"
+      "size": 20448,
+      "sha256": "c820834099e84250a971a4921ceddfd3c7de3e004d436d9bdfdb875745b24c51"
     },
     {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
@@ -2260,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "b50e091c1f1b1903fdf381ee5efd41fc9533a92a4575080a732e67b073334368"
+  "snapshot_digest": "859730e6190349426b8a5cc3dc20ed70b75423922e9b5647134836839ca9b951"
 }
