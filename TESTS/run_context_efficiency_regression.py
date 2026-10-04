@@ -251,6 +251,25 @@ record(
     and "TEMPLATES/MANUAL_TRANSFER_INSTRUCTION_TEMPLATE.md" not in progressive.split("routed profile(s)",1)[0],
 )
 
+chat_exec_owner = "KNOWLEDGE/CHAT_MCP_EXECUTION.md"
+chat_trigger = skill.split("### Bounded project source/proposal capabilities", 1)[1].split("### MANUAL_SKILL_EXECUTION", 1)[0] if "### Bounded project source/proposal capabilities" in skill else ""
+record(
+    "chat_mcp_always_on_trigger_is_compact",
+    chat_exec_owner in chat_trigger
+    and len(chat_trigger.encode("utf-8")) <= 900
+    and "OneC_G1Q1_MCP" not in chat_trigger
+    and "Cloudflare" not in chat_trigger
+    and "OAuth" not in chat_trigger,
+    {"trigger_bytes": len(chat_trigger.encode("utf-8")), "limit": 900},
+)
+record(
+    "chat_mcp_owner_is_conditional_not_startup_payload",
+    chat_exec_owner in skill
+    and chat_exec_owner not in required_owner_paths
+    and skill.count(chat_exec_owner) == 1,
+    {"owner_refs": skill.count(chat_exec_owner)},
+)
+
 with tempfile.TemporaryDirectory() as td:
     temp=Path(td)
     source=temp/"small_r1.bsl"; source_text="Процедура Обработать()\n    Значение = 1;\nКонецПроцедуры\n"; source.write_text(source_text,encoding="utf-8")
