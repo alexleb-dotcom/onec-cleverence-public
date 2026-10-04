@@ -9,3 +9,5 @@
 *.xml text eol=lf
 *.txt text eol=lf
 *.epf -text
+*.bin -text
+TESTS/fixtures/bare_symbol_*.bsl -text

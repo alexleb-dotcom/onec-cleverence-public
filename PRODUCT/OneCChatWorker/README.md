@@ -1,124 +1,177 @@
 # OneCChatWorker turnkey product
 
-This package is the 1C-first turnkey implementation of the accepted OneC Architecture runtime.
+This directory contains the 1C-first turnkey OneCChatWorker product defined by control thread #44. It packages the accepted hosted-MCP read/proposal contour behind one deterministic Windows lifecycle manager. Cleverence remains deferred.
 
-## Entry point
+## One visible entry point
 
-Run **`OneCChatWorker.ps1`**. With no arguments it opens the operator menu. The same file also exposes deterministic CLI modes for automation and support.
+Run OneCChatWorker.ps1.
 
-Main menu:
+With no arguments it is the normal operator UI. If the machine is not installed it shows PRECHECK / INSTALL / REPAIR. If installed it shows START PROJECT, STOP, STATUS, PROJECTS, VERIFY / REPAIR, SETTINGS / DIAGNOSTICS, UPDATE / REINSTALL, UNINSTALL, and EXIT.
 
-- START PROJECT
-- STOP
-- STATUS
-- PROJECTS
-- VERIFY / bounded REPAIR
-- SETTINGS / DIAGNOSTICS
-- INSTALL / UPDATE
-- UNINSTALL GUIDANCE
-- EXIT
+The same launcher exposes deterministic CLI modes for support and automation. Normal output is human-readable; -Json is an explicit automation/support option.
 
-The PROJECTS submenu supports list/add/deactivate project, add/deactivate participant, set/replace Main, add/deactivate extension, APPLY and VERIFY.
+The PROJECTS menu supports LIST PROJECTS, ADD / EDIT PROJECT, ADD / EDIT / REMOVE-DEACTIVATE PARTICIPANT, SET / REPLACE / REMOVE-DEACTIVATE MAIN, ADD / REPLACE / REMOVE-DEACTIVATE EXTENSION, APPLY CATALOG, and VERIFY PROJECT.
+
+There is one manager/core owner. The menu is not a second implementation.
 
 ## First run
 
-1. Download or clone this repository.
-2. Run:
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\OneCChatWorker.ps1 -Mode PRECHECK
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\OneCChatWorker.ps1 -Mode INSTALL
-   ```
-3. INSTALL self-elevates and:
-   - installs pinned Node.js and ripgrep with WinGet when required;
-   - creates the non-admin `OneCSourceReader` identity if absent;
-   - installs the bounded provider/helper runtime under `C:\ProgramData\OneCChatWorker`;
-   - initializes `C:\OneCChatWorker\projects.json`;
-   - keeps the runtime OFF after installation.
-4. One unavoidable remote-auth checkpoint remains:
-   - connect the stable private MCP app in ChatGPT to
-     `https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp` and complete OAuth;
-   - enroll this machine with the helper secret using:
-     ```powershell
-     .\OneCChatWorker.ps1 -Mode SETTINGS
-     ```
-   The secret is entered locally, is never committed to the catalog/repository, and receives a read-only ACL for `OneCSourceReader`.
-5. Add a project/participant/Main/Extensions, APPLY, VERIFY, then START a task-bound admission.
+From a repository/release checkout:
 
-## Canonical 1C layout
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\OneCChatWorker.ps1 -Mode PRECHECK
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\OneCChatWorker.ps1 -Mode INSTALL
 
-Direct artifact roots only:
+INSTALL self-elevates when needed. It verifies runtime.lock.json, installs/reuses the exact pinned Node.js and ripgrep builds, verifies their SHA-256 values, installs the hash-locked product components, creates/adopts the restricted local reader identity, applies ACLs, initializes projects.json, and leaves the helper OFF.
 
-```text
-C:\OneCChatWorker\<project>\
-  ProjectManifest\project.json
-  Participants\<participant>\Target\Main\Configuration.xml
-  Participants\<participant>\Target\Extensions\<extension>\Configuration.xml
-  Output\<task>\...
-  Detached\...
-```
+Each component is reported as an explicit disposition such as REUSED, INSTALLED, UPDATED, SKIPPED_NOT_REQUIRED, or a classified failure/operator checkpoint.
 
-There is no redundant `Main\Main` or `<extension>\<extension>` wrapper.
+Python is not a product runtime dependency. Cloudflare CLI / Wrangler is not a product runtime dependency. They may be engineering tools in development, but the new-machine installer does not install them.
 
-## Catalog and APPLY
+The default restricted identity is OneCSourceReader; -ReaderName can select another safe local name. The worker root and ProgramData runtime root are parameterized as -WorkerRoot and -ProgramDataRoot.
 
-`C:\OneCChatWorker\projects.json` is desired operator state. JSON is used deliberately so the product has no YAML parser dependency.
+### Remote authorization
 
-APPLY:
+There is one unavoidable remote-auth checkpoint:
 
-- validates unpacked 1C roots;
-- stages and hashes copies before promotion;
-- creates a normalized `ProjectManifest\project.json`;
-- binds the manifest to `projects.json` SHA-256;
-- preserves Output;
-- never edits external business Source;
-- archives replaced artifacts under `Detached`;
-- moves deactivated participant/extension artifacts to `Detached\Deactivated` instead of deleting them.
+1. connect the stable private MCP app in ChatGPT to https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp;
+2. complete the app OAuth flow in ChatGPT;
+3. locally enroll the machine helper secret with:
 
-Catalog/manifest mismatch is reported as `DRIFT_APPLY_REQUIRED`.
+    .\OneCChatWorker.ps1 -Mode SETTINGS
 
-## Runtime security boundary
+The helper secret is entered locally. Its value is not written to operation logs, the catalog, diagnostics, or the repository. The stable hosted endpoint is not recreated per project.
 
-The model-facing surface is exactly:
+## Project catalog and canonical topology
 
-- `source_context`
-- `source_search`
-- `source_read`
-- `proposal_write`
-- `proposal_read`
+C:\OneCChatWorker\projects.json is the one human-editable desired-state catalog. JSON is intentional: no YAML runtime dependency is required.
 
-No source write, shell, process, browser, arbitrary filesystem, delete, project switch, root switch or task switch is exposed.
+Each applied project receives generated normalized runtime state at:
 
-START creates one manager-owned `active-admission.json` binding exactly one project and one task before the helper starts. The model cannot change either value.
+    C:\OneCChatWorker\<project>\
+      ProjectManifest\project.json
+      Participants\<participant>\Target\Main\Configuration.xml
+      Participants\<participant>\Target\Extensions\<extension-id>\Configuration.xml
+      Output\<task>\...
+      Detached\...
 
-`Participants` are read-only to `OneCSourceReader`. `Output` is writable only for proposal delivery. Proposal provenance is machine-readable and uses status `PROPOSAL_NOT_APPLIED`.
+For ordinary unpacked 1C exports the artifact directory is the source root. There is no Main\Main or <extension-id>\<extension-id> wrapper.
 
-## Safe replacement and repair
+ProjectManifest\project.json records the exact catalog SHA-256 used to generate it. Catalog/manifest mismatch is DRIFT_APPLY_REQUIRED; runtime never silently guesses desired state.
 
-Existing canonical artifacts are never silently recursively deleted. A requested replacement moves the old artifact to `Detached` first.
+APPLY reports safe metadata for every artifact: operator source input path, participant/artifact identity, canonical target path, COPIED / REUSED / REPLACED_DETACHED / DEACTIVATED_DETACHED, and detached path when applicable.
 
-REPAIR is deliberately narrow: it may re-APPLY when the project is missing an applied manifest or has catalog/manifest drift. Unknown/hash-corruption states are not auto-repaired.
+External business Source is never edited. Copy/import is staged and hash-verified before promotion.
+
+## Safe removal
+
+REMOVE means deactivate, not purge.
+
+Replacements and deactivations move managed copies to Detached rather than recursively destroying them. Deactivating a required 1C Main is allowed as desired state so the old managed copy can be detached, but VERIFY returns ONEC_MAIN_REQUIRED and START refuses the incomplete project until a valid Main is set again.
+
+No PURGE action exists in this release.
+
+## START / STOP
+
+START first VERIFYs the selected project, then writes one manager-owned active-admission.json binding exactly one project and one task. The selected relay/helper endpoint is also fixed before helper launch. The model cannot switch project, root, or task.
+
+The helper runs under the restricted local identity and connects outbound-only. Its session recovery is bound to the current source snapshot; a changed applied manifest cannot silently reuse an older helper session.
+
+STOP ends the local helper/admission and does not delete catalog, Participants, Output, Detached, or external Source.
+
+## Model-facing execution boundary
+
+The hosted app contract is exactly five semantic tools:
+
+- source_context
+- source_search
+- source_read
+- proposal_write
+- proposal_read
+
+There is no model-facing source write, delete, shell, process, browser, arbitrary URL, project switch, root switch, or task switch.
+
+Participants are read-only to the restricted helper. Output is writable only for bounded proposal delivery. _proposal_provenance.json binds proposal artifacts to the admitted source snapshot. PROPOSAL_NOT_APPLIED means the proposal was delivered to Output but was not applied/deployed to authoritative business Source.
+
+## Remote-call budget
+
+Remote calls are budgeted. The product contract in runtime.lock.json records:
+
+- exact known-path source read: normally 1 remote call;
+- bounded source search with context: normally 1 remote call;
+- ordinary non-trivial source question: target <=3 reader calls before Chat reasoning.
+
+A single remote search may perform bounded local searches across admitted participant artifacts; that local fan-out does not create additional remote MCP calls. There is no polling loop for ordinary source operations.
+
+## Human-readable progress and durable operations
+
+Long operations use one shared operation/event model. Normal console progress resembles:
+
+    [1/4] INSTALL Checking prerequisites ... RUNNING
+    [2/4] INSTALL Installing/reusing pinned components ... RUNNING
+    [3/4] INSTALL Verifying installed runtime ... RUNNING
+    [4/4] INSTALL Complete authorization checkpoint ... WAITING_FOR_USER
+
+Canonical states are:
+
+RUNNING | PASS | FAIL | WAITING_FOR_USER | CANCELLED | RECOVERED
+
+Durable machine-readable and human-readable operation evidence is maintained with bounded rotation. The operator UI includes:
+
+- VIEW CURRENT OPERATION
+- VIEW RECENT OPERATIONS
+- VIEW LOGS
+- EXPORT DIAGNOSTIC BUNDLE
+
+STATUS shows product/install state, dependency versions/health, installed component integrity, project/catalog/manifest verification state, active admission, helper/MCP connection evidence, current/last operation, last VERIFY, recovery classification, and bounded Output proposal summaries.
+
+Diagnostic bundles intentionally exclude secret values and passwords.
+
+## Interrupted work and repair
+
+The lifecycle follows RECOVER_FIRST_NOT_REPLAY_FIRST.
+
+If the last material operation is still RUNNING, normal mutating actions stop with RECOVERY_REQUIRED; they do not blindly replay the request. PRECHECK may inspect state. An explicit INSTALL/REPAIR path classifies the interrupted operation and then performs idempotent bounded reconciliation.
+
+Project REPAIR is intentionally narrow: missing applied manifest or catalog drift may be reconciled by APPLY; unknown physical/hash corruption is not silently overwritten; verification remains the final gate before START.
+
+## STATUS / DIAGNOSTICS examples
+
+    .\OneCChatWorker.ps1 -Mode STATUS
+    .\OneCChatWorker.ps1 -Mode VIEW_CURRENT_OPERATION
+    .\OneCChatWorker.ps1 -Mode VIEW_RECENT_OPERATIONS
+    .\OneCChatWorker.ps1 -Mode VIEW_LOGS
+    .\OneCChatWorker.ps1 -Mode EXPORT_DIAGNOSTICS
+
+For machine consumption add -Json to read-only/status-style commands.
+
+## Safe uninstall / rollback
+
+Without confirmation:
+
+    .\OneCChatWorker.ps1 -Mode UNINSTALL
+
+prints the exact plan and performs no mutation.
+
+Runtime-only removal requires:
+
+    .\OneCChatWorker.ps1 -Mode UNINSTALL -ConfirmUninstall
+
+It STOPs the admission and removes only product-owned runtime/provider/helper/secret/product files and the installed launcher. It retains projects.json, all project Participants managed source copies, Output proposals/evidence, Detached archives, audit and operation logs, and the restricted local reader account.
+
+It never deletes authoritative external business Source. Reader-account deletion and Source/Output purge are intentionally separate/not implemented destructive actions.
 
 ## Cleverence
 
-The catalog schema already carries `platform`, but this release is intentionally 1C-first. Any active non-ONEC participant fails closed with `PLATFORM_NOT_IMPLEMENTED_1C_FIRST`. Cleverence must reuse this manager/installer architecture after its own canonical-layout gate; no second installer is intended.
+The catalog schema is participant/platform-extensible, but this release is deliberately 1C-first. Any active non-ONEC participant fails closed with PLATFORM_NOT_IMPLEMENTED_1C_FIRST.
 
-## Uninstall
+Cleverence must later reuse this same installer/catalog/lifecycle architecture after its own source-layout gate. No second installer architecture is introduced here.
 
-`-Mode UNINSTALL` returns the safe uninstall plan. The default policy removes runtime/launcher components only after STOP and **retains**:
+## Reproducibility and verification
 
-- `projects.json`;
-- project Participants copies;
-- Output proposals/evidence;
-- Detached archives.
+runtime.lock.json pins dependency versions, reference binary hashes, product component hashes, the stable hosted app identity, the exact five-tool surface, and the remote-call budget.
 
-It never silently deletes external business Source or project evidence.
+Run the Windows clean-root regression:
 
-## Reproducibility
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\tests\run_local_regression.ps1
 
-Pinned package versions and reference hashes are recorded in `runtime.lock.json`.
-
-Run local regression on Windows:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\tests\run_local_regression.ps1
-```
+The cross-platform shareable CI also validates static product/security/observability contracts through TESTS/run_onecchatworker_product_regression.py.

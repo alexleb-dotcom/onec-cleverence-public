@@ -14,10 +14,11 @@
     }
   },
   "components": {
-    "runtime/source-reader-integration.mjs": "bd89c210e586cb8ce2f8cb3adcded55db8998e08a81c937dc1e41fab8ad25215",
-    "runtime/hosted-helper.mjs": "81c0bcaafd2e55370aef211b04dab65cfa5019c03c77084190170e32b719687b",
-    "core/OneCChatWorker.Core.psm1": "08a0a0fc084a27734e2b734e58ae5de41314a6c95e2df00411c039f811648acc",
-    "OneCChatWorker.ps1": "6d0e23f56c174b7269ae341bacf35a739ef65a21affe1f7e0906d3f8ebe92461"
+    "runtime/source-reader-integration.mjs": "f1e30ee3d8cc3ca77845a5a82a0c05ffaa6984cad1c519a620fbb5384f558e30",
+    "runtime/hosted-helper.mjs": "4cb3bc1648103e80e1447299aa10d28fa55e80550b06e8908d89f5f28a56449b",
+    "core/OneCChatWorker.Core.psm1": "fcf1d4dd024bda165b78d2765b49a338b5924c16c7ce1c094b96d7b23f2ad6d2",
+    "OneCChatWorker.ps1": "b215e4a3de5d9c96bc49d01c63cc2b88151c9b9d86f99faa986539107330f9dd",
+    "README.md": "1965180e3fbb957dc4d6960670a2a727be993e109e4957a399ffabf7c82b2cf1"
   },
   "hosted_mcp": {
     "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
@@ -29,5 +30,12 @@
       "proposal_write",
       "proposal_read"
     ]
+  },
+  "remote_call_budget": {
+    "known_path_read_calls": 1,
+    "bounded_search_calls": 1,
+    "ordinary_nontrivial_target_max_calls": 3,
+    "local_search_fanout": "one bounded provider search per admitted artifact inside one remote request",
+    "polling_required": false
   }
 }

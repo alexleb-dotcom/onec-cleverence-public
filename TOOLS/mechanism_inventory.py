@@ -60,6 +60,9 @@ PIPELINE_INTERNAL_KNOWLEDGE = {
     "KNOWLEDGE/LLM_ADVERSARIAL_VALIDATION.md",
     "KNOWLEDGE/VALIDATION_ENGINE.md",
 }
+PRODUCT_PREFIX_OWNERS = {
+    "PRODUCT/OneCChatWorker/": "PRODUCT:OneCChatWorker",
+}
 PIPELINE_INTERNAL_EXACT = {
     ".gitattributes",
     ".github/workflows/shareable-validation.yml",
@@ -412,6 +415,9 @@ def classify_candidate_path(path: str, context: dict) -> tuple[str | None, str |
     owner = context["support_owners"].get(path)
     if owner:
         return "SUPPORTING", owner
+    for prefix, product_owner in PRODUCT_PREFIX_OWNERS.items():
+        if path.startswith(prefix):
+            return "SUPPORTING", product_owner
     if path in PIPELINE_INTERNAL_KNOWLEDGE or path in PIPELINE_INTERNAL_EXACT:
         return "PIPELINE_INTERNAL", "STRUCTURAL_PIPELINE_OWNER"
     if path.startswith("TESTS/"):

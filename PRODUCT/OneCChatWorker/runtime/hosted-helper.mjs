@@ -78,18 +78,18 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function log(x){await fsp.appendFile(LOG_PATH,JSON.stringify({at_utc:new Date().toISOString(),...x})+'\n','utf8').catch(()=>{});}
 async function saveState(s){const t=STATE_PATH+'.tmp';await fsp.writeFile(t,JSON.stringify(s,null,2),'utf8');await fsp.rename(t,STATE_PATH);}
+const manifestHash=sha256(Buffer.from(manifestText,'utf8'));
+const SNAPSHOT = admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8'));
 async function loadState(){
   try{
     const s=JSON.parse(await fsp.readFile(STATE_PATH,'utf8'));
-    if(s.project_id===PROJECT && s.task_id===TASK && Date.now()<Date.parse(s.expires_utc)) return s;
+    if(s.project_id===PROJECT && s.task_id===TASK && s.snapshot_id===SNAPSHOT && Date.now()<Date.parse(s.expires_utc)) return s;
   }catch{}
   const started=new Date(),expires=new Date(started.getTime()+caps.ttl_minutes*60000);
-  const s={schema_version:1,session_id:crypto.randomBytes(16).toString('hex'),project_id:PROJECT,task_id:TASK,started_utc:started.toISOString(),expires_utc:expires.toISOString(),processed:{},idempotency:{}};
+  const s={schema_version:1,session_id:crypto.randomBytes(16).toString('hex'),project_id:PROJECT,task_id:TASK,snapshot_id:SNAPSHOT,started_utc:started.toISOString(),expires_utc:expires.toISOString(),processed:{},idempotency:{}};
   await saveState(s); return s;
 }
 
-const manifestHash=sha256(Buffer.from(manifestText,'utf8'));
-const SNAPSHOT = admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8'));
 let state=await loadState();
 const provider=new SourceReaderIntegration({configPath:CONFIG_PATH,getDeviceId:()=> 'onecchat-hosted-helper'});
 await provider.initialize();
@@ -201,18 +201,18 @@ async function exec(op,args){
   const t=performance.now();
   try{
     if(Date.now()>=Date.parse(state.expires_utc))fail('SESSION_EXPIRED');
-    if(op==='context')return {status:'OK',metadata:{op,local_ms:+(performance.now()-t).toFixed(3)},payload:{session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:'Output/'+TASK,status:'PROPOSAL_NOT_APPLIED',expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}}};
-    if(op==='search')return {status:'OK',metadata:{op,local_ms:+(performance.now()-t).toFixed(3)},payload:await sourceSearch(args)};
+    if(op==='context')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:{session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:'Output/'+TASK,status:'PROPOSAL_NOT_APPLIED',expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}}};
+    if(op==='search')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await sourceSearch(args)};
     if(op==='read'){
       if(!args||typeof args.path!=='string'||!Number.isInteger(args.start)||!Number.isInteger(args.end)||args.start<1||args.end<args.start||(args.end-args.start+1)>caps.max_read_lines)fail('INVALID_READ_ARGS');
       const rel=normalizePath(args.path);if(!pathAllowed(args.path))fail('PATH_OUTSIDE_ADMITTED_PROJECT');
       const r=await provider.callClientTool('source_read',{project_slug:PROJECT,source_domain:'ONEC',relative_path:rel,offset:args.start-1,length:args.end-args.start+1},{transport:'onecchat-hosted'});
-      const v=r.structuredContent;return {status:'OK',metadata:{op,local_ms:+(performance.now()-t).toFixed(3),relative_path:rel,range:[v.offset+1,v.offset+v.length],sha256:v.sha256,total_lines:v.total_lines},payload:{content:v.content}};
+      const v=r.structuredContent;return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3),relative_path:rel,range:[v.offset+1,v.offset+v.length],sha256:v.sha256,total_lines:v.total_lines},payload:{content:v.content}};
     }
-    if(op==='proposal_write')return {status:'OK',metadata:{op,local_ms:+(performance.now()-t).toFixed(3)},payload:await proposalWrite(args)};
-    if(op==='proposal_read')return {status:'OK',metadata:{op,local_ms:+(performance.now()-t).toFixed(3)},payload:await proposalRead(args)};
+    if(op==='proposal_write')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await proposalWrite(args)};
+    if(op==='proposal_read')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await proposalRead(args)};
     fail('UNKNOWN_OP');
-  }catch(e){return {status:'ERROR',metadata:{op,local_ms:+(performance.now()-t).toFixed(3),error_class:String(e?.code||e?.name||'ERROR')},payload:{error:String(e?.message||e).slice(0,400)}};}
+  }catch(e){return {status:'ERROR',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3),error_class:String(e?.code||e?.name||'ERROR')},payload:{error:String(e?.message||e).slice(0,400)}};}
 }
 async function connectLoop(){
   const secret=(await fsp.readFile(SECRET_PATH,'utf8')).trim(); if(secret.length<20)throw new Error('HELPER_SECRET_INVALID');
@@ -234,7 +234,7 @@ async function connectLoop(){
           }else res.metadata={...res.metadata,attempted_payload_bytes:attemptedPayloadBytes,max_result_bytes:caps.max_result_bytes};
           const out={type:'result',request_id:m.request_id,status:res.status,metadata:res.metadata,payload:res.payload};
           state.processed[m.request_id]=out;await saveState(state);ws.send(JSON.stringify(out));
-          await log({event:'RESULT',request_id:m.request_id,op:m.op,status:res.status,attempted_payload_bytes:attemptedPayloadBytes,local_ms:res.metadata.local_ms});
+          await log({event:'RESULT',request_id:m.request_id,op:m.op,status:res.status,attempted_payload_bytes:attemptedPayloadBytes,elapsed_ms:res.metadata.elapsed_ms});
         });
         ws.addEventListener('close',resolve,{once:true});ws.addEventListener('error',resolve,{once:true});
       });
