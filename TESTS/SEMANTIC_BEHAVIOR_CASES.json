@@ -1838,20 +1838,22 @@
       "id": "CHAT_MCP_MISSING_TOOLS_USE_MANUAL_EXECUTION_HONESTLY",
       "oracle": "fact_retention",
       "required": [
+        "explicit_user_no_mcp_authorization",
         "manual_skill_execution",
         "no_fake_machine_pass",
-        "execution_capability_blocker"
+        "smallest_exact_source_request"
       ],
       "bad": {
         "output": [
-          "fake_machine_pass"
+          "tool_absence_silently_requests_source"
         ]
       },
       "good": {
         "output": [
+          "explicit_user_no_mcp_authorization",
           "manual_skill_execution",
           "no_fake_machine_pass",
-          "execution_capability_blocker"
+          "smallest_exact_source_request"
         ]
       }
     },
@@ -1890,6 +1892,111 @@
         "output": [
           "semantic_capability_routing",
           "namespace_independent"
+        ]
+      }
+    },
+    {
+      "id": "MCP_AVAILABLE_PREFERS_BOUNDED_SOURCE_TO_OPERATOR_FILE_SHUTTLE",
+      "oracle": "fact_retention",
+      "required": [
+        "bounded_mcp_used_for_project_source",
+        "operator_source_shuttle_not_requested"
+      ],
+      "bad": {
+        "output": [
+          "source_upload_requested_despite_mcp"
+        ]
+      },
+      "good": {
+        "output": [
+          "bounded_mcp_used_for_project_source",
+          "operator_source_shuttle_not_requested"
+        ]
+      }
+    },
+    {
+      "id": "MCP_AVAILABLE_MUST_NOT_REQUEST_SOURCE_UPLOAD",
+      "oracle": "fact_retention",
+      "required": [
+        "mcp_available",
+        "source_upload_forbidden",
+        "admitted_source_authoritative"
+      ],
+      "bad": {
+        "output": [
+          "request_module_file_archive"
+        ]
+      },
+      "good": {
+        "output": [
+          "mcp_available",
+          "source_upload_forbidden",
+          "admitted_source_authoritative"
+        ]
+      }
+    },
+    {
+      "id": "LEGACY_SOURCE_REQUEST_REQUIRES_EXPLICIT_USER_MCP_UNAVAILABLE_DECLARATION",
+      "oracle": "fact_retention",
+      "required": [
+        "explicit_user_no_mcp_declaration",
+        "legacy_source_request_allowed_after_declaration",
+        "smallest_sufficient_source"
+      ],
+      "bad": {
+        "output": [
+          "legacy_request_without_user_declaration"
+        ]
+      },
+      "good": {
+        "output": [
+          "explicit_user_no_mcp_declaration",
+          "legacy_source_request_allowed_after_declaration",
+          "smallest_sufficient_source"
+        ]
+      }
+    },
+    {
+      "id": "MCP_FAILURE_WITHOUT_USER_FALLBACK_AUTHORIZATION_DOES_NOT_SILENTLY_REQUEST_FILES",
+      "oracle": "fact_retention",
+      "required": [
+        "mcp_capability_blocker_reported",
+        "no_source_request_before_authorization",
+        "fallback_confirmation_only_if_useful"
+      ],
+      "bad": {
+        "output": [
+          "mcp_failure_triggers_file_request"
+        ]
+      },
+      "good": {
+        "output": [
+          "mcp_capability_blocker_reported",
+          "no_source_request_before_authorization",
+          "fallback_confirmation_only_if_useful"
+        ]
+      }
+    },
+    {
+      "id": "MCP_UNAVAILABLE_PRESERVES_LEGACY_SOURCE_REQUEST_WORKFLOW",
+      "oracle": "fact_retention",
+      "required": [
+        "explicit_user_no_mcp_declaration",
+        "source_first_preserved",
+        "smallest_sufficient_source_request",
+        "manual_execution_honesty"
+      ],
+      "bad": {
+        "output": [
+          "legacy_workflow_entered_without_explicit_authorization"
+        ]
+      },
+      "good": {
+        "output": [
+          "explicit_user_no_mcp_declaration",
+          "source_first_preserved",
+          "smallest_sufficient_source_request",
+          "manual_execution_honesty"
         ]
       }
     }
