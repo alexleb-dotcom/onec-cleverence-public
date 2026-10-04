@@ -88,6 +88,35 @@ record(
     {"missing": missing_identity, "hardcoded_private_repository": hardcoded_private_repository},
 )
 
+
+# Capability-based bounded Chat execution must remain portable and conditional.
+chat_exec = (ROOT / "KNOWLEDGE/CHAT_MCP_EXECUTION.md").read_text(encoding="utf-8")
+skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+chat_tokens = [
+    "source_context",
+    "source_search",
+    "source_read",
+    "proposal_write",
+    "proposal_read",
+    "PROPOSAL_NOT_APPLIED",
+    "MANUAL_SKILL_EXECUTION",
+    "semantic capability",
+]
+missing_chat_tokens = [token for token in chat_tokens if token not in chat_exec]
+forbidden_chat_tokens = ["OneC_G1Q1_MCP", "Cloudflare", "OAuth", "relay implementation"]
+present_forbidden = [token for token in forbidden_chat_tokens if token in chat_exec or token in skill]
+record(
+    "chat_mcp_capability_contract_is_portable",
+    not missing_chat_tokens and not present_forbidden,
+    {"missing": missing_chat_tokens, "forbidden": present_forbidden},
+)
+record(
+    "chat_mcp_trigger_is_conditional_and_small",
+    skill.count("KNOWLEDGE/CHAT_MCP_EXECUTION.md") == 1
+    and "Route by semantic capability, not connector/namespace name." in skill,
+    {"owner_refs": skill.count("KNOWLEDGE/CHAT_MCP_EXECUTION.md")},
+)
+
 out = {
     "result": "PASS" if not errors else "FAIL",
     "errors": errors,
