@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 450,
+  "file_count": 451,
   "files": [
     {
       "path": ".gitattributes",
@@ -42,6 +42,11 @@
       "path": "KNOWLEDGE/BUSINESS_STATE_AND_RELATION_CONTRACTS.md",
       "size": 4914,
       "sha256": "0e73200c29a1ba64ae5ecc094a92f4fcd76338ac64ef00b9a676ce4bc1460080"
+    },
+    {
+      "path": "KNOWLEDGE/CHAT_MCP_EXECUTION.md",
+      "size": 2908,
+      "sha256": "97bebd24775915f34e15076d2f43ecb00b5f2011f49e56247a74c8570726537d"
     },
     {
       "path": "KNOWLEDGE/CLEVERENCE_COVERAGE_AUDIT.json",
@@ -635,8 +640,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 46743,
-      "sha256": "0221e228509272487ce6dcfdb712799ef11d96dd3296a0225d59646d831d53cf"
+      "size": 47299,
+      "sha256": "2e81acef71c7e0581081900748cc07e41eaaa6a3e456ffc3645893395a5c6097"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -725,8 +730,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 46834,
-      "sha256": "a382cc1ce9d547c93d6a31fff44b0a0367eeac589292e438a92950d568722894"
+      "size": 51471,
+      "sha256": "f6628b693132ab072639923a930e6bb8f46987d9d2f86046268db674c0000287"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -1745,8 +1750,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 53437,
-      "sha256": "b92591199baa322433cda66e3ec683784d5780b79378845d03d3ffda1c9fba09"
+      "size": 54263,
+      "sha256": "0c364cfc85cfae3c93acaabdec97934761eef32f28695b1a636ea749de8834ba"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1925,8 +1930,8 @@
     },
     {
       "path": "TESTS/run_skill_freshness_regression.py",
-      "size": 3455,
-      "sha256": "744507629cacf8aeed7e813cf94439a5764b2ad700c3b8e4d46882430ae37582"
+      "size": 4603,
+      "sha256": "0a5f8cdbb2327b65518f911c25a8331341e2a701df357e829cc4b16bdc35598f"
     },
     {
       "path": "TESTS/run_user_artifact_docx_regression.py",
@@ -2260,5 +2265,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "441981c61fa685859c4e33807c4649e101f66cbb8a8f22170c47245813da72f9"
+  "snapshot_digest": "6721cde286253a258d390a9083447bad539f3362a1760b2318235c7719838a8b"
 }
