@@ -1692,6 +1692,313 @@
           "exact_declaration_signature_context_required"
         ]
       }
+    },
+    {
+      "id": "CHAT_MCP_FRESH_SESSION_BINDS_CONTEXT_FIRST",
+      "oracle": "fact_retention",
+      "required": [
+        "source_context_first",
+        "project_participant_artifact_snapshot_bound",
+        "caps_and_task_verified"
+      ],
+      "bad": {
+        "output": [
+          "search_before_context"
+        ]
+      },
+      "good": {
+        "output": [
+          "source_context_first",
+          "project_participant_artifact_snapshot_bound",
+          "caps_and_task_verified"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_SEARCH_HIT_REQUIRES_EXACT_SOURCE_READ",
+      "oracle": "fact_retention",
+      "required": [
+        "search_candidate_only",
+        "source_read_exact_proof"
+      ],
+      "bad": {
+        "output": [
+          "search_hit_treated_as_proof"
+        ]
+      },
+      "good": {
+        "output": [
+          "search_candidate_only",
+          "source_read_exact_proof"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_WRONG_PROJECT_STOPS_INSTEAD_OF_ROOT_SWITCH",
+      "oracle": "fact_retention",
+      "required": [
+        "wrong_project_stops",
+        "manager_lifecycle_required"
+      ],
+      "bad": {
+        "output": [
+          "arbitrary_root_switch"
+        ]
+      },
+      "good": {
+        "output": [
+          "wrong_project_stops",
+          "manager_lifecycle_required"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_PROPOSAL_OUTPUT_ONLY_READBACK_VERIFIED",
+      "oracle": "fact_retention",
+      "required": [
+        "output_task_only",
+        "source_immutable",
+        "proposal_readback",
+        "provenance_snapshot_binding"
+      ],
+      "bad": {
+        "output": [
+          "proposal_write_without_readback"
+        ]
+      },
+      "good": {
+        "output": [
+          "output_task_only",
+          "source_immutable",
+          "proposal_readback",
+          "provenance_snapshot_binding"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_REPLACE_REQUIRES_PRIOR_HASH",
+      "oracle": "fact_retention",
+      "required": [
+        "expected_prior_hash_required",
+        "cas_guarded_replace"
+      ],
+      "bad": {
+        "output": [
+          "unguarded_replace"
+        ]
+      },
+      "good": {
+        "output": [
+          "expected_prior_hash_required",
+          "cas_guarded_replace"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_AMBIGUOUS_WRITE_RECOVERS_BEFORE_REPLAY",
+      "oracle": "fact_retention",
+      "required": [
+        "completion_unknown",
+        "proposal_read_recovery_first",
+        "no_blind_replay"
+      ],
+      "bad": {
+        "output": [
+          "blind_write_replay"
+        ]
+      },
+      "good": {
+        "output": [
+          "completion_unknown",
+          "proposal_read_recovery_first",
+          "no_blind_replay"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_PROPOSAL_NOT_APPLIED_STAYS_UNAPPLIED",
+      "oracle": "fact_retention",
+      "required": [
+        "proposal_not_applied_preserved",
+        "not_reported_deployed"
+      ],
+      "bad": {
+        "output": [
+          "proposal_reported_applied"
+        ]
+      },
+      "good": {
+        "output": [
+          "proposal_not_applied_preserved",
+          "not_reported_deployed"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_MISSING_TOOLS_USE_MANUAL_EXECUTION_HONESTLY",
+      "oracle": "fact_retention",
+      "required": [
+        "explicit_user_no_mcp_authorization",
+        "manual_skill_execution",
+        "no_fake_machine_pass",
+        "smallest_exact_source_request"
+      ],
+      "bad": {
+        "output": [
+          "tool_absence_silently_requests_source"
+        ]
+      },
+      "good": {
+        "output": [
+          "explicit_user_no_mcp_authorization",
+          "manual_skill_execution",
+          "no_fake_machine_pass",
+          "smallest_exact_source_request"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_SIMPLE_TASK_WITHOUT_CONNECTOR_AVOIDS_TOOL_CEREMONY",
+      "oracle": "fact_retention",
+      "required": [
+        "no_connector_no_chat_mcp_owner_load",
+        "simple_path_preserved"
+      ],
+      "bad": {
+        "output": [
+          "transport_ceremony_loaded"
+        ]
+      },
+      "good": {
+        "output": [
+          "no_connector_no_chat_mcp_owner_load",
+          "simple_path_preserved"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_NAMESPACE_RENAME_PRESERVES_CAPABILITY_ROUTING",
+      "oracle": "fact_retention",
+      "required": [
+        "semantic_capability_routing",
+        "namespace_independent"
+      ],
+      "bad": {
+        "output": [
+          "hardcoded_namespace_dependency"
+        ]
+      },
+      "good": {
+        "output": [
+          "semantic_capability_routing",
+          "namespace_independent"
+        ]
+      }
+    },
+    {
+      "id": "MCP_AVAILABLE_PREFERS_BOUNDED_SOURCE_TO_OPERATOR_FILE_SHUTTLE",
+      "oracle": "fact_retention",
+      "required": [
+        "bounded_mcp_used_for_project_source",
+        "operator_source_shuttle_not_requested"
+      ],
+      "bad": {
+        "output": [
+          "source_upload_requested_despite_mcp"
+        ]
+      },
+      "good": {
+        "output": [
+          "bounded_mcp_used_for_project_source",
+          "operator_source_shuttle_not_requested"
+        ]
+      }
+    },
+    {
+      "id": "MCP_AVAILABLE_MUST_NOT_REQUEST_SOURCE_UPLOAD",
+      "oracle": "fact_retention",
+      "required": [
+        "mcp_available",
+        "source_upload_forbidden",
+        "admitted_source_authoritative"
+      ],
+      "bad": {
+        "output": [
+          "request_module_file_archive"
+        ]
+      },
+      "good": {
+        "output": [
+          "mcp_available",
+          "source_upload_forbidden",
+          "admitted_source_authoritative"
+        ]
+      }
+    },
+    {
+      "id": "LEGACY_SOURCE_REQUEST_REQUIRES_EXPLICIT_USER_MCP_UNAVAILABLE_DECLARATION",
+      "oracle": "fact_retention",
+      "required": [
+        "explicit_user_no_mcp_declaration",
+        "legacy_source_request_allowed_after_declaration",
+        "smallest_sufficient_source"
+      ],
+      "bad": {
+        "output": [
+          "legacy_request_without_user_declaration"
+        ]
+      },
+      "good": {
+        "output": [
+          "explicit_user_no_mcp_declaration",
+          "legacy_source_request_allowed_after_declaration",
+          "smallest_sufficient_source"
+        ]
+      }
+    },
+    {
+      "id": "MCP_FAILURE_WITHOUT_USER_FALLBACK_AUTHORIZATION_DOES_NOT_SILENTLY_REQUEST_FILES",
+      "oracle": "fact_retention",
+      "required": [
+        "mcp_capability_blocker_reported",
+        "no_source_request_before_authorization",
+        "fallback_confirmation_only_if_useful"
+      ],
+      "bad": {
+        "output": [
+          "mcp_failure_triggers_file_request"
+        ]
+      },
+      "good": {
+        "output": [
+          "mcp_capability_blocker_reported",
+          "no_source_request_before_authorization",
+          "fallback_confirmation_only_if_useful"
+        ]
+      }
+    },
+    {
+      "id": "MCP_UNAVAILABLE_PRESERVES_LEGACY_SOURCE_REQUEST_WORKFLOW",
+      "oracle": "fact_retention",
+      "required": [
+        "explicit_user_no_mcp_declaration",
+        "source_first_preserved",
+        "smallest_sufficient_source_request",
+        "manual_execution_honesty"
+      ],
+      "bad": {
+        "output": [
+          "legacy_workflow_entered_without_explicit_authorization"
+        ]
+      },
+      "good": {
+        "output": [
+          "explicit_user_no_mcp_declaration",
+          "source_first_preserved",
+          "smallest_sufficient_source_request",
+          "manual_execution_honesty"
+        ]
+      }
     }
   ]
 }

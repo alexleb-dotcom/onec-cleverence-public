@@ -237,6 +237,10 @@ For an applicable rule:
 - `EVIDENCE_REQUIRED`, `BLOCKING_DEFECT`, `NEEDS_REVISION` block release;
 - `RUNTIME_PENDING`/`NEEDS_PROFILING` may allow a test build but never `PROVEN`.
 
+### Bounded project source/proposal capabilities
+
+When compatible bounded project source/proposal operations are available (semantic equivalents of `source_context`, `source_search`, `source_read`, `proposal_write`, `proposal_read`), load `KNOWLEDGE/CHAT_MCP_EXECUTION.md` and use them for project Source instead of requesting Source uploads. Route by semantic capability, not connector/namespace name. If expected bounded Source capability is absent/failing, do not silently request files: report the capability blocker; legacy source-request mode is allowed only after explicit user instruction to work without MCP.
+
 ### MANUAL_SKILL_EXECUTION
 
 When a deterministic tool, hook or canonical machine runner is unavailable or cannot be executed, mark the path `MANUAL_SKILL_EXECUTION` and use the smallest manual exact-evidence path that can advance the task. This label is an execution disposition, not a persisted state machine and not a weaker proof mode.
