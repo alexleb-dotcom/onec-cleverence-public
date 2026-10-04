@@ -377,7 +377,7 @@
         },
         {
           "id": "PARTICIPANT_ARTIFACT_PROVENANCE",
-          "question": "When a project has multiple participants or artifacts, are baseline/candidate/evidence identities bound to the exact Project + Participant + Artifact + source-root tuple so same-named source from Main, an Extension, or another participant cannot satisfy the wrong obligation?",
+          "question": "In multi-participant/artifact projects, is evidence bound to exact Project + Participant + Artifact + source root so same-named source cannot cross-bind?",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1322,7 +1322,7 @@
         },
         {
           "id": "CHANGE_PRESERVATION_CONTRACT",
-          "question": "For a refactor, move or behavior relocation, are all relevant pre-change contracts explicitly preserved or intentionally changed through their existing specialized owners: caller/callee reachability, client/server context, provenance/task markers, metadata/XML/event/form bindings, local dependencies, standard/vendor ownership and state/write/repeat semantics, without treating this check as a substitute for those owners?",
+          "question": "For refactor/move, are all relevant pre-change contracts preserved or explicitly changed through existing call/context/provenance/binding/dependency/owner/state/write/repeat owners?",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1330,7 +1330,7 @@
         },
         {
           "id": "RELOCATION_RESIDUE_CLOSURE",
-          "question": "When behavior is moved or replaced, is every superseded active code/caller/event/command/binding path removed, disabled, or explicitly retained for a distinct proven responsibility so the new path cannot coexist with duplicate active residue?",
+          "question": "After move/replacement, is every old active caller/event/command/binding removed, disabled, or justified as distinct, with no duplicate active path?",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,
@@ -1426,7 +1426,7 @@
         },
         {
           "id": "MANUAL_SKILL_EXECUTION_HONESTY",
-          "question": "When deterministic tooling is unavailable and MANUAL_SKILL_EXECUTION is used, are manual observations scoped honestly, candidate evidence kept distinct from exact proof, and every unexecuted machine/runtime/release requirement left pending rather than reported as PASS?",
+          "question": "Under MANUAL_SKILL_EXECUTION, are manual observations scoped honestly and all unexecuted machine/runtime/release proof kept pending?",
           "kind": "SEMANTIC_REGRESSION",
           "blocking": true,
           "evidence_required": true,

@@ -36,7 +36,7 @@ When ProjectSnapshot evidence is used, does its manifest bind request/snapshot i
 
 Rule: `BASELINE_IDENTITY`
 
-When a project has multiple participants or artifacts, are baseline/candidate/evidence identities bound to the exact Project + Participant + Artifact + source-root tuple so same-named source from Main, an Extension, or another participant cannot satisfy the wrong obligation?
+In multi-participant/artifact projects, is evidence bound to exact Project + Participant + Artifact + source root so same-named source cannot cross-bind?
 
 ## TYPICAL_ANALOG_EVIDENCE_ESCALATION
 
@@ -228,13 +228,13 @@ Is owner reuse explicitly classified as PUBLIC_API_REUSE, SUPPORTED_EXTENSION_PO
 
 Rule: `MINIMAL_COHERENT_CHANGE`
 
-For a refactor, move or behavior relocation, are all relevant pre-change contracts explicitly preserved or intentionally changed through their existing specialized owners: caller/callee reachability, client/server context, provenance/task markers, metadata/XML/event/form bindings, local dependencies, standard/vendor ownership and state/write/repeat semantics, without treating this check as a substitute for those owners?
+For refactor/move, are all relevant pre-change contracts preserved or explicitly changed through existing call/context/provenance/binding/dependency/owner/state/write/repeat owners?
 
 ## RELOCATION_RESIDUE_CLOSURE
 
 Rule: `MINIMAL_COHERENT_CHANGE`
 
-When behavior is moved or replaced, is every superseded active code/caller/event/command/binding path removed, disabled, or explicitly retained for a distinct proven responsibility so the new path cannot coexist with duplicate active residue?
+After move/replacement, is every old active caller/event/command/binding removed, disabled, or justified as distinct, with no duplicate active path?
 
 ## EVIDENCE_PROPERTY_BINDING
 
@@ -258,7 +258,7 @@ Does final reporting preserve the canonical gate boundary: static/machine/manual
 
 Rule: `PROOF_CLAIM_INTEGRITY`
 
-When deterministic tooling is unavailable and MANUAL_SKILL_EXECUTION is used, are manual observations scoped honestly, candidate evidence kept distinct from exact proof, and every unexecuted machine/runtime/release requirement left pending rather than reported as PASS?
+Under MANUAL_SKILL_EXECUTION, are manual observations scoped honestly and all unexecuted machine/runtime/release proof kept pending?
 
 ## UNANCHORED_GAP_HYPOTHESIS
 
