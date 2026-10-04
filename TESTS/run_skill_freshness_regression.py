@@ -101,6 +101,8 @@ chat_tokens = [
     "PROPOSAL_NOT_APPLIED",
     "MANUAL_SKILL_EXECUTION",
     "semantic capability",
+    "Only after explicit user instruction",
+    "Do not ask the user to upload/provide",
 ]
 missing_chat_tokens = [token for token in chat_tokens if token not in chat_exec]
 forbidden_chat_tokens = ["OneC_G1Q1_MCP", "Cloudflare", "OAuth", "relay implementation"]
@@ -113,7 +115,9 @@ record(
 record(
     "chat_mcp_trigger_is_conditional_and_small",
     skill.count("KNOWLEDGE/CHAT_MCP_EXECUTION.md") == 1
-    and "Route by semantic capability, not connector/namespace name." in skill,
+    and "Route by semantic capability, not connector/namespace name." in skill
+    and "use them for project Source instead of requesting Source uploads" in skill
+    and "legacy source-request mode is allowed only after explicit user instruction" in skill,
     {"owner_refs": skill.count("KNOWLEDGE/CHAT_MCP_EXECUTION.md")},
 )
 
