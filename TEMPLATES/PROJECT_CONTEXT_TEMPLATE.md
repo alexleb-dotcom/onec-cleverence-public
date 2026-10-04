@@ -67,6 +67,15 @@ Rules:
 - missing source layers/dependency closures:
 - evidence:
 
+## BSP identity (per exact participant/artifact baseline; optional)
+- status: EXACT | RANGE_ONLY | UNKNOWN | NOT_DETECTED
+- version / range: min_inclusive / max_exclusive
+- detection_method: EXACT_CURRENT_SOURCE_VERSION_MARKER | UNIQUE_AUTHORIZED_REFERENCE_FINGERPRINT | BOUNDED_VERSION_EVIDENCE | UNPROVABLE | NO_BSP_EVIDENCE
+- evidence: participant_id / artifact_id / source_root / path / sha256 / line_or_anchor
+- reference_set_id (when applicable):
+- baseline_identity:
+- invalidation: any participant/artifact/source-root/baseline change invalidates this cached identity and requires re-detection before version-aware routing.
+
 ## Review routing
 - surface: ANALYSIS_ONLY | ONEC_ONLY | CLEVERENCE_ONLY | CROSS_SYSTEM
 - risk: R0_LOCAL | R1_CONTRACT | R2_STATEFUL_RUNTIME | R3_CROSS_SYSTEM
