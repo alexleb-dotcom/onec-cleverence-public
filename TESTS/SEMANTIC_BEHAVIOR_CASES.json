@@ -1380,7 +1380,8 @@
         "bounded_change",
         "relevant_validation_only",
         "delivery",
-        "unrelated_form_query_state_runtime_ceremony_avoided"
+        "unrelated_form_query_state_runtime_ceremony_avoided",
+        "bsp_catalog_not_loaded"
       ],
       "bad": {
         "output": [
@@ -1405,7 +1406,8 @@
           "bounded_change",
           "relevant_validation_only",
           "delivery",
-          "unrelated_form_query_state_runtime_ceremony_avoided"
+          "unrelated_form_query_state_runtime_ceremony_avoided",
+          "bsp_catalog_not_loaded"
         ]
       }
     },
