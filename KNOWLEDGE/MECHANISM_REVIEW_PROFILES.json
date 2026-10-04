@@ -23,7 +23,6 @@
       "checks": [
         "search actual target corpus first and use the BSP DISCOVERY_ONLY locator by intent/domain to identify candidate modules; a locator hit is not API proof",
         "acquire and inspect the exact exported declaration from target/user-authorized BSP source before use; build a LOCAL_EXACT_SOURCE_INDEX when useful",
-        "When version-aware BSP discovery is material, is BSP identity bound to the exact participant/artifact/source-root/baseline, classified EXACT only from an exact current-source marker value or unique authorized reference fingerprint, used only for candidate routing/ranking, and followed by exact current-source declaration/signature/context proof before API use?",
         "public interface vs internal/service module",
         "client/server placement and serialization",
         "transitive I/O and side effects",
