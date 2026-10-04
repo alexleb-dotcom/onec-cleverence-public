@@ -27,11 +27,19 @@ Source remains immutable. Proposal capability is Output delivery, not permission
 6. Verify machine provenance, proposal hash/identity, and binding to the exact source_snapshot/participant/artifact/task.
 7. PROPOSAL_NOT_APPLIED means the proposal was not applied/deployed to business Source.
 
-## Capability absence
+## Capability availability and legacy fallback
 
-- If bounded tools are absent, do not pretend they ran. Use MANUAL_SKILL_EXECUTION or report an explicit execution-capability blocker; machine/runtime proof remains pending.
-- If bounded reads exist but proposal capabilities do not, read/evidence work may proceed while proposal delivery remains pending/manual.
-- Do not substitute unrelated unbounded execution or generic mutation capabilities for missing bounded source/proposal authority.
+Use this decision order for project Source acquisition/navigation:
+
+1. Compatible bounded capabilities available: MUST use them. Do not ask the user to upload/provide the project module, file or archive as an alternative discovery path, and do not prefer attachments over the admitted project Source.
+2. Wrong admitted project/artifact/scope: report/reroute the existing admission/project lifecycle gap. Do not ask for copied Source.
+3. Capability absent/failing/error/timeout/schema mismatch: this is not authorization for legacy source requests. Report the exact capability blocker. If useful, ask only whether the user explicitly wants to continue without MCP; do not request Source yet.
+4. Only after explicit user instruction that MCP cannot/should not be used may the legacy exact-source request/file/archive workflow run. Then request only the smallest sufficient material and preserve SOURCE_FIRST and MANUAL_SKILL_EXECUTION honesty.
+5. If evidence still cannot be obtained, report the exact evidence gap.
+
+If bounded read capabilities exist but proposal capabilities do not, read/evidence work must still use the bounded Source path. Proposal delivery may remain pending/manual; read capability never implies write capability.
+
+Do not substitute unrelated unbounded execution or generic mutation capabilities for missing bounded source/proposal authority.
 
 ## Proof boundary
 
