@@ -2260,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "d3b11e8c1133b528ed45eb16be795a189e85cf269d323034a213e98ef50026d8"
+  "snapshot_digest": "a76a5dd37382fa2836fbd05b1d676c116d83959d6d30d4bef5e681957518192c"
 }
