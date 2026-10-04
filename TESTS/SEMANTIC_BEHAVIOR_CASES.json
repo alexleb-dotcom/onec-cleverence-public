@@ -1380,7 +1380,8 @@
         "bounded_change",
         "relevant_validation_only",
         "delivery",
-        "unrelated_form_query_state_runtime_ceremony_avoided"
+        "unrelated_form_query_state_runtime_ceremony_avoided",
+        "bsp_catalog_not_loaded"
       ],
       "bad": {
         "output": [
@@ -1405,7 +1406,8 @@
           "bounded_change",
           "relevant_validation_only",
           "delivery",
-          "unrelated_form_query_state_runtime_ceremony_avoided"
+          "unrelated_form_query_state_runtime_ceremony_avoided",
+          "bsp_catalog_not_loaded"
         ]
       }
     },
@@ -1553,6 +1555,141 @@
           "artifact_identity",
           "source_root_identity",
           "no_cross_artifact_rebind"
+        ]
+      }
+    },
+    {
+      "id": "BSP_STANDARD_CAPABILITY_SEARCH_PRECEDES_PARALLEL_INVENTION",
+      "oracle": "fact_retention",
+      "required": [
+        "bsp_route_disposed",
+        "current_source_discovery",
+        "custom_only_after_disposition"
+      ],
+      "bad": {
+        "output": [
+          "custom_helper_first"
+        ]
+      },
+      "good": {
+        "output": [
+          "bsp_route_disposed",
+          "current_source_discovery",
+          "custom_only_after_disposition"
+        ]
+      }
+    },
+    {
+      "id": "BSP_VERSION_EXACT_REQUIRES_EXACT_MARKER_OR_UNIQUE_REFERENCE_MATCH",
+      "oracle": "fact_retention",
+      "required": [
+        "exact_marker_or_unique_fingerprint",
+        "no_single_api_version_inference"
+      ],
+      "bad": {
+        "output": [
+          "single_module_presence_claims_exact"
+        ]
+      },
+      "good": {
+        "output": [
+          "exact_marker_or_unique_fingerprint",
+          "no_single_api_version_inference"
+        ]
+      }
+    },
+    {
+      "id": "BSP_VERSION_UNPROVABLE_STAYS_UNKNOWN_OR_RANGE_ONLY",
+      "oracle": "fact_retention",
+      "required": [
+        "unknown_or_range_only",
+        "no_ambiguous_exact_promotion"
+      ],
+      "bad": {
+        "output": [
+          "ambiguous_evidence_promoted_exact"
+        ]
+      },
+      "good": {
+        "output": [
+          "unknown_or_range_only",
+          "no_ambiguous_exact_promotion"
+        ]
+      }
+    },
+    {
+      "id": "BSP_CANDIDATE_ABSENT_IN_CURRENT_SOURCE_IS_NOT_CALLABLE",
+      "oracle": "fact_retention",
+      "required": [
+        "current_source_presence_required",
+        "absent_candidate_rejected"
+      ],
+      "bad": {
+        "output": [
+          "catalog_candidate_called_without_source"
+        ]
+      },
+      "good": {
+        "output": [
+          "current_source_presence_required",
+          "absent_candidate_rejected"
+        ]
+      }
+    },
+    {
+      "id": "BSP_VERSION_FILTER_CANNOT_OVERRIDE_CURRENT_SOURCE",
+      "oracle": "fact_retention",
+      "required": [
+        "current_source_wins",
+        "stale_catalog_marked_candidate_only"
+      ],
+      "bad": {
+        "output": [
+          "version_filter_overrides_exact_source"
+        ]
+      },
+      "good": {
+        "output": [
+          "current_source_wins",
+          "stale_catalog_marked_candidate_only"
+        ]
+      }
+    },
+    {
+      "id": "BSP_IDENTITY_INVALIDATES_ON_BASELINE_CHANGE",
+      "oracle": "fact_retention",
+      "required": [
+        "baseline_bound_identity",
+        "identity_invalidated_on_baseline_or_source_change"
+      ],
+      "bad": {
+        "output": [
+          "cached_identity_reused_after_baseline_change"
+        ]
+      },
+      "good": {
+        "output": [
+          "baseline_bound_identity",
+          "identity_invalidated_on_baseline_or_source_change"
+        ]
+      }
+    },
+    {
+      "id": "BSP_API_HINT_HAS_NO_SIGNATURE_AUTHORITY",
+      "oracle": "fact_retention",
+      "required": [
+        "api_hint_discovery_only",
+        "exact_declaration_signature_context_required"
+      ],
+      "bad": {
+        "output": [
+          "api_hint_supplies_assumed_signature"
+        ]
+      },
+      "good": {
+        "output": [
+          "api_hint_discovery_only",
+          "exact_declaration_signature_context_required"
         ]
       }
     }

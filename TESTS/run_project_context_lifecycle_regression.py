@@ -93,6 +93,11 @@ record(
     {"template_missing": missing_participant_template, "bootstrap_missing": missing_participant_bootstrap},
 )
 
+# BSP identity cache is baseline/source-root bound.
+bsp_tokens = ["## BSP identity", "EXACT | RANGE_ONLY | UNKNOWN | NOT_DETECTED", "baseline_identity:", "source-root/baseline change invalidates"]
+missing_bsp = [x for x in bsp_tokens if x not in template]
+record("bsp_identity_baseline_binding", not missing_bsp, {"missing": missing_bsp})
+
 # Entrypoint must route long-lived project work into lifecycle validation without polluting URL-only first-turn behavior.
 entry_tokens = ["## Project-context freshness for long-lived projects", "KNOWLEDGE/PROJECT_CONTEXT_LIFECYCLE.md", "decision_key", "SUPERSEDED", "technical proxy"]
 missing_entry = [x for x in entry_tokens if x not in first]

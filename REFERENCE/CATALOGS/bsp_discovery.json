@@ -1,144 +1,193 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "catalog_id": "BSP_DISCOVERY",
   "role": "DISCOVERY_ONLY",
   "source_family": "BSP",
   "rule": "This catalog contains locator hints only. Module names and request paths help acquire the exact target/BSP source; they do not prove API existence, signatures, execution context, side effects or version compatibility.",
   "coverage_note": "Candidate module names are discovery vocabulary observed in an authorized BSP reference snapshot. They are not a claim that every target version contains every module, and they are not a substitute for checking the target configuration/BSP version.",
   "request_path_template": "CommonModules/{module}/Ext/Module.bsl",
+  "default_limit": 5,
+  "version_identity_contract": {
+    "statuses": ["EXACT", "RANGE_ONLY", "UNKNOWN", "NOT_DETECTED"],
+    "exact_requires": ["EXACT_CURRENT_SOURCE_VERSION_MARKER", "UNIQUE_AUTHORIZED_REFERENCE_FINGERPRINT"],
+    "rule": "A module/API presence alone never proves an exact BSP version. Ambiguous evidence remains RANGE_ONLY or UNKNOWN. Identity is baseline-bound and invalidated on participant/artifact/source-root/baseline change."
+  },
+  "version_evidence": [
+    {
+      "id": "bsp.version_api.standard_subsystems_server",
+      "kind": "CURRENT_SOURCE_MARKER",
+      "module": "СтандартныеПодсистемыСервер",
+      "api": "ВерсияБиблиотеки",
+      "introduced_range_hint": {"min_inclusive": "2.3"},
+      "authority": "Exact current Source value only; this hint is routing metadata and never proves the current version.",
+      "reference": "https://its.1c.ru/db/content/updlib/src/bsp2/2.3/updatessl_2.3.htm"
+    }
+  ],
+  "default_discovery_probes": ["search exact current Source for candidate module name", "read exact declaration before treating any API as callable"],
+  "default_caveats": ["Catalog hit is a candidate only; catalog miss is not proof of absence."],
   "entries": [
     {
       "id": "bsp.general",
+      "purpose": "general utilities",
       "intent_terms": ["общего назначения", "реквизиты объекта", "сообщение пользователю", "общий helper", "general purpose", "object attributes"],
       "candidate_modules": ["ОбщегоНазначения", "ОбщегоНазначенияКлиент", "ОбщегоНазначенияКлиентСервер"]
     },
     {
       "id": "bsp.string_functions",
+      "purpose": "string utilities",
       "intent_terms": ["строковые функции", "строка", "string functions", "string formatting", "string conversion"],
       "candidate_modules": ["СтроковыеФункции", "СтроковыеФункцииКлиент", "СтроковыеФункцииКлиентСервер"]
     },
     {
       "id": "bsp.long_operations",
+      "purpose": "long/background operations",
       "intent_terms": ["длительная операция", "фоновые задания", "progress", "long operation", "background execution"],
       "candidate_modules": ["ДлительныеОперации", "ДлительныеОперацииКлиент"]
     },
     {
       "id": "bsp.filesystem",
+      "purpose": "file and filesystem operations",
       "intent_terms": ["файлы", "каталог", "временный файл", "файловая система", "file", "filesystem", "temporary directory"],
       "candidate_modules": ["ФайловаяСистема", "ФайловаяСистемаКлиент", "РаботаСФайлами", "РаботаСФайламиКлиент", "РаботаСФайламиКлиентСервер"]
     },
     {
       "id": "bsp.users",
+      "purpose": "users and user data",
       "intent_terms": ["пользователь", "users", "current user", "user data"],
       "candidate_modules": ["Пользователи", "ПользователиКлиент", "ПользователиКлиентСервер"]
     },
     {
       "id": "bsp.standard_subsystems",
+      "purpose": "BSP identity and standard-subsystem infrastructure",
       "intent_terms": ["стандартные подсистемы", "служебный механизм БСП", "standard subsystems", "BSP infrastructure"],
-      "candidate_modules": ["СтандартныеПодсистемыСервер", "СтандартныеПодсистемыКлиент", "СтандартныеПодсистемыКлиентСервер"]
+      "candidate_modules": ["СтандартныеПодсистемыСервер", "СтандартныеПодсистемыКлиент", "СтандартныеПодсистемыКлиентСервер"],
+      "candidate_api_hints": [{"name": "ВерсияБиблиотеки", "module": "СтандартныеПодсистемыСервер", "kind": "Function"}],
+      "version_evidence_refs": ["bsp.version_api.standard_subsystems_server"],
+      "caveats": ["ВерсияБиблиотеки can identify EXACT only when its returned value is deterministically resolved from exact current Source.", "Presence of one module/API alone does not prove an exact BSP version."]
     },
     {
       "id": "bsp.connected_commands",
+      "purpose": "connected commands",
       "intent_terms": ["подключаемые команды", "команды формы", "connected commands", "command integration"],
       "candidate_modules": ["ПодключаемыеКоманды", "ПодключаемыеКомандыКлиент", "ПодключаемыеКомандыКлиентСервер"]
     },
     {
       "id": "bsp.printing",
+      "purpose": "printing",
       "intent_terms": ["печать", "печатная форма", "printing", "print form"],
       "candidate_modules": ["УправлениеПечатью", "УправлениеПечатьюКлиент"]
     },
     {
       "id": "bsp.properties",
+      "purpose": "additional properties",
       "intent_terms": ["дополнительные реквизиты", "свойства", "properties", "additional attributes"],
       "candidate_modules": ["УправлениеСвойствами", "УправлениеСвойствамиКлиент"]
     },
     {
       "id": "bsp.additional_reports",
+      "purpose": "additional reports/processors",
       "intent_terms": ["дополнительный отчет", "дополнительная обработка", "external report", "additional processing"],
       "candidate_modules": ["ДополнительныеОтчетыИОбработки", "ДополнительныеОтчетыИОбработкиКлиент", "ДополнительныеОтчетыИОбработкиКлиентСервер"]
     },
     {
       "id": "bsp.report_variants",
+      "purpose": "report variants",
       "intent_terms": ["варианты отчетов", "report variants", "report settings"],
       "candidate_modules": ["ВариантыОтчетов", "ВариантыОтчетовКлиент", "ВариантыОтчетовКлиентСервер"]
     },
     {
       "id": "bsp.scheduled_jobs",
+      "purpose": "scheduled jobs",
       "intent_terms": ["регламентное задание", "scheduled job", "background schedule"],
       "candidate_modules": ["РегламентныеЗаданияСервер"]
     },
     {
       "id": "bsp.registration_log",
+      "purpose": "registration log",
       "intent_terms": ["журнал регистрации", "registration log", "event log"],
       "candidate_modules": ["ЖурналРегистрации", "ЖурналРегистрацииКлиент"]
     },
     {
       "id": "bsp.configuration_update",
+      "purpose": "configuration update",
       "intent_terms": ["обновление информационной базы", "обработчик обновления", "configuration update", "database update"],
       "candidate_modules": ["ОбновлениеИнформационнойБазы", "ОбновлениеИнформационнойБазыКлиент"]
     },
     {
       "id": "bsp.safe_mode",
+      "purpose": "safe mode",
       "intent_terms": ["безопасный режим", "safe mode"],
       "candidate_modules": ["РаботаВБезопасномРежиме", "РаботаВБезопасномРежимеКлиент"]
     },
     {
       "id": "bsp.access_control",
+      "purpose": "access control",
       "intent_terms": ["управление доступом", "права доступа", "access control", "permissions"],
       "candidate_modules": ["УправлениеДоступом"]
     },
     {
       "id": "bsp.service_model",
+      "purpose": "service model/data separation",
       "intent_terms": ["модель сервиса", "область данных", "разделение данных", "service model", "data separation"],
       "candidate_modules": ["РаботаВМоделиСервиса"]
     },
     {
       "id": "bsp.server_notifications",
+      "purpose": "server notifications",
       "intent_terms": ["серверные оповещения", "уведомление клиента", "server notification", "notifications"],
       "candidate_modules": ["СерверныеОповещения", "СерверныеОповещенияКлиент"]
     },
     {
       "id": "bsp.internet_files",
+      "purpose": "internet file acquisition",
       "intent_terms": ["получение файла из интернета", "download file", "internet file", "http file"],
       "candidate_modules": ["ПолучениеФайловИзИнтернета", "ПолучениеФайловИзИнтернетаКлиент", "ПолучениеФайловИзИнтернетаКлиентСервер"]
     },
     {
       "id": "bsp.external_components",
+      "purpose": "external components",
       "intent_terms": ["внешняя компонента", "external component", "native component"],
       "candidate_modules": ["ВнешниеКомпонентыКлиент", "ВнешниеКомпонентыСервер"]
     },
     {
       "id": "bsp.object_filling",
+      "purpose": "object filling",
       "intent_terms": ["заполнение объекта", "object filling", "fill object"],
       "candidate_modules": ["ЗаполнениеОбъектов"]
     },
     {
       "id": "bsp.versioning",
+      "purpose": "object versioning",
       "intent_terms": ["версионирование объектов", "object versioning", "version history"],
       "candidate_modules": ["ВерсионированиеОбъектов", "ВерсионированиеОбъектовКлиент"]
     },
     {
       "id": "bsp.change_prohibition_dates",
+      "purpose": "change prohibition dates",
       "intent_terms": ["дата запрета изменения", "запрет изменения данных", "change prohibition date", "data change lock"],
       "candidate_modules": ["ДатыЗапретаИзменения"]
     },
     {
       "id": "bsp.data_exchange",
+      "purpose": "data exchange",
       "intent_terms": ["обмен данными", "data exchange", "exchange infrastructure"],
       "candidate_modules": ["ОбменДаннымиСервер", "ОбменДаннымиКлиент"]
     },
     {
       "id": "bsp.bulk_change",
+      "purpose": "bulk object change",
       "intent_terms": ["групповое изменение объектов", "bulk edit", "bulk object change"],
       "candidate_modules": ["ГрупповоеИзменениеОбъектов", "ГрупповоеИзменениеОбъектовКлиент"]
     },
     {
       "id": "bsp.delivered_data",
+      "purpose": "delivered data",
       "intent_terms": ["поставляемые данные", "delivered data", "vendor supplied data"],
       "candidate_modules": ["ПоставляемыеДанные"]
     },
     {
       "id": "bsp.full_text_search",
+      "purpose": "full-text search",
       "intent_terms": ["полнотекстовый поиск", "full text search", "search index"],
       "candidate_modules": ["ПолнотекстовыйПоискСервер", "ПолнотекстовыйПоискКлиент"]
     }

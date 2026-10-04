@@ -97,6 +97,14 @@ full-text search
 
 The public locator is intentionally bounded rather than speculative. It currently preserves the known candidate-module vocabulary from the retained reference snapshot, but it is not a claim that every BSP version has exactly that set or that all BSP domains are represented. If a domain is not mapped, search the target configuration/BSP source and promote only a reusable locator after independent validation.
 
+## 1A. Version-aware discovery
+
+Version identity is discovery metadata bound to the exact `Project → Participant → Artifact → source root → baseline`. Classify it only as `EXACT`, `RANGE_ONLY`, `UNKNOWN`, or `NOT_DETECTED`. `EXACT` requires either a deterministically resolved BSP-owned version marker/API value from exact current Source or a unique fingerprint match against an authorized versioned reference set. One module/API presence never proves an exact version.
+
+Pass exact/range/unknown identity to `reference_locator.py` only to rank/filter candidates. Unknown/range evidence must not over-filter; only positively incompatible version evidence may exclude a candidate. Current Source overrides catalog/reference metadata on contradiction. A candidate API hint contains only name/module/kind and has no signature, parameter, context, or behavior authority.
+
+Before generated code calls a candidate API, exact current Source must prove module/path, exported declaration/signature, client/server/context where relevant, and availability for this exact participant/artifact/baseline. Baseline or source-root change invalidates cached BSP identity.
+
 ## 2. Source acquisition and local exact index
 
 When the locator identifies likely modules, request the **smallest sufficient exact source** from the target project. Prefer individual common modules over asking for the entire BSP/configuration when they are enough.

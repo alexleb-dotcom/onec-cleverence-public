@@ -14,6 +14,7 @@ Mandatory for every non-trivial 1C change that implements infrastructure, platfo
 ## Mandatory checks
 
 - search the supplied target/configuration corpus first;
+- when version-aware discovery is material, bind BSP identity (`EXACT | RANGE_ONLY | UNKNOWN | NOT_DETECTED`) to the exact participant/artifact/source-root/baseline; use version metadata only for routing/ranking and invalidate it when that identity changes;
 - search `REFERENCE/CATALOGS/bsp_discovery.json` by intent/domain when the target search does not already identify the mechanism;
 - treat the catalog as `DISCOVERY_ONLY`: candidate module names do not prove API existence, signature, execution context, side effects or target-version compatibility;
 - request/read the smallest sufficient exact source, normally `CommonModules/<Module>/Ext/Module.bsl`; add common-module metadata when client/server properties matter and a real call site when usage semantics remain ambiguous;

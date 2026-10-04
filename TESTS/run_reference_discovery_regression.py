@@ -15,7 +15,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TOOLS"))
 
-from reference_locator import load_catalogs, locate
+from reference_locator import load_catalogs, locate, classify_bsp_identity, bsp_identity_valid
 from build_local_bsl_reference_index import build_index
 from validate_distribution_privacy import select_distribution_files
 
@@ -252,6 +252,43 @@ record("long_operation_locator", "ДлительныеОперации" in long_
 printing = locate("печать", catalogs, 5)
 print_modules = {m for row in printing.get("matches", []) for m in row.get("candidate_modules", [])}
 record("printing_locator", "УправлениеПечатью" in print_modules, printing)
+
+# BSP schema v3 version routing is discovery-only.
+bsp_catalog = next(x for x in catalogs if x.get("catalog_id") == "BSP_DISCOVERY")
+version_refs = {x.get("id") for x in bsp_catalog.get("version_evidence", [])}
+violations = []
+for entry in bsp_catalog.get("entries", []):
+    for hint in entry.get("candidate_api_hints", []):
+        if set(hint) - {"name", "module", "kind"}:
+            violations.append({"entry": entry.get("id"), "hint": hint})
+    for ref in entry.get("version_evidence_refs", []):
+        if ref not in version_refs:
+            violations.append({"entry": entry.get("id"), "missing_version_ref": ref})
+record("bsp_schema3_version_routing_metadata", bsp_catalog.get("schema_version") == 3 and not violations, {"schema_version": bsp_catalog.get("schema_version"), "violations": violations})
+
+exact = classify_bsp_identity(exact_marker_value="3.2.1", bsp_detected=True, baseline_identity="A")
+unique = classify_bsp_identity(unique_reference_version="3.1.9", bsp_detected=True, baseline_identity="A")
+ranged = classify_bsp_identity(bounded_range={"min_inclusive": "3.1", "max_exclusive": "3.3"}, bsp_detected=True, baseline_identity="A")
+unknown = classify_bsp_identity(bsp_detected=True, baseline_identity="A")
+not_detected = classify_bsp_identity(bsp_detected=False, baseline_identity="A")
+record(
+    "bsp_version_identity_classification",
+    exact["status"] == "EXACT"
+    and unique["status"] == "EXACT"
+    and ranged["status"] == "RANGE_ONLY"
+    and unknown["status"] == "UNKNOWN"
+    and not_detected["status"] == "NOT_DETECTED",
+    {"exact": exact, "unique": unique, "range": ranged, "unknown": unknown, "not_detected": not_detected},
+)
+record("bsp_identity_baseline_invalidation", bsp_identity_valid(exact, "A") and not bsp_identity_valid(exact, "B"), {"identity": exact})
+
+small = locate("стандартные подсистемы", catalogs, 5, "bsp.standard_subsystems", unknown)
+record(
+    "bsp_normal_lookup_small_slice",
+    1 <= len(small.get("matches", [])) <= 5 and all(x.get("role") == "DISCOVERY_ONLY" for x in small.get("matches", [])),
+    small,
+)
+record("bsp_unknown_version_does_not_overfilter", bool(small.get("matches")), small)
 
 typical_effective = locate("эффективный запрос динамического списка", catalogs, 5)
 typical_matches = [row for row in typical_effective.get("matches", []) if row.get("catalog_id") == "TYPICAL_ONEC_DISCOVERY"]

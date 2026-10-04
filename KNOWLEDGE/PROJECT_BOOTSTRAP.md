@@ -80,6 +80,10 @@ Bootstrap should attempt to resolve at least the following durable contracts.
 - Cleverence product/configuration/platform versions when evidenced;
 - deployed vs reference vs historical source roles.
 
+### Baseline-bound BSP identity
+
+When BSP discovery is material, Project Context may cache only a compact `bsp_identity` for the exact participant/artifact/source-root/baseline. Allowed statuses are `EXACT | RANGE_ONLY | UNKNOWN | NOT_DETECTED`; version metadata is routing/ranking only. Any change to participant, artifact, source root or baseline invalidates the cached identity. Exact current Source remains the API/signature authority.
+
 ### Participant and artifact identity
 
 A project may contain one or more **Participants**. Bind exact source/evidence to the tuple `Project → Participant → Artifact` whenever more than one participant or artifact can exist; same-named metadata/code in another participant or artifact is not interchangeable evidence.
