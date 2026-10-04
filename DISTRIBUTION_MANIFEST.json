@@ -125,8 +125,8 @@
     },
     {
       "path": "KNOWLEDGE/MECHANISM_REVIEW_PROFILES.json",
-      "size": 84133,
-      "sha256": "b4b2bce434e8f45a3401847dda2dab4903f4034166e2c522872483a745a44f81"
+      "size": 83760,
+      "sha256": "44a13cd525a9af75c5d19c33fb7c666b7fab91fec34748ac7e2ffab1400aecb9"
     },
     {
       "path": "KNOWLEDGE/OFFICIAL_REFERENCE_NOTES.md",
@@ -630,8 +630,8 @@
     },
     {
       "path": "RULES/rule_registry.json",
-      "size": 297625,
-      "sha256": "52018e54533f9ded50fd00e20c98374f0aa8dee12c43be3cc50b108d3956d07c"
+      "size": 296931,
+      "sha256": "d9d0fdb3b05fdbafe4e322adfd8a8fe6c250df9c353a83df48d521acca8f9473"
     },
     {
       "path": "SKILL.md",
@@ -2260,5 +2260,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "a76a5dd37382fa2836fbd05b1d676c116d83959d6d30d4bef5e681957518192c"
+  "snapshot_digest": "441981c61fa685859c4e33807c4649e101f66cbb8a8f22170c47245813da72f9"
 }
