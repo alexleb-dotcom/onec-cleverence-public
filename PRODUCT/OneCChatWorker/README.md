@@ -10,6 +10,8 @@ With no arguments it is the normal guided operator UI. It derives the current st
 
 The default guided presentation follows Windows CurrentUICulture deterministically: ru-* cultures use Russian labels/help/errors, while other cultures use the canonical English fallback. Technical CLI modes and Advanced lifecycle/diagnostic wording remain unchanged.
 
+INSTALL is also the package update/reinstall path. When INSTALL is launched from a complete package, its adjacent package core is authoritative for bootstrap even if an older installed core already exists. The installer then refreshes the installed launcher/core/runtime lock to the package hashes while retaining the project catalog, managed Source/Output data, enrollment secret, and the bounded operator ACL contract. A failed package-integrity/update step is reported as a recoverable guided error; do not uninstall or wipe project roots to recover from version skew.
+
 The default state path is: install -> connect ChatGPT -> add local project -> complete setup -> ready -> start work. When work is running, the default view offers status, stop and Output. Interrupted work is recover-first; reinstall is not the ordinary recovery recommendation.
 
 Add local project is a wizard. Every field explains what it is, why it is needed, the accepted format, an example, whether it is required, and a safe default when one can be derived. Type ? or help at a prompt to repeat the explanation. Invalid input is re-prompted in place without losing previous answers. Project/system/task technical ids are derived automatically in the guided view. Main and extension folders are validated immediately and must contain Configuration.xml directly in the selected root.

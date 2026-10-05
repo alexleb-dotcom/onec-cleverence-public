@@ -27,6 +27,7 @@ required = [
     "tests/run_local_regression.ps1",
     "tests/run_operator_acl_regression.ps1",
     "tests/run_guided_ui_regression.ps1",
+    "tests/run_update_bootstrap_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -50,6 +51,7 @@ readme = (PRODUCT / "README.md").read_text(encoding="utf-8")
 local_regression = (PRODUCT / "tests/run_local_regression.ps1").read_text(encoding="utf-8")
 operator_acl_regression = (PRODUCT / "tests/run_operator_acl_regression.ps1").read_text(encoding="utf-8")
 guided_ui_regression = (PRODUCT / "tests/run_guided_ui_regression.ps1").read_text(encoding="utf-8")
+update_bootstrap_regression = (PRODUCT / "tests/run_update_bootstrap_regression.ps1").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -91,6 +93,10 @@ rec("operator_acl_restricted_surfaces_preserved", all(t in core for t in ["$oper
 rec("repair_reconciles_operator_acl_before_journal", "Require-AdminOrRelaunch 'REPAIR'" in launcher and launcher.index("Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot") < launcher.index("Invoke-ObservedAction -OperationType REPAIR"), "REPAIR repairs ACL drift before operation journaling")
 rec("operator_acl_regression_runs_nonadmin_lifecycle", all(t in operator_acl_regression for t in ["RUN_PHASE_EXPECTS_NON_ADMIN","OPERATOR_PHASE_MUST_BE_NON_ADMIN","ADD_PROJECT","ADD_PARTICIPANT","SET_MAIN","ADD_EXTENSION","APPLY","VERIFY","Invoke-PostVerifyAclProof","OPERATION_JOURNAL_MISSING","READER_SOURCE_WRITE_RIGHT_PRESENT"]), "actual Windows PS5.1 regression covers elevated setup then non-admin operator lifecycle and negative ACL assertions")
 rec("operator_acl_regression_deterministic_start_write_gate", all(t in operator_acl_regression for t in ["New-Admission -ProjectId 'AclRegression' -TaskId 'acl-regression-task'","START_PROVIDER_CONFIG_WRITE_FAILED","START_ADMISSION_WRITE_FAILED","START_ADMISSION_CLEANUP_FAILED","RECOVER_POST_VERIFY"]) and "if($IncludeStart)" in operator_acl_regression, "deterministic gate proves non-admin START provider/runtime writes while interactive runas remains explicit opt-in")
+rec("install_bootstrap_prefers_package_core", "$Mode -eq 'INSTALL' -and $PackageCoreAvailable" in launcher and "$PackageCore" in launcher and "$InstalledCore" in launcher, "package INSTALL bootstraps from package core when available; normal runtime may still use installed core")
+rec("update_bootstrap_regression_reconstructs_version_skew", all(t in update_bootstrap_regression for t in ["New-StaleInstalledCore","STALE_CORE_RECONSTRUCTION_FAILED","PACKAGE_INSTALL_FAILED","installed_core_refreshed","installed_launcher_refreshed","installed_runtime_lock_refreshed"]), "Windows PS5.1 update regression makes installed core incompatible with -OperatorIdentity and proves package bootstrap refreshes exact package bytes")
+rec("update_bootstrap_regression_preserves_data_and_acl", all(t in update_bootstrap_regression for t in ["catalog_preserved","source_preserved","output_preserved","secret_preserved","worker_root_acl","operations_acl","provider_acl","runtime_acl","product_acl","helper_acl","secret_acl","idempotent_core"]), "version-skew update preserves data and #74 ACL ownership on isolated roots")
+rec("guided_update_failure_is_human_safe", all(t in launcher for t in ["The install/update package could not be verified.","Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.","PACKAGE_COMPONENT_HASH_MISMATCH|RUNTIME_LOCK_|INSTALLED_COMPONENT_HASH_MISMATCH"]), "guided install/update integrity failures map to actionable user-safe guidance")
 
 operation_tokens = [
     "Start-WorkerOperation",

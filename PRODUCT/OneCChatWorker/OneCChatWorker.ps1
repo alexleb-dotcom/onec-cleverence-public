@@ -12,7 +12,8 @@ if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.
 $PackageRoot=$PSScriptRoot
 $InstalledCore=Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1'
 $PackageCore=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
-$Core=if(Test-Path -LiteralPath $InstalledCore){$InstalledCore}else{$PackageCore}
+$PackageCoreAvailable=Test-Path -LiteralPath $PackageCore -PathType Leaf
+$Core=if($Mode -eq 'INSTALL' -and $PackageCoreAvailable){$PackageCore}elseif(Test-Path -LiteralPath $InstalledCore -PathType Leaf){$InstalledCore}else{$PackageCore}
 if(-not(Test-Path -LiteralPath $Core -PathType Leaf)){throw "CORE_NOT_FOUND: $Core"}
 Import-Module $Core -Force -DisableNameChecking
 Set-WorkerReaderIdentity -ReaderName $ReaderName|Out-Null
@@ -468,6 +469,8 @@ $script:GuidedRu=@{
  'The scripted UI test ran out of input.'='В тестовом сценарии интерфейса закончились входные данные.'
  'Fix the regression input script.'='Исправьте входной сценарий regression-теста.'
  'The action could not be completed ({0}).'='Действие не удалось завершить ({0}).'
+ 'The install/update package could not be verified.'='Не удалось проверить пакет установки или обновления.'
+ 'Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.'='Снова запустите INSTALL из полного актуального пакета OneCChatWorker; существующие проекты и данные сохранятся.'
  'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.'='Выполните рекомендованное действие основного меню или откройте «Дополнительно > Диагностика» для деталей.'
  'Next: {0}'='Далее: {0}'
  'Details: operation {0}; Advanced > Diagnostics'='Детали: операция {0}; Дополнительно > Диагностика'
@@ -738,6 +741,7 @@ function Get-GuidedErrorInfo {
   '^REMOTE_AUTH_REQUIRED' {return [pscustomobject]@{message='ChatGPT connection is not configured yet.';next='Choose Connect ChatGPT and enter the enrollment value locally.';code=$class}}
   '^RUNAS_FAILED_OR_CANCELLED' {return [pscustomobject]@{message='Windows did not confirm that the restricted source reader started.';next='The menu will detect the incomplete start. Clear it safely before retrying; use Diagnostics if it repeats.';code=$class}}
   '^ELEVATED_ACTION_FAILED' {return [pscustomobject]@{message='The Windows administrator step was cancelled or failed.';next='Run the recommended action again and approve the Windows elevation prompt.';code=$class}}
+  '^(PACKAGE_COMPONENT_HASH_MISMATCH|RUNTIME_LOCK_|INSTALLED_COMPONENT_HASH_MISMATCH)' {return [pscustomobject]@{message='The install/update package could not be verified.';next='Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.';code=$class}}
   '^RECOVERY_REQUIRED' {return [pscustomobject]@{message='A previous operation was interrupted and needs recovery first.';next='Use the recommended Recover safely action; do not reinstall unless it specifically says Install.';code=$class}}
   '^UI_SCRIPT_INPUT_EXHAUSTED' {return [pscustomobject]@{message='The scripted UI test ran out of input.';next='Fix the regression input script.';code=$class}}
   default {return [pscustomobject]@{message=((T 'The action could not be completed ({0}).') -f $class);next=(T 'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.');code=$class}}
