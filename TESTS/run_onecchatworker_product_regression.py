@@ -26,6 +26,7 @@ required = [
     "README.md",
     "tests/run_local_regression.ps1",
     "tests/run_operator_acl_regression.ps1",
+    "tests/run_guided_ui_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -48,6 +49,7 @@ launcher = (PRODUCT / "OneCChatWorker.ps1").read_text(encoding="utf-8")
 readme = (PRODUCT / "README.md").read_text(encoding="utf-8")
 local_regression = (PRODUCT / "tests/run_local_regression.ps1").read_text(encoding="utf-8")
 operator_acl_regression = (PRODUCT / "tests/run_operator_acl_regression.ps1").read_text(encoding="utf-8")
+guided_ui_regression = (PRODUCT / "tests/run_guided_ui_regression.ps1").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -109,8 +111,17 @@ rec("rp035_logs_are_bounded", "OperationLogMaxBytes" in core and "Rotate-WorkerL
 rec("package_integrity_is_hash_locked", all(t in core for t in ["Read-RuntimeLock", "Test-ProductPackageIntegrity", "Copy-ProductComponent", "Test-InstalledProductIntegrity", "NODE_HASH_MISMATCH", "RG_HASH_MISMATCH"]), "package/dependency hashes")
 rec("python_cloudflare_not_product_dependencies", "python=[pscustomobject]@{action='SKIPPED_NOT_REQUIRED'}" in core and "cloudflare_cli=[pscustomobject]@{action='SKIPPED_NOT_REQUIRED'}" in core, "engineering-only dependencies excluded")
 
-menu_tokens = ["START PROJECT", "STOP", "STATUS", "PROJECTS", "VERIFY / REPAIR", "SETTINGS / DIAGNOSTICS", "UNINSTALL"]
-rec("launcher_has_unified_menu", all(t in launcher for t in menu_tokens), [t for t in menu_tokens if t not in launcher])
+guided_tokens = ["function Get-GuidedContext", "function Guided-MainMenu", "Recommended:", "Add local project", "Complete project setup", "Start work", "Advanced", "FAIL:", "Next:", "Details:"]
+rec("launcher_has_guided_state_aware_default", all(t in launcher for t in guided_tokens), [t for t in guided_tokens if t not in launcher])
+rec("launcher_guided_state_contract", all(t in launcher for t in ["NOT_INSTALLED","REMOTE_AUTH_MISSING","NO_PROJECTS","PROJECT_DRAFT","PROJECT_NEEDS_APPLY","PROJECT_NEEDS_VERIFY","PROJECT_READY","RUNNING","STARTING","START_INCOMPLETE","RECOVERY_REQUIRED"]), "authoritative guided states")
+rec("launcher_field_help_contract", all(t in launcher for t in ["What:", "Why :", "Form:", "Example:", "Required:", "Type ? or help", "press Enter to accept"]), "every guided field explains itself and supports help/default")
+rec("launcher_guided_ids_are_derived", all(t in launcher for t in ["ConvertTo-SafeTechnicalId","Get-UniqueProjectId","Get-UniqueParticipantId","Get-UniqueTaskId"]), "technical ids are derived in default UX")
+rec("launcher_guided_setup_summary_and_resume", all(t in launcher for t in ["Setup summary","Confirm, [B] Back/Edit","Existing valid setup is kept","Complete-GuidedProject"]), "summary/edit/confirm plus resume path")
+rec("launcher_guided_expected_errors_are_human", all(t in launcher for t in ["Get-GuidedErrorInfo","Show-GuidedFailure","FAIL: {0}","Next: {0}","Advanced > Diagnostics"]), "default expected errors are concise and diagnostic details remain advanced")
+rec("guided_ui_regression_covers_required_states", all(t in guided_ui_regression for t in ["fresh_state_not_installed","installed_auth_missing_state","no_projects_guides_add_project","field_help_contract_visible","invalid_path_reprompts_in_place","interrupted_setup_resumes_to_ready","existing_ready_state","orphan_admission_is_start_incomplete","running_state_requires_helper","advanced_invalid_is_handled","first_project_expected_error_no_stack"]), "Windows PS5.1 guided UI regression coverage")
+rec("guided_ui_regression_checks_internal_terms_hidden", "guided_hides_internal_lifecycle_terms" in guided_ui_regression and "participant_id|artifact_id|APPLY CATALOG" in guided_ui_regression, "default UI hides technical lifecycle terms")
+rec("launcher_guided_localizes_by_windows_ui_culture", all(t in launcher for t in ["function Get-GuidedLanguage", "CurrentUICulture", "$script:GuidedRu", "^(?i:ru)"]), "ru-* follows Windows UI culture; all other cultures fall back to canonical English")
+rec("guided_ui_regression_covers_ru_and_english_fallback", all(t in guided_ui_regression for t in ["'ru-RU'", "'de-DE'", "ru_field_help_localized", "ru_validation_error_localized", "english_fallback_field_help", "english_fallback_validation_error"]), "PS5.1 regression proves Russian guided presentation plus unsupported-culture English fallback")
 rec("launcher_cli_has_required_lifecycle_modes", all(t in launcher for t in ["'APPLY'","'VERIFY'","'REPAIR'","'START'","'STOP'","'DEACTIVATE'","'EDIT_PROJECT'","'EDIT_PARTICIPANT'"]), "CLI modes")
 rec("launcher_has_human_observability_views", all(t in launcher for t in ["VIEW_CURRENT_OPERATION", "VIEW_RECENT_OPERATIONS", "VIEW_LOGS", "EXPORT_DIAGNOSTICS", "Show-StatusReadable"]), "operator views")
 rec("launcher_recover_first_guard", "RECOVERY_REQUIRED: incomplete operation" in launcher and "explicit recover-first path, not blind replay" in launcher, "interrupted operations block blind replay")

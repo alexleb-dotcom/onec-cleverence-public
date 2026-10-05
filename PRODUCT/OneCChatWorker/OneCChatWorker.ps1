@@ -1,11 +1,11 @@
-param(
+﻿param(
  [ValidateSet('MENU','PRECHECK','INSTALL','STATUS','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
  [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCChatWorker',[string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker',
  [string]$ReaderName='OneCSourceReader',[string]$OperatorIdentity,[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
- [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath
+ [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath
 )
 $ErrorActionPreference='Stop'
 if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
@@ -30,12 +30,17 @@ function Require-AdminOrRelaunch {
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
  if($Json){$argsList+='-Json'}
  $p=Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argsList -Wait -PassThru
+ if($script:InGuidedMenu){
+  if($p.ExitCode -ne 0){throw "ELEVATED_ACTION_FAILED: $RequestedMode exit=$($p.ExitCode)"}
+  return $true
+ }
  exit $p.ExitCode
 }
 function Need([string]$Value,[string]$Name){if([string]::IsNullOrWhiteSpace($Value)){throw "ARG_REQUIRED: $Name"};$Value}
 function Show-JsonValue($Value){$Value|ConvertTo-Json -Depth 30}
 function Show-Value($Value){
  if($Json){Show-JsonValue $Value;return}
+ if($script:InGuidedMenu -and -not $script:InAdvancedMenu){return}
  if($null -eq $Value){return}
  if($Value -is [string]){Write-Host $Value;return}
  $text=$Value|Format-List *|Out-String
@@ -164,7 +169,7 @@ function Run-Precheck {
  Show-Value $r
 }
 function Run-Install {
- Require-AdminOrRelaunch 'INSTALL'
+ if(Require-AdminOrRelaunch 'INSTALL'){return}
  $r=Invoke-ObservedAction -OperationType INSTALL -RequestedAction 'Install or repair OneCChatWorker machine runtime' -TotalSteps 4 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Checking prerequisites' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
@@ -290,7 +295,7 @@ function Run-Verify {
 }
 function Run-Repair {
  $projectKey=Need $ProjectId ProjectId
- Require-AdminOrRelaunch 'REPAIR'
+ if(Require-AdminOrRelaunch 'REPAIR'){return}
  $null=Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
  $r=Invoke-ObservedAction -OperationType REPAIR -RequestedAction 'Bounded recover-first project repair' -TotalSteps 3 -Project $projectKey -Body {
   param($op)
@@ -328,7 +333,7 @@ function Run-Start {
  if($Json){Show-JsonValue $r}else{Write-Host ('START: project={0} task={1} helper={2}' -f $projectKey,$task,$r.helper.status)}
 }
 function Run-Stop {
- Require-AdminOrRelaunch 'STOP'
+ if(Require-AdminOrRelaunch 'STOP'){return}
  $r=Invoke-ObservedAction -OperationType STOP -RequestedAction 'Stop current helper/admission without deleting project data' -TotalSteps 2 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Stopping restricted helper and clearing active admission' -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
@@ -340,7 +345,7 @@ function Run-Stop {
  Show-Value $r
 }
 function Run-Settings {
- Require-AdminOrRelaunch 'SETTINGS'
+ if(Require-AdminOrRelaunch 'SETTINGS'){return}
  $r=Invoke-ObservedAction -OperationType SETTINGS -RequestedAction 'Update local helper enrollment secret' -TotalSteps 2 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Waiting for locally entered helper enrollment secret; value will not be logged' -Step 1 -Total 2 -State WAITING_FOR_USER -ProgramDataRoot $ProgramDataRoot
@@ -366,7 +371,7 @@ function Run-Uninstall {
   }
   return
  }
- Require-AdminOrRelaunch 'UNINSTALL'
+ if(Require-AdminOrRelaunch 'UNINSTALL'){return}
  $r=Invoke-ObservedAction -OperationType UNINSTALL -RequestedAction 'Remove OneCChatWorker-owned runtime while retaining project Source copies and Output evidence' -TotalSteps 3 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Reviewing safe uninstall boundaries; project Source/Output/Detached and external Source will be retained' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
@@ -406,78 +411,719 @@ function Invoke-CommandMode {
  }
 }
 
-function Ask-Project {
- $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
- if(-not @($c.projects).Count){throw 'NO_PROJECTS'}
- Write-Host '';for($i=0;$i -lt @($c.projects).Count;$i++){Write-Host ("[{0}] {1} ({2})" -f ($i+1),$c.projects[$i].display_name,$c.projects[$i].project_id)}
- $n=[int](Read-Host 'Project number');if($n -lt 1 -or $n -gt @($c.projects).Count){throw 'INVALID_SELECTION'}
- $c.projects[$n-1].project_id
+$script:UiInputs=New-Object 'System.Collections.Generic.Queue[string]'
+if(-not [string]::IsNullOrWhiteSpace($UiInputPath)){
+ if(-not(Test-Path -LiteralPath $UiInputPath -PathType Leaf)){throw "UI_INPUT_FILE_NOT_FOUND: $UiInputPath"}
+ foreach($line in @(Get-Content -LiteralPath $UiInputPath -Encoding UTF8)){$script:UiInputs.Enqueue([string]$line)}
 }
-function Projects-Menu {
- while($true){
-  Write-Host '';Write-Host 'PROJECTS';Write-Host '[1] LIST  [2] ADD PROJECT  [3] EDIT PROJECT  [4] ADD PARTICIPANT';Write-Host '[5] EDIT PARTICIPANT  [6] SET/REPLACE MAIN  [7] ADD/REPLACE EXTENSION';Write-Host '[8] REMOVE/DEACTIVATE  [9] APPLY CATALOG  [10] VERIFY PROJECT  [0] BACK'
-  switch(Read-Host 'Select'){
-   '1' {Show-Value (Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing)}
-   '2' {$script:ProjectId=Read-Host 'Project id';$script:DisplayName=Read-Host 'Display name';Run-AddProject}
-   '3' {$script:ProjectId=Ask-Project;$script:DisplayName=Read-Host 'New display name';Run-EditProject}
-   '4' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Host 'Participant id';$script:Role=Read-Host 'Role';$script:Platform='ONEC';Run-AddParticipant}
-   '5' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Host 'Participant id';$script:Role=Read-Host 'New role';Run-EditParticipant}
-   '6' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Host 'Participant id';$script:SourcePath=Read-Host 'Direct unpacked 1C Main folder';$script:ReplaceExisting=(Read-Host 'Replace managed copy on APPLY? y/N') -match '^[Yy]$';Run-SetMain}
-   '7' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Host 'Participant id';$script:ExtensionId=Read-Host 'Extension id';$script:SourcePath=Read-Host 'Direct unpacked extension folder';$script:ReplaceExisting=(Read-Host 'Replace/reactivate existing extension on APPLY? y/N') -match '^[Yy]$';Run-AddExtension}
-   '8' {$script:ProjectId=Ask-Project;$script:Kind=(Read-Host 'PROJECT/PARTICIPANT/MAIN/EXTENSION').ToUpperInvariant();$script:ParticipantId=if($script:Kind -ne 'PROJECT'){Read-Host 'Participant id'}else{$null};$script:ExtensionId=if($script:Kind -eq 'EXTENSION'){Read-Host 'Extension id'}else{$null};Run-Deactivate}
-   '9' {$script:ProjectId=Ask-Project;Run-Apply}
-   '10' {$script:ProjectId=Ask-Project;Run-Verify}
-   '0' {return}
-  }
+function Read-Ui {
+ param([string]$Prompt)
+ $shownPrompt=if($script:InGuidedMenu -and -not $script:InAdvancedMenu){T $Prompt}else{$Prompt}
+ if($script:UiInputs.Count -gt 0){
+  $value=$script:UiInputs.Dequeue()
+  Write-Host ("{0}: {1}" -f $shownPrompt,$value)
+  return $value
  }
+ Read-Host $shownPrompt
 }
-function Diagnostics-Menu {
+function Get-GuidedLanguage {
+ $name=[string][Globalization.CultureInfo]::CurrentUICulture.Name
+ if($name -match '^(?i:ru)(-|$)'){return 'ru'}
+ 'en'
+}
+$script:GuidedRu=@{
+ 'What: {0}'='Что это: {0}'
+ 'Why : {0}'='Зачем: {0}'
+ 'Form: {0}'='Формат: {0}'
+ 'Example: {0}'='Пример: {0}'
+ 'Required: {0}'='Обязательно: {0}'
+ 'yes'='да'
+ 'no'='нет'
+ 'Default: {0}  (press Enter to accept)'='По умолчанию: {0}  (нажмите Enter, чтобы принять)'
+ 'Type ? or help to show this explanation again.'='Введите ? или help, чтобы снова показать это пояснение.'
+ 'This field is required.'='Это поле обязательно.'
+ 'Next: enter a value for {0}, or type ? for help.'='Далее: введите значение для «{0}» или ? для справки.'
+ 'Next: correct {0}; your previous answers are kept.'='Далее: исправьте «{0}»; предыдущие ответы сохранены.'
+ 'Answer yes or no.'='Ответьте Да или Нет.'
+ 'Please answer yes or no.'='Ответьте Да или Нет.'
+ 'That folder does not exist.'='Такой папки не существует.'
+ 'Configuration.xml must be directly inside this folder. Choose the root folder of the XML export.'='Файл Configuration.xml должен находиться непосредственно в этой папке. Выберите корневую папку XML-выгрузки.'
+ 'This folder is not a usable direct 1C XML export root.'='Эта папка не является корректным корнем XML-выгрузки 1С.'
+ 'The selected 1C export folder does not exist.'='Выбранная папка XML-выгрузки 1С не существует.'
+ 'Choose the root folder that directly contains Configuration.xml.'='Выберите корневую папку, внутри которой непосредственно находится Configuration.xml.'
+ 'Configuration.xml was not found directly inside the selected folder.'='В выбранной папке непосредственно не найден Configuration.xml.'
+ 'Choose the root folder of the unpacked 1C XML export.'='Выберите корневую папку распакованной XML-выгрузки 1С.'
+ 'No projects exist yet.'='Проектов пока нет.'
+ 'Choose Add local project in the guided menu.'='Выберите «Добавить локальный проект» в основном меню.'
+ 'The project is not ready to start work.'='Проект ещё не готов к началу работы.'
+ 'Use the recommended setup/repair action shown by the guided menu.'='Выполните рекомендованное действие настройки или восстановления в основном меню.'
+ 'ChatGPT connection is not configured yet.'='Подключение ChatGPT ещё не настроено.'
+ 'Choose Connect ChatGPT and enter the enrollment value locally.'='Выберите «Подключить ChatGPT» и введите значение подключения локально.'
+ 'Windows did not confirm that the restricted source reader started.'='Windows не подтвердила запуск ограниченного процесса чтения исходников.'
+ 'The menu will detect the incomplete start. Clear it safely before retrying; use Diagnostics if it repeats.'='Меню определит незавершённый запуск. Безопасно очистите его перед повтором; если проблема повторяется, откройте диагностику.'
+ 'The Windows administrator step was cancelled or failed.'='Шаг с правами администратора Windows был отменён или завершился ошибкой.'
+ 'Run the recommended action again and approve the Windows elevation prompt.'='Повторите рекомендованное действие и подтвердите запрос повышения прав Windows.'
+ 'A previous operation was interrupted and needs recovery first.'='Предыдущая операция была прервана и сначала требует восстановления.'
+ 'Use the recommended Recover safely action; do not reinstall unless it specifically says Install.'='Выполните рекомендованное «Безопасно восстановить»; не переустанавливайте продукт, если меню явно не предлагает установку.'
+ 'The scripted UI test ran out of input.'='В тестовом сценарии интерфейса закончились входные данные.'
+ 'Fix the regression input script.'='Исправьте входной сценарий regression-теста.'
+ 'The action could not be completed ({0}).'='Действие не удалось завершить ({0}).'
+ 'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.'='Выполните рекомендованное действие основного меню или откройте «Дополнительно > Диагностика» для деталей.'
+ 'Next: {0}'='Далее: {0}'
+ 'Details: operation {0}; Advanced > Diagnostics'='Детали: операция {0}; Дополнительно > Диагностика'
+ 'Details: {0}; Advanced > Diagnostics'='Детали: {0}; Дополнительно > Диагностика'
+ 'Install OneCChatWorker'='Установить OneCChatWorker'
+ 'Product runtime is not installed.'='Локальная среда OneCChatWorker не установлена.'
+ 'Recover safely'='Безопасно восстановить'
+ 'A previous operation was interrupted.'='Предыдущая операция была прервана.'
+ 'Connect ChatGPT'='Подключить ChatGPT'
+ 'Local ChatGPT enrollment is not configured.'='Локальное подключение ChatGPT не настроено.'
+ 'Show current work status'='Показать состояние текущей работы'
+ 'The restricted Source helper is connected for a bounded ChatGPT work session.'='Ограниченный процесс чтения Source подключён для текущей задачи ChatGPT.'
+ 'Check connection status'='Проверить состояние подключения'
+ 'The restricted Source helper is running but connection evidence is not ready yet.'='Ограниченный процесс чтения Source запущен, но подтверждение подключения ещё не получено.'
+ 'Clear incomplete start'='Очистить незавершённый запуск'
+ 'A task admission was written, but no restricted helper process is running. Clear only this incomplete admission before retrying.'='Задача была подготовлена к запуску, но ограниченный процесс чтения не работает. Перед повтором очистите только это незавершённое состояние запуска.'
+ 'Add local project'='Добавить локальный проект'
+ 'No local projects are configured yet.'='Локальные проекты ещё не настроены.'
+ 'Complete project setup'='Завершить настройку проекта'
+ 'Add the 1C system/base and its main XML export.'='Добавьте базу/систему 1С и основную XML-выгрузку.'
+ 'The main 1C configuration folder is still missing.'='Папка основной конфигурации 1С ещё не указана.'
+ 'Finish project setup'='Завершить настройку проекта'
+ 'Setup answers are saved; the managed project copy must now be built and checked.'='Ответы настройки сохранены; теперь нужно создать и проверить управляемую копию проекта.'
+ 'Start work'='Начать работу'
+ 'The project is ready for a bounded ChatGPT task.'='Проект готов к ограниченной задаче ChatGPT.'
+ 'Check and repair project'='Проверить и восстановить проект'
+ 'The managed project copy needs attention before work can start.'='Перед началом работы нужно проверить управляемую копию проекта.'
+ 'Not installed'='Не установлено'
+ 'ChatGPT connection required'='Требуется подключение ChatGPT'
+ 'Ready for first project'='Можно добавить первый проект'
+ 'Project setup incomplete'='Настройка проекта не завершена'
+ 'Project setup saved'='Настройка проекта сохранена'
+ 'Project needs checking'='Проект требует проверки'
+ 'Project ready'='Проект готов'
+ 'Work session running'='Рабочая сессия запущена'
+ 'Work session starting'='Рабочая сессия запускается'
+ 'Start incomplete'='Запуск не завершён'
+ 'Recovery required'='Требуется восстановление'
+ 'Choose the local project you want to work with:'='Выберите локальный проект для работы:'
+ 'Project number'='Номер проекта'
+ 'Choose one of the displayed project numbers.'='Выберите один из показанных номеров проекта.'
+ 'Setup summary'='Итог настройки'
+ 'Project : {0}'='Проект : {0}'
+ '1C base : {0}'='База 1С : {0}'
+ 'Purpose : {0}'='Назначение : {0}'
+ 'Main XML: {0}'='Основная XML-выгрузка: {0}'
+ 'Extensions:'='Расширения:'
+ 'Extensions: none'='Расширения: нет'
+ 'Existing valid setup is kept; only missing/new answers above will be added.'='Существующая корректная настройка сохраняется; будут добавлены только недостающие или новые данные выше.'
+ 'Project name'='Название проекта'
+ 'The human-readable name of this customer or local project.'='Понятное человеку название этого клиента или локального проекта.'
+ 'It is shown in the menu so you can recognize the project. A safe technical id is created automatically.'='Название показывается в меню, чтобы вы узнавали проект. Безопасный технический идентификатор создаётся автоматически.'
+ 'Any short human name.'='Любое короткое понятное название.'
+ 'System / base name'='Название системы / базы'
+ 'The name you use for this logical 1C system/base inside the project.'='Название, которым вы обозначаете эту логическую систему или базу 1С внутри проекта.'
+ 'It lets ChatGPT distinguish this base from other systems in the same project. A technical id is created automatically.'='Оно помогает ChatGPT отличать эту базу от других систем проекта. Технический идентификатор создаётся автоматически.'
+ 'A short human name.'='Короткое понятное название.'
+ 'ERP or Управление торговлей'='ERP или Управление торговлей'
+ 'Role / purpose'='Роль / назначение'
+ 'A human description of what this 1C base is used for.'='Понятное человеку описание назначения этой базы 1С.'
+ 'It is context for people and ChatGPT; it does not change runtime permissions.'='Это контекст для людей и ChatGPT; он не меняет права доступа.'
+ 'Free text; optional.'='Свободный текст; необязательно.'
+ 'Main configuration folder'='Папка основной конфигурации'
+ 'The root folder of an unpacked XML export of the main 1C configuration.'='Корневая папка распакованной XML-выгрузки основной конфигурации 1С.'
+ 'OneCChatWorker copies this export into the managed read-only Source tree.'='OneCChatWorker копирует эту выгрузку в управляемое дерево Source только для чтения.'
+ 'A local folder path; Configuration.xml must be directly inside it.'='Путь к локальной папке; Configuration.xml должен находиться непосредственно внутри неё.'
+ 'Add another extension XML export?'='Добавить ещё одну XML-выгрузку расширения?'
+ 'Does this base have an extension XML export to add?'='У этой базы есть XML-выгрузка расширения, которую нужно добавить?'
+ 'Answer No if there are no extensions. You can add one later without repeating the main setup.'='Ответьте Нет, если расширений нет. Их можно добавить позже без повторения основной настройки.'
+ 'Extension name'='Название расширения'
+ 'A short human name for this 1C extension.'='Короткое понятное название этого расширения 1С.'
+ 'It identifies the extension inside this base; a technical id is created automatically.'='Оно обозначает расширение внутри базы; технический идентификатор создаётся автоматически.'
+ 'A short name.'='Короткое название.'
+ 'CRM additions'='Дополнения CRM'
+ 'Extension folder'='Папка расширения'
+ 'The root folder of an unpacked XML export of this 1C extension.'='Корневая папка распакованной XML-выгрузки этого расширения 1С.'
+ 'It will be copied beside the main configuration in the managed Source tree.'='Она будет скопирована рядом с основной конфигурацией в управляемое дерево Source.'
+ 'Add one more extension?'='Добавить ещё одно расширение?'
+ 'Answer Yes to add another extension export, or No to continue.'='Ответьте Да, чтобы добавить ещё одно расширение, или Нет, чтобы продолжить.'
+ 'Building and checking the managed project copy...'='Создаю и проверяю управляемую копию проекта...'
+ 'The project did not reach Ready state.'='Проект не перешёл в состояние готовности.'
+ 'Next: choose Check and repair project from the guided menu.'='Далее: выберите «Проверить и восстановить проект» в основном меню.'
+ 'SUCCESS: Project is ready.'='УСПЕХ: проект готов.'
+ 'Next: Start work now, or return to the menu and start later.'='Далее: начните работу сейчас или вернитесь в меню и запустите её позже.'
+ 'Task description'='Описание задачи'
+ 'A human description of the specific work you want ChatGPT to do now.'='Понятное человеку описание конкретной работы, которую ChatGPT должен выполнить сейчас.'
+ 'Each bounded work session has its own Output folder. A technical task id is created automatically.'='У каждой ограниченной рабочей сессии своя папка Output. Технический идентификатор задачи создаётся автоматически.'
+ 'A short sentence describing the task.'='Короткое предложение с описанием задачи.'
+ 'Windows will ask for the local OneCSourceReader password. This starts the restricted read-only Source helper.'='Windows запросит пароль локальной учётной записи OneCSourceReader. Это запускает ограниченный процесс чтения Source только для чтения.'
+ 'SUCCESS: ChatGPT work session is connected.'='УСПЕХ: рабочая сессия ChatGPT подключена.'
+ 'Next: work in ChatGPT; proposals will appear in this task Output folder.'='Далее: работайте в ChatGPT; предложения будут появляться в папке Output этой задачи.'
+ 'Next: use Show current work status. The helper may still be connecting.'='Далее: выберите «Показать состояние текущей работы». Подключение процесса чтения может ещё выполняться.'
+ 'Choose [C] Confirm, [B] Back/Edit, or [Q] Cancel'='Выберите [C] Подтвердить, [B] Назад/Изменить или [Q] Отмена'
+ 'CANCELLED: no new setup changes were committed.'='ОТМЕНЕНО: новые изменения настройки не были сохранены.'
+ 'Choose Confirm, Back/Edit, or Cancel.'='Выберите Подтвердить, Назад/Изменить или Отмена.'
+ 'Project is ready. Start work now?'='Проект готов. Начать работу сейчас?'
+ 'Yes starts a bounded ChatGPT task. No returns to the menu; setup stays saved.'='Да запускает ограниченную задачу ChatGPT. Нет возвращает в меню; настройка остаётся сохранённой.'
+ 'Recovering the interrupted installation without wiping project data.'='Восстанавливаю прерванную установку без удаления данных проекта.'
+ 'Recovering project {0} from authoritative catalog/manifest state; completed work will not be blindly replayed.'='Восстанавливаю проект {0} по авторитетному состоянию каталога/манифеста; уже завершённая работа не будет повторяться вслепую.'
+ 'Recovery needs diagnostics before a safe project can be selected.'='Перед безопасным выбором проекта для восстановления нужна диагностика.'
+ 'Next: open Advanced > Diagnostics and review the current operation.'='Далее: откройте «Дополнительно > Диагностика» и проверьте текущую операцию.'
+ 'State: {0}'='Состояние: {0}'
+ 'Project: {0}'='Проект: {0}'
+ 'Task   : {0}'='Задача  : {0}'
+ 'Why: {0}'='Почему: {0}'
+ 'Recommended: {0}'='Рекомендуется: {0}'
+ 'No project Output folder is available yet.'='Папка Output проекта ещё недоступна.'
+ 'Output folder: {0}'='Папка Output: {0}'
+ 'Opened in File Explorer.'='Папка открыта в Проводнике.'
+ 'Could not open File Explorer; the path above is still available.'='Не удалось открыть Проводник; путь выше остаётся доступным.'
+ '[Enter] Show current work status   [S] Stop work   [O] Open Output   [A] Advanced   [Q] Exit'='[Enter] Показать состояние   [S] Остановить   [O] Открыть Output   [A] Дополнительно   [Q] Выход'
+ '[Enter] Check connection status   [S] Stop / clear start   [A] Advanced   [Q] Exit'='[Enter] Проверить подключение   [S] Остановить / очистить запуск   [A] Дополнительно   [Q] Выход'
+ '[Enter] Do recommended action   [P] Choose project   [A] Advanced   [Q] Exit'='[Enter] Выполнить рекомендацию   [P] Выбрать проект   [A] Дополнительно   [Q] Выход'
+ 'Select'='Выбор'
+ 'Selected project: {0}'='Выбран проект: {0}'
+ 'Choose Enter, S, O, A, or Q.'='Выберите Enter, S, O, A или Q.'
+ 'Choose Enter, S, A, or Q.'='Выберите Enter, S, A или Q.'
+ 'Choose Enter for the recommended action, P, A, or Q.'='Нажмите Enter для рекомендованного действия или выберите P, A либо Q.'
+ 'This installs the local runtime and may ask for Windows administrator approval.'='Будет установлена локальная среда; Windows может запросить подтверждение прав администратора.'
+ 'SUCCESS: Installation step completed.'='УСПЕХ: шаг установки завершён.'
+ 'Next: the menu will show the next required action.'='Далее: меню покажет следующее необходимое действие.'
+ 'Connect ChatGPT stores the enrollment value locally with restricted permissions; it is never printed or logged.'='Подключение ChatGPT сохраняет значение подключения локально с ограниченными правами; оно не выводится на экран и не записывается в журнал.'
+ 'SUCCESS: ChatGPT connection settings were saved.'='УСПЕХ: настройки подключения ChatGPT сохранены.'
+ 'Checking the managed project copy and attempting only bounded recover-first repair if needed.'='Проверяю управляемую копию проекта и при необходимости выполняю только ограниченное recover-first восстановление.'
+ 'Clearing only the incomplete local start/admission state. Project Source and Output are retained.'='Очищаю только незавершённое локальное состояние запуска. Source и Output проекта сохраняются.'
+ 'SUCCESS: Incomplete start state was cleared.'='УСПЕХ: незавершённое состояние запуска очищено.'
+ 'Next: Start work again and enter the OneCSourceReader password.'='Далее: снова выберите «Начать работу» и введите пароль OneCSourceReader.'
+ 'Guided state is unavailable.'='Состояние основного интерфейса недоступно.'
+ 'Next: open Advanced > Diagnostics.'='Далее: откройте «Дополнительно > Диагностика».'
+ 'Open Advanced diagnostics'='Открыть дополнительную диагностику'
+ 'State could not be read safely.'='Не удалось безопасно определить состояние.'
+}
+function T {
+ param([AllowEmptyString()][string]$Text)
+ if((Get-GuidedLanguage) -eq 'ru' -and $script:GuidedRu.ContainsKey($Text)){return [string]$script:GuidedRu[$Text]}
+ $Text
+}
+function Write-GuidedHost {
+ param([AllowEmptyString()][string]$Text='')
+ if($script:InGuidedMenu -and -not $script:InAdvancedMenu){Write-Host (T $Text)}else{Write-Host $Text}
+}
+function Show-FieldHelp {
+ param([string]$Label,[string]$What,[string]$Why,[string]$Allowed,[string]$Example,[bool]$Required,[string]$Default)
+ Write-Host ''
+ Write-Host (T $Label)
+ Write-Host ("  "+((T 'What: {0}') -f (T $What)))
+ Write-Host ("  "+((T 'Why : {0}') -f (T $Why)))
+ Write-Host ("  "+((T 'Form: {0}') -f (T $Allowed)))
+ Write-Host ("  "+((T 'Example: {0}') -f (T $Example)))
+ Write-Host ("  "+((T 'Required: {0}') -f (T $(if($Required){'yes'}else{'no'}))))
+ if(-not [string]::IsNullOrWhiteSpace($Default)){Write-Host ("  "+((T 'Default: {0}  (press Enter to accept)') -f $Default))}
+ Write-Host ("  "+(T 'Type ? or help to show this explanation again.'))
+}
+function Read-GuidedValue {
+ param(
+  [Parameter(Mandatory)][string]$Label,
+  [Parameter(Mandatory)][string]$What,
+  [Parameter(Mandatory)][string]$Why,
+  [Parameter(Mandatory)][string]$Allowed,
+  [Parameter(Mandatory)][string]$Example,
+  [string]$Default,
+  [switch]$Optional,
+  [scriptblock]$Validate
+ )
+ Show-FieldHelp -Label $Label -What $What -Why $Why -Allowed $Allowed -Example $Example -Required:(-not $Optional) -Default $Default
  while($true){
-  Write-Host '';Write-Host 'SETTINGS / DIAGNOSTICS';Write-Host '[1] STATUS  [2] VIEW CURRENT OPERATION  [3] VIEW RECENT OPERATIONS';Write-Host '[4] VIEW LOGS  [5] SHOW COMPONENT/HELPER STATE  [6] EXPORT DIAGNOSTIC BUNDLE';Write-Host '[7] UPDATE HELPER ENROLLMENT SECRET  [0] BACK'
-  switch(Read-Host 'Select'){
-   '1' {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}
-   '2' {Show-CurrentOperation}
-   '3' {Show-RecentOperations}
-   '4' {Show-OperationLogs}
-   '5' {Show-Value (Get-WorkerDiagnostics -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}
-   '6' {Show-Value (Export-WorkerDiagnosticBundle -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}
-   '7' {if(Is-Admin){Run-Settings}else{Write-Host 'Use OneCChatWorker.ps1 -Mode SETTINGS to elevate securely.'}}
-   '0' {return}
+  $suffix=if(-not [string]::IsNullOrWhiteSpace($Default)){" [$Default]"}else{''}
+  $value=[string](Read-Ui ((T $Label)+$suffix))
+  if($value -match '^(?i:\?|help)$'){Show-FieldHelp -Label $Label -What $What -Why $Why -Allowed $Allowed -Example $Example -Required:(-not $Optional) -Default $Default;continue}
+  if([string]::IsNullOrWhiteSpace($value)){
+   if(-not [string]::IsNullOrWhiteSpace($Default)){return $Default}
+   if($Optional){return ''}
+   Write-Host ("FAIL: {0}" -f (T 'This field is required.'))
+   Write-Host ((T 'Next: enter a value for {0}, or type ? for help.') -f (T $Label))
+   continue
   }
- }
-}
-function FirstRun-Menu {
- while($true){
-  Write-Host '';Write-Host 'OneCChatWorker — not installed or incomplete';Write-Host '[1] PRECHECK  [2] INSTALL / REPAIR  [0] EXIT'
-  switch(Read-Host 'Select'){
-   '1' {Run-Precheck}
-   '2' {if(Is-Admin){Run-Install}else{Write-Host 'INSTALL will request Windows elevation.';Run-Install}}
-   '0' {return}
-  }
- }
-}
-function Main-Menu {
- while($true){
-  Write-Host '';Write-Host 'OneCChatWorker';Write-Host '[1] START PROJECT  [2] STOP  [3] STATUS  [4] PROJECTS';Write-Host '[5] VERIFY / REPAIR  [6] SETTINGS / DIAGNOSTICS  [7] UPDATE / REINSTALL  [8] UNINSTALL  [0] EXIT'
-  switch(Read-Host 'Select'){
-   '1' {$script:ProjectId=Ask-Project;$script:TaskId=Read-Host 'Task id';Run-Start}
-   '2' {if(Is-Admin){Run-Stop}else{Write-Host 'STOP requires elevation; use OneCChatWorker.ps1 -Mode STOP'}}
-   '3' {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}
-   '4' {Projects-Menu}
-   '5' {$script:ProjectId=Ask-Project;Run-Verify;$v=Verify-WorkerProject -ProjectId $script:ProjectId -WorkerRoot $WorkerRoot;if($v.status -ne 'READY' -and (Read-Host 'Run bounded recover-first REPAIR? y/N') -match '^[Yy]$'){Run-Repair}}
-   '6' {Diagnostics-Menu}
-   '7' {Write-Host 'Re-run INSTALL from the same pinned product package/repository checkout to update safely.'}
-   '8' {
-    $plan=Get-UninstallPlan -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
-    Write-Host 'Safe uninstall retains catalog, project Source copies, Output, Detached, audit/logs and reader account.'
-    @($plan.remove)|ForEach-Object{Write-Host ("  REMOVE  "+$_)}
-    if((Read-Host 'Proceed with runtime-only uninstall? type YES') -ceq 'YES'){$script:ConfirmUninstall=$true;Run-Uninstall}else{Write-Host 'CANCELLED — no changes made.'}
+  if($Validate){
+   $problem=& $Validate $value
+   if(-not [string]::IsNullOrWhiteSpace([string]$problem)){
+    Write-Host ("FAIL: {0}" -f (T ([string]$problem)))
+    Write-Host ((T 'Next: correct {0}; your previous answers are kept.') -f (T $Label))
+    continue
    }
+  }
+  return $value
+ }
+}
+function Read-GuidedYesNo {
+ param([string]$Prompt,[bool]$DefaultNo=$true,[string]$Help='Answer yes or no.')
+ while($true){
+  $suffix=if((Get-GuidedLanguage) -eq 'ru'){if($DefaultNo){' [д/Н]'}else{' [Д/н]'}}else{if($DefaultNo){' [y/N]'}else{' [Y/n]'}}
+  $v=[string](Read-Ui ((T $Prompt)+$suffix))
+  if($v -match '^(?i:\?|help)$'){Write-Host (T $Help);continue}
+  if([string]::IsNullOrWhiteSpace($v)){return (-not $DefaultNo)}
+  if($v -match '^(?i:y|yes|да|д)$'){return $true}
+  if($v -match '^(?i:n|no|нет|н)$'){return $false}
+  Write-Host ("FAIL: {0}" -f (T 'Please answer yes or no.'))
+ }
+}
+function ConvertTo-SafeTechnicalId {
+ param([Parameter(Mandatory)][string]$Text,[string]$Fallback='item')
+ $map=@{
+  'а'='a';'б'='b';'в'='v';'г'='g';'д'='d';'е'='e';'ё'='e';'ж'='zh';'з'='z';'и'='i';'й'='y';'к'='k';'л'='l';'м'='m';'н'='n';'о'='o';'п'='p';'р'='r';'с'='s';'т'='t';'у'='u';'ф'='f';'х'='h';'ц'='c';'ч'='ch';'ш'='sh';'щ'='sch';'ъ'='';'ы'='y';'ь'='';'э'='e';'ю'='yu';'я'='ya'
+ }
+ $b=New-Object Text.StringBuilder
+ foreach($ch in $Text.ToLowerInvariant().ToCharArray()){
+  $s=[string]$ch
+  if($s -match '^[a-z0-9]$'){$null=$b.Append($s)}
+  elseif($map.ContainsKey($s)){$null=$b.Append($map[$s])}
+  else{$null=$b.Append('-')}
+ }
+ $id=($b.ToString() -replace '-+','-').Trim('-','.')
+ if([string]::IsNullOrWhiteSpace($id)){$id=$Fallback}
+ if($id.Length -gt 56){$id=$id.Substring(0,56).TrimEnd('-','.')}
+ if($id -notmatch '^[a-z0-9]'){$id=$Fallback+'-'+$id}
+ $id
+}
+function Get-UniqueProjectId {
+ param([string]$DisplayName)
+ $base=ConvertTo-SafeTechnicalId $DisplayName 'project'
+ $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+ $id=$base;$n=2
+ while(Find-Project $c $id){$id=("{0}-{1}" -f $base,$n);$n++}
+ $id
+}
+function Get-UniqueParticipantId {
+ param([string]$ProjectId,[string]$Name)
+ $base=ConvertTo-SafeTechnicalId $Name 'system'
+ $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+ $p=Find-Project $c $ProjectId
+ $id=$base;$n=2
+ while($p -and @($p.participants|Where-Object{$_.participant_id -eq $id}).Count){$id=("{0}-{1}" -f $base,$n);$n++}
+ $id
+}
+function Get-UniqueExtensionId {
+ param([string]$ProjectId,[string]$ParticipantId,[string]$Name)
+ $base=ConvertTo-SafeTechnicalId $Name 'extension'
+ $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+ $p=Find-Project $c $ProjectId
+ $part=if($p){@($p.participants|Where-Object{$_.participant_id -eq $ParticipantId})|Select-Object -First 1}else{$null}
+ $id=$base;$n=2
+ while($part -and @($part.target.extensions|Where-Object{$_.extension_id -eq $id}).Count){$id=("{0}-{1}" -f $base,$n);$n++}
+ $id
+}
+function Get-UniqueTaskId {
+ param([string]$ProjectId,[string]$Description)
+ $base=ConvertTo-SafeTechnicalId $Description 'task'
+ $out=Join-Path (Join-Path $WorkerRoot $ProjectId) 'Output'
+ $id=$base;$n=2
+ while(Test-Path -LiteralPath (Join-Path $out $id)){$id=("{0}-{1}" -f $base,$n);$n++}
+ $id
+}
+function Test-GuidedExportPath {
+ param([string]$Path)
+ if(-not(Test-Path -LiteralPath $Path -PathType Container)){return 'That folder does not exist.'}
+ if(-not(Test-Path -LiteralPath (Join-Path $Path 'Configuration.xml') -PathType Leaf)){return 'Configuration.xml must be directly inside this folder. Choose the root folder of the XML export.'}
+ try{Assert-OneCExportRoot $Path;return $null}catch{return 'This folder is not a usable direct 1C XML export root.'}
+}
+function Get-GuidedErrorInfo {
+ param([Exception]$Exception)
+ $m=[string]$Exception.Message
+ $class=Error-Class $Exception
+ switch -Regex ($m){
+  '^SOURCE_FOLDER_NOT_FOUND' {return [pscustomobject]@{message='The selected 1C export folder does not exist.';next='Choose the root folder that directly contains Configuration.xml.';code=$class}}
+  '^ONEC_CONFIGURATION_XML_MISSING' {return [pscustomobject]@{message='Configuration.xml was not found directly inside the selected folder.';next='Choose the root folder of the unpacked 1C XML export.';code=$class}}
+  '^NO_PROJECTS' {return [pscustomobject]@{message='No projects exist yet.';next='Choose Add local project in the guided menu.';code=$class}}
+  '^PROJECT_NOT_READY' {return [pscustomobject]@{message='The project is not ready to start work.';next='Use the recommended setup/repair action shown by the guided menu.';code=$class}}
+  '^REMOTE_AUTH_REQUIRED' {return [pscustomobject]@{message='ChatGPT connection is not configured yet.';next='Choose Connect ChatGPT and enter the enrollment value locally.';code=$class}}
+  '^RUNAS_FAILED_OR_CANCELLED' {return [pscustomobject]@{message='Windows did not confirm that the restricted source reader started.';next='The menu will detect the incomplete start. Clear it safely before retrying; use Diagnostics if it repeats.';code=$class}}
+  '^ELEVATED_ACTION_FAILED' {return [pscustomobject]@{message='The Windows administrator step was cancelled or failed.';next='Run the recommended action again and approve the Windows elevation prompt.';code=$class}}
+  '^RECOVERY_REQUIRED' {return [pscustomobject]@{message='A previous operation was interrupted and needs recovery first.';next='Use the recommended Recover safely action; do not reinstall unless it specifically says Install.';code=$class}}
+  '^UI_SCRIPT_INPUT_EXHAUSTED' {return [pscustomobject]@{message='The scripted UI test ran out of input.';next='Fix the regression input script.';code=$class}}
+  default {return [pscustomobject]@{message=((T 'The action could not be completed ({0}).') -f $class);next=(T 'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.');code=$class}}
+ }
+}
+function Show-GuidedFailure {
+ param([Exception]$Exception)
+ $info=Get-GuidedErrorInfo $Exception
+ $op=$null
+ try{$op=Get-CurrentWorkerOperation -ProgramDataRoot $ProgramDataRoot}catch{}
+ Write-Host ''
+ Write-Host ("FAIL: {0}" -f (T ([string]$info.message)))
+ Write-Host ((T 'Next: {0}') -f (T ([string]$info.next)))
+ if($op -and $op.operation_id){Write-Host ((T 'Details: operation {0}; Advanced > Diagnostics') -f $op.operation_id)}
+ else{Write-Host ((T 'Details: {0}; Advanced > Diagnostics') -f $info.code)}
+}
+function Invoke-GuidedAction {
+ param([Parameter(Mandatory)][scriptblock]$Action,[switch]$ShowOutput)
+ try{
+  if($script:InGuidedMenu -and -not $script:InAdvancedMenu -and -not $ShowOutput){& $Action 6>$null}
+  else{& $Action}
+  return $true
+ }catch{Show-GuidedFailure $_.Exception;return $false}
+}
+function Get-GuidedContext {
+ $installed=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+ if(-not $installed){return [pscustomobject]@{state='NOT_INSTALLED';recommended='Install OneCChatWorker';project=$null;participant=$null;reason='Product runtime is not installed.'}}
+ $preferredCurrent=Join-Path $ProgramDataRoot 'operations\current-operation.json'
+ $recovery=if(Test-Path -LiteralPath $preferredCurrent -PathType Leaf){try{Get-OperationRecoveryClassification -ProgramDataRoot $ProgramDataRoot}catch{$null}}else{[pscustomobject]@{classification='NOT_STARTED';operation=$null}}
+ if($recovery -and $recovery.classification -eq 'RECOVERY_REQUIRED'){
+  return [pscustomobject]@{state='RECOVERY_REQUIRED';recommended='Recover safely';project=$null;participant=$null;reason='A previous operation was interrupted.';recovery=$recovery}
+ }
+ $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
+ if(-not $secretReady){return [pscustomobject]@{state='REMOTE_AUTH_MISSING';recommended='Connect ChatGPT';project=$null;participant=$null;reason='Local ChatGPT enrollment is not configured.'}}
+ $helper=try{Get-HelperConnectionState -ProgramDataRoot $ProgramDataRoot}catch{$null}
+ $admission=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+ $hasAdmission=Test-Path -LiteralPath $admission -PathType Leaf
+ $active=$null;if($hasAdmission){try{$active=Get-Content -LiteralPath $admission -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+ if($helper -and $helper.status -eq 'CONNECTED'){
+  return [pscustomobject]@{state='RUNNING';recommended='Show current work status';project=$null;participant=$null;reason='The restricted Source helper is connected for a bounded ChatGPT work session.';helper=$helper;active=$active}
+ }
+ if($helper -and $helper.status -eq 'RUNNING_NO_CONNECT_EVIDENCE'){
+  return [pscustomobject]@{state='STARTING';recommended='Check connection status';project=$null;participant=$null;reason='The restricted Source helper is running but connection evidence is not ready yet.';helper=$helper;active=$active}
+ }
+ if($hasAdmission){
+  return [pscustomobject]@{state='START_INCOMPLETE';recommended='Clear incomplete start';project=$null;participant=$null;reason='A task admission was written, but no restricted helper process is running. Clear only this incomplete admission before retrying.';helper=$helper;active=$active}
+ }
+ $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+ $projects=@($c.projects|Where-Object{$_.active -ne $false})
+ if(-not $projects.Count){return [pscustomobject]@{state='NO_PROJECTS';recommended='Add local project';project=$null;participant=$null;reason='No local projects are configured yet.'}}
+ $p=$null
+ if($script:GuidedProjectId){$p=Find-Project $c $script:GuidedProjectId}
+ if(-not $p){$p=$projects[0];$script:GuidedProjectId=$p.project_id}
+ $parts=@($p.participants|Where-Object{$_.active -ne $false -and $_.platform -eq 'ONEC'})
+ if(-not $parts.Count){return [pscustomobject]@{state='PROJECT_DRAFT';recommended='Complete project setup';project=$p;participant=$null;reason='Add the 1C system/base and its main XML export.'}}
+ $part=$parts[0]
+ if(-not $part.target.main -or $part.target.main.active -eq $false){return [pscustomobject]@{state='PROJECT_DRAFT';recommended='Complete project setup';project=$p;participant=$part;reason='The main 1C configuration folder is still missing.'}}
+ $v=try{Verify-WorkerProject -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{status='FAIL';reason=$_.Exception.Message}}
+ if($v.status -in @('APPLY_REQUIRED','DRIFT_APPLY_REQUIRED')){return [pscustomobject]@{state='PROJECT_NEEDS_APPLY';recommended='Finish project setup';project=$p;participant=$part;reason='Setup answers are saved; the managed project copy must now be built and checked.';verification=$v}}
+ if($v.status -eq 'READY'){return [pscustomobject]@{state='PROJECT_READY';recommended='Start work';project=$p;participant=$part;reason='The project is ready for a bounded ChatGPT task.';verification=$v}}
+ [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='The managed project copy needs attention before work can start.';verification=$v}
+}
+function Get-GuidedStateLabel {
+ param([string]$State)
+ switch($State){
+  'NOT_INSTALLED' {T 'Not installed'}
+  'REMOTE_AUTH_MISSING' {T 'ChatGPT connection required'}
+  'NO_PROJECTS' {T 'Ready for first project'}
+  'PROJECT_DRAFT' {T 'Project setup incomplete'}
+  'PROJECT_NEEDS_APPLY' {T 'Project setup saved'}
+  'PROJECT_NEEDS_VERIFY' {T 'Project needs checking'}
+  'PROJECT_READY' {T 'Project ready'}
+  'RUNNING' {T 'Work session running'}
+  'STARTING' {T 'Work session starting'}
+  'START_INCOMPLETE' {T 'Start incomplete'}
+  'RECOVERY_REQUIRED' {T 'Recovery required'}
+  default {$State}
+ }
+}
+function Select-GuidedProject {
+ $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+ $projects=@($c.projects|Where-Object{$_.active -ne $false})
+ if(-not $projects.Count){return $null}
+ if($projects.Count -eq 1){$script:GuidedProjectId=$projects[0].project_id;return $projects[0]}
+ while($true){
+  Write-Host ''
+  Write-Host (T 'Choose the local project you want to work with:')
+  for($i=0;$i -lt $projects.Count;$i++){Write-Host ("  [{0}] {1}" -f ($i+1),$projects[$i].display_name)}
+  $raw=[string](Read-Ui 'Project number')
+  $n=0
+  if([int]::TryParse($raw,[ref]$n) -and $n -ge 1 -and $n -le $projects.Count){$script:GuidedProjectId=$projects[$n-1].project_id;return $projects[$n-1]}
+  Write-Host ("FAIL: {0}" -f (T 'Choose one of the displayed project numbers.'))
+ }
+}
+function Show-SetupSummary {
+ param($Answers,[bool]$ExistingProject)
+ Write-Host ''
+ Write-Host (T 'Setup summary')
+ Write-Host ("  "+((T 'Project : {0}') -f $Answers.project_name))
+ Write-Host ("  "+((T '1C base : {0}') -f $Answers.system_name))
+ if(-not [string]::IsNullOrWhiteSpace($Answers.role)){Write-Host ("  "+((T 'Purpose : {0}') -f $Answers.role))}
+ Write-Host ("  "+((T 'Main XML: {0}') -f $Answers.main_path))
+ if(@($Answers.extensions).Count){
+  Write-Host ("  "+(T 'Extensions:'))
+  foreach($e in @($Answers.extensions)){Write-Host ("    - {0}: {1}" -f $e.name,$e.path)}
+ }else{Write-Host ("  "+(T 'Extensions: none'))}
+ if($ExistingProject){Write-Host ("  "+(T 'Existing valid setup is kept; only missing/new answers above will be added.'))}
+}
+function Read-ProjectSetupAnswers {
+ param($ExistingProject,$ExistingParticipant,$Defaults)
+ $a=[ordered]@{}
+ $isNew=($null -eq $ExistingProject)
+ if($isNew){
+  $a.project_name=Read-GuidedValue -Label 'Project name' -What 'The human-readable name of this customer or local project.' -Why 'It is shown in the menu so you can recognize the project. A safe technical id is created automatically.' -Allowed 'Any short human name.' -Example 'NeoHim' -Default $Defaults.project_name
+  $a.project_id=if($Defaults.project_id){$Defaults.project_id}else{Get-UniqueProjectId $a.project_name}
+ }else{
+  $a.project_name=[string]$ExistingProject.display_name
+  $a.project_id=[string]$ExistingProject.project_id
+ }
+ if($ExistingParticipant){
+  $a.system_name=if($ExistingParticipant.role){[string]$ExistingParticipant.role}else{[string]$ExistingParticipant.participant_id}
+  $a.participant_id=[string]$ExistingParticipant.participant_id
+  $a.role=[string]$ExistingParticipant.role
+ }else{
+  $a.system_name=Read-GuidedValue -Label 'System / base name' -What 'The name you use for this logical 1C system/base inside the project.' -Why 'It lets ChatGPT distinguish this base from other systems in the same project. A technical id is created automatically.' -Allowed 'A short human name.' -Example 'ERP or Управление торговлей' -Default $(if($Defaults.system_name){$Defaults.system_name}else{'Основная база 1С'})
+  $a.participant_id=if($Defaults.participant_id){$Defaults.participant_id}else{Get-UniqueParticipantId $a.project_id $a.system_name}
+  $a.role=Read-GuidedValue -Label 'Role / purpose' -What 'A human description of what this 1C base is used for.' -Why 'It is context for people and ChatGPT; it does not change runtime permissions.' -Allowed 'Free text; optional.' -Example 'ERP, Управление торговлей, Бухгалтерия' -Default $Defaults.role -Optional
+ }
+ if($ExistingParticipant -and $ExistingParticipant.target.main -and $ExistingParticipant.target.main.active -ne $false){
+  $a.main_path=[string]$ExistingParticipant.target.main.source_path
+  $mainAlready=$true
+ }else{
+  $a.main_path=Read-GuidedValue -Label 'Main configuration folder' -What 'The root folder of an unpacked XML export of the main 1C configuration.' -Why 'OneCChatWorker copies this export into the managed read-only Source tree.' -Allowed 'A local folder path; Configuration.xml must be directly inside it.' -Example 'C:\1CExports\NeoHim\Main' -Default $Defaults.main_path -Validate {param($v);Test-GuidedExportPath $v}
+  $mainAlready=$false
+ }
+ $existingExt=@()
+ if($ExistingParticipant){$existingExt=@($ExistingParticipant.target.extensions|Where-Object{$_.active -ne $false})}
+ $a.extensions=@()
+ $addExt=Read-GuidedYesNo -Prompt $(if($existingExt.Count){'Add another extension XML export?'}else{'Does this base have an extension XML export to add?'}) -DefaultNo $true -Help 'Answer No if there are no extensions. You can add one later without repeating the main setup.'
+ while($addExt){
+  $ename=Read-GuidedValue -Label 'Extension name' -What 'A short human name for this 1C extension.' -Why 'It identifies the extension inside this base; a technical id is created automatically.' -Allowed 'A short name.' -Example 'CRM additions'
+  $eid=Get-UniqueExtensionId $a.project_id $a.participant_id $ename
+  $epath=Read-GuidedValue -Label 'Extension folder' -What 'The root folder of an unpacked XML export of this 1C extension.' -Why 'It will be copied beside the main configuration in the managed Source tree.' -Allowed 'A local folder path; Configuration.xml must be directly inside it.' -Example 'C:\1CExports\NeoHim\Extensions\CRM' -Validate {param($v);Test-GuidedExportPath $v}
+  $a.extensions+=,[pscustomobject]@{name=$ename;id=$eid;path=$epath}
+  $addExt=Read-GuidedYesNo -Prompt 'Add one more extension?' -DefaultNo $true -Help 'Answer Yes to add another extension export, or No to continue.'
+ }
+ $a.main_already=$mainAlready
+ [pscustomobject]$a
+}
+function Complete-GuidedProject {
+ param([string]$ProjectKey)
+ $script:ProjectId=$ProjectKey
+ Write-Host ''
+ Write-Host (T 'Building and checking the managed project copy...')
+ $ok=Invoke-GuidedAction {Run-Apply;Run-Verify}
+ if(-not $ok){return $false}
+ $v=try{Verify-WorkerProject -ProjectId $ProjectKey -WorkerRoot $WorkerRoot}catch{$null}
+ if(-not $v -or $v.status -ne 'READY'){
+  Write-Host ("FAIL: {0}" -f (T 'The project did not reach Ready state.'))
+  Write-Host (T 'Next: choose Check and repair project from the guided menu.')
+  return $false
+ }
+ Write-Host (T 'SUCCESS: Project is ready.')
+ Write-Host (T 'Next: Start work now, or return to the menu and start later.')
+ return $true
+}
+function Invoke-GuidedStart {
+ param([string]$ProjectKey)
+ $description=Read-GuidedValue -Label 'Task description' -What 'A human description of the specific work you want ChatGPT to do now.' -Why 'Each bounded work session has its own Output folder. A technical task id is created automatically.' -Allowed 'A short sentence describing the task.' -Example 'Исправить проведение документа Заказ клиента'
+ $script:ProjectId=$ProjectKey
+ $script:TaskId=Get-UniqueTaskId $ProjectKey $description
+ Write-Host ''
+ Write-Host (T 'Windows will ask for the local OneCSourceReader password. This starts the restricted read-only Source helper.')
+ $ok=Invoke-GuidedAction {Run-Start}
+ if($ok){
+  $h=try{Get-HelperConnectionState -ProgramDataRoot $ProgramDataRoot}catch{$null}
+  if($h -and $h.status -eq 'CONNECTED'){Write-Host (T 'SUCCESS: ChatGPT work session is connected.');Write-Host (T 'Next: work in ChatGPT; proposals will appear in this task Output folder.')}
+  else{Write-Host (T 'Next: use Show current work status. The helper may still be connecting.')}
+ }
+}
+function Invoke-GuidedProjectSetup {
+ param($Context)
+ $existing=$null;$part=$null
+ if($Context -and $Context.project){$existing=$Context.project;$part=$Context.participant}
+ $defaults=[pscustomobject]@{project_name=$(if($existing){$existing.display_name}else{$null});project_id=$(if($existing){$existing.project_id}else{$null});system_name=$null;participant_id=$(if($part){$part.participant_id}else{$null});role=$(if($part){$part.role}else{$null});main_path=$(if($part -and $part.target.main){$part.target.main.source_path}else{$null})}
+ while($true){
+  $answers=Read-ProjectSetupAnswers -ExistingProject $existing -ExistingParticipant $part -Defaults $defaults
+  Show-SetupSummary -Answers $answers -ExistingProject:($null -ne $existing)
+  $choice=[string](Read-Ui 'Choose [C] Confirm, [B] Back/Edit, or [Q] Cancel')
+  if([string]::IsNullOrWhiteSpace($choice) -or $choice -match '^(?i:c|confirm)$'){break}
+  if($choice -match '^(?i:q|quit|cancel)$'){Write-Host (T 'CANCELLED: no new setup changes were committed.');return}
+  if($choice -match '^(?i:b|back|e|edit)$'){$defaults=$answers;continue}
+  Write-Host ("FAIL: {0}" -f (T 'Choose Confirm, Back/Edit, or Cancel.'))
+ }
+ $script:Platform='ONEC'
+ if(-not $existing){
+  $script:ProjectId=$answers.project_id;$script:DisplayName=$answers.project_name
+  if(-not (Invoke-GuidedAction {Run-AddProject})){return}
+  $existing=(Read-WorkerCatalog -WorkerRoot $WorkerRoot|ForEach-Object{Find-Project $_ $answers.project_id})
+  $script:GuidedProjectId=$answers.project_id
+ }
+ if(-not $part){
+  $script:ProjectId=$answers.project_id;$script:ParticipantId=$answers.participant_id;$script:Role=$answers.role
+  if(-not (Invoke-GuidedAction {Run-AddParticipant})){return}
+ }
+ if(-not $answers.main_already){
+  $script:ProjectId=$answers.project_id;$script:ParticipantId=$answers.participant_id;$script:SourcePath=$answers.main_path;$script:ReplaceExisting=$false
+  if(-not (Invoke-GuidedAction {Run-SetMain})){return}
+ }
+ foreach($e in @($answers.extensions)){
+  $script:ProjectId=$answers.project_id;$script:ParticipantId=$answers.participant_id;$script:ExtensionId=$e.id;$script:SourcePath=$e.path;$script:ReplaceExisting=$false
+  if(-not (Invoke-GuidedAction {Run-AddExtension})){return}
+ }
+ if(Complete-GuidedProject $answers.project_id){
+  if(Read-GuidedYesNo -Prompt 'Project is ready. Start work now?' -DefaultNo $false -Help 'Yes starts a bounded ChatGPT task. No returns to the menu; setup stays saved.'){Invoke-GuidedStart $answers.project_id}
+ }
+}
+function Invoke-GuidedRecovery {
+ param($Context)
+ $op=if($Context.recovery){$Context.recovery.operation}else{$null}
+ if($op -and $op.operation_type -eq 'INSTALL'){
+  Write-Host (T 'Recovering the interrupted installation without wiping project data.')
+  $null=Invoke-GuidedAction {Run-Install}
+  return
+ }
+ $projectKey=if($op -and $op.project_id){[string]$op.project_id}else{$script:GuidedProjectId}
+ if($projectKey){
+  $script:ProjectId=$projectKey
+  Write-Host ((T 'Recovering project {0} from authoritative catalog/manifest state; completed work will not be blindly replayed.') -f $projectKey)
+  $null=Invoke-GuidedAction {Run-Repair}
+ }else{
+  Write-Host ("FAIL: {0}" -f (T 'Recovery needs diagnostics before a safe project can be selected.'))
+  Write-Host (T 'Next: open Advanced > Diagnostics and review the current operation.')
+ }
+}
+function Show-GuidedHeader {
+ param($Context)
+ Write-Host ''
+ Write-Host 'OneCChatWorker'
+ Write-Host ((T 'State: {0}') -f (Get-GuidedStateLabel $Context.state))
+ if($Context.project){Write-Host ((T 'Project: {0}') -f $Context.project.display_name)}
+ if($Context.state -eq 'RUNNING' -and $Context.active){
+  Write-Host ((T 'Project: {0}') -f $Context.active.project_id)
+  Write-Host ((T 'Task   : {0}') -f $Context.active.task_id)
+ }
+ Write-Host ((T 'Why: {0}') -f (T ([string]$Context.reason)))
+ Write-Host ((T 'Recommended: {0}') -f (T ([string]$Context.recommended)))
+}
+function Show-GuidedOutput {
+ param($Context)
+ $projectKey=$null;$task=$null
+ if($Context.active){$projectKey=[string]$Context.active.project_id;$task=[string]$Context.active.task_id}
+ elseif($Context.project){$projectKey=[string]$Context.project.project_id}
+ if(-not $projectKey){Write-Host (T 'No project Output folder is available yet.');return}
+ $path=Join-Path (Join-Path $WorkerRoot $projectKey) 'Output'
+ if($task){$path=Join-Path $path $task}
+ Write-Host ((T 'Output folder: {0}') -f $path)
+ if(Test-Path -LiteralPath $path -PathType Container){
+  try{Start-Process explorer.exe -ArgumentList @($path)|Out-Null;Write-Host (T 'Opened in File Explorer.')}catch{Write-Host (T 'Could not open File Explorer; the path above is still available.')}
+ }
+}
+function Ask-Project {
+ $p=Select-GuidedProject
+ if($p){return $p.project_id}
+ return $null
+}
+function Advanced-ProjectsMenu {
+ while($true){
+  Write-Host '';Write-Host 'ADVANCED — PROJECT LIFECYCLE';Write-Host '[1] LIST  [2] ADD PROJECT  [3] EDIT PROJECT  [4] ADD PARTICIPANT';Write-Host '[5] EDIT PARTICIPANT  [6] SET/REPLACE MAIN  [7] ADD/REPLACE EXTENSION';Write-Host '[8] REMOVE/DEACTIVATE  [9] APPLY CATALOG  [10] VERIFY PROJECT  [0] BACK'
+  $choice=Read-Ui 'Select'
+  switch($choice){
+   '1' {$null=Invoke-GuidedAction {Show-Value (Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing)}}
+   '2' {$script:ProjectId=Read-Ui 'Technical project id';$script:DisplayName=Read-Ui 'Display name';$null=Invoke-GuidedAction {Run-AddProject}}
+   '3' {$script:ProjectId=Ask-Project;$script:DisplayName=Read-Ui 'New display name';$null=Invoke-GuidedAction {Run-EditProject}}
+   '4' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Ui 'Technical participant id';$script:Role=Read-Ui 'Role';$script:Platform='ONEC';$null=Invoke-GuidedAction {Run-AddParticipant}}
+   '5' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Ui 'Technical participant id';$script:Role=Read-Ui 'New role';$null=Invoke-GuidedAction {Run-EditParticipant}}
+   '6' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Ui 'Technical participant id';$script:SourcePath=Read-Ui 'Direct unpacked 1C Main folder';$script:ReplaceExisting=(Read-Ui 'Replace managed copy on APPLY? y/N') -match '^[Yy]$';$null=Invoke-GuidedAction {Run-SetMain}}
+   '7' {$script:ProjectId=Ask-Project;$script:ParticipantId=Read-Ui 'Technical participant id';$script:ExtensionId=Read-Ui 'Technical extension id';$script:SourcePath=Read-Ui 'Direct unpacked extension folder';$script:ReplaceExisting=(Read-Ui 'Replace/reactivate existing extension on APPLY? y/N') -match '^[Yy]$';$null=Invoke-GuidedAction {Run-AddExtension}}
+   '8' {$script:ProjectId=Ask-Project;$script:Kind=(Read-Ui 'PROJECT/PARTICIPANT/MAIN/EXTENSION').ToUpperInvariant();$script:ParticipantId=if($script:Kind -ne 'PROJECT'){Read-Ui 'Technical participant id'}else{$null};$script:ExtensionId=if($script:Kind -eq 'EXTENSION'){Read-Ui 'Technical extension id'}else{$null};$null=Invoke-GuidedAction {Run-Deactivate}}
+   '9' {$script:ProjectId=Ask-Project;$null=Invoke-GuidedAction {Run-Apply}}
+   '10' {$script:ProjectId=Ask-Project;$null=Invoke-GuidedAction {Run-Verify}}
    '0' {return}
+   default {Write-Host 'FAIL: Unknown Advanced action. Choose one of the displayed numbers.'}
+  }
+ }
+}
+function Advanced-DiagnosticsMenu {
+ while($true){
+  Write-Host '';Write-Host 'ADVANCED — SETTINGS / DIAGNOSTICS';Write-Host '[1] STATUS  [2] CURRENT OPERATION  [3] RECENT OPERATIONS';Write-Host '[4] LOGS  [5] COMPONENT/HELPER STATE  [6] EXPORT DIAGNOSTICS';Write-Host '[7] UPDATE CHATGPT ENROLLMENT  [0] BACK'
+  switch(Read-Ui 'Select'){
+   '1' {$null=Invoke-GuidedAction {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}}
+   '2' {$null=Invoke-GuidedAction {Show-CurrentOperation}}
+   '3' {$null=Invoke-GuidedAction {Show-RecentOperations}}
+   '4' {$null=Invoke-GuidedAction {Show-OperationLogs}}
+   '5' {$null=Invoke-GuidedAction {Show-Value (Get-WorkerDiagnostics -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}}
+   '6' {$null=Invoke-GuidedAction {Show-Value (Export-WorkerDiagnosticBundle -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}}
+   '7' {$null=Invoke-GuidedAction {Run-Settings}}
+   '0' {return}
+   default {Write-Host 'FAIL: Unknown Advanced action. Choose one of the displayed numbers.'}
+  }
+ }
+}
+function Advanced-Menu {
+ $oldAdvanced=$script:InAdvancedMenu
+ $script:InAdvancedMenu=$true
+ try{
+ while($true){
+  Write-Host ''
+  Write-Host 'ADVANCED — technical lifecycle and diagnostics'
+  Write-Host '[1] Project lifecycle  [2] Diagnostics / settings  [3] Verify / repair  [4] Safe uninstall  [0] Back'
+  switch(Read-Ui 'Select'){
+   '1' {Advanced-ProjectsMenu}
+   '2' {Advanced-DiagnosticsMenu}
+   '3' {$script:ProjectId=Ask-Project;if($script:ProjectId){$null=Invoke-GuidedAction {Run-Verify};$v=try{Verify-WorkerProject -ProjectId $script:ProjectId -WorkerRoot $WorkerRoot}catch{$null};if($v -and $v.status -ne 'READY' -and (Read-GuidedYesNo -Prompt 'Run bounded recover-first repair?' -DefaultNo $true)){$null=Invoke-GuidedAction {Run-Repair}}}}
+   '4' {$plan=Get-UninstallPlan -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot;Write-Host 'Runtime-only uninstall retains catalog, project Source copies, Output, Detached, audit/logs and reader account.';@($plan.remove)|ForEach-Object{Write-Host ("  REMOVE  "+$_)};if((Read-Ui 'Proceed? type YES') -ceq 'YES'){$script:ConfirmUninstall=$true;$null=Invoke-GuidedAction {Run-Uninstall}}else{Write-Host 'CANCELLED: no changes made.'}}
+   '0' {return}
+   default {Write-Host 'FAIL: Unknown Advanced action. Choose one of the displayed numbers.'}
+  }
+ }
+ }finally{$script:InAdvancedMenu=$oldAdvanced}
+}
+function Guided-MainMenu {
+ $script:InGuidedMenu=$true
+ while($true){
+  $ctx=$null
+  try{$ctx=Get-GuidedContext}catch{Show-GuidedFailure $_.Exception;$ctx=[pscustomobject]@{state='UNKNOWN';recommended='Open Advanced diagnostics';project=$null;reason='State could not be read safely.'}}
+  Show-GuidedHeader $ctx
+  if($ctx.state -eq 'RUNNING'){
+   Write-Host (T '[Enter] Show current work status   [S] Stop work   [O] Open Output   [A] Advanced   [Q] Exit')
+  }elseif($ctx.state -eq 'STARTING'){
+   Write-Host (T '[Enter] Check connection status   [S] Stop / clear start   [A] Advanced   [Q] Exit')
+  }else{
+   Write-Host (T '[Enter] Do recommended action   [P] Choose project   [A] Advanced   [Q] Exit')
+  }
+  $choice=[string](Read-Ui 'Select')
+  if($choice -match '^(?i:q|quit|0)$'){return}
+  if($choice -match '^(?i:a|advanced)$'){Advanced-Menu;continue}
+  if($choice -match '^(?i:p|project)$'){
+   $p=Select-GuidedProject
+   if($p){Write-Host ((T 'Selected project: {0}') -f $p.display_name)}
+   continue
+  }
+  if($ctx.state -eq 'RUNNING'){
+   if($choice -match '^(?i:s|stop)$'){$null=Invoke-GuidedAction {Run-Stop};continue}
+   if($choice -match '^(?i:o|output)$'){Show-GuidedOutput $ctx;continue}
+   if(-not [string]::IsNullOrWhiteSpace($choice)){Write-Host ("FAIL: {0}" -f (T 'Choose Enter, S, O, A, or Q.'));continue}
+   $null=Invoke-GuidedAction -ShowOutput {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}
+   continue
+  }
+  if($ctx.state -eq 'STARTING'){
+   if($choice -match '^(?i:s|stop)$'){$null=Invoke-GuidedAction {Run-Stop};continue}
+   if(-not [string]::IsNullOrWhiteSpace($choice)){Write-Host ("FAIL: {0}" -f (T 'Choose Enter, S, A, or Q.'));continue}
+   $null=Invoke-GuidedAction -ShowOutput {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}
+   continue
+  }
+  if(-not [string]::IsNullOrWhiteSpace($choice)){Write-Host ("FAIL: {0}" -f (T 'Choose Enter for the recommended action, P, A, or Q.'));continue}
+  switch($ctx.state){
+   'NOT_INSTALLED' {
+    Write-Host (T 'This installs the local runtime and may ask for Windows administrator approval.')
+    if(Invoke-GuidedAction {Run-Install}){Write-Host (T 'SUCCESS: Installation step completed.');Write-Host (T 'Next: the menu will show the next required action.')}
+   }
+   'REMOTE_AUTH_MISSING' {
+    Write-Host (T 'Connect ChatGPT stores the enrollment value locally with restricted permissions; it is never printed or logged.')
+    if(Invoke-GuidedAction {Run-Settings}){Write-Host (T 'SUCCESS: ChatGPT connection settings were saved.')}
+   }
+   'NO_PROJECTS' {Invoke-GuidedProjectSetup $ctx}
+   'PROJECT_DRAFT' {Invoke-GuidedProjectSetup $ctx}
+   'PROJECT_NEEDS_APPLY' {
+    if(Complete-GuidedProject $ctx.project.project_id){
+     if(Read-GuidedYesNo -Prompt 'Project is ready. Start work now?' -DefaultNo $false -Help 'Yes starts a bounded ChatGPT task. No keeps the ready project for later.'){Invoke-GuidedStart $ctx.project.project_id}
+    }
+   }
+   'PROJECT_NEEDS_VERIFY' {
+    $script:ProjectId=$ctx.project.project_id
+    Write-Host (T 'Checking the managed project copy and attempting only bounded recover-first repair if needed.')
+    $null=Invoke-GuidedAction {Run-Repair}
+   }
+   'PROJECT_READY' {Invoke-GuidedStart $ctx.project.project_id}
+   'START_INCOMPLETE' {
+    Write-Host (T 'Clearing only the incomplete local start/admission state. Project Source and Output are retained.')
+    if(Invoke-GuidedAction {Run-Stop}){Write-Host (T 'SUCCESS: Incomplete start state was cleared.');Write-Host (T 'Next: Start work again and enter the OneCSourceReader password.')}
+   }
+   'RECOVERY_REQUIRED' {Invoke-GuidedRecovery $ctx}
+   default {Write-Host ("FAIL: {0}" -f (T 'Guided state is unavailable.'));Write-Host (T 'Next: open Advanced > Diagnostics.')}
   }
  }
 }
 
-if($Mode -eq 'MENU'){
- if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf){Main-Menu}else{FirstRun-Menu}
-}else{Invoke-CommandMode}
+if($Mode -eq 'MENU'){Guided-MainMenu}else{Invoke-CommandMode}

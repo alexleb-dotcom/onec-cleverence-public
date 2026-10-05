@@ -6,13 +6,19 @@ This directory contains the 1C-first turnkey OneCChatWorker product defined by c
 
 Run OneCChatWorker.ps1.
 
-With no arguments it is the normal operator UI. If the machine is not installed it shows PRECHECK / INSTALL / REPAIR. If installed it shows START PROJECT, STOP, STATUS, PROJECTS, VERIFY / REPAIR, SETTINGS / DIAGNOSTICS, UPDATE / REINSTALL, UNINSTALL, and EXIT.
+With no arguments it is the normal guided operator UI. It derives the current state from installed-state, local enrollment, projects.json, project verification and active-admission/helper state, then presents one recommended next action. A normal user does not need to know the internal ADD_PROJECT / ADD_PARTICIPANT / SET_MAIN / APPLY / VERIFY / START order.
 
-The same launcher exposes deterministic CLI modes for support and automation. Normal output is human-readable; -Json is an explicit automation/support option.
+The default guided presentation follows Windows CurrentUICulture deterministically: ru-* cultures use Russian labels/help/errors, while other cultures use the canonical English fallback. Technical CLI modes and Advanced lifecycle/diagnostic wording remain unchanged.
 
-The PROJECTS menu supports LIST PROJECTS, ADD / EDIT PROJECT, ADD / EDIT / REMOVE-DEACTIVATE PARTICIPANT, SET / REPLACE / REMOVE-DEACTIVATE MAIN, ADD / REPLACE / REMOVE-DEACTIVATE EXTENSION, APPLY CATALOG, and VERIFY PROJECT.
+The default state path is: install -> connect ChatGPT -> add local project -> complete setup -> ready -> start work. When work is running, the default view offers status, stop and Output. Interrupted work is recover-first; reinstall is not the ordinary recovery recommendation.
 
-There is one manager/core owner. The menu is not a second implementation.
+Add local project is a wizard. Every field explains what it is, why it is needed, the accepted format, an example, whether it is required, and a safe default when one can be derived. Type ? or help at a prompt to repeat the explanation. Invalid input is re-prompted in place without losing previous answers. Project/system/task technical ids are derived automatically in the guided view. Main and extension folders are validated immediately and must contain Configuration.xml directly in the selected root.
+
+Before setup is committed, the wizard shows a plain-language summary with Confirm, Back/Edit and Cancel. Setup can resume from an existing draft without replaying already-completed project/system steps. The guided completion action still records APPLY and VERIFY as separate durable internal operations while presenting them as one human step.
+
+Expected user-input failures in the default UI are shown as FAIL / Next / Details guidance rather than uncaught PowerShell stack traces. Full technical lifecycle controls, raw operation details, diagnostics and manual APPLY/VERIFY remain available under Advanced.
+
+The same launcher exposes deterministic CLI modes for support and automation. Normal output is human-readable; -Json is an explicit automation/support option. There is one manager/core owner: guided UI and Advanced mode call the same lifecycle implementation rather than maintaining a second state machine.
 
 ## First run
 
