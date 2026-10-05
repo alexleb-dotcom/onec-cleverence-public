@@ -485,23 +485,23 @@ function Apply-WorkerProject {
     $changes=@()
     foreach($part in @($p.participants|Where-Object {$_.active -ne $false})){
         if($part.platform -ne 'ONEC'){throw "PLATFORM_NOT_IMPLEMENTED_1C_FIRST: $($part.platform)"}
-        $pid=Assert-SafeId $part.participant_id 'participant_id'
-        $mPart=[ordered]@{participant_id=$pid;platform=$part.platform;role=$part.role;active=$true;target=[ordered]@{main=$null;extensions=@()}}
+        $participantKey=Assert-SafeId $part.participant_id 'participant_id'
+        $mPart=[ordered]@{participant_id=$participantKey;platform=$part.platform;role=$part.role;active=$true;target=[ordered]@{main=$null;extensions=@()}}
         if($part.target.main -and $part.target.main.active -ne $false){
             if($part.platform -eq 'ONEC'){Assert-OneCExportRoot $part.target.main.source_path}
-            $rel="Participants/$pid/Target/Main";$target=Join-Path $projectRoot ($rel.Replace('/','\'))
-            $copy=Copy-ArtifactSafely -Source $part.target.main.source_path -Target $target -ReplaceExisting:([bool]$part.target.main.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$pid\Target\Main"
+            $rel="Participants/$participantKey/Target/Main";$target=Join-Path $projectRoot ($rel.Replace('/','\'))
+            $copy=Copy-ArtifactSafely -Source $part.target.main.source_path -Target $target -ReplaceExisting:([bool]$part.target.main.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Main"
             $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'}
-            $changes+=,[pscustomobject]@{participant_id=$pid;artifact_type='MAIN';artifact_id='main';source_input=$part.target.main.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived}
+            $changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='MAIN';artifact_id='main';source_input=$part.target.main.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived}
             $mPart.target.main=[ordered]@{artifact_id='main';active=$true;canonical_path=$rel;source_path=$part.target.main.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=$(if($part.platform -eq 'ONEC'){Get-Sha256File (Join-Path $target 'Configuration.xml')}else{$null})}
         }
         foreach($ext in @($part.target.extensions|Where-Object {$_.active -ne $false})){
             $eid=Assert-SafeId $ext.extension_id 'extension_id'
             if($part.platform -eq 'ONEC'){Assert-OneCExportRoot $ext.source_path}
-            $rel="Participants/$pid/Target/Extensions/$eid";$target=Join-Path $projectRoot ($rel.Replace('/','\'))
-            $copy=Copy-ArtifactSafely -Source $ext.source_path -Target $target -ReplaceExisting:([bool]$ext.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$pid\Target\Extensions\$eid"
+            $rel="Participants/$participantKey/Target/Extensions/$eid";$target=Join-Path $projectRoot ($rel.Replace('/','\'))
+            $copy=Copy-ArtifactSafely -Source $ext.source_path -Target $target -ReplaceExisting:([bool]$ext.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Extensions\$eid"
             $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'}
-            $changes+=,[pscustomobject]@{participant_id=$pid;artifact_type='EXTENSION';artifact_id=$eid;source_input=$ext.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived}
+            $changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='EXTENSION';artifact_id=$eid;source_input=$ext.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived}
             $mPart.target.extensions+=,[ordered]@{extension_id=$eid;artifact_id=$eid;active=$true;canonical_path=$rel;source_path=$ext.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=$(if($part.platform -eq 'ONEC'){Get-Sha256File (Join-Path $target 'Configuration.xml')}else{$null})}
         }
         $manifestParticipants+=,[pscustomobject]$mPart
