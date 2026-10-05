@@ -73,7 +73,15 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp, path)
+        for attempt in range(50):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError as exc:
+                transient_windows_share = os.name == "nt" and getattr(exc, "winerror", None) in {5, 32}
+                if not transient_windows_share or attempt == 49:
+                    raise
+                time.sleep(0.01)
         _fsync_directory(path.parent)
     finally:
         try:
@@ -655,6 +663,20 @@ def wait_for_terminal(op_dir: str | Path, spec: dict, timeout_seconds: float = 1
     while time.monotonic() < deadline:
         state = recover(op_dir, spec)
         if state.get("state") in TERMINAL_STATES:
+            # On Windows rc.txt may become visible just before the detached
+            # supervisor exits and releases stdout/stderr file handles. A caller
+            # of wait_for_terminal() should be able to clean its operation tree
+            # immediately after return, so allow only that exact supervisor a
+            # short bounded finalization window.
+            if os.name == "nt":
+                supervisor = state.get("supervisor") or {}
+                pid = supervisor.get("pid")
+                token = supervisor.get("start_token")
+                if pid and token:
+                    while time.monotonic() < deadline:
+                        if process_identity_matches(pid, token) is not True:
+                            break
+                        time.sleep(poll_seconds)
             return state
         time.sleep(poll_seconds)
     return recover(op_dir, spec)

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TOOLS"))
 
-from validate_distribution_snapshot import build_distribution_manifest, validate_snapshot_root
+from validate_distribution_snapshot import _path_collision_findings, build_distribution_manifest, validate_snapshot_root
 
 
 def row(root: Path, rel: str) -> dict:
@@ -61,14 +61,13 @@ def case_nfc_collision() -> None:
 
 
 def case_file_directory_collision() -> None:
-    with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        (root / "Docs").write_text("file", encoding="utf-8")
-        (root / "docs").mkdir()
-        (root / "docs" / "readme.txt").write_text("nested", encoding="utf-8")
-        rows = [row(root, "Docs"), row(root, "docs/readme.txt")]
-        write_manifest(root, rows)
-        require_finding("file-directory", validate_snapshot_root(root), "SNAPSHOT_FILE_DIRECTORY_COLLISION")
+    # A case-insensitive filesystem cannot materialize both a file "Docs" and a
+    # directory "docs". Exercise the canonical path-identity contract directly
+    # so this regression is portable while still proving the validator rejects
+    # that manifest identity.
+    findings = _path_collision_findings(["Docs", "docs/readme.txt"], source="manifest")
+    report = {"errors": findings}
+    require_finding("file-directory", report, "SNAPSHOT_FILE_DIRECTORY_COLLISION")
 
 
 def main() -> int:

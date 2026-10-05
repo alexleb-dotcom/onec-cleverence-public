@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "product_version": "1.0.0-preview1",
+  "dependencies": {
+    "node": {
+      "winget_id": "OpenJS.NodeJS",
+      "version": "26.7.0",
+      "reference_sha256": "e921fe5307e29bf6fd00000dd594356affd3a7b044e52720c7f10decbdc305b9"
+    },
+    "ripgrep": {
+      "winget_id": "BurntSushi.ripgrep.MSVC",
+      "version": "15.2.0",
+      "reference_sha256": "14231169855ec5205cf5a1b6f1db358ff4aed4247c86b69ce8aae647c77f6680"
+    }
+  },
+  "components": {
+    "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
+    "runtime/hosted-helper.mjs": "82539ea5f08b0bdece0d8a7e1d1ebbe15263a276c2df7f1eb411e865199965cc",
+    "core/OneCChatWorker.Core.psm1": "526cd6ba0c14fa7b136a7bfd77f2dd533611cdcd78ad6efc59b922519124c301",
+    "OneCChatWorker.ps1": "b215e4a3de5d9c96bc49d01c63cc2b88151c9b9d86f99faa986539107330f9dd",
+    "README.md": "1965180e3fbb957dc4d6960670a2a727be993e109e4957a399ffabf7c82b2cf1"
+  },
+  "hosted_mcp": {
+    "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
+    "helper_url": "wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper",
+    "model_surface": [
+      "source_context",
+      "source_search",
+      "source_read",
+      "proposal_write",
+      "proposal_read"
+    ]
+  },
+  "remote_call_budget": {
+    "known_path_read_calls": 1,
+    "bounded_search_calls": 1,
+    "ordinary_nontrivial_target_max_calls": 3,
+    "local_search_fanout": "one bounded provider search per admitted artifact inside one remote request",
+    "polling_required": false
+  }
+}

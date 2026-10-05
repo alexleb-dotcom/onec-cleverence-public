@@ -1,5 +1,5 @@
 # Auto detect text files and perform LF normalization
-* text=auto
+* text=auto eol=lf
 
 *.md text eol=lf
 *.py text eol=lf
@@ -9,3 +9,5 @@
 *.xml text eol=lf
 *.txt text eol=lf
 *.epf -text
+*.bin -text
+TESTS/fixtures/bare_symbol_*.bsl -text

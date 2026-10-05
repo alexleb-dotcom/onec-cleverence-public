@@ -6,12 +6,12 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 451,
+  "file_count": 460,
   "files": [
     {
       "path": ".gitattributes",
-      "size": 205,
-      "sha256": "7a82b3caa70f1183fa136620be51fa054e6d8b7c1fe95fd92186eeb820f6c830"
+      "size": 263,
+      "sha256": "34c499938c3222e098e7b4e1a684334d11246b6894e3950405f04c172857b0b8"
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
@@ -377,6 +377,46 @@
       "path": "PATTERNS/README.md",
       "size": 2336,
       "sha256": "449b91731439c5d3e4d82d6d1a1023ea43cd39d9cc8d21ccd2cfda676a3a7083"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
+      "size": 32910,
+      "sha256": "b215e4a3de5d9c96bc49d01c63cc2b88151c9b9d86f99faa986539107330f9dd"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/README.md",
+      "size": 9698,
+      "sha256": "1965180e3fbb957dc4d6960670a2a727be993e109e4957a399ffabf7c82b2cf1"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
+      "size": 59842,
+      "sha256": "526cd6ba0c14fa7b136a7bfd77f2dd533611cdcd78ad6efc59b922519124c301"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/projects.example.json",
+      "size": 840,
+      "sha256": "9964bc44cdb351d5d4347685a70569561ae778c19b5e3070e691bcef1ddfaee5"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
+      "size": 1564,
+      "sha256": "474394bdd2d01def6f0c9963e3d586e41922d6e1b100c60b2020bf163c88de91"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
+      "size": 17542,
+      "sha256": "82539ea5f08b0bdece0d8a7e1d1ebbe15263a276c2df7f1eb411e865199965cc"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/source-reader-integration.mjs",
+      "size": 38960,
+      "sha256": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
+      "size": 9951,
+      "sha256": "975e5582a261266863b5bc452635c7765c924b1661c4bac8d866406dfed0d73e"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -1770,8 +1810,8 @@
     },
     {
       "path": "TESTS/run_distribution_snapshot_path_collision_regression.py",
-      "size": 2845,
-      "sha256": "7309a69d265b011078ba41274b3934cf5745a9b422cfab9b806810791b8956ab"
+      "size": 2894,
+      "sha256": "f5849755d133889b3dd7bf6fbfc0d3c64413466256c3e8baf6906d0686e856d4"
     },
     {
       "path": "TESTS/run_distribution_snapshot_workflow_contract_regression.py",
@@ -1822,6 +1862,11 @@
       "path": "TESTS/run_onec_mechanism_safety_regression.py",
       "size": 8280,
       "sha256": "50cf2d8f36adfd1613dab43973502301e170473d5ea101dcc601e0854b6c76f6"
+    },
+    {
+      "path": "TESTS/run_onecchatworker_product_regression.py",
+      "size": 9354,
+      "sha256": "6e2f7b5e6fc80b696b5529627dfc87f513c6c003d9eaec501f3ad4b922e71c7b"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -1950,8 +1995,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 9584,
-      "sha256": "d01bb361fb37b8c23d2c2be0d6c7b4f7f65b8b7430b9e5dd74b9925f25936a37"
+      "size": 9836,
+      "sha256": "b3d2a6162f08d47ee883a739ee251616862651de72cc0e02044419d6e7679dc9"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -2055,8 +2100,8 @@
     },
     {
       "path": "TOOLS/execution_checkpoint.py",
-      "size": 31023,
-      "sha256": "22e326c133c0e427e3ccb4005bd8f6c8650e21907c64cd7928fee683928ab51b"
+      "size": 32177,
+      "sha256": "a1a30b66fc9ec16d064ffddd113f0201ca161d8787c181ba99c6a7b42634b427"
     },
     {
       "path": "TOOLS/final_docx_set.py",
@@ -2085,8 +2130,8 @@
     },
     {
       "path": "TOOLS/mechanism_inventory.py",
-      "size": 24454,
-      "sha256": "7aaeef14487feceb58d9912f8427823953650c2494091dba1d881600e3d3a062"
+      "size": 24686,
+      "sha256": "4ef8d5e96d37afefb3d3ec96ecbd088e494d8ffc84f6ef21c20316a93908a460"
     },
     {
       "path": "TOOLS/pattern_locator.py",
@@ -2175,8 +2220,8 @@
     },
     {
       "path": "TOOLS/run_public_ci.py",
-      "size": 4962,
-      "sha256": "f572ee8e1c6a2ad9ed4f254c652d19fa91f5bba2e8e5153f424e21697bb3701c"
+      "size": 5957,
+      "sha256": "34bb5b3262304efb3ce6768a9e7cacb9ad825e24d2123ed0f689119ac771ec9f"
     },
     {
       "path": "TOOLS/runtime_evidence.py",
@@ -2265,5 +2310,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "ac889deb7a0b23921d53642e405188b62e3fea1a5f47771d64e3554a73c7ca97"
+  "snapshot_digest": "4c92bf181964c25931038bbd75cc2ad3b394cc015ba9ab80dedcfc9f25feba95"
 }

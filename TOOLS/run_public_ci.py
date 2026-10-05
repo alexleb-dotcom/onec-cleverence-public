@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 
 from validate_public_ci_inventory import INVENTORY_ID, INVENTORY_REL, INVENTORY_SCOPE, validate_inventory
@@ -68,42 +69,49 @@ def execute_checks(checks: list[tuple[str, list[str]]], cwd: Path = ROOT) -> dic
     started = time.perf_counter()
     env = os.environ.copy()
     env["CI"] = "true"
-    for check_id, command in checks:
-        check_started = time.perf_counter()
-        process = subprocess.run(
-            command,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            env=env,
-        )
-        row = {
-            "id": check_id,
-            "outcome": "PASS" if process.returncode == 0 else "FAIL",
-            "returncode": process.returncode,
-            "elapsed_ms": round((time.perf_counter() - check_started) * 1000, 2),
-        }
-        if check_id == "context_efficiency" and process.returncode == 0:
-            try:
-                payload = json.loads(process.stdout)
-            except json.JSONDecodeError:
-                payload = {}
-            metrics = payload.get("efficiency_metrics") if isinstance(payload, dict) else None
-            if isinstance(metrics, dict):
-                row["efficiency_metrics"] = metrics
-        rows.append(row)
-        if process.returncode != 0:
-            return {
-                "result": "FAIL",
-                "scope": INVENTORY_SCOPE,
-                "authoritative_private_acceptance": False,
-                "failed_check": check_id,
-                "checks": rows,
-                "stdout_tail": process.stdout[-8000:],
-                "stderr_tail": process.stderr[-8000:],
-                "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    # Keep compileall/import bytecode outside the governed snapshot tree. This is
+    # required for deterministic validation on Windows as well as POSIX hosts.
+    with tempfile.TemporaryDirectory(prefix="onec-public-ci-pycache-") as cache_root:
+        env["PYTHONPYCACHEPREFIX"] = cache_root
+        for check_id, command in checks:
+            check_started = time.perf_counter()
+            process = subprocess.run(
+                command,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
+            )
+            row = {
+                "id": check_id,
+                "outcome": "PASS" if process.returncode == 0 else "FAIL",
+                "returncode": process.returncode,
+                "elapsed_ms": round((time.perf_counter() - check_started) * 1000, 2),
             }
+            if check_id == "context_efficiency" and process.returncode == 0:
+                try:
+                    payload = json.loads(process.stdout)
+                except json.JSONDecodeError:
+                    payload = {}
+                metrics = payload.get("efficiency_metrics") if isinstance(payload, dict) else None
+                if isinstance(metrics, dict):
+                    row["efficiency_metrics"] = metrics
+            rows.append(row)
+            if process.returncode != 0:
+                return {
+                    "result": "FAIL",
+                    "scope": INVENTORY_SCOPE,
+                    "authoritative_private_acceptance": False,
+                    "failed_check": check_id,
+                    "checks": rows,
+                    "stdout_tail": (process.stdout or "")[-8000:],
+                    "stderr_tail": (process.stderr or "")[-8000:],
+                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+                }
     return {
         "result": "PASS",
         "scope": INVENTORY_SCOPE,
@@ -114,6 +122,14 @@ def execute_checks(checks: list[tuple[str, list[str]]], cwd: Path = ROOT) -> dic
 
 
 def main() -> int:
+    # Windows terminals may default to a legacy code page. Public CI reports are
+    # UTF-8 JSON and must remain printable even when a child diagnostic contains
+    # characters outside that code page.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="Run public-only SHAREABLE_CORE CI checks from the canonical public-safe inventory.")
     parser.add_argument("--mode", required=True, choices=("FAST", "FULL"))
     args = parser.parse_args()

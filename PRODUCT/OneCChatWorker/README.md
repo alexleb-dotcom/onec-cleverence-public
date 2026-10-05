@@ -1,0 +1,177 @@
+# OneCChatWorker turnkey product
+
+This directory contains the 1C-first turnkey OneCChatWorker product defined by control thread #44. It packages the accepted hosted-MCP read/proposal contour behind one deterministic Windows lifecycle manager. Cleverence remains deferred.
+
+## One visible entry point
+
+Run OneCChatWorker.ps1.
+
+With no arguments it is the normal operator UI. If the machine is not installed it shows PRECHECK / INSTALL / REPAIR. If installed it shows START PROJECT, STOP, STATUS, PROJECTS, VERIFY / REPAIR, SETTINGS / DIAGNOSTICS, UPDATE / REINSTALL, UNINSTALL, and EXIT.
+
+The same launcher exposes deterministic CLI modes for support and automation. Normal output is human-readable; -Json is an explicit automation/support option.
+
+The PROJECTS menu supports LIST PROJECTS, ADD / EDIT PROJECT, ADD / EDIT / REMOVE-DEACTIVATE PARTICIPANT, SET / REPLACE / REMOVE-DEACTIVATE MAIN, ADD / REPLACE / REMOVE-DEACTIVATE EXTENSION, APPLY CATALOG, and VERIFY PROJECT.
+
+There is one manager/core owner. The menu is not a second implementation.
+
+## First run
+
+From a repository/release checkout:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\OneCChatWorker.ps1 -Mode PRECHECK
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\OneCChatWorker.ps1 -Mode INSTALL
+
+INSTALL self-elevates when needed. It verifies runtime.lock.json, installs/reuses the exact pinned Node.js and ripgrep builds, verifies their SHA-256 values, installs the hash-locked product components, creates/adopts the restricted local reader identity, applies ACLs, initializes projects.json, and leaves the helper OFF.
+
+Each component is reported as an explicit disposition such as REUSED, INSTALLED, UPDATED, SKIPPED_NOT_REQUIRED, or a classified failure/operator checkpoint.
+
+Python is not a product runtime dependency. Cloudflare CLI / Wrangler is not a product runtime dependency. They may be engineering tools in development, but the new-machine installer does not install them.
+
+The default restricted identity is OneCSourceReader; -ReaderName can select another safe local name. The worker root and ProgramData runtime root are parameterized as -WorkerRoot and -ProgramDataRoot.
+
+### Remote authorization
+
+There is one unavoidable remote-auth checkpoint:
+
+1. connect the stable private MCP app in ChatGPT to https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp;
+2. complete the app OAuth flow in ChatGPT;
+3. locally enroll the machine helper secret with:
+
+    .\OneCChatWorker.ps1 -Mode SETTINGS
+
+The helper secret is entered locally. Its value is not written to operation logs, the catalog, diagnostics, or the repository. The stable hosted endpoint is not recreated per project.
+
+## Project catalog and canonical topology
+
+C:\OneCChatWorker\projects.json is the one human-editable desired-state catalog. JSON is intentional: no YAML runtime dependency is required.
+
+Each applied project receives generated normalized runtime state at:
+
+    C:\OneCChatWorker\<project>\
+      ProjectManifest\project.json
+      Participants\<participant>\Target\Main\Configuration.xml
+      Participants\<participant>\Target\Extensions\<extension-id>\Configuration.xml
+      Output\<task>\...
+      Detached\...
+
+For ordinary unpacked 1C exports the artifact directory is the source root. There is no Main\Main or <extension-id>\<extension-id> wrapper.
+
+ProjectManifest\project.json records the exact catalog SHA-256 used to generate it. Catalog/manifest mismatch is DRIFT_APPLY_REQUIRED; runtime never silently guesses desired state.
+
+APPLY reports safe metadata for every artifact: operator source input path, participant/artifact identity, canonical target path, COPIED / REUSED / REPLACED_DETACHED / DEACTIVATED_DETACHED, and detached path when applicable.
+
+External business Source is never edited. Copy/import is staged and hash-verified before promotion.
+
+## Safe removal
+
+REMOVE means deactivate, not purge.
+
+Replacements and deactivations move managed copies to Detached rather than recursively destroying them. Deactivating a required 1C Main is allowed as desired state so the old managed copy can be detached, but VERIFY returns ONEC_MAIN_REQUIRED and START refuses the incomplete project until a valid Main is set again.
+
+No PURGE action exists in this release.
+
+## START / STOP
+
+START first VERIFYs the selected project, then writes one manager-owned active-admission.json binding exactly one project and one task. The selected relay/helper endpoint is also fixed before helper launch. The model cannot switch project, root, or task.
+
+The helper runs under the restricted local identity and connects outbound-only. Its session recovery is bound to the current source snapshot; a changed applied manifest cannot silently reuse an older helper session.
+
+STOP ends the local helper/admission and does not delete catalog, Participants, Output, Detached, or external Source.
+
+## Model-facing execution boundary
+
+The hosted app contract is exactly five semantic tools:
+
+- source_context
+- source_search
+- source_read
+- proposal_write
+- proposal_read
+
+There is no model-facing source write, delete, shell, process, browser, arbitrary URL, project switch, root switch, or task switch.
+
+Participants are read-only to the restricted helper. Output is writable only for bounded proposal delivery. _proposal_provenance.json binds proposal artifacts to the admitted source snapshot. PROPOSAL_NOT_APPLIED means the proposal was delivered to Output but was not applied/deployed to authoritative business Source.
+
+## Remote-call budget
+
+Remote calls are budgeted. The product contract in runtime.lock.json records:
+
+- exact known-path source read: normally 1 remote call;
+- bounded source search with context: normally 1 remote call;
+- ordinary non-trivial source question: target <=3 reader calls before Chat reasoning.
+
+A single remote search may perform bounded local searches across admitted participant artifacts; that local fan-out does not create additional remote MCP calls. There is no polling loop for ordinary source operations.
+
+## Human-readable progress and durable operations
+
+Long operations use one shared operation/event model. Normal console progress resembles:
+
+    [1/4] INSTALL Checking prerequisites ... RUNNING
+    [2/4] INSTALL Installing/reusing pinned components ... RUNNING
+    [3/4] INSTALL Verifying installed runtime ... RUNNING
+    [4/4] INSTALL Complete authorization checkpoint ... WAITING_FOR_USER
+
+Canonical states are:
+
+RUNNING | PASS | FAIL | WAITING_FOR_USER | CANCELLED | RECOVERED
+
+Durable machine-readable and human-readable operation evidence is maintained with bounded rotation. The operator UI includes:
+
+- VIEW CURRENT OPERATION
+- VIEW RECENT OPERATIONS
+- VIEW LOGS
+- EXPORT DIAGNOSTIC BUNDLE
+
+STATUS shows product/install state, dependency versions/health, installed component integrity, project/catalog/manifest verification state, active admission, helper/MCP connection evidence, current/last operation, last VERIFY, recovery classification, and bounded Output proposal summaries.
+
+Diagnostic bundles intentionally exclude secret values and passwords.
+
+## Interrupted work and repair
+
+The lifecycle follows RECOVER_FIRST_NOT_REPLAY_FIRST.
+
+If the last material operation is still RUNNING, normal mutating actions stop with RECOVERY_REQUIRED; they do not blindly replay the request. PRECHECK may inspect state. An explicit INSTALL/REPAIR path classifies the interrupted operation and then performs idempotent bounded reconciliation.
+
+Project REPAIR is intentionally narrow: missing applied manifest or catalog drift may be reconciled by APPLY; unknown physical/hash corruption is not silently overwritten; verification remains the final gate before START.
+
+## STATUS / DIAGNOSTICS examples
+
+    .\OneCChatWorker.ps1 -Mode STATUS
+    .\OneCChatWorker.ps1 -Mode VIEW_CURRENT_OPERATION
+    .\OneCChatWorker.ps1 -Mode VIEW_RECENT_OPERATIONS
+    .\OneCChatWorker.ps1 -Mode VIEW_LOGS
+    .\OneCChatWorker.ps1 -Mode EXPORT_DIAGNOSTICS
+
+For machine consumption add -Json to read-only/status-style commands.
+
+## Safe uninstall / rollback
+
+Without confirmation:
+
+    .\OneCChatWorker.ps1 -Mode UNINSTALL
+
+prints the exact plan and performs no mutation.
+
+Runtime-only removal requires:
+
+    .\OneCChatWorker.ps1 -Mode UNINSTALL -ConfirmUninstall
+
+It STOPs the admission and removes only product-owned runtime/provider/helper/secret/product files and the installed launcher. It retains projects.json, all project Participants managed source copies, Output proposals/evidence, Detached archives, audit and operation logs, and the restricted local reader account.
+
+It never deletes authoritative external business Source. Reader-account deletion and Source/Output purge are intentionally separate/not implemented destructive actions.
+
+## Cleverence
+
+The catalog schema is participant/platform-extensible, but this release is deliberately 1C-first. Any active non-ONEC participant fails closed with PLATFORM_NOT_IMPLEMENTED_1C_FIRST.
+
+Cleverence must later reuse this same installer/catalog/lifecycle architecture after its own source-layout gate. No second installer architecture is introduced here.
+
+## Reproducibility and verification
+
+runtime.lock.json pins dependency versions, reference binary hashes, product component hashes, the stable hosted app identity, the exact five-tool surface, and the remote-call budget.
+
+Run the Windows clean-root regression:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\tests\run_local_regression.ps1
+
+The cross-platform shareable CI also validates static product/security/observability contracts through TESTS/run_onecchatworker_product_regression.py.
