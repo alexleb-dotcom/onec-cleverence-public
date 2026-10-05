@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 461,
+  "file_count": 462,
   "files": [
     {
       "path": ".gitattributes",
@@ -380,13 +380,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 33664,
-      "sha256": "94a6a166b3a0f94c13279505139365fed354405b6aa4c49b3085e2c24031fc7a"
+      "size": 62678,
+      "sha256": "37ed900fa06e498995cef177b0a9611d3bb0f1199c2602b2b470c1010be4c620"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
-      "size": 10236,
-      "sha256": "820197bb22c5425d4115ff7379da50a7f68072cfe7944c5743b01502050a048a"
+      "size": 11578,
+      "sha256": "36775b28abd44dccef9c8e0c28f18a17553478d930128d05d34b1c34c2e1ae59"
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
@@ -401,7 +401,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 1564,
-      "sha256": "24666bbc7f2a89801d0544b6f3378463ab1a35cd27e9fbd42bd87ef57938610c"
+      "sha256": "57c53cfe5dcd2bbf00bf115692c0a25e379756ed5e7a55a1062021d6645430b1"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -412,6 +412,11 @@
       "path": "PRODUCT/OneCChatWorker/runtime/source-reader-integration.mjs",
       "size": 38960,
       "sha256": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_guided_ui_regression.ps1",
+      "size": 9970,
+      "sha256": "a583c418b0e57a5e69c343181997ea28ea5c639371cc7c9b125a25db2f5c2894"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
@@ -1870,8 +1875,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 13148,
-      "sha256": "d87725c8fb5b6dc6c311a910ba8bc6b43a93dc026a0819945af41ffb4da4bd55"
+      "size": 15308,
+      "sha256": "ca00937edd6e476aa37bc5814851439cb6ff5713023a4f98be4b506a60fe1447"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2315,5 +2320,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "a9e64a9e7caf9db8ed67e427292b9ebf6b965b2e514c14e74e55ec788a5be566"
+  "snapshot_digest": "23c145f5cdb90692964d5359c459ecb89eb0d227e660428287f5157d0f875865"
 }
