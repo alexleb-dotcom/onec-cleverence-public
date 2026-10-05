@@ -49,8 +49,47 @@ function Show-Value($Value){
 }
 function Error-Class([Exception]$Exception){
  $m=[string]$Exception.Message
- if([string]::IsNullOrWhiteSpace($m)){return $Exception.GetType().Name}
- (($m -split ':',2)[0] -replace '[^A-Za-z0-9_.-]','_').ToUpperInvariant()
+ if($m -match '^([A-Z][A-Z0-9_]{2,63})(?::|$)'){return $Matches[1]}
+ switch($Exception.GetType().FullName){
+  'System.IO.PathTooLongException' {return 'IO_PATH_TOO_LONG'}
+  'System.IO.DirectoryNotFoundException' {return 'IO_DIRECTORY_NOT_FOUND'}
+  'System.IO.FileNotFoundException' {return 'IO_FILE_NOT_FOUND'}
+  'System.UnauthorizedAccessException' {return 'IO_ACCESS_DENIED'}
+  'System.IO.IOException' {return 'IO_ERROR'}
+ }
+ $type=$Exception.GetType().Name
+ if([string]::IsNullOrWhiteSpace($type)){return 'UNKNOWN_ERROR'}
+ ($type -replace '[^A-Za-z0-9_.-]','_').ToUpperInvariant()
+}
+function ConvertTo-SafeOperationText([string]$Text,[int]$MaxChars=800){
+ if([string]::IsNullOrWhiteSpace($Text)){return $null}
+ $v=($Text -replace '[\r\n\t]+',' ').Trim()
+ if($v -match '(?i)helper-secret|\\secrets\\'){return 'Sensitive path or value omitted.'}
+ if($v.Length -gt $MaxChars){$v=$v.Substring(0,$MaxChars)}
+ $v
+}
+function Get-ObservedError {
+ param($ErrorRecord,[string]$OperationType)
+ $ex=$ErrorRecord.Exception
+ $class=Error-Class $ex
+ $data=$ex.Data
+ $phase=$(if($data -and $data.Contains('phase')){ConvertTo-SafeOperationText ([string]$data['phase']) 80}else{$null})
+ $path=$(if($data -and $data.Contains('path')){ConvertTo-SafeOperationText ([string]$data['path']) 500}else{$null})
+ $cleanup=$(if($data -and $data.Contains('cleanup_status')){ConvertTo-SafeOperationText ([string]$data['cleanup_status']) 80}else{$null})
+ $causeType=$(if($data -and $data.Contains('cause_type')){ConvertTo-SafeOperationText ([string]$data['cause_type']) 160}else{$ex.GetType().FullName})
+ $message=$null
+ if($OperationType -eq 'SETTINGS'){$message='Sensitive operation failed; error details were intentionally omitted.'}
+ elseif($data -and $data.Contains('cause_message')){$message=ConvertTo-SafeOperationText ([string]$data['cause_message'])}
+ else{$message=ConvertTo-SafeOperationText ([string]$ex.Message)}
+ if($path -and $path -match '(?i)\\secrets\\'){$path='[REDACTED_SECRET_PATH]'}
+ [pscustomobject]@{
+  error_class=$class
+  error_message=$message
+  error_phase=$phase
+  error_path=$path
+  cleanup_status=$cleanup
+  safe_details=@{exception_type=$ex.GetType().FullName;cause_type=$causeType}
+ }
 }
 
 function Invoke-ObservedAction {
@@ -87,8 +126,8 @@ function Invoke-ObservedAction {
   $null=Complete-WorkerOperation -Operation $op -State $finalState -Message $finalMessage -ProgramDataRoot $ProgramDataRoot
   $result
  }catch{
-  $class=Error-Class $_.Exception
-  $null=Complete-WorkerOperation -Operation $op -State FAIL -Message 'Operation failed' -ErrorClass $class -RecoveryHint 'Run STATUS / DIAGNOSTICS before retry. Recover first after interruption; do not blindly replay.' -ProgramDataRoot $ProgramDataRoot
+  $err=Get-ObservedError -ErrorRecord $_ -OperationType $OperationType
+  $null=Complete-WorkerOperation -Operation $op -State FAIL -Message 'Operation failed' -ErrorClass $err.error_class -ErrorMessage $err.error_message -ErrorPhase $err.error_phase -ErrorPath $err.error_path -CleanupStatus $err.cleanup_status -RecoveryHint 'Run STATUS / DIAGNOSTICS before retry. Recover first after interruption; do not blindly replay.' -SafeDetails $err.safe_details -ProgramDataRoot $ProgramDataRoot
   throw
  }
 }
@@ -141,17 +180,22 @@ function Show-CurrentOperation {
  Write-Host ('  Progress : {0}/{1}' -f $op.current_step,$op.total_steps)
  Write-Host ('  Project  : {0}' -f $op.project_id)
  Write-Host ('  Message  : {0}' -f $op.message)
- Write-Host ('  Started  : {0}' -f $op.started_utc)
- Write-Host ('  Ended    : {0}' -f $op.ended_utc)
- if($op.error_class){Write-Host ('  Error    : {0}' -f $op.error_class)}
- if($op.recovery_hint){Write-Host ('  Recovery : {0}' -f $op.recovery_hint)}
+ Write-Host ('  Started UTC : {0}' -f $op.started_utc)
+ Write-Host ('  Ended UTC   : {0}' -f $op.ended_utc)
+ if($op.error_class){Write-Host ('  Error class : {0}' -f $op.error_class)}
+ if($op.error_phase){Write-Host ('  Error phase : {0}' -f $op.error_phase)}
+ if($op.error_path){Write-Host ('  Error path  : {0}' -f $op.error_path)}
+ if($op.error_message){Write-Host ('  Error cause : {0}' -f $op.error_message)}
+ if($op.cleanup_status){Write-Host ('  Cleanup     : {0}' -f $op.cleanup_status)}
+ if($op.recovery_hint){Write-Host ('  Recovery    : {0}' -f $op.recovery_hint)}
 }
 function Show-RecentOperations {
  $ops=@(Get-RecentWorkerOperations -Limit 20 -ProgramDataRoot $ProgramDataRoot)
  if($Json){Show-JsonValue $ops;return}
  if(-not $ops.Count){Write-Host 'No completed operations.';return}
  foreach($op in $ops){
-  Write-Host ('{0}  {1,-18} {2,-16} {3}' -f $op.started_utc,$op.operation_type,$op.state,$op.message)
+  Write-Host ('{0} UTC  {1,-18} {2,-16} {3}' -f $op.started_utc,$op.operation_type,$op.state,$op.message)
+  if($op.error_class){Write-Host ('  error={0} phase={1} cleanup={2}' -f $op.error_class,$op.error_phase,$op.cleanup_status)}
  }
 }
 function Show-OperationLogs {
@@ -471,6 +515,26 @@ $script:GuidedRu=@{
  'The action could not be completed ({0}).'='Действие не удалось завершить ({0}).'
  'The install/update package could not be verified.'='Не удалось проверить пакет установки или обновления.'
  'Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.'='Снова запустите INSTALL из полного актуального пакета OneCChatWorker; существующие проекты и данные сохранятся.'
+ 'The managed project copy could not be created.'='Не удалось создать управляемую копию проекта.'
+ 'An incomplete managed copy from a previous apply was detected.'='Обнаружена неполная управляемая копия после предыдущей попытки.'
+ 'Choose Check and repair project. Incomplete staging data will be cleaned before retry.'='Выберите «Проверить и восстановить проект». Неполные временные данные будут очищены перед повтором.'
+ 'A managed path is too long for Windows PowerShell 5.1.'='Путь в управляемой копии слишком длинный для Windows PowerShell 5.1.'
+ 'Windows reported a file-copy error. Exact cause and path are available in Diagnostics.'='Windows сообщила об ошибке копирования файла. Точная причина и путь доступны в диагностике.'
+ 'Stage: {0}'='Этап: {0}'
+ 'Reason: {0}'='Причина: {0}'
+ 'Cleanup: {0}'='Очистка: {0}'
+ 'Preparing managed copy'='подготовка управляемой копии'
+ 'Copying managed files'='копирование файлов в управляемую копию'
+ 'Committing verified copy'='фиксация проверенной управляемой копии'
+ 'Preflight check'='предварительная проверка'
+ 'Incomplete temporary copy was cleaned.'='Неполная временная копия очищена.'
+ 'Incomplete temporary copy was moved to recovery quarantine.'='Неполная временная копия перемещена в карантин восстановления.'
+ 'Incomplete temporary copy was classified for recovery and needs repair.'='Неполная временная копия классифицирована для восстановления и требует ремонта.'
+ 'Original XML export was not changed.'='Исходная XML-выгрузка не изменена.'
+ 'An incomplete managed copy from a previous apply was detected and must be cleaned before retry.'='Обнаружена неполная управляемая копия после предыдущей попытки; перед повтором её нужно безопасно очистить.'
+ 'The incomplete managed copy could not be cleaned automatically.'='Неполную управляемую копию не удалось очистить автоматически.'
+ 'Open Advanced > Diagnostics and review the classified recovery residue before retrying.'='Откройте «Дополнительно > Диагностика» и проверьте классифицированный остаток восстановления перед повтором.'
+ 'Open Advanced > Diagnostics. The managed root/path must be shortened before retrying.'='Откройте «Дополнительно > Диагностика». Перед повтором нужно сократить путь управляемой копии.'
  'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.'='Выполните рекомендованное действие основного меню или откройте «Дополнительно > Диагностика» для деталей.'
  'Next: {0}'='Далее: {0}'
  'Details: operation {0}; Advanced > Diagnostics'='Детали: операция {0}; Дополнительно > Диагностика'
@@ -729,22 +793,49 @@ function Test-GuidedExportPath {
  if(-not(Test-Path -LiteralPath (Join-Path $Path 'Configuration.xml') -PathType Leaf)){return 'Configuration.xml must be directly inside this folder. Choose the root folder of the XML export.'}
  try{Assert-OneCExportRoot $Path;return $null}catch{return 'This folder is not a usable direct 1C XML export root.'}
 }
+function Get-GuidedApplyPhaseLabel {
+ param([string]$Phase)
+ switch($Phase){
+  'PREFLIGHT' {T 'Preflight check'}
+  'CREATED' {T 'Preparing managed copy'}
+  'COPYING' {T 'Copying managed files'}
+  'VERIFIED' {T 'Committing verified copy'}
+  'COMMIT_ROLLBACK' {T 'Committing verified copy'}
+  default {$Phase}
+ }
+}
+function Get-GuidedCleanupLabel {
+ param([string]$Status)
+ switch($Status){
+  'CLEANED' {T 'Incomplete temporary copy was cleaned.'}
+  'CLEANED_LONG_PATH' {T 'Incomplete temporary copy was cleaned.'}
+  'ALREADY_ABSENT' {T 'Incomplete temporary copy was cleaned.'}
+  'QUARANTINED' {T 'Incomplete temporary copy was moved to recovery quarantine.'}
+  'QUARANTINE_RECORDED' {T 'Incomplete temporary copy was classified for recovery and needs repair.'}
+  default {$Status}
+ }
+}
 function Get-GuidedErrorInfo {
  param([Exception]$Exception)
  $m=[string]$Exception.Message
  $class=Error-Class $Exception
  switch -Regex ($m){
-  '^SOURCE_FOLDER_NOT_FOUND' {return [pscustomobject]@{message='The selected 1C export folder does not exist.';next='Choose the root folder that directly contains Configuration.xml.';code=$class}}
-  '^ONEC_CONFIGURATION_XML_MISSING' {return [pscustomobject]@{message='Configuration.xml was not found directly inside the selected folder.';next='Choose the root folder of the unpacked 1C XML export.';code=$class}}
-  '^NO_PROJECTS' {return [pscustomobject]@{message='No projects exist yet.';next='Choose Add local project in the guided menu.';code=$class}}
-  '^PROJECT_NOT_READY' {return [pscustomobject]@{message='The project is not ready to start work.';next='Use the recommended setup/repair action shown by the guided menu.';code=$class}}
-  '^REMOTE_AUTH_REQUIRED' {return [pscustomobject]@{message='ChatGPT connection is not configured yet.';next='Choose Connect ChatGPT and enter the enrollment value locally.';code=$class}}
-  '^RUNAS_FAILED_OR_CANCELLED' {return [pscustomobject]@{message='Windows did not confirm that the restricted source reader started.';next='The menu will detect the incomplete start. Clear it safely before retrying; use Diagnostics if it repeats.';code=$class}}
-  '^ELEVATED_ACTION_FAILED' {return [pscustomobject]@{message='The Windows administrator step was cancelled or failed.';next='Run the recommended action again and approve the Windows elevation prompt.';code=$class}}
-  '^(PACKAGE_COMPONENT_HASH_MISMATCH|RUNTIME_LOCK_|INSTALLED_COMPONENT_HASH_MISMATCH)' {return [pscustomobject]@{message='The install/update package could not be verified.';next='Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.';code=$class}}
-  '^RECOVERY_REQUIRED' {return [pscustomobject]@{message='A previous operation was interrupted and needs recovery first.';next='Use the recommended Recover safely action; do not reinstall unless it specifically says Install.';code=$class}}
-  '^UI_SCRIPT_INPUT_EXHAUSTED' {return [pscustomobject]@{message='The scripted UI test ran out of input.';next='Fix the regression input script.';code=$class}}
-  default {return [pscustomobject]@{message=((T 'The action could not be completed ({0}).') -f $class);next=(T 'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.');code=$class}}
+  '^SOURCE_FOLDER_NOT_FOUND' {return [pscustomobject]@{message='The selected 1C export folder does not exist.';reason=$null;next='Choose the root folder that directly contains Configuration.xml.';code=$class}}
+  '^ONEC_CONFIGURATION_XML_MISSING' {return [pscustomobject]@{message='Configuration.xml was not found directly inside the selected folder.';reason=$null;next='Choose the root folder of the unpacked 1C XML export.';code=$class}}
+  '^NO_PROJECTS' {return [pscustomobject]@{message='No projects exist yet.';reason=$null;next='Choose Add local project in the guided menu.';code=$class}}
+  '^PROJECT_NOT_READY' {return [pscustomobject]@{message='The project is not ready to start work.';reason=$null;next='Use the recommended setup/repair action shown by the guided menu.';code=$class}}
+  '^REMOTE_AUTH_REQUIRED' {return [pscustomobject]@{message='ChatGPT connection is not configured yet.';reason=$null;next='Choose Connect ChatGPT and enter the enrollment value locally.';code=$class}}
+  '^RUNAS_FAILED_OR_CANCELLED' {return [pscustomobject]@{message='Windows did not confirm that the restricted source reader started.';reason=$null;next='The menu will detect the incomplete start. Clear it safely before retrying; use Diagnostics if it repeats.';code=$class}}
+  '^ELEVATED_ACTION_FAILED' {return [pscustomobject]@{message='The Windows administrator step was cancelled or failed.';reason=$null;next='Run the recommended action again and approve the Windows elevation prompt.';code=$class}}
+  '^(PACKAGE_COMPONENT_HASH_MISMATCH|RUNTIME_LOCK_|INSTALLED_COMPONENT_HASH_MISMATCH)' {return [pscustomobject]@{message='The install/update package could not be verified.';reason=$null;next='Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.';code=$class}}
+  '^APPLY_(TARGET|STAGE)_PATH_TOO_LONG' {return [pscustomobject]@{message='The managed project copy could not be created.';reason='A managed path is too long for Windows PowerShell 5.1.';next='Open Advanced > Diagnostics. The managed root/path must be shortened before retrying.';code=$class}}
+  '^APPLY_(COPY|STAGE|COMMIT)_FAILED' {return [pscustomobject]@{message='The managed project copy could not be created.';reason='Windows reported a file-copy error. Exact cause and path are available in Diagnostics.';next='Choose Check and repair project. Incomplete staging data will be cleaned before retry.';code=$class}}
+  '^APPLY_COMMIT_ROLLBACK_FAILED' {return [pscustomobject]@{message='The managed project copy could not be created.';reason='Windows reported a file-copy error. Exact cause and path are available in Diagnostics.';next='Open Advanced > Diagnostics and review the classified recovery residue before retrying.';code=$class}}
+  '^APPLY_RESIDUE_REPAIR_REQUIRED' {return [pscustomobject]@{message='An incomplete managed copy from a previous apply was detected.';reason=$null;next='Choose Check and repair project. Incomplete staging data will be cleaned before retry.';code=$class}}
+  '^APPLY_RESIDUE_CLEANUP_FAILED' {return [pscustomobject]@{message='The incomplete managed copy could not be cleaned automatically.';reason=$null;next='Open Advanced > Diagnostics and review the classified recovery residue before retrying.';code=$class}}
+  '^RECOVERY_REQUIRED' {return [pscustomobject]@{message='A previous operation was interrupted and needs recovery first.';reason=$null;next='Use the recommended Recover safely action; do not reinstall unless it specifically says Install.';code=$class}}
+  '^UI_SCRIPT_INPUT_EXHAUSTED' {return [pscustomobject]@{message='The scripted UI test ran out of input.';reason=$null;next='Fix the regression input script.';code=$class}}
+  default {return [pscustomobject]@{message=((T 'The action could not be completed ({0}).') -f $class);reason=$null;next=(T 'Follow the recommended action shown by the guided menu, or open Advanced > Diagnostics for details.');code=$class}}
  }
 }
 function Show-GuidedFailure {
@@ -754,6 +845,10 @@ function Show-GuidedFailure {
  try{$op=Get-CurrentWorkerOperation -ProgramDataRoot $ProgramDataRoot}catch{}
  Write-Host ''
  Write-Host ("FAIL: {0}" -f (T ([string]$info.message)))
+ if($info.reason){Write-Host ((T 'Reason: {0}') -f (T ([string]$info.reason)))}
+ if($op -and $op.error_phase){Write-Host ((T 'Stage: {0}') -f (Get-GuidedApplyPhaseLabel ([string]$op.error_phase)))}
+ if($op -and $op.cleanup_status){Write-Host ((T 'Cleanup: {0}') -f (Get-GuidedCleanupLabel ([string]$op.cleanup_status)))}
+ if(($op -and $op.operation_type -in @('APPLY','REPAIR')) -or $info.code -match '^APPLY_'){Write-Host (T 'Original XML export was not changed.')}
  Write-Host ((T 'Next: {0}') -f (T ([string]$info.next)))
  if($op -and $op.operation_id){Write-Host ((T 'Details: operation {0}; Advanced > Diagnostics') -f $op.operation_id)}
  else{Write-Host ((T 'Details: {0}; Advanced > Diagnostics') -f $info.code)}
@@ -800,6 +895,7 @@ function Get-GuidedContext {
  $part=$parts[0]
  if(-not $part.target.main -or $part.target.main.active -eq $false){return [pscustomobject]@{state='PROJECT_DRAFT';recommended='Complete project setup';project=$p;participant=$part;reason='The main 1C configuration folder is still missing.'}}
  $v=try{Verify-WorkerProject -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{status='FAIL';reason=$_.Exception.Message}}
+ if($v.status -eq 'INCOMPLETE_APPLY_RESIDUE'){return [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='An incomplete managed copy from a previous apply was detected and must be cleaned before retry.';verification=$v}}
  if($v.status -in @('APPLY_REQUIRED','DRIFT_APPLY_REQUIRED')){return [pscustomobject]@{state='PROJECT_NEEDS_APPLY';recommended='Finish project setup';project=$p;participant=$part;reason='Setup answers are saved; the managed project copy must now be built and checked.';verification=$v}}
  if($v.status -eq 'READY'){return [pscustomobject]@{state='PROJECT_READY';recommended='Start work';project=$p;participant=$part;reason='The project is ready for a bounded ChatGPT task.';verification=$v}}
  [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='The managed project copy needs attention before work can start.';verification=$v}

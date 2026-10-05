@@ -54,6 +54,10 @@ function Write-WorkerOperationEvent {
         [Parameter(Mandatory)][string]$Message,
         [int]$Step=0,[int]$Total=0,
         [string]$ErrorClass,
+        [string]$ErrorMessage,
+        [string]$ErrorPhase,
+        [string]$ErrorPath,
+        [string]$CleanupStatus,
         [string]$RecoveryHint,
         [hashtable]$SafeDetails,
         [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
@@ -74,6 +78,10 @@ function Write-WorkerOperationEvent {
         requested_action=$Operation.requested_action
         message=$Message
         error_class=$ErrorClass
+        error_message=$ErrorMessage
+        error_phase=$ErrorPhase
+        error_path=$ErrorPath
+        cleanup_status=$CleanupStatus
         recovery_hint=$RecoveryHint
         details=$(if($SafeDetails){$SafeDetails}else{@{}})
     }
@@ -83,8 +91,13 @@ function Write-WorkerOperationEvent {
     Add-Content -LiteralPath $events -Value (($event|ConvertTo-Json -Depth 12 -Compress)) -Encoding UTF8
     $prefix=if($Total -gt 0 -and $Step -gt 0){"[$Step/$Total]"}else{'[-/-]'}
     $line="{0} {1} {2} ... {3}" -f $prefix,$Operation.operation_type,$Message,$State
-    Add-Content -LiteralPath $human -Value ("{0} {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),$line) -Encoding UTF8
-    $Operation.state=$State;$Operation.current_step=$Step;$Operation.total_steps=$Total;$Operation.message=$Message;$Operation.error_class=$ErrorClass;$Operation.recovery_hint=$RecoveryHint
+    $diagnostic=$(if($ErrorClass){" error_class=$ErrorClass"}else{''})
+    Add-Content -LiteralPath $human -Value ("{0} [UTC] {1}{2}" -f (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ'),$line,$diagnostic) -Encoding UTF8
+    foreach($pair in @(
+        @('state',$State),@('current_step',$Step),@('total_steps',$Total),@('message',$Message),
+        @('error_class',$ErrorClass),@('error_message',$ErrorMessage),@('error_phase',$ErrorPhase),
+        @('error_path',$ErrorPath),@('cleanup_status',$CleanupStatus),@('recovery_hint',$RecoveryHint)
+    )){$Operation|Add-Member -NotePropertyName $pair[0] -NotePropertyValue $pair[1] -Force}
     Write-JsonAtomic $Operation (Join-Path $root 'current-operation.json')
     if(-not $Quiet){Write-Host $line}
     $event
@@ -115,6 +128,10 @@ function Start-WorkerOperation {
         total_steps=$TotalSteps
         message='Starting'
         error_class=$null
+        error_message=$null
+        error_phase=$null
+        error_path=$null
+        cleanup_status=$null
         recovery_hint=$null
     }
     $null=Write-WorkerOperationEvent -Operation $op -State RUNNING -Message 'Starting' -Step 0 -Total $TotalSteps -ProgramDataRoot $ProgramDataRoot
@@ -141,6 +158,10 @@ function Complete-WorkerOperation {
         [ValidateSet('PASS','FAIL','WAITING_FOR_USER','CANCELLED','RECOVERED')][string]$State='PASS',
         [Parameter(Mandatory)][string]$Message,
         [string]$ErrorClass,
+        [string]$ErrorMessage,
+        [string]$ErrorPhase,
+        [string]$ErrorPath,
+        [string]$CleanupStatus,
         [string]$RecoveryHint,
         [hashtable]$SafeDetails,
         [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
@@ -148,7 +169,7 @@ function Complete-WorkerOperation {
     )
     $root=Get-WorkerOperationRoot $ProgramDataRoot
     $Operation.ended_utc=(Get-Date).ToUniversalTime().ToString('o')
-    $null=Write-WorkerOperationEvent -Operation $Operation -State $State -Message $Message -Step $Operation.total_steps -Total $Operation.total_steps -ErrorClass $ErrorClass -RecoveryHint $RecoveryHint -SafeDetails $SafeDetails -ProgramDataRoot $ProgramDataRoot -Quiet:$Quiet
+    $null=Write-WorkerOperationEvent -Operation $Operation -State $State -Message $Message -Step $Operation.total_steps -Total $Operation.total_steps -ErrorClass $ErrorClass -ErrorMessage $ErrorMessage -ErrorPhase $ErrorPhase -ErrorPath $ErrorPath -CleanupStatus $CleanupStatus -RecoveryHint $RecoveryHint -SafeDetails $SafeDetails -ProgramDataRoot $ProgramDataRoot -Quiet:$Quiet
     $history=Join-Path $root 'history.jsonl';Rotate-WorkerLog $history
     Add-Content -LiteralPath $history -Value (($Operation|ConvertTo-Json -Depth 12 -Compress)) -Encoding UTF8
     $Operation
@@ -329,9 +350,11 @@ function Get-TreeDigest {
     $reparse=@(Get-ChildItem -LiteralPath $rootFull -Recurse -Force | Where-Object {($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0})
     if($reparse.Count -gt 0){throw "REPARSE_POINT: $($reparse[0].FullName)"}
     $sha=[Security.Cryptography.SHA256]::Create()
+    $maxRelativePathChars=0;$maxRelativePath=$null
     try{
         foreach($f in $items){
             $rel=$f.FullName.Substring($rootFull.Length).TrimStart('\').Replace('\','/')
+            if($rel.Length -gt $maxRelativePathChars){$maxRelativePathChars=$rel.Length;$maxRelativePath=$rel}
             $fh=(Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             $row=[string]::Join([char]9,@($rel,[string]$f.Length,$fh))+[Environment]::NewLine
             $line=[Text.Encoding]::UTF8.GetBytes($row)
@@ -342,7 +365,7 @@ function Get-TreeDigest {
     } finally {$sha.Dispose()}
     $sum=($items|Measure-Object Length -Sum).Sum
     if($null -eq $sum){$sum=0}
-    [pscustomobject]@{sha256=$digest;files=$items.Count;bytes=[int64]$sum}
+    [pscustomobject]@{sha256=$digest;files=$items.Count;bytes=[int64]$sum;max_relative_path_chars=$maxRelativePathChars;max_relative_path=$maxRelativePath}
 }
 
 function Assert-OneCExportRoot {
@@ -441,26 +464,276 @@ function Disable-WorkerCatalogItem {
     Write-WorkerCatalog $c $WorkerRoot
 }
 
+function ConvertTo-BoundedDiagnosticText {
+    param([string]$Text,[int]$MaxChars=800)
+    if([string]::IsNullOrWhiteSpace($Text)){return $null}
+    $v=($Text -replace '[\r\n\t]+',' ').Trim()
+    if($v -match '(?i)helper-secret|\\secrets\\'){return 'Sensitive path or value omitted.'}
+    if($v.Length -gt $MaxChars){$v=$v.Substring(0,$MaxChars)}
+    $v
+}
+
+function Get-ApplyStageRoot {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot)
+    Join-Path $WorkerRoot '.stage'
+}
+
+function Write-ApplyStageState {
+    param(
+        [Parameter(Mandatory)][string]$StagePath,
+        [Parameter(Mandatory)][ValidateSet('CREATED','COPYING','VERIFIED','COMMITTED')][string]$State,
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$TargetPath,
+        [string]$ArchiveKey
+    )
+    $doc=[ordered]@{
+        schema_version=1
+        state=$State
+        updated_utc=(Get-Date).ToUniversalTime().ToString('o')
+        project_root=$ProjectRoot
+        project_id=Split-Path -Leaf $ProjectRoot
+        stage_path=$StagePath
+        target_path=$TargetPath
+        archive_key=$ArchiveKey
+    }
+    Write-JsonAtomic $doc ($StagePath+'.json')
+}
+
+function Get-ApplyStageResidue {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    Assert-SafeId $ProjectId 'project_id'|Out-Null
+    $projectRoot=Join-Path $WorkerRoot $ProjectId
+    $rows=New-Object Collections.Generic.List[object]
+
+    $participantsRoot=Join-Path $projectRoot 'Participants'
+    if(Test-Path -LiteralPath $participantsRoot -PathType Container){
+        foreach($participantDir in @(Get-ChildItem -LiteralPath $participantsRoot -Directory -Force -ErrorAction SilentlyContinue)){
+            $targetRoot=Join-Path $participantDir.FullName 'Target'
+            foreach($scanRoot in @($targetRoot,(Join-Path $targetRoot 'Extensions'))){
+                if(-not(Test-Path -LiteralPath $scanRoot -PathType Container)){continue}
+                foreach($dir in @(Get-ChildItem -LiteralPath $scanRoot -Directory -Force -Filter '*.stage-*' -ErrorAction SilentlyContinue)){
+                    $idx=$dir.Name.IndexOf('.stage-')
+                    if($idx -lt 1){continue}
+                    $targetName=$dir.Name.Substring(0,$idx)
+                    $rows.Add([pscustomobject]@{
+                        layout='LEGACY_TARGET_SIBLING'
+                        project_id=$ProjectId
+                        state='UNKNOWN_INTERRUPTED'
+                        stage_path=$dir.FullName
+                        target_path=Join-Path $scanRoot $targetName
+                        metadata_path=$null
+                    })
+                }
+            }
+        }
+    }
+
+    $stageRoot=Get-ApplyStageRoot $WorkerRoot
+    if(Test-Path -LiteralPath $stageRoot -PathType Container){
+        foreach($dir in @(Get-ChildItem -LiteralPath $stageRoot -Directory -Force -Filter '*.stage-*' -ErrorAction SilentlyContinue)){
+            $metaPath=$dir.FullName+'.json';$meta=$null
+            if(Test-Path -LiteralPath $metaPath -PathType Leaf){try{$meta=Get-Content -LiteralPath $metaPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+            $metaProject=$(if($meta -and $meta.project_id){[string]$meta.project_id}else{$null})
+            if($metaProject -and $metaProject -ne $ProjectId){continue}
+            if(-not $metaProject -and $meta -and $meta.project_root -and ([IO.Path]::GetFullPath([string]$meta.project_root).TrimEnd('\') -ne [IO.Path]::GetFullPath($projectRoot).TrimEnd('\'))){continue}
+            if(-not $metaProject -and -not $meta){continue}
+            $rows.Add([pscustomobject]@{
+                layout='BOUNDED_STAGE_ROOT'
+                project_id=$ProjectId
+                state=$(if($meta -and $meta.state){[string]$meta.state}else{'UNKNOWN_INTERRUPTED'})
+                stage_path=$dir.FullName
+                target_path=$(if($meta){[string]$meta.target_path}else{$null})
+                metadata_path=$(if(Test-Path -LiteralPath $metaPath -PathType Leaf){$metaPath}else{$null})
+            })
+        }
+    }
+    @($rows | ForEach-Object {$_})
+}
+
+function Remove-ApplyStageTree {
+    param([Parameter(Mandatory)][string]$StagePath)
+    if(-not(Test-Path -LiteralPath $StagePath -PathType Container)){return [pscustomobject]@{status='ALREADY_ABSENT';path=$StagePath;error=$null}}
+    $firstError=$null
+    try{Remove-Item -LiteralPath $StagePath -Recurse -Force -ErrorAction Stop}
+    catch{$firstError=ConvertTo-BoundedDiagnosticText $_.Exception.Message}
+    if(-not(Test-Path -LiteralPath $StagePath -PathType Container)){return [pscustomobject]@{status='CLEANED';path=$StagePath;error=$firstError}}
+    try{
+        $full=[IO.Path]::GetFullPath($StagePath)
+        $extended=$(if($full.StartsWith('\\')){'\\?\UNC\'+$full.Substring(2)}else{'\\?\'+$full})
+        $cmd='rmdir /s /q "{0}"' -f $extended.Replace('"','""')
+        & $env:ComSpec /d /s /c $cmd | Out-Null
+    }catch{}
+    if(-not(Test-Path -LiteralPath $StagePath -PathType Container)){return [pscustomobject]@{status='CLEANED_LONG_PATH';path=$StagePath;error=$firstError}}
+    [pscustomobject]@{status='CLEANUP_FAILED';path=$StagePath;error=$firstError}
+}
+
+function Move-ApplyStageToQuarantine {
+    param([Parameter(Mandatory)]$Residue,[Parameter(Mandatory)][string]$ProjectRoot)
+    $root=Join-Path $ProjectRoot 'Recovery\ApplyResidue'
+    New-Item -ItemType Directory -Force -Path $root|Out-Null
+    $stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
+    $leaf=Split-Path -Leaf ([string]$Residue.stage_path)
+    $destination=Join-Path $root ("$stamp-$leaf")
+    try{
+        Move-Item -LiteralPath $Residue.stage_path -Destination $destination -ErrorAction Stop
+        if($Residue.metadata_path -and (Test-Path -LiteralPath $Residue.metadata_path -PathType Leaf)){
+            Move-Item -LiteralPath $Residue.metadata_path -Destination ($destination+'.json') -Force -ErrorAction SilentlyContinue
+        }
+        return [pscustomobject]@{status='QUARANTINED';original_path=$Residue.stage_path;quarantine_path=$destination;error=$null}
+    }catch{
+        $record=Join-Path $root ("$stamp-quarantine-record.json")
+        $doc=[ordered]@{
+            schema_version=1
+            state='QUARANTINE_MOVE_FAILED'
+            recorded_utc=(Get-Date).ToUniversalTime().ToString('o')
+            stage_path=[string]$Residue.stage_path
+            target_path=[string]$Residue.target_path
+            error=ConvertTo-BoundedDiagnosticText $_.Exception.Message
+        }
+        Write-JsonAtomic $doc $record
+        return [pscustomobject]@{status='QUARANTINE_RECORDED';original_path=$Residue.stage_path;quarantine_path=$record;error=$doc.error}
+    }
+}
+
+function Resolve-ApplyStageResidue {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $projectRoot=Join-Path $WorkerRoot $ProjectId
+    $before=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    $actions=@()
+    foreach($residue in $before){
+        $cleanup=Remove-ApplyStageTree -StagePath $residue.stage_path
+        if($cleanup.status -in @('CLEANED','CLEANED_LONG_PATH','ALREADY_ABSENT')){
+            if($residue.metadata_path){Remove-Item -LiteralPath $residue.metadata_path -Force -ErrorAction SilentlyContinue}
+            $actions+=,[pscustomobject]@{stage_path=$residue.stage_path;action=$cleanup.status;quarantine_path=$null;error=$cleanup.error}
+        }else{
+            $q=Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $projectRoot
+            $actions+=,[pscustomobject]@{stage_path=$residue.stage_path;action=$q.status;quarantine_path=$q.quarantine_path;error=$q.error}
+        }
+    }
+    $remaining=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    [pscustomobject]@{
+        project_id=$ProjectId
+        status=$(if($remaining.Count){'RESIDUE_REMAINS'}else{'CLEAN'})
+        residue_before=$before.Count
+        remaining=$remaining.Count
+        actions=$actions
+        authoritative_source_untouched=$true
+        canonical_target_deleted=$false
+        detached_deleted=$false
+    }
+}
+
+function New-ApplyCopyException {
+    param(
+        [Parameter(Mandatory)][string]$Class,
+        [Parameter(Mandatory)][string]$SafeMessage,
+        [Parameter(Mandatory)][string]$Phase,
+        [string]$Path,
+        [string]$CleanupStatus,
+        [Exception]$InnerException
+    )
+    $ex=New-Object System.InvalidOperationException(("${Class}: $SafeMessage"),$InnerException)
+    $ex.Data['phase']=$Phase
+    if($Path){$ex.Data['path']=$Path}
+    if($CleanupStatus){$ex.Data['cleanup_status']=$CleanupStatus}
+    if($InnerException){$ex.Data['cause_type']=$InnerException.GetType().FullName;$ex.Data['cause_message']=ConvertTo-BoundedDiagnosticText $InnerException.Message}
+    $ex
+}
+
 function Copy-ArtifactSafely {
     param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Target,[switch]$ReplaceExisting,[Parameter(Mandatory)][string]$ProjectRoot,[Parameter(Mandatory)][string]$ArchiveKey)
     $srcDigest=Get-TreeDigest $Source
     $archive=$null
-    if(Test-Path -LiteralPath $Target){
+    $targetExisted=Test-Path -LiteralPath $Target -PathType Container
+    if($targetExisted){
         $targetDigest=Get-TreeDigest $Target
-        if($targetDigest.sha256 -eq $srcDigest.sha256){return [pscustomobject]@{digest=$srcDigest;changed=$false;archived=$null}}
+        if($targetDigest.sha256 -eq $srcDigest.sha256){return [pscustomobject]@{digest=$srcDigest;changed=$false;archived=$null;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED')}}
         if(-not $ReplaceExisting){throw "TARGET_CONFLICT: $Target"}
-        $stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
-        $archive=Join-Path $ProjectRoot ("Detached\$ArchiveKey\$stamp")
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive)|Out-Null
-        Move-Item -LiteralPath $Target -Destination $archive
     }
-    $parent=Split-Path -Parent $Target;New-Item -ItemType Directory -Force -Path $parent|Out-Null
-    $stage=$Target+'.stage-'+[Guid]::NewGuid().ToString('N')
-    Copy-Item -LiteralPath $Source -Destination $stage -Recurse
-    $stageDigest=Get-TreeDigest $stage
-    if($stageDigest.sha256 -ne $srcDigest.sha256){Remove-Item -LiteralPath $stage -Recurse -Force;throw 'COPY_VERIFY_FAILED'}
-    Move-Item -LiteralPath $stage -Destination $Target
-    [pscustomobject]@{digest=$srcDigest;changed=$true;archived=$archive}
+
+    $workerRoot=Split-Path -Parent $ProjectRoot
+    $stageRoot=Get-ApplyStageRoot $workerRoot
+    New-Item -ItemType Directory -Force -Path $stageRoot|Out-Null
+    do{
+        $token=[Guid]::NewGuid().ToString('N').Substring(0,8)
+        $stage=Join-Path $stageRoot ("a.stage-$token")
+    }while(Test-Path -LiteralPath $stage)
+
+    $targetMaxChars=$(if($srcDigest.max_relative_path_chars -gt 0){$Target.Length+1+[int]$srcDigest.max_relative_path_chars}else{$Target.Length})
+    $stageMaxChars=$(if($srcDigest.max_relative_path_chars -gt 0){$stage.Length+1+[int]$srcDigest.max_relative_path_chars}else{$stage.Length})
+    if($targetMaxChars -ge 260){
+        $ex=New-ApplyCopyException -Class 'APPLY_TARGET_PATH_TOO_LONG' -SafeMessage ("Managed target path would reach {0} characters; Windows PowerShell 5.1 safe limit is 259." -f $targetMaxChars) -Phase 'PREFLIGHT' -Path $Target
+        throw $ex
+    }
+    if($stageMaxChars -ge 260){
+        $ex=New-ApplyCopyException -Class 'APPLY_STAGE_PATH_TOO_LONG' -SafeMessage ("Internal staging path would reach {0} characters; safe copy was not started." -f $stageMaxChars) -Phase 'PREFLIGHT' -Path $stage
+        throw $ex
+    }
+
+    $stageState='CREATED';$archiveMoved=$false
+    try{
+        Write-ApplyStageState -StagePath $stage -State CREATED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        New-Item -ItemType Directory -Force -Path $stage|Out-Null
+        $stageState='COPYING'
+        Write-ApplyStageState -StagePath $stage -State COPYING -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        @(Get-ChildItem -LiteralPath $Source -Force -ErrorAction Stop)|Copy-Item -Destination $stage -Recurse -Force -ErrorAction Stop
+
+        $stageDigest=Get-TreeDigest $stage
+        if($stageDigest.sha256 -ne $srcDigest.sha256){
+            $verifyEx=New-Object System.IO.InvalidDataException('Stage digest did not match source digest.')
+            throw $verifyEx
+        }
+        $stageState='VERIFIED'
+        Write-ApplyStageState -StagePath $stage -State VERIFIED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+
+        if($targetExisted){
+            $stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+            $archive=Join-Path $ProjectRoot ("Detached\$ArchiveKey\$stamp")
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive)|Out-Null
+            Move-Item -LiteralPath $Target -Destination $archive -ErrorAction Stop
+            $archiveMoved=$true
+        }else{
+            $parent=Split-Path -Parent $Target
+            New-Item -ItemType Directory -Force -Path $parent|Out-Null
+        }
+
+        try{Move-Item -LiteralPath $stage -Destination $Target -ErrorAction Stop}
+        catch{
+            if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){
+                try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{}
+            }
+            throw
+        }
+        $stageState='COMMITTED'
+        Write-ApplyStageState -StagePath $stage -State COMMITTED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+        return [pscustomobject]@{digest=$srcDigest;changed=$true;archived=$archive;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+    }catch{
+        $cause=$_.Exception
+        $residue=[pscustomobject]@{stage_path=$stage;target_path=$Target;metadata_path=($stage+'.json')}
+        $cleanup=Remove-ApplyStageTree -StagePath $stage
+        $cleanupStatus=$cleanup.status
+        if($cleanup.status -eq 'CLEANUP_FAILED'){
+            $q=Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $ProjectRoot
+            $cleanupStatus=$q.status
+        }else{
+            Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+        }
+
+        if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){
+            try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}
+            catch{
+                $rollbackCause=$_.Exception
+                $ex=New-ApplyCopyException -Class 'APPLY_COMMIT_ROLLBACK_FAILED' -SafeMessage 'Verified stage commit failed and the previous canonical Target could not be restored automatically.' -Phase 'COMMIT_ROLLBACK' -Path $Target -CleanupStatus $cleanupStatus -InnerException $rollbackCause
+                throw $ex
+            }
+        }
+
+        $class=$(if($stageState -eq 'COPYING'){'APPLY_COPY_FAILED'}elseif($stageState -eq 'VERIFIED'){'APPLY_COMMIT_FAILED'}else{'APPLY_STAGE_FAILED'})
+        $safe=$(if($stageState -eq 'COPYING'){'Copying into the managed staging area failed.'}elseif($stageState -eq 'VERIFIED'){'Verified staging data could not be committed to the canonical Target.'}else{'Managed staging failed before copy could complete.'})
+        $ex=New-ApplyCopyException -Class $class -SafeMessage $safe -Phase $stageState -Path $Target -CleanupStatus $cleanupStatus -InnerException $cause
+        throw $ex
+    }
 }
 
 function Apply-ProjectAcl {
@@ -479,6 +752,8 @@ function Apply-WorkerProject {
     $c=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $c $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'};if($p.active -eq $false){throw 'PROJECT_INACTIVE'}
     $catalogHash=Get-CatalogHash $WorkerRoot
     $projectRoot=Join-Path $WorkerRoot $ProjectId
+    $residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    if($residue.Count){throw "APPLY_RESIDUE_REPAIR_REQUIRED: $($residue.Count) incomplete staging artifact(s) detected; run REPAIR before APPLY."}
     $manifestDir=Join-Path $projectRoot 'ProjectManifest'
     New-Item -ItemType Directory -Force -Path $manifestDir,(Join-Path $projectRoot 'Participants'),(Join-Path $projectRoot 'Output')|Out-Null
     $manifestParticipants=@()
@@ -544,6 +819,8 @@ function Verify-WorkerProject {
     param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
     $catalog=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $catalog $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'}
     $projectRoot=Join-Path $WorkerRoot $ProjectId;$manifestPath=Join-Path $projectRoot 'ProjectManifest\project.json'
+    $residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    if($residue.Count){return [pscustomobject]@{project_id=$ProjectId;status='INCOMPLETE_APPLY_RESIDUE';reason='ORPHAN_STAGE_PRESENT';residue_count=$residue.Count;residue=@($residue|Select-Object layout,state,stage_path,target_path)}}
     if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){return [pscustomobject]@{project_id=$ProjectId;status='APPLY_REQUIRED';reason='MANIFEST_MISSING'}}
     $m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
     $catalogHash=Get-CatalogHash $WorkerRoot
@@ -1017,9 +1294,22 @@ function Stop-WorkerAdmission {
 
 function Repair-WorkerProject {
     param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $cleanup=$null
+    $residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    if($residue.Count){
+        $cleanup=Resolve-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($cleanup.status -ne 'CLEAN'){throw "APPLY_RESIDUE_CLEANUP_FAILED: $($cleanup|ConvertTo-Json -Depth 8 -Compress)"}
+    }
     $v=Verify-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot
-    if($v.status -eq 'READY'){return $v}
-    if($v.status -eq 'DRIFT_APPLY_REQUIRED' -or $v.status -eq 'APPLY_REQUIRED'){return Apply-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot}
+    if($v.status -eq 'READY'){
+        if($cleanup){$v|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force}
+        return $v
+    }
+    if($v.status -eq 'DRIFT_APPLY_REQUIRED' -or $v.status -eq 'APPLY_REQUIRED'){
+        $x=Apply-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($cleanup){$x|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force}
+        return $x
+    }
     throw "REPAIR_REFUSED_DESTRUCTIVE_OR_UNKNOWN: $($v|ConvertTo-Json -Compress)"
 }
 
