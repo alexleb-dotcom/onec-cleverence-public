@@ -84,6 +84,18 @@ try{
  $bad=Join-Path $root 'bad';New-Item -ItemType Directory -Force -Path $bad|Out-Null
  try{Set-WorkerMain -ProjectId Demo -ParticipantId ut -SourcePath $bad -WorkerRoot $worker|Out-Null;Fail 'reject_non_onec_root' 'unexpected success'}catch{Pass 'reject_non_onec_root' $_.Exception.Message}
 
+ $quotedPd=Join-Path $root "program data's isolated root"
+ $quotedHelper=Join-Path $quotedPd "helper\hosted-helper.mjs"
+ $runAsCommand=New-HelperRunAsCommand -HelperPath $quotedHelper -ProgramDataRoot $quotedPd
+ $encodedCommand=($runAsCommand -split ' -EncodedCommand ',2)[1]
+ $decodedCommand=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encodedCommand))
+ $pdLiteral=$quotedPd.Replace("'","''")
+ $admissionLiteral=(Join-Path $quotedPd 'runtime\active-admission.json').Replace("'","''")
+ $helperLiteral=$quotedHelper.Replace("'","''")
+ Assert 'start_propagates_parameterized_programdata' ($decodedCommand -like "*`$env:ONECCHAT_PROGRAM_DATA='$pdLiteral'*") $decodedCommand
+ Assert 'start_propagates_parameterized_admission' ($decodedCommand -like "*`$env:ONECCHAT_ADMISSION_PATH='$admissionLiteral'*") $decodedCommand
+ Assert 'start_launch_escapes_helper_path' ($decodedCommand -like "*'$helperLiteral'*") $decodedCommand
+
  $op=Start-WorkerOperation -OperationType TEST -RequestedAction observability -TotalSteps 2 -ProgramDataRoot $pd
  $null=Update-WorkerOperation -Operation $op -Message Working -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $pd -Quiet
  $null=Complete-WorkerOperation -Operation $op -State PASS -Message Done -ProgramDataRoot $pd -Quiet

@@ -895,6 +895,17 @@ function Set-HelperEnrollmentSecret {
     }finally{if($b -ne [IntPtr]::Zero){[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b)};$plain=$null}
 }
 
+function New-HelperRunAsCommand {
+    param([Parameter(Mandatory)][string]$HelperPath,[Parameter(Mandatory)][string]$ProgramDataRoot)
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    $programDataLiteral=$ProgramDataRoot.Replace("'","''")
+    $admissionLiteral=$admissionPath.Replace("'","''")
+    $helperLiteral=$HelperPath.Replace("'","''")
+    $launchScript="`$env:ONECCHAT_PROGRAM_DATA='$programDataLiteral'; `$env:ONECCHAT_ADMISSION_PATH='$admissionLiteral'; & 'C:\Program Files\nodejs\node.exe' '$helperLiteral'"
+    $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($launchScript))
+    "powershell.exe -NoProfile -EncodedCommand $encoded"
+}
+
 function Start-WorkerAdmission {
     param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl)
     if(-not(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'))){throw 'REMOTE_AUTH_REQUIRED'}
@@ -903,7 +914,7 @@ function Start-WorkerAdmission {
     $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
     if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
     $runAs="$env:SystemRoot\System32\runas.exe"
-    $program='powershell.exe -NoProfile -Command "& ''C:\Program Files\nodejs\node.exe'' '''+$helper+''' "'
+    $program=New-HelperRunAsCommand -HelperPath $helper -ProgramDataRoot $ProgramDataRoot
     & $runAs "/profile" "/user:$env:COMPUTERNAME\$($script:ReaderName)" $program
     if($LASTEXITCODE -ne 0){throw "RUNAS_FAILED_OR_CANCELLED: $LASTEXITCODE"}
     [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId}
