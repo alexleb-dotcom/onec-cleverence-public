@@ -4,10 +4,11 @@ param(
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
  [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCChatWorker',[string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker',
- [string]$ReaderName='OneCSourceReader',[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
+ [string]$ReaderName='OneCSourceReader',[string]$OperatorIdentity,[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
  [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath
 )
 $ErrorActionPreference='Stop'
+if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
 $PackageRoot=$PSScriptRoot
 $InstalledCore=Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1'
 $PackageCore=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
@@ -23,7 +24,8 @@ function Is-Admin {
 function Require-AdminOrRelaunch {
  param([string]$RequestedMode)
  if(Is-Admin){return}
- $argsList=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode',$RequestedMode,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName,'-RelayUrl',$RelayUrl)
+ $argsList=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode',$RequestedMode,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName,'-OperatorIdentity',$OperatorIdentity,'-RelayUrl',$RelayUrl)
+ if(-not [string]::IsNullOrWhiteSpace($ProjectId)){$argsList+=@('-ProjectId',$ProjectId)}
  if($SkipDependencies){$argsList+='-SkipDependencies'}
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
  if($Json){$argsList+='-Json'}
@@ -168,7 +170,7 @@ function Run-Install {
   $null=Update-WorkerOperation -Operation $op -Message 'Checking prerequisites' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $pre=Invoke-Precheck
   $null=Update-WorkerOperation -Operation $op -Message 'Installing/reusing pinned dependencies, restricted worker identity, runtime and ACLs' -Step 2 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $install=Install-OneCChatWorker -PackageRoot $PackageRoot -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -SkipDependencies:$SkipDependencies
+  $install=Install-OneCChatWorker -PackageRoot $PackageRoot -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity -SkipDependencies:$SkipDependencies
   $null=Update-WorkerOperation -Operation $op -Message 'Verifying installed runtime and dependency health' -Step 3 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
   $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
@@ -288,6 +290,8 @@ function Run-Verify {
 }
 function Run-Repair {
  $projectKey=Need $ProjectId ProjectId
+ Require-AdminOrRelaunch 'REPAIR'
+ $null=Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
  $r=Invoke-ObservedAction -OperationType REPAIR -RequestedAction 'Bounded recover-first project repair' -TotalSteps 3 -Project $projectKey -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Classifying current state before repair; no blind replay' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot

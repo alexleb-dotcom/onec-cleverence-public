@@ -25,6 +25,7 @@ required = [
     "projects.example.json",
     "README.md",
     "tests/run_local_regression.ps1",
+    "tests/run_operator_acl_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -46,6 +47,7 @@ core = (PRODUCT / "core/OneCChatWorker.Core.psm1").read_text(encoding="utf-8")
 launcher = (PRODUCT / "OneCChatWorker.ps1").read_text(encoding="utf-8")
 readme = (PRODUCT / "README.md").read_text(encoding="utf-8")
 local_regression = (PRODUCT / "tests/run_local_regression.ps1").read_text(encoding="utf-8")
+operator_acl_regression = (PRODUCT / "tests/run_operator_acl_regression.ps1").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -81,6 +83,12 @@ rec("local_regression_covers_ripgrep_version_parser", all(t in local_regression 
 pid_assignment = re.compile(r"(?i)\$pid\s*=")
 rec("powershell_has_no_pid_local_assignments", not pid_assignment.search(launcher) and not pid_assignment.search(core), "no case-insensitive local assignment may collide with readonly automatic $PID")
 rec("local_regression_executes_launcher_lifecycle_ps51", all(t in local_regression for t in ["launcher_add_project_ps51", "launcher_add_participant_ps51", "launcher_set_main_ps51", "launcher_add_extension_ps51", "launcher_apply_ps51", "launcher_verify_ps51"]), "launcher lifecycle is exercised through powershell.exe, not only direct core calls")
+rec("operator_acl_owner_is_explicit", all(t in launcher for t in ["[string]$OperatorIdentity", "-OperatorIdentity", "OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name"]) and "Resolve-WorkerOperatorIdentity" in core and "operator_identity=$operatorAcl.operator_identity" in core, "normal operator identity is captured before elevation and persisted")
+rec("operator_acl_mutable_surfaces_bounded", all(t in core for t in ["function Set-WorkerOperatorAcl", "'operations'", "'provider'", "'runtime'", "$operatorM", "Protect-WorkerRuntimeFile"]), "operator Modify is limited to required mutable surfaces with protected runtime files")
+rec("operator_acl_restricted_surfaces_preserved", all(t in core for t in ["$operatorRx", "'helper'", "'product'", "'secrets'", "-Secret"]) and "operator_secret_read" in operator_acl_regression and "operator_binary_write_" in operator_acl_regression, "helper/product remain RX and helper secret is unreadable to operator")
+rec("repair_reconciles_operator_acl_before_journal", "Require-AdminOrRelaunch 'REPAIR'" in launcher and launcher.index("Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot") < launcher.index("Invoke-ObservedAction -OperationType REPAIR"), "REPAIR repairs ACL drift before operation journaling")
+rec("operator_acl_regression_runs_nonadmin_lifecycle", all(t in operator_acl_regression for t in ["RUN_PHASE_EXPECTS_NON_ADMIN","OPERATOR_PHASE_MUST_BE_NON_ADMIN","ADD_PROJECT","ADD_PARTICIPANT","SET_MAIN","ADD_EXTENSION","APPLY","VERIFY","Invoke-PostVerifyAclProof","OPERATION_JOURNAL_MISSING","READER_SOURCE_WRITE_RIGHT_PRESENT"]), "actual Windows PS5.1 regression covers elevated setup then non-admin operator lifecycle and negative ACL assertions")
+rec("operator_acl_regression_deterministic_start_write_gate", all(t in operator_acl_regression for t in ["New-Admission -ProjectId 'AclRegression' -TaskId 'acl-regression-task'","START_PROVIDER_CONFIG_WRITE_FAILED","START_ADMISSION_WRITE_FAILED","START_ADMISSION_CLEANUP_FAILED","RECOVER_POST_VERIFY"]) and "if($IncludeStart)" in operator_acl_regression, "deterministic gate proves non-admin START provider/runtime writes while interactive runas remains explicit opt-in")
 
 operation_tokens = [
     "Start-WorkerOperation",

@@ -820,8 +820,87 @@ function Ensure-PinnedDependencies {
     }
 }
 
+function Resolve-WorkerOperatorIdentity {
+    param([string]$OperatorIdentity)
+    if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
+    try{
+        $account=New-Object Security.Principal.NTAccount($OperatorIdentity)
+        $sid=$account.Translate([Security.Principal.SecurityIdentifier])
+    }catch{throw "OPERATOR_IDENTITY_INVALID: $OperatorIdentity"}
+    $readerAccount=New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$($script:ReaderName)")
+    try{$readerSid=$readerAccount.Translate([Security.Principal.SecurityIdentifier])}catch{throw "READER_IDENTITY_INVALID: $($script:ReaderName)"}
+    if($sid.Value -eq $readerSid.Value){throw 'OPERATOR_IDENTITY_MUST_DIFFER_FROM_READER'}
+    [pscustomobject]@{account=$account.Value;sid=$sid.Value;icacls_identity=('*'+$sid.Value);reader_sid=$readerSid.Value;reader_icacls_identity=('*'+$readerSid.Value)}
+}
+
+function Invoke-IcaclsChecked {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string[]]$Arguments)
+    & icacls.exe $Path @Arguments | Out-Null
+    if($LASTEXITCODE -ne 0){throw "ACL_REPAIR_FAILED: $Path"}
+}
+
+function Protect-WorkerRuntimeFile {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)]$Identity,[switch]$Secret)
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){return}
+    $grants=@('*S-1-5-18:F','*S-1-5-32-544:F')
+    if($Secret){$grants+=($Identity.reader_icacls_identity+':R')}
+    else{
+        $grants+=($Identity.icacls_identity+':RX')
+        $grants+=($Identity.reader_icacls_identity+':RX')
+    }
+    Invoke-IcaclsChecked -Path $Path -Arguments @('/reset')
+    Invoke-IcaclsChecked -Path $Path -Arguments @('/inheritance:r')
+    Invoke-IcaclsChecked -Path $Path -Arguments (@('/grant:r')+$grants)
+}
+
+function Set-WorkerOperatorAcl {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
+    $required=@($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'))
+    foreach($path in $required){if(-not(Test-Path -LiteralPath $path -PathType Container)){throw "ACL_REPAIR_ROOT_MISSING: $path"}}
+    $operations=Join-Path $ProgramDataRoot 'operations'
+    New-Item -ItemType Directory -Force -Path $operations|Out-Null
+
+    $system='*S-1-5-18:(OI)(CI)F'
+    $admins='*S-1-5-32-544:(OI)(CI)F'
+    $operatorM=$identity.icacls_identity+':(OI)(CI)M'
+    $operatorRx=$identity.icacls_identity+':(OI)(CI)RX'
+    $readerRx=$identity.reader_icacls_identity+':(OI)(CI)RX'
+    $readerM=$identity.reader_icacls_identity+':(OI)(CI)M'
+
+    Invoke-IcaclsChecked -Path $ProgramDataRoot -Arguments @('/inheritance:r','/grant:r',$system,$admins,($identity.icacls_identity+':(OI)(CI)RX'),($identity.reader_icacls_identity+':(OI)(CI)RX'))
+    Invoke-IcaclsChecked -Path $WorkerRoot -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path $operations -Arguments @('/grant:r',$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'provider') -Arguments @('/grant:r',$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'runtime') -Arguments @('/grant:r',$operatorM,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'audit') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'helper') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'product') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'secrets') -Arguments @('/inheritance:r','/grant:r','*S-1-5-18:F','*S-1-5-32-544:F',($identity.icacls_identity+':RX'),($identity.reader_icacls_identity+':RX'))
+
+    Protect-WorkerRuntimeFile -Path (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -Identity $identity -Secret
+
+    [pscustomobject]@{
+        status='PASS'
+        operator_identity=$identity.account
+        operator_sid=$identity.sid
+        mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'))
+        read_only=@((Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'product'))
+        secret=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
+        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'))
+    }
+}
+
 function Install-OneCChatWorker {
-    param([Parameter(Mandatory)][string]$PackageRoot,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[switch]$SkipDependencies)
+    param([Parameter(Mandatory)][string]$PackageRoot,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity,[switch]$SkipDependencies)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $packageCheck=Test-ProductPackageIntegrity $PackageRoot
     $deps=Ensure-PinnedDependencies -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -NoInstall:$SkipDependencies
@@ -849,12 +928,7 @@ function Install-OneCChatWorker {
         Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $WorkerRoot
     }
 
-    & icacls.exe $WorkerRoot /grant:r ($reader+':(RX)') | Out-Null
-    & icacls.exe $ProgramDataRoot /grant:r ($reader+':(RX)') | Out-Null
-    & icacls.exe (Join-Path $ProgramDataRoot 'provider') /grant:r ($reader+':(OI)(CI)(RX)') | Out-Null
-    & icacls.exe (Join-Path $ProgramDataRoot 'helper') /grant:r ($reader+':(OI)(CI)(RX)') | Out-Null
-    & icacls.exe (Join-Path $ProgramDataRoot 'runtime') /grant:r ($reader+':(OI)(CI)M') | Out-Null
-    & icacls.exe (Join-Path $ProgramDataRoot 'audit') /grant:r ($reader+':(OI)(CI)M') | Out-Null
+    $operatorAcl=Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
 
     $installedIntegrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
     $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
@@ -866,6 +940,8 @@ function Install-OneCChatWorker {
         program_data_root=$ProgramDataRoot
         reader_identity=$reader
         reader_action=$readerAction
+        operator_identity=$operatorAcl.operator_identity
+        operator_acl_status=$operatorAcl.status
         catalog_action=$catalogAction
         package_lock_sha256=$packageCheck.lock_sha256
         node_version=$deps.node.version
@@ -882,6 +958,7 @@ function Install-OneCChatWorker {
         package=$packageCheck
         dependencies=$deps
         reader=[pscustomobject]@{identity=$reader;action=$readerAction}
+        operator_acl=$operatorAcl
         catalog=[pscustomobject]@{path=(Get-CatalogPath $WorkerRoot);action=$catalogAction}
         components=$componentResults
         installed_integrity=$installedIntegrity
