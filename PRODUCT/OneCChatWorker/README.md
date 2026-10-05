@@ -70,6 +70,10 @@ ProjectManifest\project.json records the exact catalog SHA-256 used to generate 
 
 APPLY reports safe metadata for every artifact: operator source input path, participant/artifact identity, canonical target path, COPIED / REUSED / REPLACED_DETACHED / DEACTIVATED_DETACHED, and detached path when applicable.
 
+APPLY materialization is failure-atomic. Each artifact copy has an explicit CREATED -> COPYING -> VERIFIED -> COMMITTED staging lifecycle under the bounded WorkerRoot staging area. A failure before commit removes the incomplete stage where possible; if normal cleanup cannot complete, the residue is moved/classified under the project's Recovery\ApplyResidue area. VERIFY reports INCOMPLETE_APPLY_RESIDUE while such residue exists, and REPAIR resolves it before any APPLY replay. Residue cleanup does not delete a committed canonical Target, Detached evidence, Output, or the authoritative external Source.
+
+Durable operation receipts keep a stable error_class plus bounded safe error_message, error_phase, error_path and cleanup_status fields when available. Human operation-log timestamps are explicitly labeled UTC. Guided mode turns APPLY failures into localized FAIL / Reason / Stage / Cleanup / Next / Details guidance instead of exposing a raw PowerShell stack.
+
 External business Source is never edited. Copy/import is staged and hash-verified before promotion.
 
 ## Safe removal

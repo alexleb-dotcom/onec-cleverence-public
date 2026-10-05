@@ -28,6 +28,8 @@ required = [
     "tests/run_operator_acl_regression.ps1",
     "tests/run_guided_ui_regression.ps1",
     "tests/run_update_bootstrap_regression.ps1",
+    "tests/run_apply_failure_regression.ps1",
+    "tests/run_apply_quarantine_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -52,6 +54,8 @@ local_regression = (PRODUCT / "tests/run_local_regression.ps1").read_text(encodi
 operator_acl_regression = (PRODUCT / "tests/run_operator_acl_regression.ps1").read_text(encoding="utf-8")
 guided_ui_regression = (PRODUCT / "tests/run_guided_ui_regression.ps1").read_text(encoding="utf-8")
 update_bootstrap_regression = (PRODUCT / "tests/run_update_bootstrap_regression.ps1").read_text(encoding="utf-8")
+apply_failure_regression = (PRODUCT / "tests/run_apply_failure_regression.ps1").read_text(encoding="utf-8")
+apply_quarantine_regression = (PRODUCT / "tests/run_apply_quarantine_regression.ps1").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -97,6 +101,13 @@ rec("install_bootstrap_prefers_package_core", "$Mode -eq 'INSTALL' -and $Package
 rec("update_bootstrap_regression_reconstructs_version_skew", all(t in update_bootstrap_regression for t in ["New-StaleInstalledCore","STALE_CORE_RECONSTRUCTION_FAILED","PACKAGE_INSTALL_FAILED","installed_core_refreshed","installed_launcher_refreshed","installed_runtime_lock_refreshed"]), "Windows PS5.1 update regression makes installed core incompatible with -OperatorIdentity and proves package bootstrap refreshes exact package bytes")
 rec("update_bootstrap_regression_preserves_data_and_acl", all(t in update_bootstrap_regression for t in ["catalog_preserved","source_preserved","output_preserved","secret_preserved","worker_root_acl","operations_acl","provider_acl","runtime_acl","product_acl","helper_acl","secret_acl","idempotent_core"]), "version-skew update preserves data and #74 ACL ownership on isolated roots")
 rec("guided_update_failure_is_human_safe", all(t in launcher for t in ["The install/update package could not be verified.","Run INSTALL again from the complete current OneCChatWorker package; existing projects and data are retained.","PACKAGE_COMPONENT_HASH_MISMATCH|RUNTIME_LOCK_|INSTALLED_COMPONENT_HASH_MISMATCH"]), "guided install/update integrity failures map to actionable user-safe guidance")
+rec("apply_copy_is_failure_atomic", all(t in core for t in ["function Get-ApplyStageRoot","function Write-ApplyStageState","'CREATED','COPYING','VERIFIED','COMMITTED'","function Copy-ArtifactSafely","function Remove-ApplyStageTree","function Move-ApplyStageToQuarantine"]), "APPLY copy uses explicit stage lifecycle, bounded staging root and cleanup/quarantine")
+rec("apply_residue_is_recover_first", all(t in core for t in ["function Get-ApplyStageResidue","INCOMPLETE_APPLY_RESIDUE","ORPHAN_STAGE_PRESENT","APPLY_RESIDUE_REPAIR_REQUIRED","function Resolve-ApplyStageResidue","function Repair-WorkerProject"]), "VERIFY/APPLY/REPAIR classify and resolve incomplete APPLY residue before replay")
+rec("apply_failure_receipt_has_bounded_truth", all(t in core for t in ["error_message=$ErrorMessage","error_phase=$ErrorPhase","error_path=$ErrorPath","cleanup_status=$CleanupStatus","ConvertTo-BoundedDiagnosticText","[UTC]"]), "durable receipt keeps stable class plus bounded safe cause/phase/path/cleanup and labels human log UTC")
+rec("apply_failure_regression_covers_required_atomicity", all(t in apply_failure_regression for t in ["injected_apply_fails","failed_stage_cleaned","canonical_target_unchanged_after_midcopy_failure","manifest_unchanged_after_midcopy_failure","durable_error_class_stable","guided_ru_failure_localized","guided_english_fallback_actionable","verify_classifies_incomplete_apply_residue","repair_recover_first_reaches_ready","secret_not_in_operation_evidence","bounded_stage_root_avoids_guid_suffix_path_inflation"]), "Windows PS5.1 failure regression covers cleanup, immutable source/canonical state, diagnostics, localization, recover-first and long-path shape")
+rec("apply_cleanup_failure_routes_to_quarantine", all(t in core for t in ["if($cleanup.status -in @('CLEANED','CLEANED_LONG_PATH','ALREADY_ABSENT'))","Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $projectRoot","action=$q.status","quarantine_path=$q.quarantine_path"]), "cleanup failure deterministically routes to quarantine/classification rather than leaving residue beside canonical Target")
+rec("apply_quarantine_regression_covers_fallback_move", all(t in apply_quarantine_regression for t in ["quarantine_move_reports_quarantined","quarantine_under_project_recovery","quarantined_metadata_present","canonical_target_preserved","detached_evidence_preserved","authoritative_source_preserved"]), "separate bounded regression exercises the real quarantine move and preservation boundaries")
+rec("guided_apply_failure_is_localized_and_actionable", all(t in launcher for t in ["The managed project copy could not be created.","Incomplete temporary copy was cleaned.","Original XML export was not changed.","Reason: {0}","Stage: {0}","Cleanup: {0}","APPLY_RESIDUE_REPAIR_REQUIRED"]), "default guided APPLY failure replaces raw lifecycle output with localized FAIL/Reason/Stage/Cleanup/Next/Details guidance")
 
 operation_tokens = [
     "Start-WorkerOperation",
