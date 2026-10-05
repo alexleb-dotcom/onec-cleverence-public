@@ -17,8 +17,8 @@
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
     "runtime/hosted-helper.mjs": "82539ea5f08b0bdece0d8a7e1d1ebbe15263a276c2df7f1eb411e865199965cc",
     "core/OneCChatWorker.Core.psm1": "1a71f10a6497eaf8e2022e07065ceea32b4fecebe9ce0ed241f087146129b74a",
-    "OneCChatWorker.ps1": "5df36eae31e731b59e6dad0bca76fe115180d1d8bf5acf41d9bce4c0793949bb",
-    "README.md": "b5e90646cdb5731077517ebfaab7242562c095c4df7ef0de070d7363d321742a"
+    "OneCChatWorker.ps1": "2587be0e7034ef1f821620f3456213ccf603471feb8d78cd36ab7487a6121d45",
+    "README.md": "0b66e222f5f0dd8cefd42e84fe74bcd9df2813dc934266f44f0807a5305babde"
   },
   "hosted_mcp": {
     "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
