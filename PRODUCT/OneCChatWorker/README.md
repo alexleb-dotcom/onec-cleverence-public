@@ -29,6 +29,8 @@ Python is not a product runtime dependency. Cloudflare CLI / Wrangler is not a p
 
 The default restricted identity is OneCSourceReader; -ReaderName can select another safe local name. The worker root and ProgramData runtime root are parameterized as -WorkerRoot and -ProgramDataRoot.
 
+INSTALL captures the normal Windows operator identity before UAC elevation and reconciles ACLs idempotently. The operator receives Modify only on the managed WorkerRoot tree, operation journal, provider-config surface, and runtime admission surface. The installed launcher, provider integration binary, helper/product files, and runtime ripgrep binary remain read/execute only for the operator; the helper enrollment secret is not readable by the operator. REPAIR re-runs the same bounded ACL reconciliation before operation journaling.
+
 ### Remote authorization
 
 There is one unavoidable remote-auth checkpoint:

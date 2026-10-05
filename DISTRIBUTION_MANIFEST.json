@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 460,
+  "file_count": 461,
   "files": [
     {
       "path": ".gitattributes",
@@ -380,18 +380,18 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 33190,
-      "sha256": "e8e63ef8fa7a07e24da67bf221c49a3abf49a11ac908a56e07941a1dc3ccd3bb"
+      "size": 33664,
+      "sha256": "94a6a166b3a0f94c13279505139365fed354405b6aa4c49b3085e2c24031fc7a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
-      "size": 9698,
-      "sha256": "1965180e3fbb957dc4d6960670a2a727be993e109e4957a399ffabf7c82b2cf1"
+      "size": 10236,
+      "sha256": "820197bb22c5425d4115ff7379da50a7f68072cfe7944c5743b01502050a048a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 60902,
-      "sha256": "0b2430b183dec6942902ad9c0ac74a738ccd347a2bc7a9bc7fe66e671a483366"
+      "size": 66467,
+      "sha256": "1a71f10a6497eaf8e2022e07065ceea32b4fecebe9ce0ed241f087146129b74a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -401,7 +401,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 1564,
-      "sha256": "7a3e49e049c2251b901941114c871dcc6d37fb2b62953f479714ce196dacd550"
+      "sha256": "24666bbc7f2a89801d0544b6f3378463ab1a35cd27e9fbd42bd87ef57938610c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -417,6 +417,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
       "size": 14512,
       "sha256": "a099f5dfc834e16d73317f1545cd78999e3385e881603227ba44f6fe9a739033"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_operator_acl_regression.ps1",
+      "size": 11903,
+      "sha256": "04cc1dfb42c680f587d876558726091b4adf0a5e79f8663dd58a52bc9ae1d3c4"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -1865,8 +1870,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 10809,
-      "sha256": "c4d7422599296e7a81c710ece98831fa97106357fb7f3d8421a103f91d7a7597"
+      "size": 13148,
+      "sha256": "d87725c8fb5b6dc6c311a910ba8bc6b43a93dc026a0819945af41ffb4da4bd55"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2310,5 +2315,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "cf6983575cdbf3d74ff547929524f5930ec5f7a46af27cc01c87c31b30418a39"
+  "snapshot_digest": "a9e64a9e7caf9db8ed67e427292b9ebf6b965b2e514c14e74e55ec788a5be566"
 }
