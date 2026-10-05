@@ -380,13 +380,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 62678,
-      "sha256": "37ed900fa06e498995cef177b0a9611d3bb0f1199c2602b2b470c1010be4c620"
+      "size": 86763,
+      "sha256": "ba1e6534608ee067c3369878759cec2cf7056d8220dda881e0575e719ebc21ec"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
-      "size": 11578,
-      "sha256": "36775b28abd44dccef9c8e0c28f18a17553478d930128d05d34b1c34c2e1ae59"
+      "size": 11846,
+      "sha256": "b5e90646cdb5731077517ebfaab7242562c095c4df7ef0de070d7363d321742a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
@@ -401,7 +401,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 1564,
-      "sha256": "57c53cfe5dcd2bbf00bf115692c0a25e379756ed5e7a55a1062021d6645430b1"
+      "sha256": "cf1c36f6e83d8da6c08db74ea760ae4da80617aa35af9cb744ff1f996dbe67cc"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -415,8 +415,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_guided_ui_regression.ps1",
-      "size": 9970,
-      "sha256": "a583c418b0e57a5e69c343181997ea28ea5c639371cc7c9b125a25db2f5c2894"
+      "size": 13192,
+      "sha256": "d7c49c6b47d5156f9abbfdada864f6c6c19be047a4b5000a9d0f4050e728a7e7"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
@@ -1875,8 +1875,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 15308,
-      "sha256": "ca00937edd6e476aa37bc5814851439cb6ff5713023a4f98be4b506a60fe1447"
+      "size": 15910,
+      "sha256": "7c9223df1bbf639765ae1db7e9a5974172938bf19b035a9b61558c3630e145f6"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2320,5 +2320,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "23c145f5cdb90692964d5359c459ecb89eb0d227e660428287f5157d0f875865"
+  "snapshot_digest": "a8521664424c08bc25f69c0a91eed4a248e8ec5389115e55844b41252db4c799"
 }

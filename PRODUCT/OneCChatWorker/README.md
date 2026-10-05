@@ -8,6 +8,8 @@ Run OneCChatWorker.ps1.
 
 With no arguments it is the normal guided operator UI. It derives the current state from installed-state, local enrollment, projects.json, project verification and active-admission/helper state, then presents one recommended next action. A normal user does not need to know the internal ADD_PROJECT / ADD_PARTICIPANT / SET_MAIN / APPLY / VERIFY / START order.
 
+The default guided presentation follows Windows CurrentUICulture deterministically: ru-* cultures use Russian labels/help/errors, while other cultures use the canonical English fallback. Technical CLI modes and Advanced lifecycle/diagnostic wording remain unchanged.
+
 The default state path is: install -> connect ChatGPT -> add local project -> complete setup -> ready -> start work. When work is running, the default view offers status, stop and Output. Interrupted work is recover-first; reinstall is not the ordinary recovery recommendation.
 
 Add local project is a wizard. Every field explains what it is, why it is needed, the accepted format, an example, whether it is required, and a safe default when one can be derived. Type ? or help at a prompt to repeat the explanation. Invalid input is re-prompted in place without losing previous answers. Project/system/task technical ids are derived automatically in the guided view. Main and extension folders are validated immediately and must contain Configuration.xml directly in the selected root.

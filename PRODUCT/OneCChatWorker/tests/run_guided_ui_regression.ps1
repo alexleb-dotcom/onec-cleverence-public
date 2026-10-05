@@ -1,4 +1,4 @@
-param(
+﻿param(
  [string]$PackageRoot=(Split-Path -Parent $PSScriptRoot),
  [string]$ReaderName='OneCSourceReader'
 )
@@ -38,13 +38,27 @@ function New-Fixture([string]$Name,[bool]$WithSecret=$true){
  [pscustomobject]@{base=$base;worker=$w;pd=$pd}
 }
 function Run-Menu($Fixture,[string[]]$Lines,[string]$Name){
+ Run-MenuCulture $Fixture $Lines $Name 'en-US'
+}
+function Run-MenuCulture($Fixture,[string[]]$Lines,[string]$Name,[string]$CultureName){
  $input=Join-Path $Fixture.base ($Name+'.input.txt')
  $out=Join-Path $Fixture.base ($Name+'.out.txt')
  [IO.File]::WriteAllLines($input,$Lines,[Text.UTF8Encoding]::new($true))
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -Mode MENU -WorkerRoot $Fixture.worker -ProgramDataRoot $Fixture.pd -ReaderName $ReaderName -UiInputPath $input *> $out
- $ec=$LASTEXITCODE
- $text=Get-Content -LiteralPath $out -Raw -Encoding Default
- [pscustomobject]@{exit=$ec;text=$text;path=$out}
+ $oldUi=[Threading.Thread]::CurrentThread.CurrentUICulture
+ try{
+  [Threading.Thread]::CurrentThread.CurrentUICulture=New-Object Globalization.CultureInfo($CultureName)
+  try{
+   $captured=(& $launcher -Mode MENU -WorkerRoot $Fixture.worker -ProgramDataRoot $Fixture.pd -ReaderName $ReaderName -UiInputPath $input *>&1 | Out-String)
+   $ec=0
+  }catch{
+   $captured=(($_ | Out-String)+[Environment]::NewLine)
+   $ec=1
+  }
+ }finally{
+  [Threading.Thread]::CurrentThread.CurrentUICulture=$oldUi
+ }
+ Write-Utf8 $out $captured
+ [pscustomobject]@{exit=$ec;text=$captured;path=$out;culture=$CultureName}
 }
 function Assert-NoStack([string]$Name,[string]$Text){
  $bad=($Text -match '(?im)^\s*At .+OneCChatWorker\.ps1:' -or $Text -match 'CategoryInfo\s*:' -or $Text -match 'FullyQualifiedErrorId\s*:' -or $Text -match 'ScriptStackTrace')
@@ -141,6 +155,35 @@ try{
  Rec 'advanced_invalid_is_handled' ($r.exit -eq 0 -and $r.text -match 'FAIL: Unknown Advanced action') ''
  Rec 'advanced_invalid_session_survives' (([regex]::Matches($r.text,'State: Project ready')).Count -ge 2) ''
  Assert-NoStack 'advanced_invalid_no_stack' $r.text
+
+ $ru=New-Fixture 'locale-ru' $true
+ $ruMain=Join-Path $ru.base 'Main'
+ New-Export $ruMain 'LocaleRu'
+ $ruBad=Join-Path $ru.base 'missing'
+ $r=Run-MenuCulture $ru @('', '?','Локализация','','',$ruBad,$ruMain,'n','q','q') 'ru-guided' 'ru-RU'
+ Rec 'ru_culture_guided_exit' ($r.exit -eq 0) $r.text
+ Rec 'ru_guided_state_and_recommendation' ($r.text -match 'Состояние: Можно добавить первый проект' -and $r.text -match 'Рекомендуется: Добавить локальный проект') ''
+ Rec 'ru_field_label_localized' ($r.text -match 'Название проекта') ''
+ Rec 'ru_field_help_localized' ($r.text -match 'Что это:' -and $r.text -match 'Зачем:' -and $r.text -match 'Пример:' -and $r.text -match 'Обязательно:') ''
+ Rec 'ru_default_localized' ($r.text -match 'По умолчанию: Основная база 1С') ''
+ Rec 'ru_validation_error_localized' ($r.text -match 'FAIL: Такой папки не существует\.' -and $r.text -match 'Далее: исправьте «Папка основной конфигурации»; предыдущие ответы сохранены\.') ''
+ Rec 'ru_cancel_localized' ($r.text -match 'ОТМЕНЕНО: новые изменения настройки не были сохранены\.') ''
+ Rec 'ru_default_surface_not_english' ($r.text -notmatch 'State: Ready for first project' -and $r.text -notmatch '(?m)^Project name(?:\s|:)') ''
+ Assert-NoStack 'ru_localization_no_stack' $r.text
+
+ $fallback=New-Fixture 'locale-fallback' $true
+ $fallbackMain=Join-Path $fallback.base 'Main'
+ New-Export $fallbackMain 'LocaleFallback'
+ $fallbackBad=Join-Path $fallback.base 'missing'
+ $r=Run-MenuCulture $fallback @('', '?','Localization','','',$fallbackBad,$fallbackMain,'n','q','q') 'fallback-guided' 'de-DE'
+ Rec 'fallback_culture_guided_exit' ($r.exit -eq 0) $r.text
+ Rec 'english_fallback_state_and_recommendation' ($r.text -match 'State: Ready for first project' -and $r.text -match 'Recommended: Add local project') ''
+ Rec 'english_fallback_field_label' ($r.text -match '(?m)^Project name(?:\s|:)') ''
+ Rec 'english_fallback_field_help' ($r.text -match 'What:' -and $r.text -match 'Why\s*:' -and $r.text -match 'Example:' -and $r.text -match 'Required:') ''
+ Rec 'english_fallback_default' ($r.text -match 'Default: Основная база 1С') ''
+ Rec 'english_fallback_validation_error' ($r.text -match 'FAIL: That folder does not exist\.' -and $r.text -match 'Next: correct Main configuration folder; your previous answers are kept\.') ''
+ Rec 'unsupported_culture_does_not_use_ru_labels' ($r.text -notmatch 'Состояние: Можно добавить первый проект') ''
+ Assert-NoStack 'english_fallback_no_stack' $r.text
 
  $sourceHash=(Get-FileHash (Join-Path $main 'Configuration.xml') -Algorithm SHA256).Hash
  Rec 'external_source_unchanged' ($sourceHash -eq (Get-FileHash (Join-Path $main 'Configuration.xml') -Algorithm SHA256).Hash) ''
