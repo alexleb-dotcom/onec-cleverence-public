@@ -380,8 +380,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 32910,
-      "sha256": "b215e4a3de5d9c96bc49d01c63cc2b88151c9b9d86f99faa986539107330f9dd"
+      "size": 33190,
+      "sha256": "e8e63ef8fa7a07e24da67bf221c49a3abf49a11ac908a56e07941a1dc3ccd3bb"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 60814,
-      "sha256": "ed4350371f4380c7f58b5400580494347e374fed7341a60e8c56a8f4d981a4d4"
+      "size": 60902,
+      "sha256": "0b2430b183dec6942902ad9c0ac74a738ccd347a2bc7a9bc7fe66e671a483366"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -401,7 +401,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 1564,
-      "sha256": "5a21f3139de23cebd73de89f89ed2318dc361d517c80ec0b4da7a51a447ae148"
+      "sha256": "7a3e49e049c2251b901941114c871dcc6d37fb2b62953f479714ce196dacd550"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -415,8 +415,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
-      "size": 11731,
-      "sha256": "d8dadc54e1b10b8ac92307717144ddf05d19951c4f27de5e437df903dd9eb73a"
+      "size": 14512,
+      "sha256": "a099f5dfc834e16d73317f1545cd78999e3385e881603227ba44f6fe9a739033"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -1865,8 +1865,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 10183,
-      "sha256": "4c47a55940aaad8abc99f17f43e5dab56d287eb291305fe7789eaee8b2bba73a"
+      "size": 10809,
+      "sha256": "c4d7422599296e7a81c710ece98831fa97106357fb7f3d8421a103f91d7a7597"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2310,5 +2310,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "286004ab074eea4e9dd76372856686668a1d27e9cc1351f86b6447a15dfec149"
+  "snapshot_digest": "cf6983575cdbf3d74ff547929524f5930ec5f7a46af27cc01c87c31b30418a39"
 }

@@ -25,6 +25,29 @@ try{Get-RipgrepSemanticVersion 'ripgrep 15.2'|Out-Null;Fail 'rg_semver_parser_re
 try{Get-RipgrepSemanticVersion 'ripgrep 15.2.0 unexpected'|Out-Null;Fail 'rg_semver_parser_rejects_trailing_junk' 'unexpected success'}catch{if($_.Exception.Message -like 'RG_VERSION_OUTPUT_INVALID:*'){Pass 'rg_semver_parser_rejects_trailing_junk'}else{Fail 'rg_semver_parser_rejects_trailing_junk' $_.Exception.Message}}
 
 try{
+ $launcher=Join-Path (Split-Path -Parent $PSScriptRoot) 'OneCChatWorker.ps1'
+ $launcherWorker=Join-Path $root 'launcher-worker'
+ $launcherPd=Join-Path $root 'launcher-programdata'
+ New-Item -ItemType Directory -Force -Path $launcherPd|Out-Null
+ function Invoke-LauncherLifecycleStep {
+  param([Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string[]]$Arguments)
+  $output=@(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher @Arguments 2>&1)
+  $exit=$LASTEXITCODE
+  Assert $Name ($exit -eq 0) (($output|Out-String).Trim())
+  if($exit -ne 0){throw "LAUNCHER_LIFECYCLE_STEP_FAILED: $Name exit=$exit"}
+ }
+ Invoke-LauncherLifecycleStep 'launcher_add_project_ps51' @('-Mode','ADD_PROJECT','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo','-DisplayName','Launcher Demo')
+ Invoke-LauncherLifecycleStep 'launcher_edit_project_ps51' @('-Mode','EDIT_PROJECT','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo','-DisplayName','Launcher Demo edited')
+ Invoke-LauncherLifecycleStep 'launcher_add_participant_ps51' @('-Mode','ADD_PARTICIPANT','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo','-ParticipantId','launcher-ut','-Role','UT','-Platform','ONEC')
+ Invoke-LauncherLifecycleStep 'launcher_edit_participant_ps51' @('-Mode','EDIT_PARTICIPANT','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo','-ParticipantId','launcher-ut','-Role','Launcher role')
+ Invoke-LauncherLifecycleStep 'launcher_set_main_ps51' @('-Mode','SET_MAIN','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo','-ParticipantId','launcher-ut','-SourcePath',$main)
+ Invoke-LauncherLifecycleStep 'launcher_add_extension_ps51' @('-Mode','ADD_EXTENSION','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo','-ParticipantId','launcher-ut','-ExtensionId','launcher-ext','-SourcePath',$ext)
+ Invoke-LauncherLifecycleStep 'launcher_apply_ps51' @('-Mode','APPLY','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo')
+ Invoke-LauncherLifecycleStep 'launcher_verify_ps51' @('-Mode','VERIFY','-WorkerRoot',$launcherWorker,'-ProgramDataRoot',$launcherPd,'-ProjectId','LauncherDemo')
+ $launcherCatalog=Read-WorkerCatalog $launcherWorker
+ Assert 'launcher_lifecycle_catalog_ps51' ($launcherCatalog.projects[0].project_id -eq 'LauncherDemo' -and $launcherCatalog.projects[0].display_name -eq 'Launcher Demo edited' -and $launcherCatalog.projects[0].participants[0].role -eq 'Launcher role')
+ Assert 'launcher_lifecycle_manifest_ps51' (Test-Path -LiteralPath (Join-Path $launcherWorker 'LauncherDemo\ProjectManifest\project.json') -PathType Leaf)
+
  New-WorkerProject -ProjectId Demo -DisplayName Demo -WorkerRoot $worker|Out-Null
  Add-WorkerParticipant -ProjectId Demo -ParticipantId ut -Platform ONEC -Role UT -WorkerRoot $worker|Out-Null
  Edit-WorkerProject -ProjectId Demo -DisplayName 'Demo edited' -WorkerRoot $worker|Out-Null

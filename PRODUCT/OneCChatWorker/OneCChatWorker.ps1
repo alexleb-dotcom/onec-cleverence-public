@@ -183,132 +183,132 @@ function Run-Install {
  if($Json){Show-JsonValue $r}else{Write-Host '';Write-Host 'INSTALL result:';Write-Host ('  Installed state : {0}' -f $r.install.installed_state);Write-Host ('  Remote auth     : {0}' -f $(if($r.remote_auth_ready){'READY'}else{'WAITING_FOR_USER'}))}
 }
 function Run-AddProject {
- $pid=Need $ProjectId ProjectId
- $r=Invoke-ObservedAction -OperationType ADD_PROJECT -RequestedAction 'Add project to desired-state catalog' -TotalSteps 2 -Project $pid -Body {
+ $projectKey=Need $ProjectId ProjectId
+ $r=Invoke-ObservedAction -OperationType ADD_PROJECT -RequestedAction 'Add project to desired-state catalog' -TotalSteps 2 -Project $projectKey -Body {
   param($op)
-  $null=Update-WorkerOperation -Operation $op -Message ("Adding project '{0}' to projects.json" -f $pid) -Step 1 -Total 2 -State RUNNING -SafeDetails @{catalog=(Get-CatalogPath $WorkerRoot)} -ProgramDataRoot $ProgramDataRoot
-  $x=New-WorkerProject -ProjectId $pid -DisplayName $DisplayName -WorkerRoot $WorkerRoot
+  $null=Update-WorkerOperation -Operation $op -Message ("Adding project '{0}' to projects.json" -f $projectKey) -Step 1 -Total 2 -State RUNNING -SafeDetails @{catalog=(Get-CatalogPath $WorkerRoot)} -ProgramDataRoot $ProgramDataRoot
+  $x=New-WorkerProject -ProjectId $projectKey -DisplayName $DisplayName -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog updated; no Source bytes copied yet' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   $x
  }
  Show-Value $r
 }
 function Run-EditProject {
- $pid=Need $ProjectId ProjectId;$name=Need $DisplayName DisplayName
- $r=Invoke-ObservedAction -OperationType EDIT_PROJECT -RequestedAction 'Edit project display metadata in desired-state catalog' -TotalSteps 2 -Project $pid -Body {
+ $projectKey=Need $ProjectId ProjectId;$name=Need $DisplayName DisplayName
+ $r=Invoke-ObservedAction -OperationType EDIT_PROJECT -RequestedAction 'Edit project display metadata in desired-state catalog' -TotalSteps 2 -Project $projectKey -Body {
   param($op)
-  $null=Update-WorkerOperation -Operation $op -Message ("Updating project '{0}' display metadata" -f $pid) -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $x=Edit-WorkerProject -ProjectId $pid -DisplayName $name -WorkerRoot $WorkerRoot
+  $null=Update-WorkerOperation -Operation $op -Message ("Updating project '{0}' display metadata" -f $projectKey) -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $x=Edit-WorkerProject -ProjectId $projectKey -DisplayName $name -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog updated; APPLY required to refresh generated manifest metadata' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   $x
  }
  Show-Value $r
 }
 function Run-AddParticipant {
- $pid=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId
- $r=Invoke-ObservedAction -OperationType ADD_PARTICIPANT -RequestedAction 'Add participant to desired-state catalog' -TotalSteps 2 -Project $pid -Participant $part -Body {
+ $projectKey=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId
+ $r=Invoke-ObservedAction -OperationType ADD_PARTICIPANT -RequestedAction 'Add participant to desired-state catalog' -TotalSteps 2 -Project $projectKey -Participant $part -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message ("Adding participant '{0}' platform={1}" -f $part,$Platform) -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $x=Add-WorkerParticipant -ProjectId $pid -ParticipantId $part -Platform $Platform -Role $Role -WorkerRoot $WorkerRoot
+  $x=Add-WorkerParticipant -ProjectId $projectKey -ParticipantId $part -Platform $Platform -Role $Role -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog updated; APPLY required before runtime admission' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   $x
  }
  Show-Value $r
 }
 function Run-EditParticipant {
- $pid=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId
- $r=Invoke-ObservedAction -OperationType EDIT_PARTICIPANT -RequestedAction 'Edit participant role metadata in desired-state catalog' -TotalSteps 2 -Project $pid -Participant $part -Body {
+ $projectKey=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId
+ $r=Invoke-ObservedAction -OperationType EDIT_PARTICIPANT -RequestedAction 'Edit participant role metadata in desired-state catalog' -TotalSteps 2 -Project $projectKey -Participant $part -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message ("Updating participant '{0}' role metadata" -f $part) -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $x=Edit-WorkerParticipant -ProjectId $pid -ParticipantId $part -Role $Role -WorkerRoot $WorkerRoot
+  $x=Edit-WorkerParticipant -ProjectId $projectKey -ParticipantId $part -Role $Role -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog updated; participant id/platform and Source bytes unchanged' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   $x
  }
  Show-Value $r
 }
 function Run-SetMain {
- $pid=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId;$src=Need $SourcePath SourcePath
+ $projectKey=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId;$src=Need $SourcePath SourcePath
  $target="Participants/$part/Target/Main"
- $r=Invoke-ObservedAction -OperationType SET_MAIN -RequestedAction 'Set or replace Target Main source input' -TotalSteps 2 -Project $pid -Participant $part -Artifact main -Body {
+ $r=Invoke-ObservedAction -OperationType SET_MAIN -RequestedAction 'Set or replace Target Main source input' -TotalSteps 2 -Project $projectKey -Participant $part -Artifact main -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message ("Validating 1C Main input '{0}' -> '{1}'" -f $src,$target) -Step 1 -Total 2 -State RUNNING -SafeDetails @{source_input=$src;target_canonical_path=$target;replace_existing=[bool]$ReplaceExisting} -ProgramDataRoot $ProgramDataRoot
-  $x=Set-WorkerMain -ProjectId $pid -ParticipantId $part -SourcePath $src -ReplaceExisting:$ReplaceExisting -WorkerRoot $WorkerRoot
+  $x=Set-WorkerMain -ProjectId $projectKey -ParticipantId $part -SourcePath $src -ReplaceExisting:$ReplaceExisting -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog updated; authoritative external Source was not modified' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   $x
  }
  Show-Value $r
 }
 function Run-AddExtension {
- $pid=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId;$eid=Need $ExtensionId ExtensionId;$src=Need $SourcePath SourcePath
+ $projectKey=Need $ProjectId ProjectId;$part=Need $ParticipantId ParticipantId;$eid=Need $ExtensionId ExtensionId;$src=Need $SourcePath SourcePath
  $target="Participants/$part/Target/Extensions/$eid"
- $r=Invoke-ObservedAction -OperationType ADD_EXTENSION -RequestedAction 'Add extension source input' -TotalSteps 2 -Project $pid -Participant $part -Artifact $eid -Body {
+ $r=Invoke-ObservedAction -OperationType ADD_EXTENSION -RequestedAction 'Add extension source input' -TotalSteps 2 -Project $projectKey -Participant $part -Artifact $eid -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message ("Validating extension input '{0}' -> '{1}'" -f $src,$target) -Step 1 -Total 2 -State RUNNING -SafeDetails @{source_input=$src;target_canonical_path=$target;replace_existing=[bool]$ReplaceExisting} -ProgramDataRoot $ProgramDataRoot
-  $x=Add-WorkerExtension -ProjectId $pid -ParticipantId $part -ExtensionId $eid -SourcePath $src -ReplaceExisting:$ReplaceExisting -WorkerRoot $WorkerRoot
+  $x=Add-WorkerExtension -ProjectId $projectKey -ParticipantId $part -ExtensionId $eid -SourcePath $src -ReplaceExisting:$ReplaceExisting -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog updated; APPLY required; external Source retained' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   $x
  }
  Show-Value $r
 }
 function Run-Deactivate {
- $pid=Need $ProjectId ProjectId
+ $projectKey=Need $ProjectId ProjectId
  $artifact=if($Kind -eq 'EXTENSION'){$ExtensionId}elseif($Kind -eq 'PARTICIPANT'){$ParticipantId}else{$null}
- $r=Invoke-ObservedAction -OperationType DEACTIVATE -RequestedAction ("Deactivate {0}" -f $Kind) -TotalSteps 2 -Project $pid -Participant $ParticipantId -Artifact $artifact -Body {
+ $r=Invoke-ObservedAction -OperationType DEACTIVATE -RequestedAction ("Deactivate {0}" -f $Kind) -TotalSteps 2 -Project $projectKey -Participant $ParticipantId -Artifact $artifact -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message ("Deactivating logical {0}; authoritative external Source will not be deleted" -f $Kind) -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  Disable-WorkerCatalogItem -Kind $Kind -ProjectId $pid -ParticipantId $ParticipantId -ExtensionId $ExtensionId -WorkerRoot $WorkerRoot
+  Disable-WorkerCatalogItem -Kind $Kind -ProjectId $projectKey -ParticipantId $ParticipantId -ExtensionId $ExtensionId -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Catalog deactivated; APPLY will detach managed copy instead of deleting Source bytes' -Step 2 -Total 2 -State PASS -ProgramDataRoot $ProgramDataRoot
   Read-WorkerCatalog -WorkerRoot $WorkerRoot
  }
  Show-Value $r
 }
 function Run-Apply {
- $pid=Need $ProjectId ProjectId
- $r=Invoke-ObservedAction -OperationType APPLY -RequestedAction 'Apply desired-state catalog to canonical project tree' -TotalSteps 3 -Project $pid -Body {
+ $projectKey=Need $ProjectId ProjectId
+ $r=Invoke-ObservedAction -OperationType APPLY -RequestedAction 'Apply desired-state catalog to canonical project tree' -TotalSteps 3 -Project $projectKey -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Inspecting catalog/manifest state and planned canonical paths' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $before=try{Verify-WorkerProject -ProjectId $pid -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{status='APPLY_REQUIRED';reason=$_.Exception.Message}}
+  $before=try{Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{status='APPLY_REQUIRED';reason=$_.Exception.Message}}
   $null=Update-WorkerOperation -Operation $op -Message 'Applying catalog: copy/verify artifacts, detach replacements/deactivations, generate manifest and ACLs' -Step 2 -Total 3 -State RUNNING -SafeDetails @{before_status=$before.status;source_bytes_policy='external source immutable; managed replacements detached'} -ProgramDataRoot $ProgramDataRoot
-  $applied=Apply-WorkerProject -ProjectId $pid -WorkerRoot $WorkerRoot
+  $applied=Apply-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message ("Post-apply verification = {0}" -f $applied.status) -Step 3 -Total 3 -State $(if($applied.status -eq 'READY'){'PASS'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
   $applied
  } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='PASS';message='Catalog applied and project verified READY'}}else{[pscustomobject]@{state='FAIL';message=("APPLY completed with verification state "+$x.status)}}}
  Show-Value $r
 }
 function Run-Verify {
- $pid=Need $ProjectId ProjectId
- $r=Invoke-ObservedAction -OperationType VERIFY -RequestedAction 'Verify catalog, manifest, physical tree and hashes' -TotalSteps 2 -Project $pid -Body {
+ $projectKey=Need $ProjectId ProjectId
+ $r=Invoke-ObservedAction -OperationType VERIFY -RequestedAction 'Verify catalog, manifest, physical tree and hashes' -TotalSteps 2 -Project $projectKey -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Hashing canonical artifacts and checking catalog/manifest binding' -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $v=Verify-WorkerProject -ProjectId $pid -WorkerRoot $WorkerRoot
+  $v=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message ("Verification result = {0}" -f $v.status) -Step 2 -Total 2 -State $(if($v.status -eq 'READY'){'PASS'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
   $v
  } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='PASS';message='Project verification READY'}}else{[pscustomobject]@{state='FAIL';message=("Project verification "+$x.status)}}}
  Show-Value $r
 }
 function Run-Repair {
- $pid=Need $ProjectId ProjectId
- $r=Invoke-ObservedAction -OperationType REPAIR -RequestedAction 'Bounded recover-first project repair' -TotalSteps 3 -Project $pid -Body {
+ $projectKey=Need $ProjectId ProjectId
+ $r=Invoke-ObservedAction -OperationType REPAIR -RequestedAction 'Bounded recover-first project repair' -TotalSteps 3 -Project $projectKey -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Classifying current state before repair; no blind replay' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $before=Verify-WorkerProject -ProjectId $pid -WorkerRoot $WorkerRoot
+  $before=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message ("Repair policy for state {0}" -f $before.status) -Step 2 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $x=Repair-WorkerProject -ProjectId $pid -WorkerRoot $WorkerRoot
+  $x=Repair-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
   $null=Update-WorkerOperation -Operation $op -Message ("Repair verification = {0}" -f $x.status) -Step 3 -Total 3 -State $(if($x.status -eq 'READY'){'RECOVERED'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
   $x
  } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='RECOVERED';message='Bounded repair completed and project is READY'}}else{[pscustomobject]@{state='FAIL';message='Repair did not reach READY'}}}
  Show-Value $r
 }
 function Run-Start {
- $pid=Need $ProjectId ProjectId;$task=Need $TaskId TaskId
- $r=Invoke-ObservedAction -OperationType START -RequestedAction 'Start one bounded project/task admission' -TotalSteps 4 -Project $pid -Artifact $task -Body {
+ $projectKey=Need $ProjectId ProjectId;$task=Need $TaskId TaskId
+ $r=Invoke-ObservedAction -OperationType START -RequestedAction 'Start one bounded project/task admission' -TotalSteps 4 -Project $projectKey -Artifact $task -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Verifying selected project before admission' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $v=Verify-WorkerProject -ProjectId $pid -WorkerRoot $WorkerRoot
+  $v=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
   if($v.status -ne 'READY'){throw "PROJECT_NOT_READY: $($v.status)"}
-  $null=Update-WorkerOperation -Operation $op -Message ("Binding admission to project={0}, task={1}; no runtime project/task switching" -f $pid,$task) -Step 2 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $null=Update-WorkerOperation -Operation $op -Message ("Binding admission to project={0}, task={1}; no runtime project/task switching" -f $projectKey,$task) -Step 2 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Enter the local OneCSourceReader password in the Windows runas prompt' -Step 3 -Total 4 -State WAITING_FOR_USER -ProgramDataRoot $ProgramDataRoot
-  $start=Start-WorkerAdmission -ProjectId $pid -TaskId $task -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl
+  $start=Start-WorkerAdmission -ProjectId $projectKey -TaskId $task -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl
   $null=Update-WorkerOperation -Operation $op -Message 'Waiting for helper connection evidence' -Step 4 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $helper=$null
   for($i=0;$i -lt 10;$i++){
@@ -321,7 +321,7 @@ function Run-Start {
   param($x)
   if($x.helper.status -eq 'CONNECTED'){[pscustomobject]@{state='PASS';message='Bounded helper admission connected'}}else{[pscustomobject]@{state='WAITING_FOR_USER';message=("Helper start requested; connectivity state="+$x.helper.status+". Check STATUS/DIAGNOSTICS.")}}
  }
- if($Json){Show-JsonValue $r}else{Write-Host ('START: project={0} task={1} helper={2}' -f $pid,$task,$r.helper.status)}
+ if($Json){Show-JsonValue $r}else{Write-Host ('START: project={0} task={1} helper={2}' -f $projectKey,$task,$r.helper.status)}
 }
 function Run-Stop {
  Require-AdminOrRelaunch 'STOP'

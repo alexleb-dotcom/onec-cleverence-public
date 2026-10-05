@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import hashlib
 import json
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCT = ROOT / "PRODUCT" / "OneCChatWorker"
@@ -58,8 +59,8 @@ machine_user_marker = "c:" + "\\users\\" + "alexl"
 rec("helper_has_no_machine_specific_project", not any(t.lower() in helper.lower() for t in ["nendo", "w1-rp", "w1-ta", machine_user_marker]), "no pilot/user hardcodes")
 
 core_tokens = [
-    "Participants/$pid/Target/Main",
-    "Participants/$pid/Target/Extensions/$eid",
+    "Participants/$participantKey/Target/Main",
+    "Participants/$participantKey/Target/Extensions/$eid",
     "catalog_sha256",
     "DRIFT_APPLY_REQUIRED",
     "Detached",
@@ -77,6 +78,9 @@ rec("core_incomplete_onec_project_fails_closed", "ONEC_MAIN_REQUIRED" in core an
 rec("core_start_propagates_parameterized_runtime_root", all(t in core for t in ["New-HelperRunAsCommand", "ONECCHAT_PROGRAM_DATA", "ONECCHAT_ADMISSION_PATH", "EncodedCommand"]), "runas helper binds the admitted ProgramDataRoot and active-admission path")
 rec("core_ripgrep_version_parser_canonical", "function Get-RipgrepSemanticVersion" in core and core.count("Get-RipgrepSemanticVersion") >= 5 and "RG_VERSION_OUTPUT_INVALID" in core and "-replace '^ripgrep\\s+'" not in core, "one fail-closed parser owns ripgrep version extraction")
 rec("local_regression_covers_ripgrep_version_parser", all(t in local_regression for t in ["rg_semver_parser_revision_form", "ripgrep 15.2.0 (rev e89fff89ac)", "rg_semver_parser_rejects_incomplete", "rg_semver_parser_rejects_trailing_junk"]), "exact rev form plus malformed-output negatives")
+pid_assignment = re.compile(r"(?i)\$pid\s*=")
+rec("powershell_has_no_pid_local_assignments", not pid_assignment.search(launcher) and not pid_assignment.search(core), "no case-insensitive local assignment may collide with readonly automatic $PID")
+rec("local_regression_executes_launcher_lifecycle_ps51", all(t in local_regression for t in ["launcher_add_project_ps51", "launcher_add_participant_ps51", "launcher_set_main_ps51", "launcher_add_extension_ps51", "launcher_apply_ps51", "launcher_verify_ps51"]), "launcher lifecycle is exercised through powershell.exe, not only direct core calls")
 
 operation_tokens = [
     "Start-WorkerOperation",
