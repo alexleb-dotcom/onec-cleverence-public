@@ -10,6 +10,7 @@
 $ErrorActionPreference='Stop'
 if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
 $PackageRoot=$PSScriptRoot
+$script:LauncherScriptPath=$PSCommandPath
 $InstalledCore=Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1'
 $PackageCore=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
 $PackageCoreAvailable=Test-Path -LiteralPath $PackageCore -PathType Leaf
@@ -615,6 +616,13 @@ $script:GuidedRu=@{
  'Add one more extension?'='Добавить ещё одно расширение?'
  'Answer Yes to add another extension export, or No to continue.'='Ответьте Да, чтобы добавить ещё одно расширение, или Нет, чтобы продолжить.'
  'Building and checking the managed project copy...'='Создаю и проверяю управляемую копию проекта...'
+ 'Checking project structure and current state...'='Проверяю структуру проекта и текущее состояние...'
+ 'Building the managed project copy...'='Создаю управляемую копию проекта...'
+ 'This may take some time for large configurations.'='Для больших конфигураций это может занять некоторое время.'
+ 'Confirming the managed copy result...'='Проверяю результат создания управляемой копии...'
+ 'Checking files and checksums...'='Проверяю файлы и контрольные суммы...'
+ 'Done.'='Готово.'
+ 'Work continues... elapsed {0}'='Работа продолжается... прошло {0}'
  'The project did not reach Ready state.'='Проект не перешёл в состояние готовности.'
  'Next: choose Check and repair project from the guided menu.'='Далее: выберите «Проверить и восстановить проект» в основном меню.'
  'SUCCESS: Project is ready.'='УСПЕХ: проект готов.'
@@ -987,12 +995,116 @@ function Read-ProjectSetupAnswers {
  $a.main_already=$mainAlready
  [pscustomobject]$a
 }
+if($null -eq $script:GuidedProgressHeartbeatSeconds){$script:GuidedProgressHeartbeatSeconds=15.0}
+if($null -eq $script:GuidedProgressPollMilliseconds){$script:GuidedProgressPollMilliseconds=250}
+function ConvertTo-GuidedPsLiteral {
+ param([AllowNull()][string]$Value)
+ if($null -eq $Value){return "''"}
+ "'" + $Value.Replace("'","''") + "'"
+}
+function Format-GuidedElapsed {
+ param([TimeSpan]$Elapsed)
+ if($Elapsed.TotalHours -ge 1){return ('{0:00}:{1:00}:{2:00}' -f [int]$Elapsed.TotalHours,$Elapsed.Minutes,$Elapsed.Seconds)}
+ ('{0:00}:{1:00}' -f [int]$Elapsed.TotalMinutes,$Elapsed.Seconds)
+}
+function Write-GuidedProgressStage {
+ param([ValidateRange(1,5)][int]$Number,[Parameter(Mandatory)][string]$Label)
+ Write-Host ('[{0}/5] {1}' -f $Number,(T $Label))
+}
+function Write-GuidedProgressHeartbeat {
+ param([TimeSpan]$Elapsed)
+ Write-Host ('      '+((T 'Work continues... elapsed {0}') -f (Format-GuidedElapsed $Elapsed)))
+}
+function Start-GuidedLifecycleProcess {
+ param([Parameter(Mandatory)][ValidateSet('APPLY','VERIFY')][string]$Operation,[Parameter(Mandatory)][string]$ProjectKey)
+ $previous=$null
+ try{$previous=Get-CurrentWorkerOperation -ProgramDataRoot $ProgramDataRoot}catch{}
+ $parts=@(
+  ('& '+(ConvertTo-GuidedPsLiteral $script:LauncherScriptPath)),
+  ('-Mode '+(ConvertTo-GuidedPsLiteral $Operation)),
+  ('-WorkerRoot '+(ConvertTo-GuidedPsLiteral $WorkerRoot)),
+  ('-ProgramDataRoot '+(ConvertTo-GuidedPsLiteral $ProgramDataRoot)),
+  ('-ReaderName '+(ConvertTo-GuidedPsLiteral $ReaderName)),
+  ('-OperatorIdentity '+(ConvertTo-GuidedPsLiteral $OperatorIdentity)),
+  ('-RelayUrl '+(ConvertTo-GuidedPsLiteral $RelayUrl)),
+  ('-ProjectId '+(ConvertTo-GuidedPsLiteral $ProjectKey))
+ )
+ $command=$parts -join ' '
+ $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+ $token=[Guid]::NewGuid().ToString('N')
+ $stdout=Join-Path $env:TEMP ("OneCChatWorker-guided-$token.out.txt")
+ $stderr=Join-Path $env:TEMP ("OneCChatWorker-guided-$token.err.txt")
+ $process=Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand',$encoded) -RedirectStandardOutput $stdout -RedirectStandardError $stderr -NoNewWindow -PassThru
+ [pscustomobject]@{
+  process=$process
+  operation=$Operation
+  project_id=$ProjectKey
+  previous_operation_id=$(if($previous){[string]$previous.operation_id}else{$null})
+  stdout_path=$stdout
+  stderr_path=$stderr
+ }
+}
+function Wait-GuidedLifecycleProcess {
+ param([Parameter(Mandatory)]$Run)
+ $sw=[Diagnostics.Stopwatch]::StartNew()
+ $lastHeartbeat=0.0
+ $heartbeat=[Math]::Max(0.05,[double]$script:GuidedProgressHeartbeatSeconds)
+ $poll=[Math]::Max(10,[int]$script:GuidedProgressPollMilliseconds)
+ $copyStageShown=$false
+ try{
+  while(-not $Run.process.HasExited){
+   if($Run.operation -eq 'APPLY' -and -not $copyStageShown){
+    $op=$null
+    try{$op=Get-CurrentWorkerOperation -ProgramDataRoot $ProgramDataRoot}catch{}
+    if($op -and $op.operation_type -eq 'APPLY' -and $op.project_id -eq $Run.project_id -and [string]$op.operation_id -ne [string]$Run.previous_operation_id -and [int]$op.current_step -ge 2){
+     Write-GuidedProgressStage -Number 2 -Label 'Building the managed project copy...'
+     Write-Host ('      '+(T 'This may take some time for large configurations.'))
+     $copyStageShown=$true
+     $lastHeartbeat=$sw.Elapsed.TotalSeconds
+    }
+   }
+   if(($sw.Elapsed.TotalSeconds-$lastHeartbeat) -ge $heartbeat){
+    Write-GuidedProgressHeartbeat -Elapsed $sw.Elapsed
+    $lastHeartbeat=$sw.Elapsed.TotalSeconds
+   }
+   Start-Sleep -Milliseconds $poll
+   $Run.process.Refresh()
+  }
+  $Run.process.WaitForExit()
+  $terminal=$null
+  try{$terminal=Get-CurrentWorkerOperation -ProgramDataRoot $ProgramDataRoot}catch{}
+  $matched=$terminal -and $terminal.operation_type -eq $Run.operation -and $terminal.project_id -eq $Run.project_id -and [string]$terminal.operation_id -ne [string]$Run.previous_operation_id
+  if($Run.operation -eq 'APPLY' -and -not $copyStageShown -and $matched -and $terminal.state -eq 'PASS'){
+   Write-GuidedProgressStage -Number 2 -Label 'Building the managed project copy...'
+   Write-Host ('      '+(T 'This may take some time for large configurations.'))
+  }
+  $succeeded=$matched -and $terminal.state -in @('PASS','RECOVERED')
+  if(-not $succeeded){
+   $class=$(if($matched -and $terminal.error_class){[string]$terminal.error_class}else{'GUIDED_LIFECYCLE_FAILED'})
+   throw ("{0}: {1} exit={2}; see durable operation receipt" -f $class,$Run.operation,$Run.process.ExitCode)
+  }
+ } finally {
+  $sw.Stop()
+  Remove-Item -LiteralPath $Run.stdout_path,$Run.stderr_path -Force -ErrorAction SilentlyContinue
+ }
+}
+function Invoke-GuidedManagedProjectProgress {
+ param([Parameter(Mandatory)][string]$ProjectKey)
+ Write-GuidedProgressStage -Number 1 -Label 'Checking project structure and current state...'
+ $apply=Start-GuidedLifecycleProcess -Operation APPLY -ProjectKey $ProjectKey
+ Wait-GuidedLifecycleProcess -Run $apply
+ Write-GuidedProgressStage -Number 3 -Label 'Confirming the managed copy result...'
+ Write-GuidedProgressStage -Number 4 -Label 'Checking files and checksums...'
+ $verify=Start-GuidedLifecycleProcess -Operation VERIFY -ProjectKey $ProjectKey
+ Wait-GuidedLifecycleProcess -Run $verify
+ Write-GuidedProgressStage -Number 5 -Label 'Done.'
+}
+
 function Complete-GuidedProject {
  param([string]$ProjectKey)
  $script:ProjectId=$ProjectKey
  Write-Host ''
- Write-Host (T 'Building and checking the managed project copy...')
- $ok=Invoke-GuidedAction {Run-Apply;Run-Verify}
+ $ok=Invoke-GuidedAction -ShowOutput {Invoke-GuidedManagedProjectProgress -ProjectKey $ProjectKey}
  if(-not $ok){return $false}
  $v=try{Verify-WorkerProject -ProjectId $ProjectKey -WorkerRoot $WorkerRoot}catch{$null}
  if(-not $v -or $v.status -ne 'READY'){
