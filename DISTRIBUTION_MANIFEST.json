@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 60524,
-      "sha256": "9d196fc0fe6646cdf462f00915279256ec418d0e739a94e9a0edd9bff5d4c1e7"
+      "size": 60814,
+      "sha256": "ed4350371f4380c7f58b5400580494347e374fed7341a60e8c56a8f4d981a4d4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -401,7 +401,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 1564,
-      "sha256": "1411c09d89a065709b9fc2d852cc4cce7c779d854e5157b7a457adeefa323286"
+      "sha256": "5a21f3139de23cebd73de89f89ed2318dc361d517c80ec0b4da7a51a447ae148"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -415,8 +415,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
-      "size": 10892,
-      "sha256": "cdad288acaba573ed96e460f73aedec63005928ff62079944b05f4ae7fe44c4e"
+      "size": 11731,
+      "sha256": "d8dadc54e1b10b8ac92307717144ddf05d19951c4f27de5e437df903dd9eb73a"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -1865,8 +1865,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 9609,
-      "sha256": "607ee120cd1109fc23bbea4b66c03456bb69ae4c76205375901238e36efdbe4b"
+      "size": 10183,
+      "sha256": "4c47a55940aaad8abc99f17f43e5dab56d287eb291305fe7789eaee8b2bba73a"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2310,5 +2310,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "4616f823946b96a403efd770b73859573ca14193abcd2426aff69a4b98bfa83f"
+  "snapshot_digest": "286004ab074eea4e9dd76372856686668a1d27e9cc1351f86b6447a15dfec149"
 }

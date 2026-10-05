@@ -10,6 +10,14 @@ $script:NodeVersion = '26.7.0'
 $script:RgVersion = '15.2.0'
 $script:OperationLogMaxBytes = 2097152
 
+function Get-RipgrepSemanticVersion {
+    param([Parameter(Mandatory)][string]$VersionLine)
+    $line=$VersionLine.Trim()
+    $match=[regex]::Match($line,'^ripgrep\s+([0-9]+(?:\.[0-9]+){2})(?:\s+\(rev\s+[^)]+\))?$')
+    if(-not $match.Success){throw "RG_VERSION_OUTPUT_INVALID: $line"}
+    $match.Groups[1].Value
+}
+
 function Get-WorkerOperationRoot {
     param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
     $preferred=Join-Path $ProgramDataRoot 'operations'
@@ -563,7 +571,7 @@ function Get-WorkerDependencyHealth {
     $rgPath=Join-Path $ProgramDataRoot 'runtime\rg.exe'
     $rgVersion=$null
     if(Test-Path -LiteralPath $rgPath -PathType Leaf){
-        try{$rgVersion=(((& $rgPath --version|Select-Object -First 1)-replace '^ripgrep\s+','').Trim())}catch{}
+        try{$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}catch{}
     }
     [pscustomobject]@{
         node=[pscustomobject]@{required=$script:NodeVersion;actual=$nodeVersion;healthy=($nodeVersion -eq "v$($script:NodeVersion)")}
@@ -731,7 +739,7 @@ function Invoke-Precheck {
     $node=Get-Command node.exe -ErrorAction SilentlyContinue
     $winget=Get-Command winget.exe -ErrorAction SilentlyContinue
     $rg=Get-Command rg.exe -ErrorAction SilentlyContinue
-    [pscustomobject]@{powershell=$PSVersionTable.PSVersion.ToString();administrator=(Test-IsAdministrator);winget=[bool]$winget;node=$(if($node){(& $node.Source --version).Trim()}else{$null});node_required=$script:NodeVersion;rg=$(if($rg){((& $rg.Source --version|Select-Object -First 1)-replace '^ripgrep\s+','').Trim()}else{$null});rg_required=$script:RgVersion}
+    [pscustomobject]@{powershell=$PSVersionTable.PSVersion.ToString();administrator=(Test-IsAdministrator);winget=[bool]$winget;node=$(if($node){(& $node.Source --version).Trim()}else{$null});node_required=$script:NodeVersion;rg=$(if($rg){Get-RipgrepSemanticVersion ((& $rg.Source --version|Select-Object -First 1))}else{$null});rg_required=$script:RgVersion}
 }
 
 function Find-RipgrepExecutable {
@@ -783,7 +791,7 @@ function Ensure-PinnedDependencies {
 
     $rgPath=Find-RipgrepExecutable
     $rgVersion=$null
-    if($rgPath){$rgVersion=(((& $rgPath --version|Select-Object -First 1)-replace '^ripgrep\s+','').Trim())}
+    if($rgPath){$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}
     $rgAction='REUSED'
     if(-not $rgPath -or $rgVersion -ne [string]$rgSpec.version){
         if($NoInstall){throw "RG_REQUIRED_PIN_MISSING: $($rgSpec.version)"}
@@ -794,7 +802,7 @@ function Ensure-PinnedDependencies {
         $rgPath=Find-RipgrepExecutable
     }
     if(-not $rgPath){throw 'RG_NOT_FOUND_AFTER_INSTALL'}
-    $actualRg=(((& $rgPath --version|Select-Object -First 1)-replace '^ripgrep\s+','').Trim())
+    $actualRg=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))
     if($actualRg -ne [string]$rgSpec.version){throw "RG_VERSION_MISMATCH: $actualRg"}
     $rgHash=Get-Sha256File $rgPath
     if($rgHash -ne [string]$rgSpec.reference_sha256){throw "RG_HASH_MISMATCH: $rgHash"}

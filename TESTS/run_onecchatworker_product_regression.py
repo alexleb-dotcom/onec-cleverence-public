@@ -75,6 +75,8 @@ rec("core_safe_uninstall_is_runtime_only", "function Invoke-SafeUninstall" in co
 rec("core_catalog_manager_edit_remove_surface", all(t in core for t in ["function Edit-WorkerProject", "function Edit-WorkerParticipant", "'PROJECT','PARTICIPANT','MAIN','EXTENSION'", "REPLACED_DETACHED", "DEACTIVATED_DETACHED"]), "edit/deactivate/change summary")
 rec("core_incomplete_onec_project_fails_closed", "ONEC_MAIN_REQUIRED" in core and "NO_ACTIVE_PARTICIPANTS" in core, "verify blocks unusable admission")
 rec("core_start_propagates_parameterized_runtime_root", all(t in core for t in ["New-HelperRunAsCommand", "ONECCHAT_PROGRAM_DATA", "ONECCHAT_ADMISSION_PATH", "EncodedCommand"]), "runas helper binds the admitted ProgramDataRoot and active-admission path")
+rec("core_ripgrep_version_parser_canonical", "function Get-RipgrepSemanticVersion" in core and core.count("Get-RipgrepSemanticVersion") >= 5 and "RG_VERSION_OUTPUT_INVALID" in core and "-replace '^ripgrep\\s+'" not in core, "one fail-closed parser owns ripgrep version extraction")
+rec("local_regression_covers_ripgrep_version_parser", all(t in local_regression for t in ["rg_semver_parser_revision_form", "ripgrep 15.2.0 (rev e89fff89ac)", "rg_semver_parser_rejects_incomplete", "rg_semver_parser_rejects_trailing_junk"]), "exact rev form plus malformed-output negatives")
 
 operation_tokens = [
     "Start-WorkerOperation",

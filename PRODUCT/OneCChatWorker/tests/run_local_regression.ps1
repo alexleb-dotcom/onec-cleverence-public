@@ -19,6 +19,11 @@ function Pass($n,$d=''){$results.Add([pscustomobject]@{name=$n;status='PASS';det
 function Fail($n,$d){$results.Add([pscustomobject]@{name=$n;status='FAIL';detail=$d})}
 function Assert($name,[bool]$ok,$detail=''){if($ok){Pass $name $detail}else{Fail $name $detail}}
 
+Assert 'rg_semver_parser_revision_form' ((Get-RipgrepSemanticVersion 'ripgrep 15.2.0 (rev e89fff89ac)') -eq '15.2.0')
+Assert 'rg_semver_parser_plain_form' ((Get-RipgrepSemanticVersion 'ripgrep 15.2.0') -eq '15.2.0')
+try{Get-RipgrepSemanticVersion 'ripgrep 15.2'|Out-Null;Fail 'rg_semver_parser_rejects_incomplete' 'unexpected success'}catch{if($_.Exception.Message -like 'RG_VERSION_OUTPUT_INVALID:*'){Pass 'rg_semver_parser_rejects_incomplete'}else{Fail 'rg_semver_parser_rejects_incomplete' $_.Exception.Message}}
+try{Get-RipgrepSemanticVersion 'ripgrep 15.2.0 unexpected'|Out-Null;Fail 'rg_semver_parser_rejects_trailing_junk' 'unexpected success'}catch{if($_.Exception.Message -like 'RG_VERSION_OUTPUT_INVALID:*'){Pass 'rg_semver_parser_rejects_trailing_junk'}else{Fail 'rg_semver_parser_rejects_trailing_junk' $_.Exception.Message}}
+
 try{
  New-WorkerProject -ProjectId Demo -DisplayName Demo -WorkerRoot $worker|Out-Null
  Add-WorkerParticipant -ProjectId Demo -ParticipantId ut -Platform ONEC -Role UT -WorkerRoot $worker|Out-Null
