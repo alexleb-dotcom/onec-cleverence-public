@@ -166,9 +166,11 @@ try{
  Rec 'ru_field_label_localized' ($r.text -match 'Название проекта') ''
  Rec 'ru_field_help_localized' ($r.text -match 'Что это:' -and $r.text -match 'Зачем:' -and $r.text -match 'Пример:' -and $r.text -match 'Обязательно:') ''
  Rec 'ru_default_localized' ($r.text -match 'По умолчанию: Основная база 1С') ''
+ Rec 'ru_dynamic_default_prompt_localized' ($r.text -match 'Название системы / базы \[Основная база 1С\]') ''
+ Rec 'ru_yes_no_prompt_localized' ($r.text -match 'У этой базы есть XML-выгрузка расширения, которую нужно добавить\? \[д/Н\]') ''
  Rec 'ru_validation_error_localized' ($r.text -match 'FAIL: Такой папки не существует\.' -and $r.text -match 'Далее: исправьте «Папка основной конфигурации»; предыдущие ответы сохранены\.') ''
  Rec 'ru_cancel_localized' ($r.text -match 'ОТМЕНЕНО: новые изменения настройки не были сохранены\.') ''
- Rec 'ru_default_surface_not_english' ($r.text -notmatch 'State: Ready for first project' -and $r.text -notmatch '(?m)^Project name(?:\s|:)') ''
+ Rec 'ru_default_surface_not_english' ($r.text -notmatch 'State: Ready for first project' -and $r.text -notmatch '(?m)^Project name(?:\s|:)' -and $r.text -notmatch 'System / base name' -and $r.text -notmatch 'Does this base have an extension XML export') ''
  Assert-NoStack 'ru_localization_no_stack' $r.text
 
  $fallback=New-Fixture 'locale-fallback' $true

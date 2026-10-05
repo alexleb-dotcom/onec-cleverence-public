@@ -635,7 +635,7 @@ function Read-GuidedValue {
  Show-FieldHelp -Label $Label -What $What -Why $Why -Allowed $Allowed -Example $Example -Required:(-not $Optional) -Default $Default
  while($true){
   $suffix=if(-not [string]::IsNullOrWhiteSpace($Default)){" [$Default]"}else{''}
-  $value=[string](Read-Ui ($Label+$suffix))
+  $value=[string](Read-Ui ((T $Label)+$suffix))
   if($value -match '^(?i:\?|help)$'){Show-FieldHelp -Label $Label -What $What -Why $Why -Allowed $Allowed -Example $Example -Required:(-not $Optional) -Default $Default;continue}
   if([string]::IsNullOrWhiteSpace($value)){
    if(-not [string]::IsNullOrWhiteSpace($Default)){return $Default}
@@ -658,8 +658,8 @@ function Read-GuidedValue {
 function Read-GuidedYesNo {
  param([string]$Prompt,[bool]$DefaultNo=$true,[string]$Help='Answer yes or no.')
  while($true){
-  $suffix=if($DefaultNo){' [y/N]'}else{' [Y/n]'}
-  $v=[string](Read-Ui ($Prompt+$suffix))
+  $suffix=if((Get-GuidedLanguage) -eq 'ru'){if($DefaultNo){' [д/Н]'}else{' [Д/н]'}}else{if($DefaultNo){' [y/N]'}else{' [Y/n]'}}
+  $v=[string](Read-Ui ((T $Prompt)+$suffix))
   if($v -match '^(?i:\?|help)$'){Write-Host (T $Help);continue}
   if([string]::IsNullOrWhiteSpace($v)){return (-not $DefaultNo)}
   if($v -match '^(?i:y|yes|да|д)$'){return $true}

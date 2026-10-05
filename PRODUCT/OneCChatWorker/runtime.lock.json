@@ -17,7 +17,7 @@
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
     "runtime/hosted-helper.mjs": "82539ea5f08b0bdece0d8a7e1d1ebbe15263a276c2df7f1eb411e865199965cc",
     "core/OneCChatWorker.Core.psm1": "1a71f10a6497eaf8e2022e07065ceea32b4fecebe9ce0ed241f087146129b74a",
-    "OneCChatWorker.ps1": "ba1e6534608ee067c3369878759cec2cf7056d8220dda881e0575e719ebc21ec",
+    "OneCChatWorker.ps1": "5df36eae31e731b59e6dad0bca76fe115180d1d8bf5acf41d9bce4c0793949bb",
     "README.md": "b5e90646cdb5731077517ebfaab7242562c095c4df7ef0de070d7363d321742a"
   },
   "hosted_mcp": {
