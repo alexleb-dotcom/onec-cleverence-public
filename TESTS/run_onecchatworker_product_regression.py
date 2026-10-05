@@ -74,6 +74,7 @@ rec("core_helper_path_consistent", core.count(r"helper\hosted-helper.mjs") >= 4 
 rec("core_safe_uninstall_is_runtime_only", "function Invoke-SafeUninstall" in core and "authoritative_external_source_untouched=$true" in core and "reader_identity_retained=$true" in core, "runtime-only uninstall")
 rec("core_catalog_manager_edit_remove_surface", all(t in core for t in ["function Edit-WorkerProject", "function Edit-WorkerParticipant", "'PROJECT','PARTICIPANT','MAIN','EXTENSION'", "REPLACED_DETACHED", "DEACTIVATED_DETACHED"]), "edit/deactivate/change summary")
 rec("core_incomplete_onec_project_fails_closed", "ONEC_MAIN_REQUIRED" in core and "NO_ACTIVE_PARTICIPANTS" in core, "verify blocks unusable admission")
+rec("core_start_propagates_parameterized_runtime_root", all(t in core for t in ["New-HelperRunAsCommand", "ONECCHAT_PROGRAM_DATA", "ONECCHAT_ADMISSION_PATH", "EncodedCommand"]), "runas helper binds the admitted ProgramDataRoot and active-admission path")
 
 operation_tokens = [
     "Start-WorkerOperation",
