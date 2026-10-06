@@ -9,7 +9,10 @@ $core=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
 if(-not(Test-Path -LiteralPath $launcher -PathType Leaf)){throw 'GUIDED_PROGRESS_LAUNCHER_MISSING'}
 if(-not(Test-Path -LiteralPath $core -PathType Leaf)){throw 'GUIDED_PROGRESS_CORE_MISSING'}
 
-$root=Join-Path $env:TEMP ('OneCChatWorker-GuidedProgress-'+[guid]::NewGuid().ToString('N'))
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
+$scratch=New-OneCTestScratch -Purpose 'GuidedProgress'
+$root=$scratch.path
 $oldLocal=$env:LOCALAPPDATA
 $oldUi=[Threading.Thread]::CurrentThread.CurrentUICulture
 $results=New-Object Collections.Generic.List[object]
@@ -141,5 +144,5 @@ try{
 } finally {
  [Threading.Thread]::CurrentThread.CurrentUICulture=$oldUi
  $env:LOCALAPPDATA=$oldLocal
- Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+ Remove-OneCTestScratch -Path $root -RunId $scratch.run_id -Base $scratch.base|Out-Null
 }

@@ -38,6 +38,8 @@ required = [
     "tests/run_snapshot_fast_path_regression.ps1",
     "tests/local-quality-adapter-regression.mjs",
     "tests/run_local_quality_adapter_regression.ps1",
+    "tests/TestScratch.psm1",
+    "tests/run_test_scratch_hygiene_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -68,6 +70,8 @@ apply_failure_regression = (PRODUCT / "tests/run_apply_failure_regression.ps1").
 apply_quarantine_regression = (PRODUCT / "tests/run_apply_quarantine_regression.ps1").read_text(encoding="utf-8")
 guided_progress_regression = (PRODUCT / "tests/run_guided_progress_regression.ps1").read_text(encoding="utf-8")
 snapshot_fast_regression = (PRODUCT / "tests/run_snapshot_fast_path_regression.ps1").read_text(encoding="utf-8")
+test_scratch = (PRODUCT / "tests/TestScratch.psm1").read_text(encoding="utf-8")
+test_scratch_hygiene = (PRODUCT / "tests/run_test_scratch_hygiene_regression.ps1").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -89,6 +93,56 @@ rec("quality_adapter_exact_target_binding", all(t in resolver_block for t in ["M
 rec("quality_adapter_cache_invalidation_contract", all(t in helper+quality_adapter for t in ["reportBindingMatches","source_snapshot_id","manifest_sha256","confirming_read","input_closure","adapter_contract_version","upstream_commit","overlay_sha256","quality_targets","slice(0,2)"]), "bounded cache is exact-binding and closure freshness aware")
 rec("quality_adapter_source_drift_contract", "SOURCE_CHANGED_DURING_RUN" in quality_adapter and "state.quality_targets=[]" in helper and "materializeClosure" in quality_adapter, "closure-only sandbox plus post-run source drift discard")
 rec("quality_adapter_windows_regression_covers_contract", all(t in quality_windows_regression for t in ["LOCAL_QUALITY_WINDOWS_PS51_REGRESSION_PASS","quality_only_after_successful_source_read","source_search_never_runs_quality","start_fast_path_preserved","status_fast_path_preserved","admission_fast_path_preserved","source_drift_discards_cache"]), "actual Windows PS5.1 regression owner")
+
+scratch_scripts = {
+    "local": local_regression,
+    "guided_ui": guided_ui_regression,
+    "guided_progress": guided_progress_regression,
+    "apply_failure": apply_failure_regression,
+    "apply_quarantine": apply_quarantine_regression,
+    "snapshot_fast": snapshot_fast_regression,
+    "operator_acl": operator_acl_regression,
+    "update_bootstrap": update_bootstrap_regression,
+}
+scratch_text = "\\n".join(scratch_scripts.values())
+rec("test_scratch_owner_contract", all(t in test_scratch for t in [
+    r"Temp\OneCWT",
+    "ONEC_TEST_SCRATCH",
+    "OneCChatWorker.Tests",
+    ".onec-test-scratch.json",
+    "creator_process_start_utc",
+    "OWNED_STALE",
+    "SKIPPED_ACTIVE",
+    "SCRATCH_PATH_OUTSIDE_OWNER_ROOT",
+    "SCRATCH_MARKER_INVALID_OR_MISSING",
+    "Clear-StaleOneCTestScratch",
+]), "single marker-bound user-local test scratch owner with liveness + TTL")
+rec("test_scratch_owner_ps51_only", "pwsh" not in test_scratch.lower() and "powershell 7" not in test_scratch.lower(), "no PowerShell 7 dependency")
+rec("regressions_use_canonical_scratch_owner", all("TestScratch.psm1" in text and "New-OneCTestScratch" in text for text in scratch_scripts.values()), list(scratch_scripts))
+rec("regressions_have_no_bare_c_test_roots", r"C:\OneCChatWorker-" not in scratch_text and r"C:\ProgramData\OneCChatWorker-" not in scratch_text, "no persistent regression defaults")
+rec("regressions_have_no_adhoc_temp_run_roots", "$env:TEMP" not in scratch_text and "OneCChatWorker-GuidedUI-" not in scratch_text and "OneCChatWorker-ApplyFailure-" not in scratch_text, "run roots are canonical owner paths only")
+rec("hygiene_regression_covers_pass_fail_stale_foreign", all(t in test_scratch_hygiene for t in [
+    "TEST_SCRATCH_HYGIENE_REGRESSION_PASS",
+    "pass_cleanup_leaves_no_created_scratch",
+    "injected_fail_cleanup",
+    "interrupted_stale_classified",
+    "interrupted_stale_ttl_cleaned",
+    "active_scratch_not_ttl_deleted",
+    "similar_foreign_directory_not_deleted",
+    "invalid_marker_directory_not_deleted",
+]), "PS5.1 behavioral hygiene coverage")
+rec("hygiene_regression_protects_production_and_active_admission", all(t in test_scratch_hygiene for t in [
+    "production_worker_delete_rejected",
+    "production_programdata_delete_rejected",
+    "production_projects_untouched",
+    "production_installed_state_untouched",
+    "production_helper_file_untouched",
+    "production_active_admission_untouched",
+    "active_helper_process_untouched",
+    "no_new_bare_c_test_roots",
+    "no_new_persistent_programdata_test_roots",
+]), "production and active helper/admission are observation-only")
+rec("durable_task_checkpoints_not_scratch", r"OneCArchitecture\TaskCheckpoints" not in test_scratch and "task_checkpoints_outside_scratch_owner" in test_scratch_hygiene, "durable checkpoints remain outside disposable owner")
 machine_user_marker = "c:" + "\\users\\" + "alexl"
 rec("helper_has_no_machine_specific_project", not any(t.lower() in helper.lower() for t in ["nendo", "w1-rp", "w1-ta", machine_user_marker]), "no pilot/user hardcodes")
 

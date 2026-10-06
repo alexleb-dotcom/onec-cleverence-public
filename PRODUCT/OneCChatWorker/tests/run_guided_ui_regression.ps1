@@ -8,7 +8,10 @@ $launcher=Join-Path $PackageRoot 'OneCChatWorker.ps1'
 $core=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
 if(-not(Test-Path -LiteralPath $launcher -PathType Leaf)){throw 'GUIDED_UI_LAUNCHER_MISSING'}
 if(-not(Test-Path -LiteralPath $core -PathType Leaf)){throw 'GUIDED_UI_CORE_MISSING'}
-$root=Join-Path $env:TEMP ('OneCChatWorker-GuidedUI-'+[guid]::NewGuid().ToString('N'))
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
+$scratch=New-OneCTestScratch -Purpose 'GuidedUI'
+$root=$scratch.path
 $oldLocal=$env:LOCALAPPDATA
 $env:LOCALAPPDATA=Join-Path $root 'profile'
 New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA|Out-Null
@@ -193,4 +196,5 @@ try{
  Write-Output ("GUIDED_UI_REGRESSION_PASS checks={0} evidence_root={1}" -f $results.Count,$root)
 }finally{
  $env:LOCALAPPDATA=$oldLocal
+ Remove-OneCTestScratch -Path $root -RunId $scratch.run_id -Base $scratch.base|Out-Null
 }
