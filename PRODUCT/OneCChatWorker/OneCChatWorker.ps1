@@ -317,26 +317,38 @@ function Run-Deactivate {
 }
 function Run-Apply {
  $projectKey=Need $ProjectId ProjectId
- $r=Invoke-ObservedAction -OperationType APPLY -RequestedAction 'Apply desired-state catalog to canonical project tree' -TotalSteps 3 -Project $projectKey -Body {
+ $r=Invoke-ObservedAction -OperationType APPLY -RequestedAction 'Publish accepted managed Source snapshot from desired-state catalog' -TotalSteps 3 -Project $projectKey -Body {
   param($op)
-  $null=Update-WorkerOperation -Operation $op -Message 'Inspecting catalog/manifest state and planned canonical paths' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $before=try{Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{status='APPLY_REQUIRED';reason=$_.Exception.Message}}
-  $null=Update-WorkerOperation -Operation $op -Message 'Applying catalog: copy/verify artifacts, detach replacements/deactivations, generate manifest and ACLs' -Step 2 -Total 3 -State RUNNING -SafeDetails @{before_status=$before.status;source_bytes_policy='external source immutable; managed replacements detached'} -ProgramDataRoot $ProgramDataRoot
-  $applied=Apply-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
-  $null=Update-WorkerOperation -Operation $op -Message ("Post-apply verification = {0}" -f $applied.status) -Step 3 -Total 3 -State $(if($applied.status -eq 'READY'){'PASS'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
+  $null=Update-WorkerOperation -Operation $op -Message 'FAST_STATE_CHECK_V1: inspect catalog, manifest and bounded recovery state' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $before=try{Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='APPLY_REQUIRED';reason=$_.Exception.Message}}
+  $progressProgramDataRoot=[string]$ProgramDataRoot
+  $progress={
+   param($x)
+   $msg=("{0}: files={1}/{2} bytes={3}/{4}" -f $x.phase,$x.files_processed,$x.files_total,$x.bytes_processed,$x.bytes_total)
+   $null=Update-WorkerOperation -Operation $op -Message $msg -Step 2 -Total 3 -State RUNNING -SafeDetails @{phase=$x.phase;files_processed=$x.files_processed;files_total=$x.files_total;bytes_processed=$x.bytes_processed;bytes_total=$x.bytes_total} -ProgramDataRoot $progressProgramDataRoot -Quiet
+  }.GetNewClosure()
+  $null=Update-WorkerOperation -Operation $op -Message 'Publishing snapshot: SCAN -> COPY_HASH -> PUBLISH; Source remains immutable' -Step 2 -Total 3 -State RUNNING -SafeDetails @{before_state=$before.state;source_bytes_policy='one-pass source copy+hash; metadata-only stability recheck'} -ProgramDataRoot $ProgramDataRoot
+  $applied=Apply-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgressCallback $progress
+  $null=Update-WorkerOperation -Operation $op -Message ("Accepted snapshot state = {0}" -f $applied.state) -Step 3 -Total 3 -State $(if($applied.status -eq 'READY'){'PASS'}else{'FAIL'}) -SafeDetails @{source_snapshot_id=$applied.source_snapshot_id;manifest_sha256=$applied.manifest_sha256;publication_generation=$applied.publication_generation} -ProgramDataRoot $ProgramDataRoot
   $applied
- } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='PASS';message='Catalog applied and project verified READY'}}else{[pscustomobject]@{state='FAIL';message=("APPLY completed with verification state "+$x.status)}}}
+ } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='PASS';message='Accepted Source snapshot published READY'}}else{[pscustomobject]@{state='FAIL';message=("APPLY completed with state "+$x.status)}}}
  Show-Value $r
 }
 function Run-Verify {
  $projectKey=Need $ProjectId ProjectId
- $r=Invoke-ObservedAction -OperationType VERIFY -RequestedAction 'Verify catalog, manifest, physical tree and hashes' -TotalSteps 2 -Project $projectKey -Body {
+ $r=Invoke-ObservedAction -OperationType VERIFY -RequestedAction 'Explicit DEEP_INTEGRITY_VERIFY_V1 over accepted canonical Source snapshot' -TotalSteps 2 -Project $projectKey -Body {
   param($op)
-  $null=Update-WorkerOperation -Operation $op -Message 'Hashing canonical artifacts and checking catalog/manifest binding' -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $v=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
-  $null=Update-WorkerOperation -Operation $op -Message ("Verification result = {0}" -f $v.status) -Step 2 -Total 2 -State $(if($v.status -eq 'READY'){'PASS'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
+  $progressProgramDataRoot=[string]$ProgramDataRoot
+  $progress={
+   param($x)
+   $msg=("DEEP_VERIFY: artifact={0}/{1} files={2}/{3} bytes={4}/{5}" -f $x.artifact_index,$x.artifact_total,$x.files_processed,$x.files_total,$x.bytes_processed,$x.bytes_total)
+   $null=Update-WorkerOperation -Operation $op -Message $msg -Step 1 -Total 2 -State RUNNING -SafeDetails @{phase='DEEP_VERIFY';artifact_index=$x.artifact_index;artifact_total=$x.artifact_total;files_processed=$x.files_processed;files_total=$x.files_total;bytes_processed=$x.bytes_processed;bytes_total=$x.bytes_total} -ProgramDataRoot $progressProgramDataRoot -Quiet
+  }.GetNewClosure()
+  $null=Update-WorkerOperation -Operation $op -Message 'DEEP_VERIFY: full-content hash of canonical artifacts; this is intentionally a long explicit operation' -Step 1 -Total 2 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $v=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgressCallback $progress
+  $null=Update-WorkerOperation -Operation $op -Message ("Deep verification result = {0}" -f $v.status) -Step 2 -Total 2 -State $(if($v.status -eq 'READY'){'PASS'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
   $v
- } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='PASS';message='Project verification READY'}}else{[pscustomobject]@{state='FAIL';message=("Project verification "+$x.status)}}}
+ } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='PASS';message='Explicit deep integrity verification READY'}}else{[pscustomobject]@{state='FAIL';message=("Deep integrity verification "+$x.status)}}}
  Show-Value $r
 }
 function Run-Repair {
@@ -345,11 +357,16 @@ function Run-Repair {
  $null=Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
  $r=Invoke-ObservedAction -OperationType REPAIR -RequestedAction 'Bounded recover-first project repair' -TotalSteps 3 -Project $projectKey -Body {
   param($op)
-  $null=Update-WorkerOperation -Operation $op -Message 'Classifying current state before repair; no blind replay' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $before=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
-  $null=Update-WorkerOperation -Operation $op -Message ("Repair policy for state {0}" -f $before.status) -Step 2 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $x=Repair-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
-  $null=Update-WorkerOperation -Operation $op -Message ("Repair verification = {0}" -f $x.status) -Step 3 -Total 3 -State $(if($x.status -eq 'READY'){'RECOVERED'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
+  $null=Update-WorkerOperation -Operation $op -Message 'FAST_STATE_CHECK_V1: classify current state before repair; no blind replay' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $before=Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot
+  $null=Update-WorkerOperation -Operation $op -Message ("Repair policy for state {0}" -f $before.state) -Step 2 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $progressProgramDataRoot=[string]$ProgramDataRoot
+  $progress={
+   param($x)
+   $null=Update-WorkerOperation -Operation $op -Message ("{0}: files={1}/{2} bytes={3}/{4}" -f $x.phase,$x.files_processed,$x.files_total,$x.bytes_processed,$x.bytes_total) -Step 2 -Total 3 -State RUNNING -SafeDetails @{phase=$x.phase;files_processed=$x.files_processed;files_total=$x.files_total;bytes_processed=$x.bytes_processed;bytes_total=$x.bytes_total} -ProgramDataRoot $progressProgramDataRoot -Quiet
+  }.GetNewClosure()
+  $x=Repair-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -ProgressCallback $progress
+  $null=Update-WorkerOperation -Operation $op -Message ("Repair result = {0}; action = {1}" -f $x.status,$x.repair_action) -Step 3 -Total 3 -State $(if($x.status -eq 'READY'){'RECOVERED'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
   $x
  } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='RECOVERED';message='Bounded repair completed and project is READY'}}else{[pscustomobject]@{state='FAIL';message='Repair did not reach READY'}}}
  Show-Value $r
@@ -358,12 +375,12 @@ function Run-Start {
  $projectKey=Need $ProjectId ProjectId;$task=Need $TaskId TaskId
  $r=Invoke-ObservedAction -OperationType START -RequestedAction 'Start one bounded project/task admission' -TotalSteps 4 -Project $projectKey -Artifact $task -Body {
   param($op)
-  $null=Update-WorkerOperation -Operation $op -Message 'Verifying selected project before admission' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $v=Verify-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot
-  if($v.status -ne 'READY'){throw "PROJECT_NOT_READY: $($v.status)"}
-  $null=Update-WorkerOperation -Operation $op -Message ("Binding admission to project={0}, task={1}; no runtime project/task switching" -f $projectKey,$task) -Step 2 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $null=Update-WorkerOperation -Operation $op -Message 'FAST_STATE_CHECK_V1: binding admission to an accepted snapshot' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $v=Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot
+  if($v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
+  $null=Update-WorkerOperation -Operation $op -Message ("Binding admission to project={0}, task={1}, snapshot={2}; no runtime project/task switching" -f $projectKey,$task,$v.source_snapshot_id) -Step 2 -Total 4 -State RUNNING -SafeDetails @{source_snapshot_id=$v.source_snapshot_id;manifest_sha256=$v.manifest_sha256} -ProgramDataRoot $ProgramDataRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Enter the local OneCSourceReader password in the Windows runas prompt' -Step 3 -Total 4 -State WAITING_FOR_USER -ProgramDataRoot $ProgramDataRoot
-  $start=Start-WorkerAdmission -ProjectId $projectKey -TaskId $task -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl
+  $start=Start-WorkerAdmission -ProjectId $projectKey -TaskId $task -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $v
   $null=Update-WorkerOperation -Operation $op -Message 'Waiting for helper connection evidence' -Step 4 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $helper=$null
   for($i=0;$i -lt 10;$i++){
@@ -371,12 +388,12 @@ function Run-Start {
    if($helper.status -eq 'CONNECTED'){break}
    Start-Sleep -Seconds 1
   }
-  [pscustomobject]@{start=$start;helper=$helper}
+  [pscustomobject]@{start=$start;helper=$helper;source_snapshot_id=$v.source_snapshot_id;manifest_sha256=$v.manifest_sha256}
  } -FinalStateResolver {
   param($x)
   if($x.helper.status -eq 'CONNECTED'){[pscustomobject]@{state='PASS';message='Bounded helper admission connected'}}else{[pscustomobject]@{state='WAITING_FOR_USER';message=("Helper start requested; connectivity state="+$x.helper.status+". Check STATUS/DIAGNOSTICS.")}}
  }
- if($Json){Show-JsonValue $r}else{Write-Host ('START: project={0} task={1} helper={2}' -f $projectKey,$task,$r.helper.status)}
+ if($Json){Show-JsonValue $r}else{Write-Host ('START: project={0} task={1} helper={2} snapshot={3}' -f $projectKey,$task,$r.helper.status,$r.source_snapshot_id)}
 }
 function Run-Stop {
  if(Require-AdminOrRelaunch 'STOP'){return}
@@ -621,6 +638,7 @@ $script:GuidedRu=@{
  'This may take some time for large configurations.'='Для больших конфигураций это может занять некоторое время.'
  'Confirming the managed copy result...'='Проверяю результат создания управляемой копии...'
  'Checking files and checksums...'='Проверяю файлы и контрольные суммы...'
+ 'Checking accepted snapshot state...'='Проверяю состояние принятого снимка...'
  'Done.'='Готово.'
  'Work continues... elapsed {0}'='Работа продолжается... прошло {0}'
  'The project did not reach Ready state.'='Проект не перешёл в состояние готовности.'
@@ -902,11 +920,11 @@ function Get-GuidedContext {
  if(-not $parts.Count){return [pscustomobject]@{state='PROJECT_DRAFT';recommended='Complete project setup';project=$p;participant=$null;reason='Add the 1C system/base and its main XML export.'}}
  $part=$parts[0]
  if(-not $part.target.main -or $part.target.main.active -eq $false){return [pscustomobject]@{state='PROJECT_DRAFT';recommended='Complete project setup';project=$p;participant=$part;reason='The main 1C configuration folder is still missing.'}}
- $v=try{Verify-WorkerProject -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{status='FAIL';reason=$_.Exception.Message}}
- if($v.status -eq 'INCOMPLETE_APPLY_RESIDUE'){return [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='An incomplete managed copy from a previous apply was detected and must be cleaned before retry.';verification=$v}}
- if($v.status -in @('APPLY_REQUIRED','DRIFT_APPLY_REQUIRED')){return [pscustomobject]@{state='PROJECT_NEEDS_APPLY';recommended='Finish project setup';project=$p;participant=$part;reason='Setup answers are saved; the managed project copy must now be built and checked.';verification=$v}}
- if($v.status -eq 'READY'){return [pscustomobject]@{state='PROJECT_READY';recommended='Start work';project=$p;participant=$part;reason='The project is ready for a bounded ChatGPT task.';verification=$v}}
- [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='The managed project copy needs attention before work can start.';verification=$v}
+ $v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}}
+ if($v.state -eq 'INCOMPLETE_APPLY_RESIDUE'){return [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='An incomplete managed copy from a previous apply was detected and must be cleaned before retry.';verification=$v}}
+ if($v.state -in @('APPLY_REQUIRED','CATALOG_DRIFT','SNAPSHOT_ROOT_MISSING')){return [pscustomobject]@{state='PROJECT_NEEDS_APPLY';recommended='Finish project setup';project=$p;participant=$part;reason='Setup answers are saved; the managed project copy must now be built and checked.';verification=$v}}
+ if($v.state -eq 'ACCEPTED'){return [pscustomobject]@{state='PROJECT_READY';recommended='Start work';project=$p;participant=$part;reason='The project is ready for a bounded ChatGPT task.';verification=$v}}
+ [pscustomobject]@{state='PROJECT_NEEDS_VERIFY';recommended='Check and repair project';project=$p;participant=$part;reason='The accepted snapshot evidence needs an explicit repair or deep integrity check before work can start.';verification=$v}
 }
 function Get-GuidedStateLabel {
  param([string]$State)
@@ -1094,9 +1112,9 @@ function Invoke-GuidedManagedProjectProgress {
  $apply=Start-GuidedLifecycleProcess -Operation APPLY -ProjectKey $ProjectKey
  Wait-GuidedLifecycleProcess -Run $apply
  Write-GuidedProgressStage -Number 3 -Label 'Confirming the managed copy result...'
- Write-GuidedProgressStage -Number 4 -Label 'Checking files and checksums...'
- $verify=Start-GuidedLifecycleProcess -Operation VERIFY -ProjectKey $ProjectKey
- Wait-GuidedLifecycleProcess -Run $verify
+ Write-GuidedProgressStage -Number 4 -Label 'Checking accepted snapshot state...'
+ $fast=Get-FastProjectState -ProjectId $ProjectKey -WorkerRoot $WorkerRoot
+ if($fast.state -ne 'ACCEPTED'){throw ("PROJECT_NOT_READY: "+$fast.state)}
  Write-GuidedProgressStage -Number 5 -Label 'Done.'
 }
 
@@ -1106,8 +1124,8 @@ function Complete-GuidedProject {
  Write-Host ''
  $ok=Invoke-GuidedAction -ShowOutput {Invoke-GuidedManagedProjectProgress -ProjectKey $ProjectKey}
  if(-not $ok){return $false}
- $v=try{Verify-WorkerProject -ProjectId $ProjectKey -WorkerRoot $WorkerRoot}catch{$null}
- if(-not $v -or $v.status -ne 'READY'){
+ $v=try{Get-FastProjectState -ProjectId $ProjectKey -WorkerRoot $WorkerRoot}catch{$null}
+ if(-not $v -or $v.state -ne 'ACCEPTED'){
   Write-Host ("FAIL: {0}" -f (T 'The project did not reach Ready state.'))
   Write-Host (T 'Next: choose Check and repair project from the guided menu.')
   return $false
@@ -1263,7 +1281,7 @@ function Advanced-Menu {
   switch(Read-Ui 'Select'){
    '1' {Advanced-ProjectsMenu}
    '2' {Advanced-DiagnosticsMenu}
-   '3' {$script:ProjectId=Ask-Project;if($script:ProjectId){$null=Invoke-GuidedAction {Run-Verify};$v=try{Verify-WorkerProject -ProjectId $script:ProjectId -WorkerRoot $WorkerRoot}catch{$null};if($v -and $v.status -ne 'READY' -and (Read-GuidedYesNo -Prompt 'Run bounded recover-first repair?' -DefaultNo $true)){$null=Invoke-GuidedAction {Run-Repair}}}}
+   '3' {$script:ProjectId=Ask-Project;if($script:ProjectId){$null=Invoke-GuidedAction {Run-Verify};$v=try{Get-CurrentWorkerOperation -ProgramDataRoot $ProgramDataRoot}catch{$null};if($v -and $v.operation_type -eq 'VERIFY' -and $v.state -ne 'PASS' -and (Read-GuidedYesNo -Prompt 'Run bounded recover-first repair?' -DefaultNo $true)){$null=Invoke-GuidedAction {Run-Repair}}}}
    '4' {$plan=Get-UninstallPlan -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot;Write-Host 'Runtime-only uninstall retains catalog, project Source copies, Output, Detached, audit/logs and reader account.';@($plan.remove)|ForEach-Object{Write-Host ("  REMOVE  "+$_)};if((Read-Ui 'Proceed? type YES') -ceq 'YES'){$script:ConfirmUninstall=$true;$null=Invoke-GuidedAction {Run-Uninstall}}else{Write-Host 'CANCELLED: no changes made.'}}
    '0' {return}
    default {Write-Host 'FAIL: Unknown Advanced action. Choose one of the displayed numbers.'}

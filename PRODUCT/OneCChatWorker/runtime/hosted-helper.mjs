@@ -7,7 +7,7 @@ const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneC
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
 
 const admission = JSON.parse(await fsp.readFile(ADMISSION_PATH,'utf8'));
-if (admission.schema_version !== 1) throw new Error('ADMISSION_SCHEMA_UNSUPPORTED');
+if (![1,2].includes(admission.schema_version)) throw new Error('ADMISSION_SCHEMA_UNSUPPORTED');
 const PROJECT = String(admission.project_id || '');
 const TASK = String(admission.task_id || '');
 if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(PROJECT)) throw new Error('ADMISSION_PROJECT_INVALID');
@@ -26,8 +26,15 @@ if (typeof RELAY !== 'string' || !/^wss:\/\//.test(RELAY)) throw new Error('ADMI
 if (typeof MANIFEST_PATH !== 'string' || !MANIFEST_PATH) throw new Error('ADMISSION_MANIFEST_MISSING');
 
 const manifestText = await fsp.readFile(MANIFEST_PATH,'utf8');
+const manifestHash = crypto.createHash('sha256').update(Buffer.from(manifestText,'utf8')).digest('hex');
 const manifest = JSON.parse(manifestText);
 if (String(manifest.project_id) !== PROJECT) throw new Error('MANIFEST_PROJECT_MISMATCH');
+if (admission.schema_version === 2) {
+  if (manifest.schema_version !== 2 || !manifest.accepted_snapshot) throw new Error('SNAPSHOT_MANIFEST_INVALID');
+  if (admission.snapshot_contract !== 'ACCEPTED_SNAPSHOT_V1' || manifest.accepted_snapshot.snapshot_contract !== 'ACCEPTED_SNAPSHOT_V1') throw new Error('SNAPSHOT_CONTRACT_MISMATCH');
+  if (String(admission.manifest_sha256 || '') !== manifestHash) throw new Error('ADMISSION_MANIFEST_HASH_MISMATCH');
+  if (String(admission.source_snapshot_id || '') !== String(manifest.accepted_snapshot.source_snapshot_id || '')) throw new Error('ADMISSION_SOURCE_SNAPSHOT_MISMATCH');
+}
 
 const normalizePath = p => String(p).replaceAll('\\','/').replace(/^\/+|\/+$/g,'');
 const safeArtifact = p => {
@@ -78,8 +85,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function log(x){await fsp.appendFile(LOG_PATH,JSON.stringify({at_utc:new Date().toISOString(),...x})+'\n','utf8').catch(()=>{});}
 async function saveState(s){const t=STATE_PATH+'.tmp';await fsp.writeFile(t,JSON.stringify(s,null,2),'utf8');await fsp.rename(t,STATE_PATH);}
-const manifestHash=sha256(Buffer.from(manifestText,'utf8'));
-const SNAPSHOT = admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8'));
+const SNAPSHOT = admission.schema_version === 2
+  ? String(admission.source_snapshot_id)
+  : (admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8')));
 async function loadState(){
   try{
     const s=JSON.parse(await fsp.readFile(STATE_PATH,'utf8'));
