@@ -95,21 +95,21 @@ try{
   (T 'Checking project structure and current state...'),
   (T 'Building the managed project copy...'),
   (T 'Confirming the managed copy result...'),
-  (T 'Checking files and checksums...'),
+  (T 'Checking accepted snapshot state...'),
   (T 'Done.')
  )
  Assert-OrderedStages 'ru_order' $ru.text $ruLabels
- Rec 'ru_stage_labels_are_localized' (($ruLabels|Where-Object{$_ -in @('Checking project structure and current state...','Building the managed project copy...','Confirming the managed copy result...','Checking files and checksums...','Done.')}).Count -eq 0) ($ruLabels -join ' | ')
+ Rec 'ru_stage_labels_are_localized' (($ruLabels|Where-Object{$_ -in @('Checking project structure and current state...','Building the managed project copy...','Confirming the managed copy result...','Checking accepted snapshot state...','Done.')}).Count -eq 0) ($ruLabels -join ' | ')
  Assert-Heartbeat 'ru_liveness_heartbeat' $ru.text (T 'Work continues... elapsed {0}')
  Rec 'ru_large_config_hint_localized' ($ru.text.Contains((T 'This may take some time for large configurations.')) -and -not $ru.text.Contains('This may take some time for large configurations.')) ''
  Rec 'ru_progress_has_no_fake_percent' ($ru.text -notmatch '\b\d{1,3}%\b') ''
  Rec 'ru_progress_hides_technical_lifecycle_spam' ($ru.text -notmatch 'Inspecting catalog/manifest|Applying catalog:|Post-apply verification|Hashing canonical artifacts|Verification result =|APPLY result|VERIFY:') $ru.text
- Rec 'ru_project_ready_after_progress' ((Verify-WorkerProject -ProjectId $ruFixture.id -WorkerRoot $ruFixture.worker).status -eq 'READY') ''
+ Rec 'ru_project_ready_after_progress' ((Get-FastProjectState -ProjectId $ruFixture.id -WorkerRoot $ruFixture.worker).state -eq 'ACCEPTED') ''
  $ruHistory=@(Get-Content (Join-Path $ruFixture.pd 'operations\history.jsonl') -Encoding UTF8|ForEach-Object{$_|ConvertFrom-Json})
  $ruApply=@($ruHistory|Where-Object operation_type -eq 'APPLY')[-1]
- $ruVerify=@($ruHistory|Where-Object operation_type -eq 'VERIFY')[-1]
+ $ruVerify=@($ruHistory|Where-Object operation_type -eq 'VERIFY')
  Rec 'durable_apply_semantics_unchanged' ($ruApply.total_steps -eq 3 -and $ruApply.state -eq 'PASS') ($ruApply|ConvertTo-Json -Compress)
- Rec 'durable_verify_semantics_unchanged' ($ruVerify.total_steps -eq 2 -and $ruVerify.state -eq 'PASS') ($ruVerify|ConvertTo-Json -Compress)
+ Rec 'guided_does_not_run_deep_verify' ($ruVerify.Count -eq 0) ($ruVerify|ConvertTo-Json -Compress)
 
  $enFixture=New-ProgressFixture 'progress-en'
  $en=Invoke-ProgressFixture $enFixture 'de-DE'
@@ -117,7 +117,7 @@ try{
   'Checking project structure and current state...',
   'Building the managed project copy...',
   'Confirming the managed copy result...',
-  'Checking files and checksums...',
+  'Checking accepted snapshot state...',
   'Done.'
  )
  Assert-OrderedStages 'en_order' $en.text $enLabels
@@ -126,14 +126,14 @@ try{
  Rec 'english_fallback_does_not_use_ru_stage1' (-not $en.text.Contains($ruLabels[0])) ''
  Rec 'en_progress_has_no_fake_percent' ($en.text -notmatch '\b\d{1,3}%\b') ''
  Rec 'en_progress_hides_technical_lifecycle_spam' ($en.text -notmatch 'Inspecting catalog/manifest|Applying catalog:|Post-apply verification|Hashing canonical artifacts|Verification result =|APPLY result|VERIFY:') $en.text
- Rec 'en_project_ready_after_progress' ((Verify-WorkerProject -ProjectId $enFixture.id -WorkerRoot $enFixture.worker).status -eq 'READY') ''
+ Rec 'en_project_ready_after_progress' ((Get-FastProjectState -ProjectId $enFixture.id -WorkerRoot $enFixture.worker).state -eq 'ACCEPTED') ''
 
  $launcherText=Get-Content -LiteralPath $launcher -Raw -Encoding UTF8
  $progressStart=$launcherText.IndexOf('function Start-GuidedLifecycleProcess')
  $progressEnd=$launcherText.IndexOf('function Complete-GuidedProject')
  $progressBlock=$launcherText.Substring($progressStart,$progressEnd-$progressStart)
  Rec 'progress_polls_receipt_not_source_tree' ($progressBlock -match 'Get-CurrentWorkerOperation' -and $progressBlock -notmatch 'Get-TreeDigest|Get-ChildItem.+-Recurse|Measure-Object.+Length') 'presentation may poll only durable operation receipt/process state'
- Rec 'progress_reuses_cli_apply_verify' ($progressBlock -match "ValidateSet\('APPLY','VERIFY'\)" -and $progressBlock -match '-Mode ' -and $progressBlock -match '-ProjectId ') ''
+ Rec 'progress_reuses_cli_apply_then_fast_state' ($progressBlock -match "ValidateSet\('APPLY','VERIFY'\)" -and $progressBlock -match '-Mode ' -and $progressBlock -match '-ProjectId ' -and $progressBlock -match 'Get-FastProjectState' -and $progressBlock -notmatch 'Verify-WorkerProject') ''
  Rec 'progress_failure_uses_guided_failure_boundary' ($launcherText -match 'Invoke-GuidedAction -ShowOutput \{Invoke-GuidedManagedProjectProgress' -and $launcherText -match 'Show-GuidedFailure') ''
  Rec 'accepted_apply_failure_contract_retained' ($launcherText -match 'FAIL: \{0\}' -and $launcherText -match 'Reason: \{0\}' -and $launcherText -match 'Stage: \{0\}' -and $launcherText -match 'Cleanup: \{0\}' -and $launcherText -match 'Details: operation \{0\}; Advanced > Diagnostics') ''
 

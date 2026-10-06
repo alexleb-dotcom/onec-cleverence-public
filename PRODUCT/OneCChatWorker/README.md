@@ -6,7 +6,7 @@ This directory contains the 1C-first turnkey OneCChatWorker product defined by c
 
 Run OneCChatWorker.ps1.
 
-With no arguments it is the normal guided operator UI. It derives the current state from installed-state, local enrollment, projects.json, project verification and active-admission/helper state, then presents one recommended next action. A normal user does not need to know the internal ADD_PROJECT / ADD_PARTICIPANT / SET_MAIN / APPLY / VERIFY / START order.
+With no arguments it is the normal guided operator UI. It derives the current state from installed-state, local enrollment, projects.json, the bounded accepted-snapshot state check, and active-admission/helper state, then presents one recommended next action. A normal user does not need to know the internal ADD_PROJECT / ADD_PARTICIPANT / SET_MAIN / APPLY / VERIFY / START order.
 
 The default guided presentation follows Windows CurrentUICulture deterministically: ru-* cultures use Russian labels/help/errors, while other cultures use the canonical English fallback. Technical CLI modes and Advanced lifecycle/diagnostic wording remain unchanged.
 
@@ -16,9 +16,9 @@ The default state path is: install -> connect ChatGPT -> add local project -> co
 
 Add local project is a wizard. Every field explains what it is, why it is needed, the accepted format, an example, whether it is required, and a safe default when one can be derived. Type ? or help at a prompt to repeat the explanation. Invalid input is re-prompted in place without losing previous answers. Project/system/task technical ids are derived automatically in the guided view. Main and extension folders are validated immediately and must contain Configuration.xml directly in the selected root.
 
-Before setup is committed, the wizard shows a plain-language summary with Confirm, Back/Edit and Cancel. Setup can resume from an existing draft without replaying already-completed project/system steps. The guided completion action still records APPLY and VERIFY as separate durable internal operations while presenting them as one human step.
+Before setup is committed, the wizard shows a plain-language summary with Confirm, Back/Edit and Cancel. Setup can resume from an existing draft without replaying already-completed project/system steps. The guided completion action records APPLY as the durable publication operation and then confirms readiness with FAST_STATE_CHECK_V1. It does not run an implicit deep VERIFY; explicit VERIFY remains available under Advanced.
 
-Guided project completion now exposes five plain-language stages over those same durable APPLY/VERIFY operations. The presentation polls only the existing operation receipt/process state and emits elapsed-time heartbeats while a stage is still running; it does not calculate a fake percentage and does not add a second full-tree scan for UI progress. Russian ru-* and canonical English fallback use the same stage order. Advanced and direct CLI APPLY/VERIFY output/semantics remain unchanged.
+Guided project completion exposes five plain-language stages over the durable APPLY publication plus a bounded accepted-snapshot state check. The presentation polls only the existing operation receipt/process state and emits elapsed-time heartbeats while a stage is still running; it does not calculate a fake percentage, run implicit deep VERIFY, or add a second full-tree scan for UI progress. Russian ru-* and canonical English fallback use the same stage order. Advanced explicit VERIFY remains the long full-integrity operation.
 
 Expected user-input failures in the default UI are shown as FAIL / Next / Details guidance rather than uncaught PowerShell stack traces. Full technical lifecycle controls, raw operation details, diagnostics and manual APPLY/VERIFY remain available under Advanced.
 
@@ -68,29 +68,29 @@ Each applied project receives generated normalized runtime state at:
 
 For ordinary unpacked 1C exports the artifact directory is the source root. There is no Main\Main or <extension-id>\<extension-id> wrapper.
 
-ProjectManifest\project.json records the exact catalog SHA-256 used to generate it. Catalog/manifest mismatch is DRIFT_APPLY_REQUIRED; runtime never silently guesses desired state.
+ProjectManifest\project.json records the exact catalog SHA-256 used to generate it. Manifest schema v2 also records ACCEPTED_SNAPSHOT_V1 identity: deterministic source_snapshot_id, publication generation, per-artifact P/P/A identity, canonical path, files/bytes/tree SHA-256, Configuration.xml SHA-256, proof basis, and subordinate fingerprint-inventory identity/state. Catalog/manifest mismatch is a fail-closed CATALOG_DRIFT state; runtime never silently guesses desired state. A qualifying v1 manifest can be adopted to v2 from durable post-publication READY/RECOVERED evidence without recopying or re-hashing the artifact tree; insufficient evidence returns DEEP_VERIFY_REQUIRED.
 
 APPLY reports safe metadata for every artifact: operator source input path, participant/artifact identity, canonical target path, COPIED / REUSED / REPLACED_DETACHED / DEACTIVATED_DETACHED, and detached path when applicable.
 
-APPLY materialization is failure-atomic. Each artifact copy has an explicit CREATED -> COPYING -> VERIFIED -> COMMITTED staging lifecycle under the bounded WorkerRoot staging area. A failure before commit removes the incomplete stage where possible; if normal cleanup cannot complete, the residue is moved/classified under the project's Recovery\ApplyResidue area. VERIFY reports INCOMPLETE_APPLY_RESIDUE while such residue exists, and REPAIR resolves it before any APPLY replay. Residue cleanup does not delete a committed canonical Target, Detached evidence, Output, or the authoritative external Source.
+APPLY materialization is failure-atomic. Each artifact copy has an explicit CREATED -> COPYING -> VERIFIED -> COMMITTED staging lifecycle under the bounded WorkerRoot staging area. A failure before commit removes the incomplete stage where possible; if normal cleanup cannot complete, the residue is moved/classified under the project's Recovery\ApplyResidue area. FAST_STATE_CHECK_V1 reports INCOMPLETE_APPLY_RESIDUE before replay, explicit VERIFY remains available for full integrity evidence, and REPAIR resolves residue first. Residue cleanup does not delete a committed canonical Target, Detached evidence, Output, or the authoritative external Source.
 
 Durable operation receipts keep a stable error_class plus bounded safe error_message, error_phase, error_path and cleanup_status fields when available. Human operation-log timestamps are explicitly labeled UTC. Guided mode turns APPLY failures into localized FAIL / Reason / Stage / Cleanup / Next / Details guidance instead of exposing a raw PowerShell stack.
 
-External business Source is never edited. Copy/import is staged and hash-verified before promotion.
+External business Source is never edited. A full publication enumerates Source metadata once, streams each file into bounded staging while computing its SHA-256, builds the aggregate tree digest from those collected rows without rereading stage, performs a metadata-only Source stability recheck, then commits staging and publishes fingerprint inventory + manifest last. SOURCE_CHANGED_DURING_SYNC aborts publication.
 
 ## Safe removal
 
 REMOVE means deactivate, not purge.
 
-Replacements and deactivations move managed copies to Detached rather than recursively destroying them. Deactivating a required 1C Main is allowed as desired state so the old managed copy can be detached, but VERIFY returns ONEC_MAIN_REQUIRED and START refuses the incomplete project until a valid Main is set again.
+Replacements and deactivations move managed copies to Detached rather than recursively destroying them. Deactivating a required 1C Main is allowed as desired state so the old managed copy can be detached, but the bounded state classifier no longer reports ACCEPTED and START refuses the incomplete project until a valid Main is set again.
 
 No PURGE action exists in this release.
 
 ## START / STOP
 
-START first VERIFYs the selected project, then writes one manager-owned active-admission.json binding exactly one project and one task. The selected relay/helper endpoint is also fixed before helper launch. The model cannot switch project, root, or task.
+START performs exactly one FAST_STATE_CHECK_V1 for the selected project, then writes one manager-owned active-admission.json binding exactly one project, one task, the accepted source_snapshot_id, and the exact manifest SHA-256. New-Admission consumes that accepted identity and does not run a second deep VERIFY. The selected relay/helper endpoint is also fixed before helper launch. The model cannot switch project, root, task, or snapshot.
 
-The helper runs under the restricted local identity and connects outbound-only. Its session recovery is bound to the current source snapshot; a changed applied manifest cannot silently reuse an older helper session.
+The helper runs under the restricted local identity and connects outbound-only. Before connection it verifies the exact manifest SHA-256 and source_snapshot_id from admission against manifest v2. Its session recovery is bound to that snapshot; a changed manifest cannot silently reuse an older helper session.
 
 STOP ends the local helper/admission and does not delete catalog, Participants, Output, Detached, or external Source.
 
@@ -138,7 +138,7 @@ Durable machine-readable and human-readable operation evidence is maintained wit
 - VIEW LOGS
 - EXPORT DIAGNOSTIC BUNDLE
 
-STATUS shows product/install state, dependency versions/health, installed component integrity, project/catalog/manifest verification state, active admission, helper/MCP connection evidence, current/last operation, last VERIFY, recovery classification, and bounded Output proposal summaries.
+STATUS is observational and cheap: project readiness uses FAST_STATE_CHECK_V1 over catalog/manifest identity, direct canonical roots/Configuration.xml, and bounded residue metadata; it does not recursively hash artifact trees. STATUS also shows product/install state, dependency versions/health, installed component integrity, active admission, helper/MCP connection evidence, current/last operation, last explicit VERIFY, recovery classification, and bounded Output proposal summaries.
 
 Diagnostic bundles intentionally exclude secret values and passwords.
 
@@ -148,7 +148,7 @@ The lifecycle follows RECOVER_FIRST_NOT_REPLAY_FIRST.
 
 If the last material operation is still RUNNING, normal mutating actions stop with RECOVERY_REQUIRED; they do not blindly replay the request. PRECHECK may inspect state. An explicit INSTALL/REPAIR path classifies the interrupted operation and then performs idempotent bounded reconciliation.
 
-Project REPAIR is intentionally narrow: missing applied manifest or catalog drift may be reconciled by APPLY; unknown physical/hash corruption is not silently overwritten; verification remains the final gate before START.
+Project REPAIR is intentionally narrow and recover-first. An ACCEPTED structurally present snapshot returns without a deep hash; interrupted staging is classified/cleaned first; legacy v1 may be adopted from durable proof; APPLY is used only for states that actually require publication. DEEP_INTEGRITY_VERIFY_V1 is invoked only when exact state cannot be proven from durable publication/recovery evidence. Warm START uses the accepted fast state, not an implicit deep verification.
 
 ## STATUS / DIAGNOSTICS examples
 
