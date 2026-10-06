@@ -1,7 +1,13 @@
 $ErrorActionPreference='Stop'
 $m=Join-Path (Split-Path -Parent $PSScriptRoot) 'core\OneCChatWorker.Core.psm1'
 Import-Module $m -Force -DisableNameChecking
-$root=Join-Path $env:TEMP ('OneCChatProduct-'+[Guid]::NewGuid().ToString('N'))
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
+$scratch=New-OneCTestScratch -Purpose 'LocalRegression'
+$root=$scratch.path
+$oldLocalAppData=$env:LOCALAPPDATA
+$env:LOCALAPPDATA=Join-Path $root 'localappdata'
+New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA|Out-Null
 $worker=Join-Path $root 'worker'
 $pd=Join-Path $root 'programdata'
 $src=Join-Path $root 'source'
@@ -150,7 +156,8 @@ try{
  try{Apply-WorkerProject -ProjectId Demo -WorkerRoot $worker|Out-Null;Fail 'cleverence_fail_closed' 'unexpected success'}catch{if($_.Exception.Message -match 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'){Pass 'cleverence_fail_closed'}else{Fail 'cleverence_fail_closed' $_.Exception.Message}}
 }finally{
  $out=[pscustomobject]@{root=$root;pass=(@($results|Where-Object status -eq 'FAIL').Count -eq 0);results=$results}
- $out|ConvertTo-Json -Depth 12|Set-Content -LiteralPath (Join-Path $env:TEMP 'OneCChatWorker-local-regression-result.json') -Encoding UTF8
+ $env:LOCALAPPDATA=$oldLocalAppData
+ Remove-OneCTestScratch -Path $root -RunId $scratch.run_id -Base $scratch.base|Out-Null
 }
 $out|ConvertTo-Json -Depth 12
 if(-not $out.pass){exit 2}

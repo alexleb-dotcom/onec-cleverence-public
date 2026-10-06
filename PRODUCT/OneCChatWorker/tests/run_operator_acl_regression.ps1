@@ -1,8 +1,11 @@
 param(
  [ValidateSet('RUN','SETUP','OPERATOR','RECOVER_POST_VERIFY','CLEANUP')][string]$Mode='RUN',
  [string]$PackageRoot=(Split-Path -Parent $PSScriptRoot),
- [string]$WorkerRoot='C:\OneCChatWorker-AclRegression',
- [string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker-AclRegression',
+ [string]$WorkerRoot,
+ [string]$ProgramDataRoot,
+ [string]$ScratchRoot,
+ [string]$ScratchRunId,
+ [string]$ScratchBase,
  [string]$OperatorIdentity,
  [string]$HelperSecretSource,
  [switch]$IncludeStart,
@@ -10,9 +13,30 @@ param(
 )
 $ErrorActionPreference='Stop'
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
 if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
 $launcher=Join-Path $PackageRoot 'OneCChatWorker.ps1'
-$fixture=Join-Path $env:LOCALAPPDATA 'Temp\OneCChatWorker-AclRegression-Fixture'
+$autoScratch=$null
+if($Mode -eq 'RUN'){
+ $id=[Security.Principal.WindowsIdentity]::GetCurrent()
+ if((New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'RUN_PHASE_EXPECTS_NON_ADMIN'}
+ if([string]::IsNullOrWhiteSpace($WorkerRoot) -and [string]::IsNullOrWhiteSpace($ProgramDataRoot)){
+  $autoScratch=New-OneCTestScratch -Purpose 'AclRegression'
+  $ScratchRoot=$autoScratch.path;$ScratchRunId=$autoScratch.run_id;$ScratchBase=$autoScratch.base
+  $WorkerRoot=Join-Path $ScratchRoot 'worker';$ProgramDataRoot=Join-Path $ScratchRoot 'programdata'
+ }elseif([string]::IsNullOrWhiteSpace($WorkerRoot) -or [string]::IsNullOrWhiteSpace($ProgramDataRoot)){
+  throw 'ACL_REGRESSION_ROOTS_MUST_BE_PAIRED'
+ }elseif([string]::IsNullOrWhiteSpace($ScratchRoot) -or [string]::IsNullOrWhiteSpace($ScratchRunId) -or [string]::IsNullOrWhiteSpace($ScratchBase)){
+  throw 'ACL_REGRESSION_CUSTOM_ROOTS_REQUIRE_SCRATCH_OWNER'
+ }
+}else{
+ if([string]::IsNullOrWhiteSpace($WorkerRoot) -or [string]::IsNullOrWhiteSpace($ProgramDataRoot) -or [string]::IsNullOrWhiteSpace($ScratchRoot) -or [string]::IsNullOrWhiteSpace($ScratchRunId) -or [string]::IsNullOrWhiteSpace($ScratchBase)){throw 'ACL_REGRESSION_SCRATCH_BINDING_REQUIRED'}
+}
+$oldLocalAppData=$env:LOCALAPPDATA
+$env:LOCALAPPDATA=Join-Path $ScratchRoot 'localappdata'
+New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA|Out-Null
+$fixture=Join-Path $ScratchRoot 'fixture'
 $main=Join-Path $fixture 'Main'
 $ext=Join-Path $fixture 'Extension'
 function Is-Admin {
@@ -109,16 +133,28 @@ function Invoke-PostVerifyAclProof {
 }
 switch($Mode){
  'RUN' {
-  if(Is-Admin){throw 'RUN_PHASE_EXPECTS_NON_ADMIN'}
-  Ensure-Fixture
-  $args=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode','SETUP','-PackageRoot',$PackageRoot,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName)
-  if($HelperSecretSource){$args+=@('-HelperSecretSource',$HelperSecretSource)}
-  $p=Start-Process powershell.exe -Verb RunAs -ArgumentList $args -Wait -PassThru
-  if($p.ExitCode -ne 0){throw "SETUP_PHASE_FAILED: $($p.ExitCode)"}
-  $opArgs=@('-Mode','OPERATOR','-PackageRoot',$PackageRoot,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName)
-  if($IncludeStart){$opArgs+='-IncludeStart'}
-  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath @opArgs
-  exit $LASTEXITCODE
+  $runError=$null
+  try{
+   Ensure-Fixture
+   $scratchArgs=@('-ScratchRoot',$ScratchRoot,'-ScratchRunId',$ScratchRunId,'-ScratchBase',$ScratchBase)
+   $args=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode','SETUP','-PackageRoot',$PackageRoot,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName)+$scratchArgs
+   if($HelperSecretSource){$args+=@('-HelperSecretSource',$HelperSecretSource)}
+   $p=Start-Process powershell.exe -Verb RunAs -ArgumentList $args -Wait -PassThru
+   if($p.ExitCode -ne 0){throw "SETUP_PHASE_FAILED: $($p.ExitCode)"}
+   $opArgs=@('-Mode','OPERATOR','-PackageRoot',$PackageRoot,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName)+$scratchArgs
+   if($IncludeStart){$opArgs+='-IncludeStart'}
+   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath @opArgs
+   if($LASTEXITCODE -ne 0){throw "OPERATOR_PHASE_FAILED: $LASTEXITCODE"}
+  }catch{$runError=$_.Exception}finally{
+   if($null -ne $autoScratch){
+    $cleanupArgs=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode','CLEANUP','-PackageRoot',$PackageRoot,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName,'-ScratchRoot',$ScratchRoot,'-ScratchRunId',$ScratchRunId,'-ScratchBase',$ScratchBase)
+    $cleanup=Start-Process powershell.exe -Verb RunAs -ArgumentList $cleanupArgs -Wait -PassThru
+    if($cleanup.ExitCode -ne 0 -and $null -eq $runError){$runError=New-Object Exception("CLEANUP_PHASE_FAILED: $($cleanup.ExitCode)")}
+   }
+  }
+  $env:LOCALAPPDATA=$oldLocalAppData
+  if($null -ne $runError){throw $runError}
+  Write-Host 'OPERATOR ACL REGRESSION RUN PASS'
  }
  'SETUP' {
   if(-not(Is-Admin)){throw 'SETUP_PHASE_REQUIRES_ADMIN'}
@@ -171,12 +207,12 @@ switch($Mode){
  }
  'CLEANUP' {
   if(-not(Is-Admin)){throw 'CLEANUP_PHASE_REQUIRES_ADMIN'}
-  if(Test-Path -LiteralPath $launcher -PathType Leaf){
-   try{Invoke-Launcher @('-Mode','STOP','-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName)}catch{}
-   try{Invoke-Launcher @('-Mode','UNINSTALL','-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName,'-ConfirmUninstall')}catch{}
+  $testHelper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+  $live=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name-eq'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($testHelper)})
+  if($live.Count -and (Test-Path -LiteralPath $launcher -PathType Leaf)){
+   Invoke-Launcher @('-Mode','STOP','-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName)
   }
-  Remove-TestRoot $WorkerRoot
-  Remove-TestRoot $ProgramDataRoot
+  Remove-OneCTestScratch -Path $ScratchRoot -RunId $ScratchRunId -Base $ScratchBase|Out-Null
   Write-Host 'CLEANUP PASS'
  }
 }

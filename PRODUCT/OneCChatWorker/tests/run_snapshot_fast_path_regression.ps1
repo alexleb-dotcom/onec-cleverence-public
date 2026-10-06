@@ -4,7 +4,10 @@ $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $core=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
 $launcher=Join-Path $PackageRoot 'OneCChatWorker.ps1'
 $helper=Join-Path $PackageRoot 'runtime\hosted-helper.mjs'
-$root=Join-Path $env:TEMP ('OneCChatWorker-SnapshotFast-'+[Guid]::NewGuid().ToString('N'))
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
+$scratch=New-OneCTestScratch -Purpose 'SnapshotFast'
+$root=$scratch.path
 $oldLocal=$env:LOCALAPPDATA
 $results=New-Object Collections.Generic.List[object]
 function Rec([string]$Name,[bool]$Ok,[string]$Detail=''){ $results.Add([pscustomobject]@{name=$Name;pass=$Ok;detail=$Detail}); if(-not $Ok){throw "ASSERTION_FAILED: $Name :: $Detail"} }
@@ -78,4 +81,4 @@ try{
  Rec 'status_no_deep_or_tree_digest' ($statusBlock -match 'Get-FastProjectState' -and $statusBlock -notmatch 'Verify-WorkerProject|Get-TreeDigest') '';Rec 'admission_no_deep_or_tree_digest' ($admissionBlock -match 'Get-FastProjectState' -and $admissionBlock -notmatch 'Verify-WorkerProject|Get-TreeDigest') ''
  $helperText=Get-Content $helper -Raw -Encoding UTF8;$ops=@([regex]::Matches($helperText,"if\(op==='([^']+)'\)")|ForEach-Object{$_.Groups[1].Value}|Select-Object -Unique);Rec 'helper_five_ops_exact' (($ops -join ',') -eq 'context,search,read,proposal_write,proposal_read') ($ops -join ',');Rec 'helper_no_source_write' ($helperText -notmatch 'source_write') ''
  Write-Host ("SNAPSHOT_FAST_REGRESSION_PASS checks={0}" -f $results.Count)
-} finally {$env:LOCALAPPDATA=$oldLocal;Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue}
+} finally {$env:LOCALAPPDATA=$oldLocal;Remove-OneCTestScratch -Path $root -RunId $scratch.run_id -Base $scratch.base|Out-Null}

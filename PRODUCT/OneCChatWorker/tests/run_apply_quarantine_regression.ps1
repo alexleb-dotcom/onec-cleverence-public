@@ -4,7 +4,10 @@ param(
 $ErrorActionPreference='Stop'
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $core=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
-$root=Join-Path $env:TEMP ('OneCChatWorker-ApplyQuarantine-'+[Guid]::NewGuid().ToString('N'))
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
+$scratch=New-OneCTestScratch -Purpose 'ApplyQuarantine'
+$root=$scratch.path
 $worker=Join-Path $root 'worker'
 $projectRoot=Join-Path $worker 'Demo'
 $source=Join-Path $root 'source'
@@ -63,5 +66,5 @@ try{
 
  Write-Host ("APPLY_QUARANTINE_REGRESSION_PASS checks={0}" -f $results.Count)
 } finally {
- Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+ Remove-OneCTestScratch -Path $root -RunId $scratch.run_id -Base $scratch.base|Out-Null
 }

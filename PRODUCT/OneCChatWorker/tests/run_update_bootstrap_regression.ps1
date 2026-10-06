@@ -1,19 +1,47 @@
 param(
  [ValidateSet('RUN','SETUP')][string]$Mode='RUN',
  [string]$PackageRoot=(Split-Path -Parent $PSScriptRoot),
- [string]$WorkerRoot='C:\OneCChatWorker-UpdateRegression',
- [string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker-UpdateRegression',
+ [string]$WorkerRoot,
+ [string]$ProgramDataRoot,
+ [string]$ScratchRoot,
+ [string]$ScratchRunId,
+ [string]$ScratchBase,
  [string]$OperatorIdentity,
  [string]$ReaderName='OneCSourceReader',
  [string]$ReportPath
 )
 $ErrorActionPreference='Stop'
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
 $launcher=Join-Path $PackageRoot 'OneCChatWorker.ps1'
 $packageCore=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
 $packageLock=Join-Path $PackageRoot 'runtime.lock.json'
 if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
-if([string]::IsNullOrWhiteSpace($ReportPath)){$ReportPath=Join-Path $env:TEMP 'OneCChatWorker-UpdateBootstrapRegression.json'}
+$autoScratch=$null
+if($Mode -eq 'RUN'){
+ $id=[Security.Principal.WindowsIdentity]::GetCurrent()
+ if((New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'RUN_PHASE_EXPECTS_NON_ADMIN'}
+ if([string]::IsNullOrWhiteSpace($WorkerRoot) -and [string]::IsNullOrWhiteSpace($ProgramDataRoot)){
+  $autoScratch=New-OneCTestScratch -Purpose 'UpdateBootstrap'
+  $ScratchRoot=$autoScratch.path;$ScratchRunId=$autoScratch.run_id;$ScratchBase=$autoScratch.base
+  $WorkerRoot=Join-Path $ScratchRoot 'worker';$ProgramDataRoot=Join-Path $ScratchRoot 'programdata'
+  if([string]::IsNullOrWhiteSpace($ReportPath)){$ReportPath=Join-Path $ScratchRoot 'report.json'}
+ }elseif([string]::IsNullOrWhiteSpace($WorkerRoot) -or [string]::IsNullOrWhiteSpace($ProgramDataRoot)){
+  throw 'UPDATE_REGRESSION_ROOTS_MUST_BE_PAIRED'
+ }elseif([string]::IsNullOrWhiteSpace($ScratchRoot) -or [string]::IsNullOrWhiteSpace($ScratchRunId) -or [string]::IsNullOrWhiteSpace($ScratchBase)){
+  throw 'UPDATE_REGRESSION_CUSTOM_ROOTS_REQUIRE_SCRATCH_OWNER'
+ }
+ if([string]::IsNullOrWhiteSpace($ReportPath)){throw 'UPDATE_REGRESSION_REPORT_PATH_REQUIRED'}
+}else{
+ if([string]::IsNullOrWhiteSpace($WorkerRoot) -or [string]::IsNullOrWhiteSpace($ProgramDataRoot) -or [string]::IsNullOrWhiteSpace($ScratchRoot) -or [string]::IsNullOrWhiteSpace($ScratchRunId) -or [string]::IsNullOrWhiteSpace($ScratchBase) -or [string]::IsNullOrWhiteSpace($ReportPath)){throw 'UPDATE_REGRESSION_SCRATCH_BINDING_REQUIRED'}
+ $c=Get-OneCTestScratchClassification -Path $ScratchRoot -Base $ScratchBase
+ if(-not $c.owned -or $c.run_id -ne $ScratchRunId){throw 'UPDATE_REGRESSION_SCRATCH_BINDING_INVALID'}
+}
+
+$oldLocalAppData=$env:LOCALAPPDATA
+$env:LOCALAPPDATA=Join-Path $ScratchRoot 'localappdata'
+New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA|Out-Null
 
 function Is-Admin {
  $id=[Security.Principal.WindowsIdentity]::GetCurrent()
@@ -90,21 +118,28 @@ function New-StaleInstalledCore {
 }
 
 if($Mode -eq 'RUN'){
- if(Is-Admin){throw 'RUN_PHASE_EXPECTS_NON_ADMIN'}
- if(-not(Test-Path -LiteralPath $launcher -PathType Leaf)){throw "PACKAGE_LAUNCHER_MISSING: $launcher"}
- $args=@(
-  '-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,
-  '-Mode','SETUP','-PackageRoot',$PackageRoot,
-  '-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,
-  '-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName,
-  '-ReportPath',$ReportPath
- )
- $p=Start-Process powershell.exe -Verb RunAs -ArgumentList $args -Wait -PassThru
- if($p.ExitCode -ne 0){throw "UPDATE_BOOTSTRAP_SETUP_FAILED: $($p.ExitCode)"}
- if(-not(Test-Path -LiteralPath $ReportPath -PathType Leaf)){throw 'UPDATE_BOOTSTRAP_REPORT_MISSING'}
- $report=Get-Content -LiteralPath $ReportPath -Raw -Encoding UTF8|ConvertFrom-Json
- if($report.result -ne 'PASS'){throw "UPDATE_BOOTSTRAP_REGRESSION_FAILED: $($report|ConvertTo-Json -Compress)"}
- Write-Host ("UPDATE_BOOTSTRAP_REGRESSION_PASS checks={0} stale_core_sha256={1} package_core_sha256={2}" -f $report.checks,$report.stale_core_sha256,$report.package_core_sha256)
+ try{
+  if(-not(Test-Path -LiteralPath $launcher -PathType Leaf)){throw "PACKAGE_LAUNCHER_MISSING: $launcher"}
+  $args=@(
+   '-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,
+   '-Mode','SETUP','-PackageRoot',$PackageRoot,
+   '-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,
+   '-ScratchRoot',$ScratchRoot,'-ScratchRunId',$ScratchRunId,'-ScratchBase',$ScratchBase,
+   '-OperatorIdentity',$OperatorIdentity,'-ReaderName',$ReaderName,
+   '-ReportPath',$ReportPath
+  )
+  $p=Start-Process powershell.exe -Verb RunAs -ArgumentList $args -Wait -PassThru
+  if($p.ExitCode -ne 0){throw "UPDATE_BOOTSTRAP_SETUP_FAILED: $($p.ExitCode)"}
+  if(-not(Test-Path -LiteralPath $ReportPath -PathType Leaf)){throw 'UPDATE_BOOTSTRAP_REPORT_MISSING'}
+  $report=Get-Content -LiteralPath $ReportPath -Raw -Encoding UTF8|ConvertFrom-Json
+  if($report.result -ne 'PASS'){throw "UPDATE_BOOTSTRAP_REGRESSION_FAILED: $($report|ConvertTo-Json -Compress)"}
+  Write-Host ("UPDATE_BOOTSTRAP_REGRESSION_PASS checks={0} stale_core_sha256={1} package_core_sha256={2}" -f $report.checks,$report.stale_core_sha256,$report.package_core_sha256)
+ }finally{
+  $env:LOCALAPPDATA=$oldLocalAppData
+  if($null -ne $autoScratch -and (Test-Path -LiteralPath $ScratchRoot)){
+   Remove-OneCTestScratch -Path $ScratchRoot -RunId $ScratchRunId -Base $ScratchBase|Out-Null
+  }
+ }
  exit 0
 }
 

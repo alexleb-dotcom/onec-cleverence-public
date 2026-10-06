@@ -5,7 +5,10 @@ $ErrorActionPreference='Stop'
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $launcher=Join-Path $PackageRoot 'OneCChatWorker.ps1'
 $core=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
-$root=Join-Path $env:TEMP ('OneCChatWorker-ApplyFailure-'+[Guid]::NewGuid().ToString('N'))
+$testScratchModule=Join-Path $PSScriptRoot 'TestScratch.psm1'
+Import-Module $testScratchModule -Force -DisableNameChecking
+$scratch=New-OneCTestScratch -Purpose 'ApplyFailure'
+$root=$scratch.path
 $worker=Join-Path $root 'worker'
 $pd=Join-Path $root 'programdata'
 $source=Join-Path $root 'source-main'
@@ -179,5 +182,5 @@ try{
  Write-Host ("APPLY_FAILURE_REGRESSION_PASS checks={0} evidence_root={1}" -f $results.Count,$root)
 } finally {
  $env:LOCALAPPDATA=$oldLocalAppData
- Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+ Remove-OneCTestScratch -Path $root -RunId $scratch.run_id -Base $scratch.base|Out-Null
 }
