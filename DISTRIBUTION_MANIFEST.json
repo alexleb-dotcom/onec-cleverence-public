@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 467,
+  "file_count": 474,
   "files": [
     {
       "path": ".gitattributes",
@@ -100,8 +100,8 @@
     },
     {
       "path": "KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json",
-      "size": 2982,
-      "sha256": "087c01309b983a92f51ce44fd767edf03757c4aa900b93ba70bf11ddb629390d"
+      "size": 3756,
+      "sha256": "1477c67cd9e8bec90338fb6403efba073b8de23957961ce4add332631e2ba203"
     },
     {
       "path": "KNOWLEDGE/GAP_DISCOVERY_PROTOCOL.md",
@@ -380,18 +380,18 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 105449,
-      "sha256": "7f38a44fb9af217ff975e794a91de1fb5baf99a6deabd7408e3c215247b14cc1"
+      "size": 105686,
+      "sha256": "517ccc6460f14e5c9d852cdea64ce6950a62b5e2168835547584be544da2cd41"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
-      "size": 15663,
-      "sha256": "a9ff135d9162a1a05b6e767d0472cd266f051365e7728cc9865d3d945760667a"
+      "size": 17101,
+      "sha256": "d5a9ff74982d10288a942112020925a87c9fa4b11a939f714aff87d917182f38"
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 114950,
-      "sha256": "92f8cc4b8fc627b216bee6e47656f16675f53d6388e4957587f0238cedba68c8"
+      "size": 116542,
+      "sha256": "a972af9597a1cd6aba68b08feb2edb0903bcb7ca85bb91a860e72af3635b777a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -400,18 +400,43 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 1564,
-      "sha256": "956ae3f4a7b2bd877a721a4d972de196fa804b6020f162cc3669aca310cc7d78"
+      "size": 3318,
+      "sha256": "6d2361e09e0bc5d85e050d037854f6116c0b706bc11776534e3923a8b7cd109a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
-      "size": 18299,
-      "sha256": "985cc09135af868685aa6ca908504c1824bd41b24fd855ac8b697e2a56071d78"
+      "size": 22323,
+      "sha256": "88ccf2f16b3bc28df005ed64cf8f08df232f222afd15c804b4469f0c9fd3ae9a"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs",
+      "size": 18989,
+      "sha256": "8964bcca9c16f0cf26ad49f6a974b21c5d27eb5918dc241081bdb66107de199a"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/quality/cc-1c-skills/form-info.ps1",
+      "size": 26577,
+      "sha256": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/quality/cc-1c-skills/form-validate.ps1",
+      "size": 90837,
+      "sha256": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/quality/cc-1c-skills/meta-info.ps1",
+      "size": 81605,
+      "sha256": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/source-reader-integration.mjs",
       "size": 38960,
       "sha256": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/local-quality-adapter-regression.mjs",
+      "size": 9869,
+      "sha256": "52d93ffdeb2370c36dc856c50f1f3eaa1bdf79e9dad88861f9c2d33a24feba0c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_apply_failure_regression.ps1",
@@ -434,6 +459,11 @@
       "sha256": "f461a2b09e171eaa1f6219d7f04aef1bac26794092caf70c7a0535c1304bf499"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/run_local_quality_adapter_regression.ps1",
+      "size": 3740,
+      "sha256": "2cb58de04e91b1f1fb3ee201318c322dc52ee9dc561c93cba3dc7b391ac55264"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
       "size": 14512,
       "sha256": "a099f5dfc834e16d73317f1545cd78999e3385e881603227ba44f6fe9a739033"
@@ -445,8 +475,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
-      "size": 14788,
-      "sha256": "809da4368f750dc740f04c21176a05b9429846b10c11fc9821472a92b676340c"
+      "size": 15276,
+      "sha256": "e8e6b6d24f1e78f13a82c839dffc085a5255d545e37be2ad8873df5729e8b210"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_update_bootstrap_regression.ps1",
@@ -827,6 +857,11 @@
       "path": "TESTS/benchmark_context_efficiency.py",
       "size": 10427,
       "sha256": "0455fbcff8c7e1c47b2caf4801823ddebd4a39020a8a6d911782849a6c17c34e"
+    },
+    {
+      "path": "TESTS/benchmark_local_quality_adapter.mjs",
+      "size": 3396,
+      "sha256": "db8fd2b32f89167cd17c03cea3c2e9054c61a00ec760ce7cc074f22cae80deb1"
     },
     {
       "path": "TESTS/fixtures/TestApi_Module.bsl",
@@ -1900,8 +1935,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 26943,
-      "sha256": "7e0647b90a2f9f8966d86037d544823b3057e72c1f082e009096d774c004ac17"
+      "size": 30908,
+      "sha256": "17e19f00a72853a8c78ae64f6c14d49ca9f991b547a3baa92359be21189f8a93"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2025,8 +2060,8 @@
     },
     {
       "path": "THIRD_PARTY/cc-1c-skills/NOTICE.md",
-      "size": 587,
-      "sha256": "4a9321f628555e49162e05020cc7a939a9f2adeebceae338b9acd6049937a14c"
+      "size": 1105,
+      "sha256": "332690086ed25f55641510ec81101992c4a20429b415fed237cb1b49f81b9b29"
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
@@ -2036,7 +2071,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 1783,
-      "sha256": "2965ae87e699e6bb1fefd5ae6c38d8f9f64b051c07ce41ecf7d12c5fc24cc54b"
+      "sha256": "5de20993ffbb10118abee319bc2ecfd85ed3170679ce132f310864fce363ed7e"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2345,5 +2380,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "20665fe465627db1f14ddb54dfecc13d3746dab0f86dfacc3edfe76a197d2616"
+  "snapshot_digest": "2aa2368435b358a65776a48ae80f681517cc8f578da8d457db39ba55f43f159d"
 }

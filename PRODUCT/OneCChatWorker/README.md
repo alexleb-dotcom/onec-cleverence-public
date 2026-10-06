@@ -108,6 +108,14 @@ There is no model-facing source write, delete, shell, process, browser, arbitrar
 
 Participants are read-only to the restricted helper. Output is writable only for bounded proposal delivery. _proposal_provenance.json binds proposal artifacts to the admitted source snapshot. PROPOSAL_NOT_APPLIED means the proposal was delivered to Output but was not applied/deployed to authoritative business Source.
 
+### Bounded local quality preparation
+
+The five-tool surface does not grow. After, and only after, a successful admitted source_read, the helper may deterministically bind that exact read path to one eligible metadata descriptor or managed-form Form.xml. It may then prepare a LOCAL_QUALITY_REPORT_V1 using the internal allowlisted META_INFO, FORM_INFO and FORM_VALIDATE operations. source_search, task text and source_context hints never execute the adapter.
+
+The adapter redistributes exactly three unchanged MIT-licensed scripts from Nikolay-Shirokov/cc-1c-skills at commit 1fa205b961f4ed3659f58f4b55d2d9b1d5e4810e. Their git-blob and SHA-256 identities are recorded in KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json and runtime.lock.json. Execution is fixed to Windows PowerShell 5.1 with shell=false, fixed internal arguments, bounded time/output, and a closure-only temporary sandbox. Authoritative Source is read-only and is re-hashed after execution; SOURCE_CHANGED_DURING_RUN discards the report/cache.
+
+Prepared quality is at most 1200 UTF-8 bytes. At most two confirmed target reports are cached for the active session, and replay is accepted only while task/session/project manifest/PPA/source snapshot/target/confirming SHA/input closure/adapter/upstream/script/overlay bindings still match. Exact Source remains inspectable through source_read and quality findings do not change PROPOSAL_NOT_APPLIED or release/evidence ownership.
+
 ## Remote-call budget
 
 Remote calls are budgeted. The product contract in runtime.lock.json records:

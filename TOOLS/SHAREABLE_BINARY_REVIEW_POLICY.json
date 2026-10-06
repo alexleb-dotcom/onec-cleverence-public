@@ -33,7 +33,7 @@
     },
     {
       "path": "THIRD_PARTY/cc-1c-skills/NOTICE.md",
-      "sha256": "4a9321f628555e49162e05020cc7a939a9f2adeebceae338b9acd6049937a14c",
+      "sha256": "332690086ed25f55641510ec81101992c4a20429b415fed237cb1b49f81b9b29",
       "reason": "Exact public attribution notice for the reviewed upstream dependency.",
       "policy_id": "shareable-binary-review-v1"
     }

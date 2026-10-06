@@ -2,6 +2,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { SourceReaderIntegration, PROVIDER_VERSION } from '../provider/source-reader-integration.mjs';
+import { LocalQualityAdapter, boundedTargetHints, reportBindingMatches } from './local-quality-adapter.mjs';
 
 const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneCChatWorker';
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
@@ -12,6 +13,12 @@ const PROJECT = String(admission.project_id || '');
 const TASK = String(admission.task_id || '');
 if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(PROJECT)) throw new Error('ADMISSION_PROJECT_INVALID');
 if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(TASK)) throw new Error('ADMISSION_TASK_INVALID');
+const TASK_GOAL = admission.task_goal == null ? null : String(admission.task_goal);
+if (TASK_GOAL !== null) {
+  if (!TASK_GOAL.trim() || Buffer.byteLength(TASK_GOAL,'utf8') > 1024) throw new Error('ADMISSION_TASK_GOAL_INVALID');
+  const expectedGoalHash=crypto.createHash('sha256').update(Buffer.from(TASK_GOAL,'utf8')).digest('hex');
+  if (String(admission.task_goal_sha256||'') !== expectedGoalHash) throw new Error('ADMISSION_TASK_GOAL_HASH_MISMATCH');
+} else if (admission.task_goal_sha256 != null) throw new Error('ADMISSION_TASK_GOAL_BINDING_INVALID');
 
 const CONFIG_PATH = admission.provider_config_path || path.join(PROGRAM_DATA,'provider','provider-config.json');
 const MANIFEST_PATH = admission.manifest_path;
@@ -94,13 +101,15 @@ async function loadState(){
     if(s.project_id===PROJECT && s.task_id===TASK && s.snapshot_id===SNAPSHOT && Date.now()<Date.parse(s.expires_utc)) return s;
   }catch{}
   const started=new Date(),expires=new Date(started.getTime()+caps.ttl_minutes*60000);
-  const s={schema_version:1,session_id:crypto.randomBytes(16).toString('hex'),project_id:PROJECT,task_id:TASK,snapshot_id:SNAPSHOT,started_utc:started.toISOString(),expires_utc:expires.toISOString(),processed:{},idempotency:{}};
+  const s={schema_version:1,session_id:crypto.randomBytes(16).toString('hex'),project_id:PROJECT,task_id:TASK,snapshot_id:SNAPSHOT,started_utc:started.toISOString(),expires_utc:expires.toISOString(),processed:{},idempotency:{},quality_targets:[]};
   await saveState(s); return s;
 }
 
 let state=await loadState();
+if(!Array.isArray(state.quality_targets))state.quality_targets=[];
 const provider=new SourceReaderIntegration({configPath:CONFIG_PATH,getDeviceId:()=> 'onecchat-hosted-helper'});
 await provider.initialize();
+const quality=new LocalQualityAdapter({projectRoot:String(manifest.project_root||''),artifacts:ARTIFACTS,projectId:PROJECT,taskId:TASK,sessionId:state.session_id,sourceSnapshotId:SNAPSHOT,manifestSha256:manifestHash});
 
 function fail(code,msg=code){const e=new Error(msg);e.code=code;throw e;}
 function pathAllowed(p){
@@ -205,17 +214,64 @@ async function sourceSearch(args){
   }
   return {query:args.query,matches,files_scanned:scans,scan_complete:complete,results_truncated:truncated};
 }
+async function qualityPathHash(rel){
+  const s=normalizePath(rel);
+  if(!pathAllowed(s))return null;
+  try{return sha256(await fsp.readFile(path.join(String(manifest.project_root),s.replaceAll('/',path.sep))));}catch{return null;}
+}
+async function reportFresh(report){
+  if(!reportBindingMatches(report,{projectId:PROJECT,taskId:TASK,sessionId:state.session_id,sourceSnapshotId:SNAPSHOT,manifestSha256:manifestHash}))return false;
+  if(!report.confirming_read||await qualityPathHash(report.confirming_read.relative_path)!==report.confirming_read.sha256)return false;
+  if(!Array.isArray(report.input_closure)||!report.input_closure.length)return false;
+  const rows=[];
+  for(const row of report.input_closure){const h=await qualityPathHash(row.relative_path);if(!h||h!==row.sha256)return false;rows.push({relative_path:row.relative_path,sha256:h});}
+  return sha256(Buffer.from(JSON.stringify(rows.sort((a,b)=>a.relative_path.localeCompare(b.relative_path,'en'))),'utf8'))===report.input_closure_sha256;
+}
+async function freshPreparedQuality(){
+  try{await quality.verifyToolset();}catch{if(state.quality_targets.length){state.quality_targets=[];await saveState(state);}return null;}
+  const keep=[];
+  for(const item of state.quality_targets.slice(0,2)){
+    let ok=Array.isArray(item.reports)&&item.reports.length>0;
+    if(ok)for(const report of item.reports){if(!await reportFresh(report)){ok=false;break;}}
+    if(ok)keep.push(item);
+  }
+  if(keep.length!==state.quality_targets.length){state.quality_targets=keep;await saveState(state);}
+  return keep[0]?.prepared||null;
+}
+async function cacheQuality(result){
+  if(!result?.prepared)return;
+  const item={target_relative:result.binding.target_relative,confirmed_at_utc:new Date().toISOString(),prepared:result.prepared,reports:result.reports};
+  state.quality_targets=[item,...state.quality_targets.filter(x=>x.target_relative!==item.target_relative)].slice(0,2);
+  await saveState(state);
+}
+
 async function exec(op,args){
   const t=performance.now();
   try{
     if(Date.now()>=Date.parse(state.expires_utc))fail('SESSION_EXPIRED');
-    if(op==='context')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:{session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:'Output/'+TASK,status:'PROPOSAL_NOT_APPLIED',expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}}};
+    if(op==='context'){
+      const payload={session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:'Output/'+TASK,status:'PROPOSAL_NOT_APPLIED',expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}};
+      const hints=await boundedTargetHints({taskGoal:TASK_GOAL,projectRoot:String(manifest.project_root||''),artifacts:ARTIFACTS}).catch(()=>[]);
+      if(hints.length){const c={...payload,target_hints:hints};if(Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.target_hints=hints;}
+      const prepared=await freshPreparedQuality();
+      if(prepared){const c={...payload,prepared_quality:prepared};if(Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.prepared_quality=prepared;}
+      return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload};
+    }
     if(op==='search')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await sourceSearch(args)};
     if(op==='read'){
       if(!args||typeof args.path!=='string'||!Number.isInteger(args.start)||!Number.isInteger(args.end)||args.start<1||args.end<args.start||(args.end-args.start+1)>caps.max_read_lines)fail('INVALID_READ_ARGS');
       const rel=normalizePath(args.path);if(!pathAllowed(args.path))fail('PATH_OUTSIDE_ADMITTED_PROJECT');
       const r=await provider.callClientTool('source_read',{project_slug:PROJECT,source_domain:'ONEC',relative_path:rel,offset:args.start-1,length:args.end-args.start+1},{transport:'onecchat-hosted'});
-      const v=r.structuredContent;return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3),relative_path:rel,range:[v.offset+1,v.offset+v.length],sha256:v.sha256,total_lines:v.total_lines},payload:{content:v.content}};
+      const v=r.structuredContent,payload={content:v.content},metadata={op,elapsed_ms:+(performance.now()-t).toFixed(3),relative_path:rel,range:[v.offset+1,v.offset+v.length],sha256:v.sha256,total_lines:v.total_lines};
+      try{
+        const q=await quality.runConfirmed(rel,v.sha256);
+        if(q){await cacheQuality(q);const c={...payload,prepared_quality:q.prepared};if(q.prepared&&Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.prepared_quality=q.prepared;}
+      }catch(qe){
+        state.quality_targets=[];await saveState(state);
+        metadata.quality_error_class=String(qe?.code||qe?.name||'QUALITY_EXECUTION_ERROR');
+      }
+      metadata.elapsed_ms=+(performance.now()-t).toFixed(3);
+      return {status:'OK',metadata,payload};
     }
     if(op==='proposal_write')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await proposalWrite(args)};
     if(op==='proposal_read')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await proposalRead(args)};
