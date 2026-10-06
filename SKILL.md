@@ -239,7 +239,7 @@ For an applicable rule:
 
 ### Bounded project source/proposal capabilities
 
-When compatible bounded project source/proposal operations are available (semantic equivalents of `source_context`, `source_search`, `source_read`, `proposal_write`, `proposal_read`), load `KNOWLEDGE/CHAT_MCP_EXECUTION.md` and use them for project Source instead of requesting Source uploads. Route by semantic capability, not connector/namespace name. If expected bounded Source capability is absent/failing, do not silently request files: report the capability blocker; legacy source-request mode is allowed only after explicit user instruction to work without MCP.
+When compatible bounded project source/proposal operations are available (semantic equivalents of `source_context`, `source_search`, `source_read`, `proposal_write`, `proposal_read`), load `KNOWLEDGE/CHAT_MCP_EXECUTION.md` and use them for project Source instead of requesting Source uploads. Route by semantic capability, not connector/namespace name. Fresh prepared quality may summarize deterministic structure, but exact Source remains authority and MACHINE proof requires the canonical full-report receipt path. If expected bounded Source capability is absent/failing, report the capability blocker; legacy source-request mode is allowed only after explicit user instruction to work without MCP.
 
 ### MANUAL_SKILL_EXECUTION
 

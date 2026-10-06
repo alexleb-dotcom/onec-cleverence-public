@@ -5,6 +5,7 @@ from pathlib import Path
 import copy
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,7 @@ from rule_registry import load_registry, rule_map
 from release_gate_core import evaluate as release_evaluate
 
 errors=[]; results={}
+UTF8_SUBPROCESS_ENV={**os.environ,"PYTHONIOENCODING":"utf-8","PYTHONUTF8":"1"}
 
 
 def record(name,ok,details=None):
@@ -628,23 +630,24 @@ with tempfile.TemporaryDirectory() as td:
     record("directory_file_absent_from_inventory_rejected",late_rejected)
 
     # CLI preserves full artifacts and compact stdout.
-    plan_out=temp/"plan.cli.json"; p=subprocess.run([sys.executable,str(ROOT/"TOOLS/build_review_plan.py"),str(source),"--analysis-only","--risk","R1_CONTRACT","--output",str(plan_out)],cwd=ROOT,capture_output=True,text=True)
+    plan_out=temp/"plan.cli.json"; p=subprocess.run([sys.executable,str(ROOT/"TOOLS/build_review_plan.py"),str(source),"--analysis-only","--risk","R1_CONTRACT","--output",str(plan_out)],cwd=ROOT,capture_output=True,text=True,encoding="utf-8",env=UTF8_SUBPROCESS_ENV)
     plan_stdout=json.loads(p.stdout) if p.returncode==0 else {}
-    record("review_plan_output_defaults_to_compact_stdout",p.returncode==0 and plan_out.is_file() and "rules" not in plan_stdout and "active_profiles" in plan_stdout,{"stdout_bytes":len(p.stdout.encode("utf-8"))})
+    record("review_plan_output_defaults_to_compact_stdout",p.returncode==0 and plan_out.is_file() and "rules" not in plan_stdout and "active_profiles" in plan_stdout,{"returncode":p.returncode,"stdout_bytes":len(p.stdout.encode("utf-8")),"stderr":p.stderr[-2000:]})
 
-    ledger_out=temp/"ledger.cli.json"; p=subprocess.run([sys.executable,str(ROOT/"TOOLS/build_validation_ledger.py"),"--plan",str(plan_out),"--output",str(ledger_out)],cwd=ROOT,capture_output=True,text=True)
+    ledger_out=temp/"ledger.cli.json"; p=subprocess.run([sys.executable,str(ROOT/"TOOLS/build_validation_ledger.py"),"--plan",str(plan_out),"--output",str(ledger_out)],cwd=ROOT,capture_output=True,text=True,encoding="utf-8",env=UTF8_SUBPROCESS_ENV)
     ledger_stdout=json.loads(p.stdout) if p.returncode==0 else {}
     record("validation_ledger_output_defaults_to_work_queue",p.returncode==0 and ledger_out.is_file() and ledger_stdout.get("projection")=="VALIDATION_WORK_QUEUE",{"stdout_bytes":len(p.stdout.encode("utf-8"))})
     record("compact_stdout_omits_full_intent_and_review_receipts",
         p.returncode==0 and "implementation_intent_map" not in ledger_stdout and "independent_reviews" not in ledger_stdout,
         {"stdout_keys":sorted(ledger_stdout)})
 
-    p=subprocess.run([sys.executable,str(ROOT/"TOOLS/build_validation_ledger.py"),"--plan",str(plan_out),"--output",str(temp/"ledger.full.json"),"--full-json"],cwd=ROOT,capture_output=True,text=True)
+    p=subprocess.run([sys.executable,str(ROOT/"TOOLS/build_validation_ledger.py"),"--plan",str(plan_out),"--output",str(temp/"ledger.full.json"),"--full-json"],cwd=ROOT,capture_output=True,text=True,encoding="utf-8",env=UTF8_SUBPROCESS_ENV)
     full_stdout=json.loads(p.stdout) if p.returncode==0 else {}
     record("explicit_full_json_flag_preserves_diagnostic_access",
         p.returncode==0 and isinstance(full_stdout.get("rules"),list)
         and "implementation_intent_map" in full_stdout and "independent_reviews" in full_stdout
-        and len(full_stdout["rules"])==len(json.loads((temp/"ledger.full.json").read_text(encoding="utf-8"))["rules"]))
+        and len(full_stdout["rules"])==len(json.loads((temp/"ledger.full.json").read_text(encoding="utf-8"))["rules"]),
+        {"returncode":p.returncode,"stderr":p.stderr[-2000:],"stdout_bytes":len(p.stdout.encode("utf-8"))})
 
     cleverence_source=temp/"compact-cleverence.mslx"
     cleverence_source.write_text('<?xml version="1.0" encoding="utf-8"?><Operation><InputAction Id="Scan"/></Operation>',encoding="utf-8")

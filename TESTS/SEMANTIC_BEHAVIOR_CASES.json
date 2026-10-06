@@ -1999,6 +1999,121 @@
           "manual_execution_honesty"
         ]
       }
+    },
+    {
+      "id": "CHAT_MCP_S4_EPOCH_ROLLOVER_PRESERVES_DURABLE_USAGE",
+      "oracle": "fact_retention",
+      "required": [
+        "stable_task_admission",
+        "stable_session",
+        "durable_usage_preserved",
+        "continuation_auto",
+        "no_operator_renewal"
+      ],
+      "bad": {
+        "output": [
+          "epoch_rollover_resets_budget"
+        ]
+      },
+      "good": {
+        "output": [
+          "stable_task_admission",
+          "stable_session",
+          "durable_usage_preserved",
+          "continuation_auto",
+          "no_operator_renewal"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_S4_EXHAUSTED_CONTEXT_IS_CONTROL_ONLY",
+      "oracle": "fact_retention",
+      "required": [
+        "operator_readmission_required",
+        "lifecycle_accounting_only",
+        "no_source_snippet",
+        "no_target_hints",
+        "no_prepared_quality"
+      ],
+      "bad": {
+        "output": [
+          "exhausted_context_leaks_source"
+        ]
+      },
+      "good": {
+        "output": [
+          "operator_readmission_required",
+          "lifecycle_accounting_only",
+          "no_source_snippet",
+          "no_target_hints",
+          "no_prepared_quality"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_PREPARED_QUALITY_IS_SUPPORTING_SUMMARY",
+      "oracle": "fact_retention",
+      "required": [
+        "source_read_binding_required",
+        "supporting_deterministic_summary",
+        "raw_exact_source_semantic_authority"
+      ],
+      "bad": {
+        "output": [
+          "prepared_summary_replaces_source"
+        ]
+      },
+      "good": {
+        "output": [
+          "source_read_binding_required",
+          "supporting_deterministic_summary",
+          "raw_exact_source_semantic_authority"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_FORM_VALIDATE_MACHINE_RECEIPT_REQUIRED",
+      "oracle": "fact_retention",
+      "required": [
+        "full_local_quality_report_required",
+        "canonical_machine_receipt_required",
+        "exact_validator_property_only",
+        "execution_or_input_errors_never_pass"
+      ],
+      "bad": {
+        "output": [
+          "prepared_projection_mints_machine_pass"
+        ]
+      },
+      "good": {
+        "output": [
+          "full_local_quality_report_required",
+          "canonical_machine_receipt_required",
+          "exact_validator_property_only",
+          "execution_or_input_errors_never_pass"
+        ]
+      }
+    },
+    {
+      "id": "CHAT_MCP_EPOCH_ROLLOVER_DOES_NOT_STALE_PREPARED_QUALITY",
+      "oracle": "fact_retention",
+      "required": [
+        "stable_session_quality_binding",
+        "epoch_change_not_freshness_input",
+        "source_or_tool_drift_stales_quality"
+      ],
+      "bad": {
+        "output": [
+          "epoch_change_discards_fresh_quality"
+        ]
+      },
+      "good": {
+        "output": [
+          "stable_session_quality_binding",
+          "epoch_change_not_freshness_input",
+          "source_or_tool_drift_stales_quality"
+        ]
+      }
     }
   ]
 }

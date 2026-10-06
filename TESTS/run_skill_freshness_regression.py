@@ -103,6 +103,12 @@ chat_tokens = [
     "semantic capability",
     "Only after explicit user instruction",
     "Do not ask the user to upload/provide",
+    "task_admission_id",
+    "continuation",
+    "SUPPORTING_DETERMINISTIC_SUMMARY",
+    "LOCAL_QUALITY_REPORT_V1",
+    "Epoch rollover alone does not stale prepared evidence",
+    "prepared projection by itself does **not** create MACHINE PASS",
 ]
 missing_chat_tokens = [token for token in chat_tokens if token not in chat_exec]
 forbidden_chat_tokens = ["OneC_G1Q1_MCP", "Cloudflare", "OAuth", "relay implementation"]
