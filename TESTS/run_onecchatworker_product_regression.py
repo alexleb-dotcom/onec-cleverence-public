@@ -30,6 +30,7 @@ required = [
     "tests/run_update_bootstrap_regression.ps1",
     "tests/run_apply_failure_regression.ps1",
     "tests/run_apply_quarantine_regression.ps1",
+    "tests/run_guided_progress_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -56,6 +57,7 @@ guided_ui_regression = (PRODUCT / "tests/run_guided_ui_regression.ps1").read_tex
 update_bootstrap_regression = (PRODUCT / "tests/run_update_bootstrap_regression.ps1").read_text(encoding="utf-8")
 apply_failure_regression = (PRODUCT / "tests/run_apply_failure_regression.ps1").read_text(encoding="utf-8")
 apply_quarantine_regression = (PRODUCT / "tests/run_apply_quarantine_regression.ps1").read_text(encoding="utf-8")
+guided_progress_regression = (PRODUCT / "tests/run_guided_progress_regression.ps1").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -108,6 +110,12 @@ rec("apply_failure_regression_covers_required_atomicity", all(t in apply_failure
 rec("apply_cleanup_failure_routes_to_quarantine", all(t in core for t in ["if($cleanup.status -in @('CLEANED','CLEANED_LONG_PATH','ALREADY_ABSENT'))","Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $projectRoot","action=$q.status","quarantine_path=$q.quarantine_path"]), "cleanup failure deterministically routes to quarantine/classification rather than leaving residue beside canonical Target")
 rec("apply_quarantine_regression_covers_fallback_move", all(t in apply_quarantine_regression for t in ["quarantine_move_reports_quarantined","quarantine_under_project_recovery","quarantined_metadata_present","canonical_target_preserved","detached_evidence_preserved","authoritative_source_preserved"]), "separate bounded regression exercises the real quarantine move and preservation boundaries")
 rec("guided_apply_failure_is_localized_and_actionable", all(t in launcher for t in ["The managed project copy could not be created.","Incomplete temporary copy was cleaned.","Original XML export was not changed.","Reason: {0}","Stage: {0}","Cleanup: {0}","APPLY_RESIDUE_REPAIR_REQUIRED"]), "default guided APPLY failure replaces raw lifecycle output with localized FAIL/Reason/Stage/Cleanup/Next/Details guidance")
+rec("guided_progress_reuses_durable_apply_verify", all(t in launcher for t in ["function Start-GuidedLifecycleProcess","function Wait-GuidedLifecycleProcess","Get-CurrentWorkerOperation","ValidateSet('APPLY','VERIFY')","Invoke-GuidedManagedProjectProgress","Invoke-GuidedAction -ShowOutput {Invoke-GuidedManagedProjectProgress"]), "guided presentation runs the existing APPLY/VERIFY CLI owners and polls their durable operation receipt")
+rec("guided_progress_has_honest_stage_and_elapsed_liveness", all(t in launcher for t in ["[{0}/5]","Work continues... elapsed {0}","Checking project structure and current state...","Building the managed project copy...","Confirming the managed copy result...","Checking files and checksums...","Done."]) and "%" not in launcher[launcher.index("function Write-GuidedProgressStage"):launcher.index("function Complete-GuidedProject")], "guided completion exposes five human stages plus elapsed heartbeat without percent")
+progress_block = launcher[launcher.index("function Start-GuidedLifecycleProcess"):launcher.index("function Complete-GuidedProject")]
+rec("guided_progress_adds_no_tree_scan", "Get-CurrentWorkerOperation" in progress_block and not any(t in progress_block for t in ["Get-TreeDigest","Get-ChildItem -Recurse","Measure-Object Length"]), "progress presentation polls receipt/process state only; no duplicate source-tree traversal")
+rec("guided_progress_localization_keys_complete", all(t in launcher for t in ["'Checking project structure and current state...'=","'Building the managed project copy...'=","'This may take some time for large configurations.'=","'Confirming the managed copy result...'=","'Checking files and checksums...'=","'Done.'=","'Work continues... elapsed {0}'="]), "ru-* resource covers all new progress labels; canonical English remains fallback")
+rec("guided_progress_regression_covers_acceptance", all(t in guided_progress_regression for t in ["Assert-OrderedStages 'ru_order'","Assert-Heartbeat 'ru_liveness_heartbeat'","Assert-OrderedStages 'en_order'","Assert-Heartbeat 'en_liveness_heartbeat'","durable_apply_semantics_unchanged","durable_verify_semantics_unchanged","progress_polls_receipt_not_source_tree","progress_failure_uses_guided_failure_boundary","accepted_apply_failure_contract_retained"]), "Windows PS5.1 regression proves RU/EN ordering, liveness, unchanged durable semantics, no UI-only scan and #79 failure boundary")
 
 operation_tokens = [
     "Start-WorkerOperation",

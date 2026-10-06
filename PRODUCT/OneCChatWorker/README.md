@@ -18,6 +18,8 @@ Add local project is a wizard. Every field explains what it is, why it is needed
 
 Before setup is committed, the wizard shows a plain-language summary with Confirm, Back/Edit and Cancel. Setup can resume from an existing draft without replaying already-completed project/system steps. The guided completion action still records APPLY and VERIFY as separate durable internal operations while presenting them as one human step.
 
+Guided project completion now exposes five plain-language stages over those same durable APPLY/VERIFY operations. The presentation polls only the existing operation receipt/process state and emits elapsed-time heartbeats while a stage is still running; it does not calculate a fake percentage and does not add a second full-tree scan for UI progress. Russian ru-* and canonical English fallback use the same stage order. Advanced and direct CLI APPLY/VERIFY output/semantics remain unchanged.
+
 Expected user-input failures in the default UI are shown as FAIL / Next / Details guidance rather than uncaught PowerShell stack traces. Full technical lifecycle controls, raw operation details, diagnostics and manual APPLY/VERIFY remain available under Advanced.
 
 The same launcher exposes deterministic CLI modes for support and automation. Normal output is human-readable; -Json is an explicit automation/support option. There is one manager/core owner: guided UI and Advanced mode call the same lifecycle implementation rather than maintaining a second state machine.
