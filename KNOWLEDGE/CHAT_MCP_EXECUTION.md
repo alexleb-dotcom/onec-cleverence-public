@@ -27,6 +27,20 @@ If task accounting is unavailable or ambiguous, fail closed rather than assuming
 
 For ambiguous requests, especially `proposal_write`, recover current authoritative state before any replay. A generated/committed/ambiguous result remains charged according to the relay contract even when response delivery fails.
 
+## Durable semantic checkpoint and recovery
+
+When `task_checkpoint_write` is exposed, read `KNOWLEDGE/TASK_CHECKPOINT.md`. The accepted model-facing surface is exactly six bounded operations: `source_context`, `source_search`, `source_read`, `proposal_write`, `proposal_read`, and `task_checkpoint_write`. There is no checkpoint-read or generic filesystem capability.
+
+A fresh/recovered Chat calls `source_context` first. If it returns `RECOVERY_PACKAGE_V1`, verify compatibility and active project/task/goal/snapshot identity before using semantic history. For `CURRENT`, reconcile the authoritative S4 Activity delta, continue `first_unfinished_step`, and avoid only still-valid `do_not_replay` work. After recovery reaches a stable material state, write a new checkpoint with exact current-head CAS.
+
+`SOURCE_SNAPSHOT_STALE` preserves useful semantic history but invalidates Source-dependent evidence/do-not-replay state; reacquire the smallest exact current Source required for the next step. `TASK_ADMISSION_STALE` and `TASK_GOAL_MISMATCH` are not silent-resume states. `CORRUPT` fails closed for semantic recovery. `COMPLETED` is terminal history, not a new unfinished step.
+
+Write `TASK_CHECKPOINT_V1` after material discovery/decision phases, blockers, proposal commit/read-back closure, stable recovery, before deliberate stop/re-admission or Chat replacement, before a long fragile operation when meaningful semantic progress already exists, and at terminal completion. Do not checkpoint every trivial call and never store hidden reasoning/transcript/secrets/raw unrestricted Source or tool payloads.
+
+The checkpoint is not evidence authority. Exact Source, proposal/native receipts, S4 Activity, process execution checkpoints, machine receipts, validation ledger and release owners still decide their own properties. On contradiction those canonical owners win.
+
+`Continue previous task` is an explicit operator action. It creates a new finite S4 admission bound to the verified predecessor checkpoint/activity cursor. The model cannot choose predecessor IDs, and a semantic checkpoint never resets or extends security budget.
+
 ## Prepared quality consumption
 
 `source_search` remains candidate discovery only. `source_read` remains the exact current Source evidence operation and the only accepted target-binding trigger for local quality preparation.

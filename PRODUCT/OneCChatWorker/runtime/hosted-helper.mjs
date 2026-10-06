@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { SourceReaderIntegration, PROVIDER_VERSION } from '../provider/source-reader-integration.mjs';
 import { LocalQualityAdapter, boundedTargetHints, reportBindingMatches } from './local-quality-adapter.mjs';
+import { createTaskCheckpointStore } from './task-checkpoint-store.mjs';
 
 const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneCChatWorker';
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
@@ -28,7 +29,7 @@ const SECRET_PATH = admission.helper_secret_path || path.join(PROGRAM_DATA,'secr
 const RUNTIME_DIR = admission.runtime_dir || path.join(PROGRAM_DATA,'runtime');
 const STATE_PATH = path.join(RUNTIME_DIR,'hosted-helper-state.json');
 const LOG_PATH = path.join(RUNTIME_DIR,'hosted-helper-log.jsonl');
-const VERSION = 'onecchat-hosted-helper/1.0.0';
+const VERSION = 'onecchat-hosted-helper/1.1.0';
 
 if (typeof RELAY !== 'string' || !/^wss:\/\//.test(RELAY)) throw new Error('ADMISSION_RELAY_INVALID');
 if (typeof MANIFEST_PATH !== 'string' || !MANIFEST_PATH) throw new Error('ADMISSION_MANIFEST_MISSING');
@@ -112,6 +113,7 @@ async function saveState(s){const t=STATE_PATH+'.tmp';await fsp.writeFile(t,JSON
 const SNAPSHOT = admission.schema_version >= 2
   ? String(admission.source_snapshot_id)
   : (admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8')));
+const checkpointStore=IS_S4?createTaskCheckpointStore({programDataRoot:PROGRAM_DATA,admission}):null;
 async function loadState(){
   try{
     const s=JSON.parse(await fsp.readFile(STATE_PATH,'utf8'));
@@ -272,11 +274,12 @@ async function exec(op,args){
   try{
     if(Date.now()>=Date.parse(state.expires_utc))fail(IS_S4?'TASK_EXPIRED':'SESSION_EXPIRED');
     if(op==='context'){
-      const payload={task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:OUTPUT_TASK_ROOT,status:'PROPOSAL_NOT_APPLIED',task_created_utc:IS_S4?TASK_CREATED_UTC:state.started_utc,task_expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}};
-      const hints=await boundedTargetHints({taskGoal:TASK_GOAL,projectRoot:String(manifest.project_root||''),artifacts:ARTIFACTS}).catch(()=>[]);
-      if(hints.length){const c={...payload,target_hints:hints};if(Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.target_hints=hints;}
+      const payload={task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,task_goal_sha256:admission.task_goal_sha256??null,canonical_project_root:manifest.project_root||null,output_task_root:OUTPUT_TASK_ROOT,status:'PROPOSAL_NOT_APPLIED',task_created_utc:IS_S4?TASK_CREATED_UTC:state.started_utc,task_expires_utc:state.expires_utc,checkpoint_support:IS_S4?'TASK_CHECKPOINT_V1':'UNAVAILABLE_LEGACY_ADMISSION',caps:{...caps,accounting_owner:'relay'}};
+      if(IS_S4&&checkpointStore)payload.recovery=await checkpointStore.recovery(args?.__s4||{},1350);
       const prepared=await freshPreparedQuality();
       if(prepared){const c={...payload,prepared_quality:prepared};if(Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.prepared_quality=prepared;}
+      const hints=await boundedTargetHints({taskGoal:TASK_GOAL,projectRoot:String(manifest.project_root||''),artifacts:ARTIFACTS}).catch(()=>[]);
+      if(hints.length){const c={...payload,target_hints:hints};if(Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.target_hints=hints;}
       return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload};
     }
     if(op==='search')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await sourceSearch(args)};
@@ -297,6 +300,15 @@ async function exec(op,args){
     }
     if(op==='proposal_write')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await proposalWrite(args)};
     if(op==='proposal_read')return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:await proposalRead(args)};
+    if(op==='task_checkpoint_write'){
+      if(!IS_S4||!checkpointStore)fail('CHECKPOINT_SUPPORT_UNAVAILABLE_LEGACY_ADMISSION');
+      for(const ref of (args?.source_evidence_refs||[]))if(!pathAllowed(ref?.path))fail('CHECKPOINT_SOURCE_REF_OUTSIDE_ADMISSION');
+      for(const ref of (args?.proposal_refs||[]))proposalPath(ref?.path);
+      const internal=args?.__s4;if(!internal)fail('ACTIVITY_CURSOR_UNAVAILABLE');
+      const modelArgs={...args};delete modelArgs.__s4;
+      const receipt=await checkpointStore.write(modelArgs,{activity_cursor_before:internal.activity_cursor_before,writer_epoch_seq:internal.writer_epoch_seq});
+      return {status:'OK',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3)},payload:receipt};
+    }
     fail('UNKNOWN_OP');
   }catch(e){return {status:'ERROR',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3),error_class:String(e?.code||e?.name||'ERROR')},payload:{error:String(e?.message||e).slice(0,400)}};}
 }
@@ -309,6 +321,7 @@ async function connectLoop(){
       const hello=IS_S4?{
         type:'hello',admission_schema_version:3,task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,project_id:PROJECT,task_id:TASK,task_goal_sha256:admission.task_goal_sha256??null,
         manifest_sha256:manifestHash,snapshot_id:SNAPSHOT,output_task_root:OUTPUT_TASK_ROOT,helper_version:VERSION,task_created_utc:TASK_CREATED_UTC,task_expires_utc:TASK_EXPIRES_UTC,
+        predecessor:admission.predecessor??null,
         controlled_restart_done:false,caps:{task_request_limit:caps.task_request_limit,task_result_byte_limit:caps.task_result_byte_limit,epoch_soft_request_limit:caps.epoch_soft_request_limit,epoch_soft_result_byte_limit:caps.epoch_soft_result_byte_limit,max_result_bytes:caps.max_result_bytes}
       }:{type:'hello',session_id:state.session_id,snapshot_id:SNAPSHOT,helper_version:VERSION,started_utc:state.started_utc,expires_utc:state.expires_utc,task_id:TASK,caps:{max_requests:caps.max_requests,max_cumulative_result_bytes:caps.max_cumulative_result_bytes,max_result_bytes:caps.max_result_bytes}};
       ws.send(JSON.stringify(hello));

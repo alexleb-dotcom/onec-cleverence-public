@@ -92,7 +92,7 @@ START performs exactly one FAST_STATE_CHECK_V1 for the selected project, then wr
 
 The helper runs under the restricted local identity and connects outbound-only. Before connection it verifies the exact manifest SHA-256 and source_snapshot_id from admission against manifest v2. Admission schema v3 adds an opaque manager-minted task_admission_id, one stable session_id, a fixed task expiry, durable task request/result-byte limits, and 32-request / 36000-byte epoch soft quanta. Epoch rollover is internal: task/session/project/snapshot/manifest identity, expiry, and relay-owned durable usage do not reset on reconnect or helper restart.
 
-The relay is the authoritative S4 accounting owner. Before a data-bearing request executes it reserves the applicable hard max_result_bytes; committed results reconcile to actual charged bytes, while ambiguous/generated results remain charged fail-closed. source_context exposes bounded task lifecycle, durable remaining budget, and current epoch state without adding a sixth tool. Exhausted/expired/snapshot-mismatched tasks allow only lifecycle/accounting control context and require operator re-admission for data-bearing work.
+The relay is the authoritative S4 accounting owner. Before a data-bearing request executes it reserves the applicable hard max_result_bytes; committed results reconcile to actual charged bytes, while ambiguous/generated results remain charged fail-closed. source_context exposes bounded task lifecycle, durable remaining budget, current epoch state, and verified semantic recovery state. The same relay task record/request_receipts owner carries the monotonic S4 Activity cursor/delta; there is no second activity journal or accounting store. Exhausted/expired/snapshot-mismatched tasks allow only lifecycle/accounting control context and require operator re-admission for data-bearing work.
 
 The S4 implementation is reviewable before a production cap is accepted. runtime.lock.json deliberately keeps the durable cap policy PENDING until RP accepts benchmark-derived finite request/byte/TTL values. The current 32 / 36000 values are epoch soft quanta only, not production task caps; START/New-Admission fails closed rather than inventing an unqualified durable limit.
 
@@ -114,7 +114,7 @@ Participants are read-only to the restricted helper. Output is writable only for
 
 ### Bounded local quality preparation
 
-The five-tool surface does not grow. After, and only after, a successful admitted source_read, the helper may deterministically bind that exact read path to one eligible metadata descriptor or managed-form Form.xml. It may then prepare a LOCAL_QUALITY_REPORT_V1 using the internal allowlisted META_INFO, FORM_INFO and FORM_VALIDATE operations. source_search, task text and source_context hints never execute the adapter.
+The accepted six-tool surface is limited to the six bounded operations authorized by #92. After, and only after, a successful admitted source_read, the helper may deterministically bind that exact read path to one eligible metadata descriptor or managed-form Form.xml. It may then prepare a LOCAL_QUALITY_REPORT_V1 using the internal allowlisted META_INFO, FORM_INFO and FORM_VALIDATE operations. source_search, task text and source_context hints never execute the adapter.
 
 The adapter redistributes exactly three unchanged MIT-licensed scripts from Nikolay-Shirokov/cc-1c-skills at commit 1fa205b961f4ed3659f58f4b55d2d9b1d5e4810e. Their git-blob and SHA-256 identities are recorded in KNOWLEDGE/EXTERNAL_SOURCE_CATALOG.json and runtime.lock.json. Execution is fixed to Windows PowerShell 5.1 with shell=false, fixed internal arguments, bounded time/output, and a closure-only temporary sandbox. Authoritative Source is read-only and is re-hashed after execution; SOURCE_CHANGED_DURING_RUN discards the report/cache.
 
@@ -196,7 +196,7 @@ Cleverence must later reuse this same installer/catalog/lifecycle architecture a
 
 ## Reproducibility and verification
 
-runtime.lock.json pins dependency versions, reference binary hashes, product component hashes, the stable hosted app identity, the exact five-tool surface, and the remote-call budget.
+runtime.lock.json pins dependency versions, reference binary hashes, product component hashes, the stable hosted app identity, the exact six-tool surface, and the remote-call budget.
 
 Run the Windows clean-root regression:
 

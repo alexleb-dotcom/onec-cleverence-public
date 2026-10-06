@@ -1,5 +1,5 @@
 import OAuthProvider, { AuthorizationError, CimdFetchError } from '@cloudflare/workers-oauth-provider';
-import { createTaskRecord, reconcileTaskHello, reserveRequest, commitRequest, chargeAmbiguousRequest, lifecycleProjection, minimalControlPayload, projectCommittedRecord } from './s4-accounting.js';
+import { createTaskRecord, reconcileTaskHello, reserveRequest, commitRequest, chargeAmbiguousRequest, lifecycleProjection, minimalControlPayload, projectCommittedRecord, activityReceiptHashInput, sealActivityReceipt, unsealedTerminalReceipts, activityDelta, latestCheckpointRequestCursor, S4_ACTIVITY_CURSOR_SCHEMA } from './s4-accounting.js';
 
 const ORIGIN='https://onec-g1q1-relay.alex-lebad1.workers.dev';
 const RESOURCE=ORIGIN+'/mcp';
@@ -12,6 +12,44 @@ async function requestFingerprint(op,args){
   return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 const payloadBytes=v=>new TextEncoder().encode(JSON.stringify(v??null)).length;
+async function sha256HexValue(v){
+  const bytes=new TextEncoder().encode(typeof v==='string'?v:JSON.stringify(stable(v)));
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function safeRequestMeta(op,args){
+  const a=args||{};
+  if(op==='search')return {query:String(a.query||'').slice(0,256),max_matches:Number(a.max_matches||8)};
+  if(op==='read')return {path:String(a.path||'').slice(0,260),start:Number(a.start||0),end:Number(a.end||0)};
+  if(op==='proposal_write')return {path:String(a.path||'').slice(0,180)};
+  if(op==='proposal_read')return {path:String(a.path||'').slice(0,180),start:Number(a.start||1),end:Number(a.end||0)};
+  if(op==='task_checkpoint_write')return {expected_seq:Number(a.expected_seq||0),phase:String(a.phase||'').slice(0,64),status:String(a.status||'').slice(0,16)};
+  return {};
+}
+function safeResultMeta(op,result){
+  const m=result?.metadata||{},p=result?.payload||{};
+  const out={status:String(result?.status||'ERROR').slice(0,16)};
+  if(m.error_class)out.error_class=String(m.error_class).slice(0,96);
+  if(op==='read'){if(m.relative_path)out.path=String(m.relative_path).slice(0,260);if(Array.isArray(m.range))out.range=m.range.slice(0,2);if(m.sha256)out.sha256=String(m.sha256).slice(0,64);}
+  if(op==='proposal_write'){if(p.relative_path)out.path=String(p.relative_path).slice(0,180);if(p.sha256)out.sha256=String(p.sha256).slice(0,64);out.committed=p.status==='COMMITTED';out.read_back_verified=!!p.read_back_verified;out.recovered_commit=!!p.recovered_commit;}
+  if(op==='proposal_read'){if(p.relative_path)out.path=String(p.relative_path).slice(0,180);if(p.sha256)out.sha256=String(p.sha256).slice(0,64);}
+  if(op==='task_checkpoint_write'){
+    out.checkpoint_receipt={
+      status:String(p.status||result?.status||'ERROR').slice(0,32),checkpoint_id:p.checkpoint_id??null,seq:p.seq??null,sha256:p.sha256??null,
+      current_head:p.current_head??null,replayed:!!p.replayed,superseded:!!p.superseded,size:p.size??null
+    };
+  }
+  return out;
+}
+async function sealOneActivity(record,requestId,safeResult){
+  const hashInput=activityReceiptHashInput(record,requestId,safeResult);
+  const hash=await sha256HexValue(hashInput);
+  sealActivityReceipt(record,{requestId,safeResult,activitySha256:hash});
+}
+async function sealPendingActivity(record){
+  for(const r of unsealedTerminalReceipts(record))await sealOneActivity(record,r.request_id,r.safe_result||{status:'ERROR',error_class:r.reason||'AMBIGUOUS_DELIVERY'});
+  return record;
+}
 
 export class RelaySession {
   constructor(state, env) { this.state=state; this.env=env; this.helper=null; this.pending=new Map(); this.busy=false; }
@@ -57,6 +95,7 @@ export class RelaySession {
           return;
         }
         record.connected=true;record.helper_version=msg.helper_version||record.helper_version;record.controlled_restart_done=!!msg.controlled_restart_done;
+        await sealPendingActivity(record);
         await this.state.storage.put(key,record);
         await this.state.storage.put('active_task_id',msg.task_admission_id);
         await this.state.storage.put('active_mode','s4');
@@ -130,20 +169,38 @@ export class RelaySession {
     if(!clientId)return Response.json({error:'REQUEST_IDENTITY_INVALID'},{status:400});
     const fingerprint=await requestFingerprint(body.op,body.args);
     let reservation;
-    try{reservation=reserveRequest(record,{requestId:clientId,fingerprint,op:body.op});}
+    try{reservation=reserveRequest(record,{requestId:clientId,fingerprint,op:body.op,safeRequest:safeRequestMeta(body.op,body.args)});}
     catch(e){return Response.json({error:String(e?.code||e?.message||'ACCOUNTING_ERROR')},{status:409});}
     if(reservation.action==='CONTROL_ONLY')return Response.json({status:'OK',metadata:{op:'context',control_only:true},payload:minimalControlPayload(record),usage:lifecycleProjection(record).accounting});
-    if(reservation.action==='REPLAY_BLOCKED')return Response.json({error:'REQUEST_ALREADY_ACCOUNTED_RECOVERY_REQUIRED',receipt:{state:reservation.receipt.state,charged_bytes:reservation.receipt.charged_bytes,epoch_seq:reservation.receipt.epoch_seq}},{status:409});
+    if(reservation.action==='REPLAY_BLOCKED'){
+      if(body.op==='task_checkpoint_write'&&reservation.receipt.safe_result?.checkpoint_receipt){
+        return Response.json({status:'OK',metadata:{op:body.op,replayed_transport:true},payload:{...reservation.receipt.safe_result.checkpoint_receipt,replayed:true},usage:lifecycleProjection(record).accounting});
+      }
+      return Response.json({error:'REQUEST_ALREADY_ACCOUNTED_RECOVERY_REQUIRED',receipt:{state:reservation.receipt.state,charged_bytes:reservation.receipt.charged_bytes,epoch_seq:reservation.receipt.epoch_seq,activity_seq:reservation.receipt.activity_seq}},{status:409});
+    }
     if(reservation.action==='BLOCKED')return Response.json({error:reservation.error,usage:lifecycleProjection(record).accounting},{status:429});
     await this.state.storage.put(key,record);
+    let helperArgs=body.args||{};
+    const cursorBefore=reservation.reservation.activity_cursor_before;
+    if(body.op==='task_checkpoint_write')helperArgs={...helperArgs,__s4:{activity_cursor_before:cursorBefore,writer_epoch_seq:reservation.reservation.epoch_seq}};
+    if(body.op==='context'){
+      const currentFrom=latestCheckpointRequestCursor(record)||{schema:S4_ACTIVITY_CURSOR_SCHEMA,task_admission_id:record.task_admission_id,activity_seq:0,receipt_sha256:null};
+      const currentActivityDelta=activityDelta(record,{fromCursor:currentFrom,throughSeq:cursorBefore.activity_seq,limit:48});
+      let predecessorActivityDelta=null;
+      if(record.predecessor?.task_admission_id){
+        const predecessorRecord=await this.state.storage.get('task:'+record.predecessor.task_admission_id);
+        if(predecessorRecord)predecessorActivityDelta=activityDelta(predecessorRecord,{fromCursor:record.predecessor.activity_cursor,throughSeq:predecessorRecord.activity_committed_seq,limit:48});
+      }
+      helperArgs={...helperArgs,__s4:{activity_cursor_before:cursorBefore,activity_delta:currentActivityDelta,predecessor_activity_delta:predecessorActivityDelta}};
+    }
     const request_id=clientId;this.busy=true;
     const resultP=new Promise((resolve,reject)=>{const timer=setTimeout(()=>{if(this.pending.delete(request_id)){this.busy=false;reject(new Error('HELPER_TIMEOUT'));}},15000);this.pending.set(request_id,{resolve:v=>{clearTimeout(timer);resolve(v);}});});
-    this.helper.send(JSON.stringify({type:'request',request_id,op:body.op,args:body.args}));
+    this.helper.send(JSON.stringify({type:'request',request_id,op:body.op,args:helperArgs}));
     let result;
     try{result=await resultP;}
     catch(e){
       record=await this.state.storage.get(key);
-      try{chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'HELPER_TIMEOUT'});await this.state.storage.put(key,record);}catch{}
+      try{chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'HELPER_TIMEOUT'});await sealOneActivity(record,clientId,{status:'ERROR',error_class:'HELPER_TIMEOUT'});await this.state.storage.put(key,record);}catch{}
       return Response.json({error:'HELPER_TIMEOUT',usage:lifecycleProjection(record).accounting},{status:504});
     }
     let finalPayload=result.payload;
@@ -161,13 +218,17 @@ export class RelaySession {
     if(bytes>record.max_result_bytes){
       record=await this.state.storage.get(key);
       chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'});
+      await sealOneActivity(record,clientId,{status:'ERROR',error_class:'RESULT_CAP'});
       await this.state.storage.put(key,record);
       return Response.json({error:'RESULT_CAP',usage:lifecycleProjection(record).accounting},{status:502});
     }
     record=await this.state.storage.get(key);
-    try{commitRequest(record,{requestId:clientId,fingerprint,payloadBytes:bytes});await this.state.storage.put(key,record);}
-    catch(e){return Response.json({error:String(e?.code||e?.message||'ACCOUNTING_COMMIT_FAILED')},{status:503});}
-    return Response.json({status:result.status,metadata:{...result.metadata,epoch_id:record.epoch_id,epoch_seq:record.epoch_seq},payload:finalPayload,usage:lifecycleProjection(record).accounting});
+    try{
+      commitRequest(record,{requestId:clientId,fingerprint,payloadBytes:bytes});
+      await sealOneActivity(record,clientId,safeResultMeta(body.op,{...result,payload:finalPayload}));
+      await this.state.storage.put(key,record);
+    }catch(e){return Response.json({error:String(e?.code||e?.message||'ACCOUNTING_COMMIT_FAILED')},{status:503});}
+    return Response.json({status:result.status,metadata:{...result.metadata,epoch_id:record.epoch_id,epoch_seq:record.epoch_seq,activity_seq:record.activity_committed_seq},payload:finalPayload,usage:lifecycleProjection(record).accounting});
   }
 }
 
@@ -178,7 +239,24 @@ const TOOLS=[
  {name:'source_search',description:'Fixed-string BSL search in the admitted Nendo ONEC Source only. Read-only and bounded.',inputSchema:{type:'object',properties:{query:{type:'string',minLength:1,maxLength:256},max_matches:{type:'integer',minimum:1,maximum:8}},required:['query'],additionalProperties:false},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}},
  {name:'source_read',description:'Read a bounded 1-based inclusive line range from an admitted direct canonical Nendo Source path.',inputSchema:{type:'object',properties:{path:{type:'string',minLength:1,maxLength:260},start:{type:'integer',minimum:1},end:{type:'integer',minimum:1}},required:['path','start','end'],additionalProperties:false},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}},
  {name:'proposal_write',description:'Create or CAS-replace one bounded proposal artifact in the single admitted Output task. Never writes Source.',inputSchema:{type:'object',properties:{path:{type:'string',minLength:1,maxLength:180},content:{type:'string',maxLength:32768},idempotency_key:{type:'string',minLength:1,maxLength:64,pattern:'^[A-Za-z0-9._-]+$'},replace:{type:'boolean',default:false},expected_sha256:{type:'string',pattern:'^[A-Fa-f0-9]{64}$'}},required:['path','content','idempotency_key'],additionalProperties:false},annotations:{readOnlyHint:false,destructiveHint:false,openWorldHint:false}},
- {name:'proposal_read',description:'Read back a bounded line window from one artifact or its machine-readable provenance in the admitted Output task.',inputSchema:{type:'object',properties:{path:{type:'string',minLength:1,maxLength:180},start:{type:'integer',minimum:1,default:1},end:{type:'integer',minimum:1}},required:['path'],additionalProperties:false},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}}
+ {name:'proposal_read',description:'Read back a bounded line window from one artifact or its machine-readable provenance in the admitted Output task.',inputSchema:{type:'object',properties:{path:{type:'string',minLength:1,maxLength:180},start:{type:'integer',minimum:1,default:1},end:{type:'integer',minimum:1}},required:['path'],additionalProperties:false},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}},
+ {name:'task_checkpoint_write',description:'Commit one bounded semantic TASK_CHECKPOINT_V1 for the active admitted task using CAS and idempotency. This is task handoff state, not Source/proof/proposal content.',inputSchema:{type:'object',properties:{
+   idempotency_key:{type:'string',minLength:1,maxLength:64,pattern:'^[A-Za-z0-9._-]+$'},
+   expected_seq:{type:'integer',minimum:0,maximum:1000000},
+   expected_predecessor_sha256:{anyOf:[{type:'string',pattern:'^[A-Fa-f0-9]{64}$'},{type:'null'}]},
+   phase:{type:'string',minLength:1,maxLength:64},
+   status:{type:'string',enum:['IN_PROGRESS','BLOCKED','COMPLETED']},
+   progress_summary:{type:'string',maxLength:640},
+   completed_steps:{type:'array',maxItems:6,items:{type:'string',maxLength:192}},
+   decisions_constraints:{type:'array',maxItems:6,items:{type:'string',maxLength:192}},
+   unresolved_questions:{type:'array',maxItems:4,items:{type:'string',maxLength:192}},
+   first_unfinished_step:{type:'string',maxLength:320},
+   do_not_replay:{type:'array',maxItems:6,items:{type:'string',maxLength:192}},
+   source_evidence_refs:{type:'array',maxItems:6,items:{type:'object',properties:{path:{type:'string',minLength:1,maxLength:260},sha256:{type:'string',pattern:'^[A-Fa-f0-9]{64}$'},start:{type:'integer',minimum:1},end:{type:'integer',minimum:1}},required:['path','sha256'],additionalProperties:false}},
+   proposal_refs:{type:'array',maxItems:4,items:{type:'object',properties:{path:{type:'string',minLength:1,maxLength:180},sha256:{type:'string',pattern:'^[A-Fa-f0-9]{64}$'}},required:['path','sha256'],additionalProperties:false}},
+   machine_operation_refs:{type:'array',maxItems:4,items:{type:'object',properties:{operation_id:{type:'string',minLength:1,maxLength:128},sha256:{type:'string',pattern:'^[A-Fa-f0-9]{64}$'}},required:['operation_id'],additionalProperties:false}},
+   assumptions_requiring_confirmation:{type:'array',maxItems:4,items:{type:'string',maxLength:192}}
+ },required:['idempotency_key','expected_seq','expected_predecessor_sha256','phase','status','progress_summary','first_unfinished_step'],additionalProperties:false},annotations:{readOnlyHint:false,destructiveHint:false,openWorldHint:false}}
 ];
 const McpApiHandler={
  async fetch(request,env,ctx){
@@ -186,7 +264,7 @@ const McpApiHandler={
   if(request.method!=='POST')return new Response('',{status:405,headers:{Allow:'POST'}});
   let msg;try{msg=await request.json();}catch{return mcpError(null,-32700,'Parse error');}
   if(Array.isArray(msg)||msg.jsonrpc!=='2.0')return mcpError(msg?.id??null,-32600,'Invalid Request');
-  if(msg.method==='initialize')return mcpResult(msg.id,{protocolVersion:'2025-06-18',capabilities:{tools:{listChanged:false}},serverInfo:{name:'onec-g1q1-relay',version:'1.2.0-w1'}});
+  if(msg.method==='initialize')return mcpResult(msg.id,{protocolVersion:'2025-06-18',capabilities:{tools:{listChanged:false}},serverInfo:{name:'onec-g1q1-relay',version:'1.4.0-w1'}});
   if(msg.method==='notifications/initialized')return new Response(null,{status:202});
   if(msg.method==='ping')return mcpResult(msg.id,{});
   if(msg.method==='tools/list')return mcpResult(msg.id,{tools:TOOLS});
@@ -197,6 +275,13 @@ const McpApiHandler={
     else if(name==='source_read'){op='read';opArgs={path:args.path,start:args.start,end:args.end};}
     else if(name==='proposal_write'){op='proposal_write';opArgs={path:args.path,content:args.content,idempotency_key:args.idempotency_key,replace:args.replace===true,expected_sha256:args.expected_sha256};}
     else if(name==='proposal_read'){op='proposal_read';opArgs={path:args.path,start:args.start??1,end:args.end};}
+    else if(name==='task_checkpoint_write'){op='task_checkpoint_write';opArgs={
+      idempotency_key:args.idempotency_key,expected_seq:args.expected_seq,expected_predecessor_sha256:args.expected_predecessor_sha256??null,
+      phase:args.phase,status:args.status,progress_summary:args.progress_summary,completed_steps:args.completed_steps||[],decisions_constraints:args.decisions_constraints||[],
+      unresolved_questions:args.unresolved_questions||[],first_unfinished_step:args.first_unfinished_step,do_not_replay:args.do_not_replay||[],
+      source_evidence_refs:args.source_evidence_refs||[],proposal_refs:args.proposal_refs||[],machine_operation_refs:args.machine_operation_refs||[],
+      assumptions_requiring_confirmation:args.assumptions_requiring_confirmation||[]
+    };}
     else return mcpError(msg.id,-32602,'Unknown tool');
     const stub=env.RELAY.get(env.RELAY.idFromName('q1'));
     const rr=await stub.fetch('https://relay.invalid/rpc',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op,args:opArgs,client_request_id:String(msg.id)})});

@@ -39,6 +39,21 @@ try{
  A 'epoch_soft_caps' ($a.caps.epoch_soft_request_limit -eq 32 -and $a.caps.epoch_soft_result_byte_limit -eq 36000 -and $a.caps.max_result_bytes -eq 3000)
  $saved=Get-Content (Join-Path $pd 'runtime\active-admission.json') -Raw -Encoding UTF8|ConvertFrom-Json
  A 'saved_exact_identity' ($saved.task_admission_id -eq $a.task_admission_id -and $saved.session_id -eq $a.session_id)
+ $pred=[pscustomobject]@{
+  task_admission_id=$a.task_admission_id;checkpoint_id='checkpoint-1';checkpoint_seq=1;checkpoint_sha256=('9'*64);
+  task_goal_sha256=$a.task_goal_sha256;source_snapshot_id=$a.source_snapshot_id;
+  activity_cursor=[pscustomobject]@{schema='S4_ACTIVITY_CURSOR_V1';task_admission_id=$a.task_admission_id;activity_seq=0;receipt_sha256=$null}
+ }
+ $continued=New-Admission -ProjectId $project -TaskId 'task-s4' -TaskGoal 'bounded S4 fixture' -WorkerRoot $worker -ProgramDataRoot $pd -RelayUrl 'wss://example.invalid/helper' -AcceptedState $accepted -Predecessor $pred -TaskRequestLimit 96 -TaskResultByteLimit 108000 -TaskTtlMinutes 120 -EpochSoftRequestLimit 32 -EpochSoftResultByteLimit 36000
+ A 'continuation_new_budget_identity' ($continued.task_admission_id -ne $a.task_admission_id -and $continued.session_id -ne $a.session_id)
+ A 'continuation_predecessor_bound' ($continued.predecessor.task_admission_id -eq $a.task_admission_id -and $continued.predecessor.checkpoint_sha256 -eq ('9'*64) -and $continued.predecessor.activity_cursor.activity_seq -eq 0)
+ $goalMismatch=$false
+ try{New-Admission -ProjectId $project -TaskId 'task-s4' -TaskGoal 'different goal' -WorkerRoot $worker -ProgramDataRoot $pd -AcceptedState $accepted -Predecessor $pred -TaskRequestLimit 96 -TaskResultByteLimit 108000 -TaskTtlMinutes 120 -EpochSoftRequestLimit 32 -EpochSoftResultByteLimit 36000|Out-Null}catch{$goalMismatch=$_.Exception.Message -eq 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+ A 'continuation_goal_mismatch_fails_closed' $goalMismatch
+ $continueParams=@((Get-Command Continue-WorkerAdmission).Parameters.Keys)
+ A 'continue_predecessor_not_operator_selectable' (-not($continueParams -contains 'Predecessor') -and -not($continueParams -contains 'ProjectId') -and -not($continueParams -contains 'TaskId'))
+ $launcher=Get-Content (Join-Path $package 'OneCChatWorker.ps1') -Raw -Encoding UTF8
+ A 'explicit_continue_operator_action_present' ($launcher.Contains("'CONTINUE' {Run-Continue;break}") -and $launcher.Contains("recommended='Continue previous task'"))
  $blocked=$false
  try{New-Admission -ProjectId $project -TaskId 'pending-default' -WorkerRoot $worker -ProgramDataRoot $pd -AcceptedState $accepted|Out-Null}catch{$blocked=$_.Exception.Message -eq 'S4_CAP_QUALIFICATION_REQUIRED'}
  A 'unqualified_default_fails_closed' $blocked

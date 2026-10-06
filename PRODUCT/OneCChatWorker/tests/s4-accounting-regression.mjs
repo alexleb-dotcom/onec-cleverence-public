@@ -41,8 +41,8 @@ ok('EPOCH_ROTATION_PRESERVES_TASK_COUNTERS',()=>{
 ok('NEW_EPOCH_STARTS_FROM_CURRENT_TASK_USAGE_NOT_ZERO',()=>{const r=make();commit(r,'1',100);rotateEpoch(r,{epochIdFactory:epochFactory});assert.equal(r.task_requests_used,1);assert.equal(r.task_result_bytes_used,100);assert.equal(r.epoch_requests_used,0);});
 ok('MODEL_CANNOT_MINT_TASK_ADMISSION_OR_EPOCH',()=>{
   const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');const core=fs.readFileSync(path.join(PRODUCT,'core/OneCChatWorker.Core.psm1'),'utf8');
-  const tools=[...relay.matchAll(/\{name:'(source_context|source_search|source_read|proposal_write|proposal_read)'/g)].map(x=>x[1]);
-  assert.deepEqual(tools,['source_context','source_search','source_read','proposal_write','proposal_read']);
+  const tools=[...relay.matchAll(/\{name:'(source_context|source_search|source_read|proposal_write|proposal_read|task_checkpoint_write)'/g)].map(x=>x[1]);
+  assert.deepEqual(tools,['source_context','source_search','source_read','proposal_write','proposal_read','task_checkpoint_write']);
   const toolBlock=relay.slice(relay.indexOf('const TOOLS=['),relay.indexOf('const McpApiHandler'));
   assert(!toolBlock.includes('task_admission_id'));assert(!toolBlock.includes('epoch_id'));
   const sig=core.slice(core.indexOf('function New-Admission {'),core.indexOf('Assert-SafeId $TaskId'));
