@@ -1,5 +1,5 @@
 ﻿param(
- [ValidateSet('MENU','PRECHECK','INSTALL','STATUS','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
+ [ValidateSet('MENU','PRECHECK','INSTALL','STATUS','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
@@ -397,6 +397,34 @@ function Run-Start {
  }
  if($Json){Show-JsonValue $r}else{Write-Host ('START: project={0} task={1} helper={2} snapshot={3}' -f $projectKey,$task,$r.helper.status,$r.source_snapshot_id)}
 }
+function Run-Continue {
+ $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+ if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'CONTINUE_PREVIOUS_ADMISSION_MISSING'}
+ try{$previous=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'CONTINUE_PREVIOUS_ADMISSION_CORRUPT'}
+ $projectKey=[string]$previous.project_id;$task=[string]$previous.task_id
+ $r=Invoke-ObservedAction -OperationType CONTINUE -RequestedAction 'Continue previous semantic task from verified checkpoint with a new finite S4 admission' -TotalSteps 4 -Project $projectKey -Artifact $task -Body {
+  param($op)
+  $null=Update-WorkerOperation -Operation $op -Message 'Verify previous TASK_CHECKPOINT_V1 and current accepted Source identity' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $verified=Read-TaskCheckpointContinuationHead -ProjectId $projectKey -TaskId $task -ProgramDataRoot $ProgramDataRoot
+  $current=Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot
+  if($current.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($current.state)"}
+  $null=Update-WorkerOperation -Operation $op -Message ("Bind predecessor checkpoint seq={0}; current snapshot={1}" -f $verified.head.head_seq,$current.source_snapshot_id) -Step 2 -Total 4 -State RUNNING -SafeDetails @{checkpoint_seq=$verified.head.head_seq;checkpoint_sha256=$verified.head.head_checkpoint_sha256;current_source_snapshot_id=$current.source_snapshot_id} -ProgramDataRoot $ProgramDataRoot
+  $null=Update-WorkerOperation -Operation $op -Message 'Enter the local OneCSourceReader password in the Windows runas prompt' -Step 3 -Total 4 -State WAITING_FOR_USER -ProgramDataRoot $ProgramDataRoot
+  $start=Continue-WorkerAdmission -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl
+  $helper=$null
+  for($i=0;$i -lt 10;$i++){
+   $helper=Get-HelperConnectionState -ProgramDataRoot $ProgramDataRoot
+   if($helper.status -eq 'CONNECTED'){break}
+   Start-Sleep -Seconds 1
+  }
+  $null=Update-WorkerOperation -Operation $op -Message ("Continuation helper state = {0}" -f $helper.status) -Step 4 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  [pscustomobject]@{start=$start;helper=$helper;predecessor_checkpoint_sha256=$verified.head.head_checkpoint_sha256;current_source_snapshot_id=$current.source_snapshot_id}
+ } -FinalStateResolver {
+  param($x)
+  if($x.helper.status -eq 'CONNECTED'){[pscustomobject]@{state='PASS';message='Previous task re-admitted from verified semantic checkpoint'}}else{[pscustomobject]@{state='WAITING_FOR_USER';message=("Continuation admission requested; helper state="+$x.helper.status)}}
+ }
+ Show-Value $r
+}
 function Run-Stop {
  if(Require-AdminOrRelaunch 'STOP'){return}
  $r=Invoke-ObservedAction -OperationType STOP -RequestedAction 'Stop current helper/admission without deleting project data' -TotalSteps 2 -Body {
@@ -465,6 +493,7 @@ function Invoke-CommandMode {
   'VERIFY' {Run-Verify;break}
   'REPAIR' {Run-Repair;break}
   'START' {Run-Start;break}
+  'CONTINUE' {Run-Continue;break}
   'STOP' {Run-Stop;break}
   'SETTINGS' {Run-Settings;break}
   'DIAGNOSTICS' {Show-Value (Get-WorkerDiagnostics -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot);break}
@@ -910,6 +939,12 @@ function Get-GuidedContext {
   return [pscustomobject]@{state='STARTING';recommended='Check connection status';project=$null;participant=$null;reason='The restricted Source helper is running but connection evidence is not ready yet.';helper=$helper;active=$active}
  }
  if($hasAdmission){
+  if($active -and [int]$active.schema_version -eq 3){
+   try{
+    $checkpoint=Read-TaskCheckpointContinuationHead -ProjectId ([string]$active.project_id) -TaskId ([string]$active.task_id) -ProgramDataRoot $ProgramDataRoot
+    return [pscustomobject]@{state='CONTINUE_AVAILABLE';recommended='Continue previous task';project=$null;participant=$null;reason='A verified semantic task checkpoint is available for explicit re-admission.';helper=$helper;active=$active;checkpoint=$checkpoint.head}
+   }catch{}
+  }
   return [pscustomobject]@{state='START_INCOMPLETE';recommended='Clear incomplete start';project=$null;participant=$null;reason='A task admission was written, but no restricted helper process is running. Clear only this incomplete admission before retrying.';helper=$helper;active=$active}
  }
  $c=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
@@ -941,6 +976,7 @@ function Get-GuidedStateLabel {
   'RUNNING' {T 'Work session running'}
   'STARTING' {T 'Work session starting'}
   'START_INCOMPLETE' {T 'Start incomplete'}
+  'CONTINUE_AVAILABLE' {T 'Previous task checkpoint available'}
   'RECOVERY_REQUIRED' {T 'Recovery required'}
   default {$State}
  }
@@ -1349,6 +1385,10 @@ function Guided-MainMenu {
     $null=Invoke-GuidedAction {Run-Repair}
    }
    'PROJECT_READY' {Invoke-GuidedStart $ctx.project.project_id}
+   'CONTINUE_AVAILABLE' {
+    Write-Host (T 'A verified semantic checkpoint is available. Continuing creates a new finite S4 admission and keeps the same logical task/goal.')
+    $null=Invoke-GuidedAction {Run-Continue}
+   }
    'START_INCOMPLETE' {
     Write-Host (T 'Clearing only the incomplete local start/admission state. Project Source and Output are retained.')
     if(Invoke-GuidedAction {Run-Stop}){Write-Host (T 'SUCCESS: Incomplete start state was cleared.');Write-Host (T 'Next: Start work again and enter the OneCSourceReader password.')}

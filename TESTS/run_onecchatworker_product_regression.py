@@ -22,6 +22,7 @@ required = [
     "runtime/source-reader-integration.mjs",
     "runtime/hosted-helper.mjs",
     "runtime/local-quality-adapter.mjs",
+    "runtime/task-checkpoint-store.mjs",
     "runtime/quality/cc-1c-skills/meta-info.ps1",
     "runtime/quality/cc-1c-skills/form-info.ps1",
     "runtime/quality/cc-1c-skills/form-validate.ps1",
@@ -42,6 +43,8 @@ required = [
     "tests/run_test_scratch_hygiene_regression.ps1",
     "tests/run_s4_admission_regression.ps1",
     "tests/s4-accounting-regression.mjs",
+    "tests/run_task_checkpoint_regression.ps1",
+    "tests/task-checkpoint-regression.mjs",
     "relay/src/index.js",
     "relay/src/s4-accounting.js",
     "relay/wrangler.jsonc",
@@ -52,8 +55,8 @@ missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
 
 lock = json.loads((PRODUCT / "runtime.lock.json").read_text(encoding="utf-8"))
-expected_surface = ["source_context", "source_search", "source_read", "proposal_write", "proposal_read"]
-rec("model_surface_exact_five", lock["hosted_mcp"]["model_surface"] == expected_surface, lock["hosted_mcp"]["model_surface"])
+expected_surface = ["source_context", "source_search", "source_read", "proposal_write", "proposal_read", "task_checkpoint_write"]
+rec("model_surface_exact_six", lock["hosted_mcp"]["model_surface"] == expected_surface, lock["hosted_mcp"]["model_surface"])
 
 hash_mismatches = []
 for rel, expected in lock.get("components", {}).items():
@@ -83,6 +86,12 @@ s4_accounting = (PRODUCT / "relay/src/s4-accounting.js").read_text(encoding="utf
 s4_relay = (PRODUCT / "relay/src/index.js").read_text(encoding="utf-8")
 s4_admission_regression = (PRODUCT / "tests/run_s4_admission_regression.ps1").read_text(encoding="utf-8")
 s4_accounting_regression = (PRODUCT / "tests/s4-accounting-regression.mjs").read_text(encoding="utf-8")
+task_checkpoint_store = (PRODUCT / "runtime/task-checkpoint-store.mjs").read_text(encoding="utf-8")
+task_checkpoint_regression = (PRODUCT / "tests/task-checkpoint-regression.mjs").read_text(encoding="utf-8")
+task_checkpoint_ps51 = (PRODUCT / "tests/run_task_checkpoint_regression.ps1").read_text(encoding="utf-8")
+task_checkpoint_knowledge = (ROOT / "KNOWLEDGE/TASK_CHECKPOINT.md").read_text(encoding="utf-8")
+chat_mcp_knowledge = (ROOT / "KNOWLEDGE/CHAT_MCP_EXECUTION.md").read_text(encoding="utf-8")
+skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8-sig")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -109,14 +118,28 @@ s4_lock = lock.get("hosted_mcp", {}).get("s4", {})
 relay_lock = lock.get("hosted_mcp", {}).get("relay_source", {})
 rec("s4_policy_pending_not_guessed", s4_lock.get("contract") == "S4_DURABLE_TASK_ACCOUNTING_V1" and s4_lock.get("admission_schema") == 3 and s4_lock.get("qualification_status") == "PENDING" and s4_lock.get("candidate") is None and s4_lock.get("epoch_soft_request_limit") == 32 and s4_lock.get("epoch_soft_result_byte_limit") == 36000 and s4_lock.get("max_result_bytes") == 3000, s4_lock)
 rec("s4_relay_source_owner_pinned", relay_lock.get("component") == "relay/src/index.js" and relay_lock.get("accepted_pre_s4_deployment") == "5971635f-448e-4ccc-bf48-59709ef95e1a" and relay_lock.get("accepted_pre_s4_source_sha256") == "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0" and relay_lock.get("current_candidate_source_sha256") == hashlib.sha256((PRODUCT/"relay/src/index.js").read_bytes()).hexdigest() and relay_lock.get("accounting_component_sha256") == hashlib.sha256((PRODUCT/"relay/src/s4-accounting.js").read_bytes()).hexdigest() and relay_lock.get("deployment_status") == "NOT_DEPLOYED_PENDING_CAP_ACCEPTANCE", relay_lock)
-relay_tools = re.findall(r"\{name:'(source_context|source_search|source_read|proposal_write|proposal_read)'", s4_relay)
-rec("s4_relay_model_surface_exact_five", relay_tools == expected_surface, relay_tools)
+relay_tools = re.findall(r"\{name:'(source_context|source_search|source_read|proposal_write|proposal_read|task_checkpoint_write)'", s4_relay)
+rec("s4_relay_model_surface_exact_six", relay_tools == expected_surface, relay_tools)
 rec("s4_durable_accounting_owner_contract", all(t in s4_accounting for t in ["S4_DURABLE_TASK_ACCOUNTING_V1","task_requests_used","task_result_bytes_used","epoch_requests_used","epoch_result_bytes_used","RECONNECT_WITH_UNRESOLVED_RESERVATION","TASK_SECURITY_BUDGET_EXHAUSTED","SNAPSHOT_MISMATCH"]), "relay durable + epoch accounting and recover-first reservation semantics")
 rec("s4_admission_v3_internal_identity", all(t in core for t in ["schema_version=3","task_admission_id=$taskAdmissionId","session_id=$stableSessionId","S4_CAP_QUALIFICATION_REQUIRED","epoch_soft_request_limit","task_result_byte_limit"]) and "task_admission_id" not in core[core.index("function New-Admission {"):core.index("Assert-SafeId $TaskId")], "manager mints task/session identity; unqualified cap fails closed")
 rec("s4_helper_stable_task_session", all(t in helper for t in ["admission.schema_version === 3","TASK_ADMISSION_ID","STABLE_SESSION_ID","TASK_EXPIRES_UTC","S4_HELLO_ACK","epoch_soft_request_limit"]) and "epoch_id" not in helper[helper.index("const TASK_ADMISSION_ID"):helper.index("const PROV_PATH")], "helper binds stable task/session; relay owns epoch")
 rec("s4_security_regression_required_cases", all(t in s4_accounting_regression for t in ["RECONNECT_PRESERVES_TASK_COUNTERS","HELPER_RESTART_PRESERVES_TASK_COUNTERS","EPOCH_ROTATION_PRESERVES_TASK_COUNTERS","ACCOUNTING_STATE_LOSS_FAILS_CLOSED","AMBIGUOUS_PROPOSAL_WRITE_RECOVERS_BEFORE_REPLAY","UNKNOWN_RESPONSE_SIZE_CANNOT_OVERSHOOT_TASK_CAP","RECONNECT_CHARGES_ORPHAN_RESERVED_BYTES","SNAPSHOT_MISMATCH_CONTEXT_IS_CONTROL_ONLY"]), "focused durable-accounting security regression")
 rec("s4_admission_regression_preserves_fast_path", all(t in s4_admission_regression for t in ["S4_ADMISSION_PS51_REGRESSION_PASS","unqualified_default_fails_closed","saved_exact_identity","task_expiry_fixed","no_deep_verify_in_admission"]), "Windows PS5.1 admission v3 regression includes explicit #83 no-deep-verify assertion")
 rec("s4_readme_cap_review_boundary", all(t in readme for t in ["task_admission_id","relay-owned durable usage","epoch soft quanta only","cap policy PENDING","fails closed rather than inventing"]), "S4 UX/security contract and unaccepted cap boundary")
+
+checkpoint_lock = lock.get("hosted_mcp", {}).get("task_checkpoint", {})
+rec("task_checkpoint_lock_contract", checkpoint_lock.get("checkpoint_schema") == "TASK_CHECKPOINT_V1" and checkpoint_lock.get("head_schema") == "TASK_CHECKPOINT_HEAD_V1" and checkpoint_lock.get("recovery_schema") == "RECOVERY_PACKAGE_V1" and checkpoint_lock.get("activity_cursor_schema") == "S4_ACTIVITY_CURSOR_V1" and checkpoint_lock.get("activity_owner") == "relay task record/request_receipts" and checkpoint_lock.get("checkpoint_max_bytes") == 4096 and checkpoint_lock.get("semantic_max_bytes") == 2048 and checkpoint_lock.get("receipt_max_bytes") == 512 and checkpoint_lock.get("max_committed_versions") == 16 and checkpoint_lock.get("retention_days") == 30 and checkpoint_lock.get("generic_write_capability") is False and checkpoint_lock.get("second_activity_journal") is False, checkpoint_lock)
+rec("task_checkpoint_same_s4_activity_owner", all(t in s4_accounting for t in ["request_receipts","activity_seq","activity_sha256","S4_ACTIVITY_CURSOR_V1","S4_ACTIVITY_DELTA_V1"]) and "activity_journal" not in s4_accounting.lower() and "activity:" not in s4_relay, "activity cursor/delta extends existing S4 task record/request_receipts only")
+checkpoint_tool = s4_relay[s4_relay.index("{name:'task_checkpoint_write'"):s4_relay.index("];\nconst McpApiHandler")]
+rec("task_checkpoint_narrow_model_schema", all(t in checkpoint_tool for t in ["idempotency_key","expected_seq","expected_predecessor_sha256","progress_summary","first_unfinished_step"]) and not any(t in checkpoint_tool for t in ["task_admission_id","session_id","activity_cursor","native_path","project_id","task_id"]), "only bounded semantic fields are model authored")
+rec("task_checkpoint_helper_binding", all(t in helper for t in ["createTaskCheckpointStore","checkpointStore.recovery","op==='task_checkpoint_write'","ACTIVITY_CURSOR_UNAVAILABLE","CHECKPOINT_SOURCE_REF_OUTSIDE_ADMISSION","predecessor:admission.predecessor"]), "helper injects active admission/S4 binding and exposes recovery through source_context")
+rec("task_checkpoint_store_cas_atomic_bounded", all(t in task_checkpoint_store for t in ["TASK_CHECKPOINT_V1","TASK_CHECKPOINT_HEAD_V1","RECOVERY_PACKAGE_V1","CHECKPOINT_MAX_BYTES=4096","SEMANTIC_MAX_BYTES=2048","MAX_VERSIONS=16","STALE_CHECKPOINT_HEAD","IDEMPOTENCY_KEY_REUSE","CHECKPOINT_STATE_CORRUPT","open(file,'wx'","fsp.rename","CHECKPOINT_RECEIPT_CAP","RECOVERY_PACKAGE_HARD_CAP"]), "immutable CAS/idempotent read-back store with hard byte limits")
+rec("task_checkpoint_retention_acl_lifecycle", all(t in core for t in ["function Invoke-TaskStateRetention","RetentionDays=30","Read-TaskCheckpointContinuationHead","Join-Path $ProgramDataRoot 'task-state'","$readerM","Invoke-TaskStateRetention -ProgramDataRoot $ProgramDataRoot"]) and "runtime/task-checkpoint-store.mjs" in core, "existing Worker/Core lifecycle owns task-state ACL/install/retention")
+rec("task_checkpoint_explicit_operator_continuation", all(t in core+launcher for t in ["function Continue-WorkerAdmission","TASK_PREDECESSOR_GOAL_MISMATCH","predecessor=$predecessorBinding","CONTINUE_AVAILABLE","recommended='Continue previous task'","Run-Continue"]) and "Predecessor" not in launcher[launcher.index("function Run-Continue {"):launcher.index("function Run-Stop {")], "operator action resolves predecessor; model/operator cannot supply predecessor ids directly")
+rec("task_checkpoint_operator_projection", all(t in launcher for t in ["checkpoint=$checkpoint.head","state='CONTINUE_AVAILABLE'","Previous task checkpoint available","A verified semantic checkpoint is available. Continuing creates a new finite S4 admission"]), "guided/operator projection is bounded checkpoint head + explicit continuation action")
+rec("task_checkpoint_privacy_no_transcript_or_cot", not any(t in checkpoint_tool.lower() for t in ["transcript","chain_of_thought","chain-of-thought","reasoning","scratchpad","credential","secret","token_trace"]) and not any(t in task_checkpoint_store.lower() for t in ["transcript_text","chain_of_thought","token_trace","logprob"]), "checkpoint schema has no transcript/CoT/credential fields")
+rec("task_checkpoint_regression_contract", all(t in task_checkpoint_regression for t in ["TASK_CHECKPOINT_REGRESSION_PASS checks=","FIRST_WRITE_AND_READBACK","CAS_CONCURRENT_WRITERS_NO_LAST_WRITER_WINS","AMBIGUOUS_AFTER_FILE_COMMIT_RECOVERS_HEAD","FRESH_CHAT_ONE_CONTEXT_RECOVERY","HELPER_RESTART_PRESERVES_CHECKPOINT","EPOCH_ROLLOVER_TRANSPARENT","EXPLICIT_CONTINUATION_CROSSES_ADMISSION","ACTIVITY_TRUNCATION_PRESERVES_COUNTS_DIGEST","NO_SOURCE_OUTPUT_MUTATION","EXACT_SIX_TOOL_SURFACE"]) and "TASK_CHECKPOINT_PS51_WRAPPER_PASS" in task_checkpoint_ps51, "focused core regression source declares required cases; durable checkpoint records terminal 18-check PS5.1 PASS")
+rec("task_checkpoint_skill_recovery_contract", all(t in task_checkpoint_knowledge+chat_mcp_knowledge+skill_text for t in ["TASK_CHECKPOINT_V1","RECOVERY_PACKAGE_V1","first_unfinished_step","do_not_replay","Continue previous task","task_checkpoint_write"]) and "Do not ask the operator to paste the old conversation" in task_checkpoint_knowledge, "Skill/knowledge consumes current recovery and keeps checkpoint separate from proof/process owners")
 
 scratch_scripts = {
     "local": local_regression,
@@ -221,7 +244,7 @@ fast_state_block = core[core.index("function Get-FastProjectState {"):core.index
 status_block = core[core.index("function Get-WorkerStatus {"):core.index("function Get-WorkerDiagnostics {")]
 admission_block = core[core.index("function New-Admission {"):core.index("function Test-IsAdministrator {")]
 one_pass_block = core[core.index("function New-SourceCopyPlan {"):core.index("function Write-FingerprintInventory {")]
-start_block = launcher[launcher.index("function Run-Start {"):launcher.index("function Run-Stop {")]
+start_block = launcher[launcher.index("function Run-Start {"):launcher.index("function Run-Continue {")]
 rec("snapshot_fast_state_is_bounded", all(t in fast_state_block for t in ["ACCEPTED","APPLY_REQUIRED","CATALOG_DRIFT","INCOMPLETE_APPLY_RESIDUE","DEEP_VERIFY_REQUIRED","SNAPSHOT_MANIFEST_INVALID","SNAPSHOT_ROOT_MISSING"]) and not any(t in fast_state_block for t in ["Get-TreeDigest","Get-ChildItem -Recurse","rg.exe","Copy-Item"]), "FAST_STATE_CHECK_V1 is bounded by catalog/manifest/artifact roots")
 rec("snapshot_status_is_fast", "Get-FastProjectState" in status_block and not any(t in status_block for t in ["Verify-WorkerProject","Get-TreeDigest"]), "STATUS uses fast state only")
 rec("snapshot_start_is_single_fast_check", start_block.count("Get-FastProjectState") == 1 and "Verify-WorkerProject" not in start_block, "START performs exactly one fast-state check")
@@ -229,7 +252,7 @@ rec("snapshot_admission_consumes_accepted_state", "AcceptedState" in admission_b
 rec("snapshot_manifest_v2_contract", all(t in core for t in ["ACCEPTED_SNAPSHOT_V1","source_snapshot_id","publication_generation","fingerprint_inventory_state","LEGACY_DEEP_VERIFIED","ABSENT_LEGACY"]), "manifest v2 accepted snapshot + legacy adoption contract")
 rec("snapshot_one_pass_bootstrap_contract", all(t in one_pass_block for t in ["New-SourceCopyPlan","Invoke-OnePassCopyHash","SOURCE_CHANGED_DURING_SYNC","[IO.File]::Open","TransformBlock","Assert-SourceCopyPlanStable"]) and "Get-TreeDigest" not in one_pass_block, "future bootstrap hashes while copying and metadata-rechecks Source without rereading stage")
 rec("snapshot_helper_exact_binding", all(t in helper for t in ["ADMISSION_MANIFEST_HASH_MISMATCH","ADMISSION_SOURCE_SNAPSHOT_MISMATCH","manifest.accepted_snapshot.source_snapshot_id","admission.manifest_sha256","admission.source_snapshot_id"]), "helper fails closed on exact manifest/snapshot mismatch")
-rec("snapshot_regression_covers_required_fast_path", all(t in snapshot_fast_regression for t in ["SNAPSHOT_FAST_REGRESSION_PASS","one_pass_digest_equals_legacy","fast_accepted_with_external_source_offline","second_task_reuses_snapshot","helper_manifest_hash_mismatch","helper_snapshot_mismatch","missing_root_fast_reject","missing_config_fast_reject","catalog_drift_fast_reject","residue_fast_recover_first","legacy_insufficient_evidence_rejects","deep_verify_detects_seeded_drift","source_metadata_drift_aborts","start_exactly_one_fast_no_deep","status_no_deep_or_tree_digest","admission_no_deep_or_tree_digest","helper_five_ops_exact"]), "Windows PS5.1 #83 regression covers warm path, fail-closed negatives, deep verify and exact five-tool surface")
+rec("snapshot_regression_covers_required_fast_path", all(t in snapshot_fast_regression for t in ["SNAPSHOT_FAST_REGRESSION_PASS","one_pass_digest_equals_legacy","fast_accepted_with_external_source_offline","second_task_reuses_snapshot","helper_manifest_hash_mismatch","helper_snapshot_mismatch","missing_root_fast_reject","missing_config_fast_reject","catalog_drift_fast_reject","residue_fast_recover_first","legacy_insufficient_evidence_rejects","deep_verify_detects_seeded_drift","source_metadata_drift_aborts","start_exactly_one_fast_no_deep","status_no_deep_or_tree_digest","admission_no_deep_or_tree_digest","helper_six_ops_exact"]), "Windows PS5.1 #83 regression covers warm path, fail-closed negatives, deep verify and exact six-tool surface")
 
 operation_tokens = [
     "Start-WorkerOperation",

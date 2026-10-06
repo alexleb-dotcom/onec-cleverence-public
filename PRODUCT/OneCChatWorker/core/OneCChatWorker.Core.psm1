@@ -1072,6 +1072,75 @@ function Write-ProviderConfig {
     Write-JsonAtomic $cfg (Join-Path $ProgramDataRoot 'provider\provider-config.json')
 }
 
+function Get-TaskStateRoot {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    Join-Path $ProgramDataRoot 'task-state'
+}
+
+function Read-TaskCheckpointContinuationHead {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot
+    )
+    $projectKey=Assert-SafeId $ProjectId 'project_id'
+    $taskKey=Assert-SafeId $TaskId 'task_id'
+    $taskRoot=Join-Path (Join-Path (Get-TaskStateRoot $ProgramDataRoot) $projectKey) $taskKey
+    $headPath=Join-Path $taskRoot 'head.json'
+    if(-not(Test-Path -LiteralPath $headPath -PathType Leaf)){throw 'TASK_CHECKPOINT_HEAD_MISSING'}
+    try{$head=Get-Content -LiteralPath $headPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    if([string]$head.schema -ne 'TASK_CHECKPOINT_HEAD_V1' -or [string]$head.project_id -ne $projectKey -or [string]$head.task_id -ne $taskKey){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    $headSeq=0;if(-not [int]::TryParse([string]$head.head_seq,[ref]$headSeq) -or $headSeq -lt 1){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    foreach($h in @([string]$head.head_checkpoint_sha256,[string]$head.head_checkpoint_file_sha256)){if($h -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}}
+    $name=[string]$head.head_checkpoint_file
+    if([IO.Path]::GetFileName($name) -ne $name -or $name -notmatch '^\d{8}-[a-f0-9]{64}\.json$'){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    $cpPath=Join-Path (Join-Path $taskRoot 'checkpoints') $name
+    if(-not(Test-Path -LiteralPath $cpPath -PathType Leaf)){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    if((Get-Sha256File $cpPath) -ne ([string]$head.head_checkpoint_file_sha256).ToLowerInvariant()){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    try{$cp=Get-Content -LiteralPath $cpPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([string]$cp.schema -ne 'TASK_CHECKPOINT_V1' -or [string]$cp.project_id -ne $projectKey -or [string]$cp.task_id -ne $taskKey){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([int]$cp.seq -ne $headSeq -or [string]$cp.checkpoint_sha256 -ne [string]$head.head_checkpoint_sha256){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([string]$cp.checkpoint_id -ne [string]$head.head_checkpoint_id -or [string]$cp.task_admission_id -ne [string]$head.head_task_admission_id){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    $cursor=$cp.activity_cursor
+    if(-not $cursor -or [string]$cursor.schema -ne 'S4_ACTIVITY_CURSOR_V1' -or [string]$cursor.task_admission_id -ne [string]$cp.task_admission_id){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    $aseq=0;if(-not [int]::TryParse([string]$cursor.activity_seq,[ref]$aseq) -or $aseq -lt 0){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    if($aseq -eq 0){if($null -ne $cursor.receipt_sha256){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}}
+    elseif([string]$cursor.receipt_sha256 -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    [pscustomobject]@{task_root=$taskRoot;head_path=$headPath;checkpoint_path=$cpPath;head=$head;checkpoint=$cp}
+}
+
+function Invoke-TaskStateRetention {
+    param(
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [int]$RetentionDays=30
+    )
+    if($RetentionDays -lt 1 -or $RetentionDays -gt 3650){throw 'TASK_STATE_RETENTION_DAYS_INVALID'}
+    $root=Get-TaskStateRoot $ProgramDataRoot
+    if(-not(Test-Path -LiteralPath $root -PathType Container)){return [pscustomobject]@{status='PASS';removed=@();retained=@();invalid=@()}}
+    $active=$null;$admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(Test-Path -LiteralPath $admissionPath -PathType Leaf){try{$active=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $cutoff=(Get-Date).ToUniversalTime().AddDays(-$RetentionDays)
+    $removed=New-Object Collections.Generic.List[string];$retained=New-Object Collections.Generic.List[string];$invalid=New-Object Collections.Generic.List[string]
+    $projects=@(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction Stop)
+    if($projects.Count -gt 512){throw 'TASK_STATE_RETENTION_ROOT_CAP'}
+    foreach($projectDir in $projects){
+        try{$null=Assert-SafeId $projectDir.Name 'project_id'}catch{$invalid.Add($projectDir.FullName);continue}
+        $tasks=@(Get-ChildItem -LiteralPath $projectDir.FullName -Directory -Force -ErrorAction Stop)
+        if($tasks.Count -gt 512){throw 'TASK_STATE_RETENTION_TASK_CAP'}
+        foreach($taskDir in $tasks){
+            try{$null=Assert-SafeId $taskDir.Name 'task_id'}catch{$invalid.Add($taskDir.FullName);continue}
+            $isActive=$active -and [string]$active.project_id -eq $projectDir.Name -and [string]$active.task_id -eq $taskDir.Name
+            if($isActive){$retained.Add($taskDir.FullName);continue}
+            try{$verified=Read-TaskCheckpointContinuationHead -ProjectId $projectDir.Name -TaskId $taskDir.Name -ProgramDataRoot $ProgramDataRoot}catch{$invalid.Add($taskDir.FullName);continue}
+            try{$updated=[DateTime]::Parse([string]$verified.head.updated_utc).ToUniversalTime()}catch{$invalid.Add($taskDir.FullName);continue}
+            if($updated -ge $cutoff){$retained.Add($taskDir.FullName);continue}
+            Remove-Item -LiteralPath $taskDir.FullName -Recurse -Force -ErrorAction Stop
+            $removed.Add($taskDir.FullName)
+        }
+    }
+    [pscustomobject]@{status='PASS';removed=@($removed);retained=@($retained);invalid=@($invalid);retention_days=$RetentionDays}
+}
+
 function Get-S4AdmissionPolicy {
     $packageRoot=Split-Path -Parent $PSScriptRoot
     $lock=Read-RuntimeLock $packageRoot
@@ -1088,6 +1157,7 @@ function New-Admission {
         [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
         [string]$RelayUrl=$script:DefaultRelayUrl,
         $AcceptedState,
+        $Predecessor=$null,
         [int]$TaskRequestLimit=0,
         [int]$TaskResultByteLimit=0,
         [int]$TaskTtlMinutes=0,
@@ -1109,7 +1179,38 @@ function New-Admission {
         if([Text.Encoding]::UTF8.GetByteCount($TaskGoal) -gt 1024){throw 'TASK_GOAL_BYTE_CAP'}
         $goal=$TaskGoal;$goalSha=Get-Sha256Text $TaskGoal
     }
+    $predecessorBinding=$null
+    if($null -ne $Predecessor){
+        $predAdmission=[string]$Predecessor.task_admission_id
+        $predCheckpoint=[string]$Predecessor.checkpoint_sha256
+        $predCheckpointId=[string]$Predecessor.checkpoint_id
+        $predSeq=0
+        if($predAdmission -notmatch '^[A-Fa-f0-9]{32}$' -or $predCheckpoint -notmatch '^[A-Fa-f0-9]{64}$' -or [string]::IsNullOrWhiteSpace($predCheckpointId) -or -not [int]::TryParse([string]$Predecessor.checkpoint_seq,[ref]$predSeq) -or $predSeq -lt 1){throw 'TASK_PREDECESSOR_INVALID'}
+        $cursor=$Predecessor.activity_cursor
+        $aseq=0
+        if(-not $cursor -or [string]$cursor.schema -ne 'S4_ACTIVITY_CURSOR_V1' -or [string]$cursor.task_admission_id -ne $predAdmission -or -not [int]::TryParse([string]$cursor.activity_seq,[ref]$aseq) -or $aseq -lt 0){throw 'TASK_PREDECESSOR_INVALID'}
+        if($aseq -eq 0){if($null -ne $cursor.receipt_sha256){throw 'TASK_PREDECESSOR_INVALID'}}
+        elseif([string]$cursor.receipt_sha256 -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_PREDECESSOR_INVALID'}
+        $predGoal=$Predecessor.task_goal_sha256
+        if(($null -eq $goalSha) -ne ($null -eq $predGoal)){throw 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+        if($null -ne $goalSha -and [string]$predGoal -ne $goalSha){throw 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+        $predecessorBinding=[ordered]@{
+            task_admission_id=$predAdmission
+            checkpoint_id=$predCheckpointId
+            checkpoint_seq=$predSeq
+            checkpoint_sha256=$predCheckpoint.ToLowerInvariant()
+            task_goal_sha256=$predGoal
+            source_snapshot_id=[string]$Predecessor.source_snapshot_id
+            activity_cursor=[ordered]@{
+                schema='S4_ACTIVITY_CURSOR_V1'
+                task_admission_id=$predAdmission
+                activity_seq=$aseq
+                receipt_sha256=$(if($aseq -eq 0){$null}else{([string]$cursor.receipt_sha256).ToLowerInvariant()})
+            }
+        }
+    }
 
+    $null=Invoke-TaskStateRetention -ProgramDataRoot $ProgramDataRoot
     $policy=Get-S4AdmissionPolicy
     $candidate=$policy.candidate
     if($TaskRequestLimit -le 0 -or $TaskResultByteLimit -le 0 -or $TaskTtlMinutes -le 0){
@@ -1142,6 +1243,7 @@ function New-Admission {
         created_utc=$created.ToString('o')
         task_created_utc=$created.ToString('o')
         task_expires_utc=$expires.ToString('o')
+        predecessor=$predecessorBinding
         manifest_path=$manifest
         manifest_sha256=$manifestSha
         source_snapshot_id=[string]$v.source_snapshot_id
@@ -1300,7 +1402,7 @@ function Set-WorkerOperatorAcl {
     param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
-    $required=@($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'))
+    $required=@($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'),(Join-Path $ProgramDataRoot 'task-state'))
     foreach($path in $required){if(-not(Test-Path -LiteralPath $path -PathType Container)){throw "ACL_REPAIR_ROOT_MISSING: $path"}}
     $operations=Join-Path $ProgramDataRoot 'operations'
     New-Item -ItemType Directory -Force -Path $operations|Out-Null
@@ -1317,6 +1419,7 @@ function Set-WorkerOperatorAcl {
     Invoke-IcaclsChecked -Path $operations -Arguments @('/grant:r',$operatorM,$readerRx)
     Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'provider') -Arguments @('/grant:r',$operatorM,$readerRx)
     Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'runtime') -Arguments @('/grant:r',$operatorM,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'task-state') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorM,$readerM)
     Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'audit') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerM)
     Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'helper') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
     Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'product') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
@@ -1326,6 +1429,7 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
@@ -1335,7 +1439,7 @@ function Set-WorkerOperatorAcl {
         status='PASS'
         operator_identity=$identity.account
         operator_sid=$identity.sid
-        mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'))
+        mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'task-state'))
         read_only=@((Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'product'))
         secret=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
         protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'))
@@ -1347,7 +1451,7 @@ function Install-OneCChatWorker {
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $packageCheck=Test-ProductPackageIntegrity $PackageRoot
     $deps=Ensure-PinnedDependencies -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -NoInstall:$SkipDependencies
-    foreach($p in @($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'))){New-Item -ItemType Directory -Force -Path $p|Out-Null}
+    foreach($p in @($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'),(Join-Path $ProgramDataRoot 'task-state'))){New-Item -ItemType Directory -Force -Path $p|Out-Null}
 
     $readerAction='REUSED'
     if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){
@@ -1360,6 +1464,7 @@ function Install-OneCChatWorker {
     $componentResults=@()
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
     foreach($qualityScript in @('meta-info.ps1','form-info.ps1','form-validate.ps1')){$rel='runtime/quality/cc-1c-skills/'+$qualityScript;$componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot ('runtime\quality\cc-1c-skills\'+$qualityScript)) -Destination (Join-Path $ProgramDataRoot ('helper\quality\cc-1c-skills\'+$qualityScript)) -ExpectedSha256 ([string]$lock.components.$rel))}
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1') -Destination (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -ExpectedSha256 ([string]$lock.components.'core/OneCChatWorker.Core.psm1'))
@@ -1439,12 +1544,68 @@ function New-HelperRunAsCommand {
 }
 
 function Start-WorkerAdmission {
-    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[string]$TaskGoal,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl,$AcceptedState)
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [string]$TaskGoal,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        $AcceptedState,
+        $Predecessor=$null,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
     if(-not(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'))){throw 'REMOTE_AUTH_REQUIRED'}
-    New-Admission -ProjectId $ProjectId -TaskId $TaskId -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState|Out-Null
-    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs';$existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)});if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
+    $newAdmission=New-Admission -ProjectId $ProjectId -TaskId $TaskId -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState -Predecessor $Predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
     $runAs="$env:SystemRoot\System32\runas.exe";$program=New-HelperRunAsCommand -HelperPath $helper -ProgramDataRoot $ProgramDataRoot;& $runAs "/profile" "/user:$env:COMPUTERNAME\$($script:ReaderName)" $program;if($LASTEXITCODE -ne 0){throw "RUNAS_FAILED_OR_CANCELLED: $LASTEXITCODE"}
-    [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id}
+    [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id;task_admission_id=[string]$newAdmission.task_admission_id;session_id=[string]$newAdmission.session_id;continued=($null -ne $newAdmission.predecessor)}
+}
+
+function Continue-WorkerAdmission {
+    param(
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'CONTINUE_PREVIOUS_ADMISSION_MISSING'}
+    try{$previous=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'CONTINUE_PREVIOUS_ADMISSION_CORRUPT'}
+    if([int]$previous.schema_version -ne 3 -or [string]$previous.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'CONTINUE_PREVIOUS_ADMISSION_UNSUPPORTED'}
+    $projectKey=Assert-SafeId ([string]$previous.project_id) 'project_id'
+    $taskKey=Assert-SafeId ([string]$previous.task_id) 'task_id'
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($existing.Count){throw 'CONTINUE_REQUIRES_STOPPED_HELPER'}
+    $verified=Read-TaskCheckpointContinuationHead -ProjectId $projectKey -TaskId $taskKey -ProgramDataRoot $ProgramDataRoot
+    $cp=$verified.checkpoint
+    if([string]$cp.task_admission_id -ne [string]$previous.task_admission_id){throw 'CONTINUE_CHECKPOINT_ADMISSION_MISMATCH'}
+    $prevGoal=$previous.task_goal_sha256;$cpGoal=$cp.task_goal_sha256
+    if(($null -eq $prevGoal) -ne ($null -eq $cpGoal)){throw 'CONTINUE_TASK_GOAL_MISMATCH'}
+    if($null -ne $prevGoal -and [string]$prevGoal -ne [string]$cpGoal){throw 'CONTINUE_TASK_GOAL_MISMATCH'}
+    $current=Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot
+    if($current.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($current.state)"}
+    $predecessor=[pscustomobject]@{
+        task_admission_id=[string]$cp.task_admission_id
+        checkpoint_id=[string]$cp.checkpoint_id
+        checkpoint_seq=[int]$cp.seq
+        checkpoint_sha256=[string]$cp.checkpoint_sha256
+        task_goal_sha256=$cp.task_goal_sha256
+        source_snapshot_id=[string]$cp.source_snapshot_id
+        activity_cursor=$cp.activity_cursor
+    }
+    Start-WorkerAdmission -ProjectId $projectKey -TaskId $taskKey -TaskGoal ([string]$previous.task_goal) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $current -Predecessor $predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
 }
 
 function Stop-WorkerAdmission {
@@ -1494,6 +1655,7 @@ function Get-UninstallPlan {
             (Join-Path $WorkerRoot '<project>\Detached'),
             (Join-Path $ProgramDataRoot 'audit'),
             (Join-Path $ProgramDataRoot 'operations'),
+            (Join-Path $ProgramDataRoot 'task-state'),
             "$env:COMPUTERNAME\$($script:ReaderName) local account"
         )
         explicitly_not_performed=@('recursive project deletion','external business Source deletion','Output purge','Detached purge','reader account deletion')

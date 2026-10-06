@@ -15,13 +15,13 @@ $lock=Get-Content -LiteralPath (Join-Path $Product 'runtime.lock.json') -Raw -En
 
 function Assert([bool]$Condition,[string]$Name){if(-not $Condition){throw "ASSERT_FAILED:$Name"};Write-Host "PASS $Name"}
 
-Assert (($lock.hosted_mcp.model_surface -join ',') -eq 'source_context,source_search,source_read,proposal_write,proposal_read') 'helper_five_ops_exact'
+Assert (($lock.hosted_mcp.model_surface -join ',') -eq 'source_context,source_search,source_read,proposal_write,proposal_read,task_checkpoint_write') 'helper_six_ops_exact'
 Assert ($helper.Contains("quality.runConfirmed(rel,v.sha256)")) 'quality_only_after_successful_source_read'
 Assert (-not $helper.Substring($helper.IndexOf("async function sourceSearch"),$helper.IndexOf("async function exec")-$helper.IndexOf("async function sourceSearch")).Contains('runConfirmed')) 'source_search_never_runs_quality'
 Assert ($adapter.Contains("shell:false") -and $adapter.Contains("POWERSHELL51='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'")) 'fixed_ps51_shell_false'
 Assert (($adapter.Contains("maxBytes=1200")) -and ($helper.Contains('quality_targets')) -and ($helper.Contains('.slice(0,2)'))) 'prepared_quality_and_cache_bounded'
 
-$start=$launcher.Substring($launcher.IndexOf('function Run-Start {'),$launcher.IndexOf('function Run-Stop {')-$launcher.IndexOf('function Run-Start {'))
+$start=$launcher.Substring($launcher.IndexOf('function Run-Start {'),$launcher.IndexOf('function Run-Continue {')-$launcher.IndexOf('function Run-Start {'))
 $status=$core.Substring($core.IndexOf('function Get-WorkerStatus {'),$core.IndexOf('function Get-WorkerDiagnostics {')-$core.IndexOf('function Get-WorkerStatus {'))
 $admission=$core.Substring($core.IndexOf('function New-Admission {'),$core.IndexOf('function Test-IsAdministrator {')-$core.IndexOf('function New-Admission {'))
 Assert (([regex]::Matches($start,'Get-FastProjectState').Count -eq 1) -and (-not $start.Contains('Get-TreeDigest')) -and (-not $start.Contains('Verify-WorkerProject'))) 'start_fast_path_preserved'

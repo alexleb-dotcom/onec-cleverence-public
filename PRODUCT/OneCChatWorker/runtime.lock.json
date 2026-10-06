@@ -15,14 +15,15 @@
   },
   "components": {
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
-    "runtime/hosted-helper.mjs": "223ed084e71a8324885f846966ea94761840018a52130c5183333d214e6f7f8d",
+    "runtime/hosted-helper.mjs": "d3e2779016a3ae04e9b9347e84fbea7cbc2c9179b91988bbdc5f434b2db575ac",
     "runtime/local-quality-adapter.mjs": "8964bcca9c16f0cf26ad49f6a974b21c5d27eb5918dc241081bdb66107de199a",
     "runtime/quality/cc-1c-skills/meta-info.ps1": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a",
     "runtime/quality/cc-1c-skills/form-info.ps1": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727",
     "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
-    "core/OneCChatWorker.Core.psm1": "2b9617366e2c74a387532a4e61f9d2f352f4bdd21531f8f825d7a1278648852f",
-    "OneCChatWorker.ps1": "517ccc6460f14e5c9d852cdea64ce6950a62b5e2168835547584be544da2cd41",
-    "README.md": "a973ed63642be596096a02a1e146a8fe339e312239355a18efe0a8cf92903141"
+    "core/OneCChatWorker.Core.psm1": "53721d688c65bc6047df696eb95d036bda3a2dc6217231b721f93712407f9e79",
+    "OneCChatWorker.ps1": "271feb14bb9c05bee279937a6d28895ac1edc864ff0298777a2b42a6fa924a2f",
+    "README.md": "32a15ef732fa4e92f89996dcd92e127afff3d01ff1b94e9e1325d83884a8870d",
+    "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348"
   },
   "hosted_mcp": {
     "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
@@ -32,15 +33,16 @@
       "source_search",
       "source_read",
       "proposal_write",
-      "proposal_read"
+      "proposal_read",
+      "task_checkpoint_write"
     ],
     "relay_source": {
       "component": "relay/src/index.js",
       "accepted_pre_s4_deployment": "5971635f-448e-4ccc-bf48-59709ef95e1a",
       "accepted_pre_s4_source_sha256": "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0",
-      "current_candidate_source_sha256": "f5bb68ace3070fc720d6d347d3f2a8b32e64d2b54e343a3a480921b3922dd2c4",
+      "current_candidate_source_sha256": "e73250524f1359db54e18b974c5b76f02f5b5799db3d10ef48438c4456088071",
       "accounting_component": "relay/src/s4-accounting.js",
-      "accounting_component_sha256": "ca57c0c25b0b0f2224adab3a7197d1f3a430bf3a01a61673e0dc0805e2a74430",
+      "accounting_component_sha256": "542c57717478b10471d8792b53f791bc71d46cb1568fb88b72f6cd1dc43d9e45",
       "wrangler_sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da",
       "package_sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94",
       "package_lock_sha256": "059aed20a675a0b2edc9314c334ae5b5ab9dbfb68e43e7bd4f8668fce0420de5",
@@ -63,6 +65,25 @@
         "epoch_soft_result_byte_limit": 36000,
         "max_result_bytes": 3000
       }
+    },
+    "task_checkpoint": {
+      "checkpoint_schema": "TASK_CHECKPOINT_V1",
+      "head_schema": "TASK_CHECKPOINT_HEAD_V1",
+      "recovery_schema": "RECOVERY_PACKAGE_V1",
+      "activity_cursor_schema": "S4_ACTIVITY_CURSOR_V1",
+      "activity_owner": "relay task record/request_receipts",
+      "storage_root": "%ProgramData%/OneCChatWorker/task-state/<project_id>/<task_id>",
+      "checkpoint_max_bytes": 4096,
+      "semantic_max_bytes": 2048,
+      "receipt_max_bytes": 512,
+      "recovery_target_max_bytes": 1350,
+      "max_committed_versions": 16,
+      "retention_days": 30,
+      "retained_payload_target_bytes": 65536,
+      "write_model": "immutable CAS + idempotency + read-back verification",
+      "continuation": "explicit operator re-admission only",
+      "generic_write_capability": false,
+      "second_activity_journal": false
     }
   },
   "local_quality_adapter": {
