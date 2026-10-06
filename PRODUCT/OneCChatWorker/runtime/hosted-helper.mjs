@@ -8,7 +8,8 @@ const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneC
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
 
 const admission = JSON.parse(await fsp.readFile(ADMISSION_PATH,'utf8'));
-if (![1,2].includes(admission.schema_version)) throw new Error('ADMISSION_SCHEMA_UNSUPPORTED');
+if (![1,2,3].includes(admission.schema_version)) throw new Error('ADMISSION_SCHEMA_UNSUPPORTED');
+const IS_S4 = admission.schema_version === 3;
 const PROJECT = String(admission.project_id || '');
 const TASK = String(admission.task_id || '');
 if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(PROJECT)) throw new Error('ADMISSION_PROJECT_INVALID');
@@ -36,7 +37,7 @@ const manifestText = await fsp.readFile(MANIFEST_PATH,'utf8');
 const manifestHash = crypto.createHash('sha256').update(Buffer.from(manifestText,'utf8')).digest('hex');
 const manifest = JSON.parse(manifestText);
 if (String(manifest.project_id) !== PROJECT) throw new Error('MANIFEST_PROJECT_MISMATCH');
-if (admission.schema_version === 2) {
+if (admission.schema_version >= 2) {
   if (manifest.schema_version !== 2 || !manifest.accepted_snapshot) throw new Error('SNAPSHOT_MANIFEST_INVALID');
   if (admission.snapshot_contract !== 'ACCEPTED_SNAPSHOT_V1' || manifest.accepted_snapshot.snapshot_contract !== 'ACCEPTED_SNAPSHOT_V1') throw new Error('SNAPSHOT_CONTRACT_MISMATCH');
   if (String(admission.manifest_sha256 || '') !== manifestHash) throw new Error('ADMISSION_MANIFEST_HASH_MISMATCH');
@@ -76,6 +77,10 @@ const caps={
   ttl_minutes:Number(admission?.caps?.ttl_minutes||360),
   max_requests:Number(admission?.caps?.max_requests||32),
   max_cumulative_result_bytes:Number(admission?.caps?.max_cumulative_result_bytes||36000),
+  task_request_limit:Number(admission?.caps?.task_request_limit||admission?.caps?.max_requests||32),
+  task_result_byte_limit:Number(admission?.caps?.task_result_byte_limit||admission?.caps?.max_cumulative_result_bytes||36000),
+  epoch_soft_request_limit:Number(admission?.caps?.epoch_soft_request_limit||32),
+  epoch_soft_result_byte_limit:Number(admission?.caps?.epoch_soft_result_byte_limit||36000),
   max_result_bytes:Number(admission?.caps?.max_result_bytes||3000),
   max_search_matches:Number(admission?.caps?.max_search_matches||8),
   max_read_lines:Number(admission?.caps?.max_read_lines||20),
@@ -85,6 +90,18 @@ const caps={
   max_read_chunk_bytes:Number(admission?.caps?.max_read_chunk_bytes||1800),
 };
 for(const [k,v] of Object.entries(caps)) if(!Number.isInteger(v)||v<1) throw new Error('ADMISSION_CAP_INVALID:'+k);
+const TASK_ADMISSION_ID=IS_S4?String(admission.task_admission_id||''):null;
+const STABLE_SESSION_ID=IS_S4?String(admission.session_id||''):null;
+const TASK_CREATED_UTC=IS_S4?String(admission.task_created_utc||admission.created_utc||''):null;
+const TASK_EXPIRES_UTC=IS_S4?String(admission.task_expires_utc||''):null;
+const OUTPUT_TASK_ROOT=IS_S4?String(admission.output_task_root||''):'Output/'+TASK;
+if(IS_S4){
+  if(!/^[A-Fa-f0-9]{32}$/.test(TASK_ADMISSION_ID)||!/^[A-Fa-f0-9]{32}$/.test(STABLE_SESSION_ID))throw new Error('S4_TASK_IDENTITY_INVALID');
+  if(!TASK_CREATED_UTC||!TASK_EXPIRES_UTC||!Number.isFinite(Date.parse(TASK_CREATED_UTC))||!Number.isFinite(Date.parse(TASK_EXPIRES_UTC))||Date.parse(TASK_EXPIRES_UTC)<=Date.parse(TASK_CREATED_UTC))throw new Error('S4_TASK_EXPIRY_INVALID');
+  if(OUTPUT_TASK_ROOT!=='Output/'+TASK)throw new Error('S4_OUTPUT_TASK_BINDING_INVALID');
+  for(const k of ['task_request_limit','task_result_byte_limit','epoch_soft_request_limit','epoch_soft_result_byte_limit'])if(!(k in (admission.caps||{})))throw new Error('S4_TASK_CAP_MISSING:'+k);
+  if(caps.epoch_soft_request_limit>caps.task_request_limit||caps.epoch_soft_result_byte_limit>caps.task_result_byte_limit||caps.max_result_bytes>caps.epoch_soft_result_byte_limit)throw new Error('S4_TASK_CAP_INVALID');
+}
 
 const PROV_PATH='_proposal_provenance.json';
 const allowedProposalExt=new Set(['.md','.txt','.diff','.patch','.bsl','.json']);
@@ -92,14 +109,19 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function log(x){await fsp.appendFile(LOG_PATH,JSON.stringify({at_utc:new Date().toISOString(),...x})+'\n','utf8').catch(()=>{});}
 async function saveState(s){const t=STATE_PATH+'.tmp';await fsp.writeFile(t,JSON.stringify(s,null,2),'utf8');await fsp.rename(t,STATE_PATH);}
-const SNAPSHOT = admission.schema_version === 2
+const SNAPSHOT = admission.schema_version >= 2
   ? String(admission.source_snapshot_id)
   : (admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8')));
 async function loadState(){
   try{
     const s=JSON.parse(await fsp.readFile(STATE_PATH,'utf8'));
-    if(s.project_id===PROJECT && s.task_id===TASK && s.snapshot_id===SNAPSHOT && Date.now()<Date.parse(s.expires_utc)) return s;
+    const s4ok=!IS_S4||(s.task_admission_id===TASK_ADMISSION_ID&&s.session_id===STABLE_SESSION_ID&&s.manifest_sha256===manifestHash&&s.expires_utc===TASK_EXPIRES_UTC);
+    if(s.project_id===PROJECT && s.task_id===TASK && s.snapshot_id===SNAPSHOT && s4ok && Date.now()<Date.parse(s.expires_utc)) return s;
   }catch{}
+  if(IS_S4){
+    const s={schema_version:2,task_admission_id:TASK_ADMISSION_ID,session_id:STABLE_SESSION_ID,project_id:PROJECT,task_id:TASK,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,started_utc:TASK_CREATED_UTC,expires_utc:TASK_EXPIRES_UTC,processed:{},idempotency:{},quality_targets:[]};
+    await saveState(s);return s;
+  }
   const started=new Date(),expires=new Date(started.getTime()+caps.ttl_minutes*60000);
   const s={schema_version:1,session_id:crypto.randomBytes(16).toString('hex'),project_id:PROJECT,task_id:TASK,snapshot_id:SNAPSHOT,started_utc:started.toISOString(),expires_utc:expires.toISOString(),processed:{},idempotency:{},quality_targets:[]};
   await saveState(s); return s;
@@ -248,9 +270,9 @@ async function cacheQuality(result){
 async function exec(op,args){
   const t=performance.now();
   try{
-    if(Date.now()>=Date.parse(state.expires_utc))fail('SESSION_EXPIRED');
+    if(Date.now()>=Date.parse(state.expires_utc))fail(IS_S4?'TASK_EXPIRED':'SESSION_EXPIRED');
     if(op==='context'){
-      const payload={session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:'Output/'+TASK,status:'PROPOSAL_NOT_APPLIED',expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}};
+      const payload={task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,helper_version:VERSION,provider_version:PROVIDER_VERSION,project_id:PROJECT,participants:ARTIFACTS,task_id:TASK,canonical_project_root:manifest.project_root||null,output_task_root:OUTPUT_TASK_ROOT,status:'PROPOSAL_NOT_APPLIED',task_created_utc:IS_S4?TASK_CREATED_UTC:state.started_utc,task_expires_utc:state.expires_utc,caps:{...caps,accounting_owner:'relay'}};
       const hints=await boundedTargetHints({taskGoal:TASK_GOAL,projectRoot:String(manifest.project_root||''),artifacts:ARTIFACTS}).catch(()=>[]);
       if(hints.length){const c={...payload,target_hints:hints};if(Buffer.byteLength(JSON.stringify(c),'utf8')<=caps.max_result_bytes)payload.target_hints=hints;}
       const prepared=await freshPreparedQuality();
@@ -284,11 +306,18 @@ async function connectLoop(){
     try{
       const ws=new WebSocket(RELAY+'?token='+encodeURIComponent(secret));
       await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true});});
-      ws.send(JSON.stringify({type:'hello',session_id:state.session_id,snapshot_id:SNAPSHOT,helper_version:VERSION,started_utc:state.started_utc,expires_utc:state.expires_utc,task_id:TASK,caps:{max_requests:caps.max_requests,max_cumulative_result_bytes:caps.max_cumulative_result_bytes,max_result_bytes:caps.max_result_bytes}}));
+      const hello=IS_S4?{
+        type:'hello',admission_schema_version:3,task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,project_id:PROJECT,task_id:TASK,task_goal_sha256:admission.task_goal_sha256??null,
+        manifest_sha256:manifestHash,snapshot_id:SNAPSHOT,output_task_root:OUTPUT_TASK_ROOT,helper_version:VERSION,task_created_utc:TASK_CREATED_UTC,task_expires_utc:TASK_EXPIRES_UTC,
+        controlled_restart_done:false,caps:{task_request_limit:caps.task_request_limit,task_result_byte_limit:caps.task_result_byte_limit,epoch_soft_request_limit:caps.epoch_soft_request_limit,epoch_soft_result_byte_limit:caps.epoch_soft_result_byte_limit,max_result_bytes:caps.max_result_bytes}
+      }:{type:'hello',session_id:state.session_id,snapshot_id:SNAPSHOT,helper_version:VERSION,started_utc:state.started_utc,expires_utc:state.expires_utc,task_id:TASK,caps:{max_requests:caps.max_requests,max_cumulative_result_bytes:caps.max_cumulative_result_bytes,max_result_bytes:caps.max_result_bytes}};
+      ws.send(JSON.stringify(hello));
       await log({event:'CONNECTED',session_id:state.session_id,snapshot_id:SNAPSHOT,project_id:PROJECT,task_id:TASK});
       await new Promise(resolve=>{
         ws.addEventListener('message',async ev=>{
           let m;try{m=JSON.parse(ev.data);}catch{return;}
+          if(m.type==='hello_ack'){await log({event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used});return;}
+          if(m.type==='hello_error'){await log({event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')});return;}
           if(m.type!=='request'||!m.request_id)return;
           if(state.processed[m.request_id]){ws.send(JSON.stringify(state.processed[m.request_id]));return;}
           const res=await exec(m.op,m.args);

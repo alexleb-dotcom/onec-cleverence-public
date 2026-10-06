@@ -1072,19 +1072,104 @@ function Write-ProviderConfig {
     Write-JsonAtomic $cfg (Join-Path $ProgramDataRoot 'provider\provider-config.json')
 }
 
+function Get-S4AdmissionPolicy {
+    $packageRoot=Split-Path -Parent $PSScriptRoot
+    $lock=Read-RuntimeLock $packageRoot
+    if(-not $lock.hosted_mcp -or -not $lock.hosted_mcp.s4){throw 'S4_RUNTIME_POLICY_MISSING'}
+    $lock.hosted_mcp.s4
+}
+
 function New-Admission {
-    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[AllowNull()][string]$TaskGoal=$null,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl,$AcceptedState)
-    Assert-SafeId $TaskId 'task_id'|Out-Null;$v=$AcceptedState;if(-not $v){$v=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot};if($v.project_id -ne $ProjectId -or $v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
-    $manifest=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot;$manifestDoc=Get-Content -LiteralPath $manifest -Raw -Encoding UTF8|ConvertFrom-Json;if([int]$manifestDoc.schema_version -ne 2 -or -not $manifestDoc.accepted_snapshot){throw 'SNAPSHOT_MANIFEST_INVALID'};if(@($manifestDoc.participants|Where-Object {$_.platform -ne 'ONEC'}).Count){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
-    $manifestSha=Get-Sha256File $manifest;if([string]$v.manifest_sha256 -and $manifestSha -ne [string]$v.manifest_sha256){throw 'SNAPSHOT_CHANGED_DURING_ADMISSION'};if([string]$manifestDoc.accepted_snapshot.source_snapshot_id -ne [string]$v.source_snapshot_id){throw 'SOURCE_SNAPSHOT_ID_MISMATCH'}
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [AllowNull()][string]$TaskGoal=$null,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        $AcceptedState,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    Assert-SafeId $TaskId 'task_id'|Out-Null
+    $v=$AcceptedState;if(-not $v){$v=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot};if($v.project_id -ne $ProjectId -or $v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
+    $manifest=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestDoc=Get-Content -LiteralPath $manifest -Raw -Encoding UTF8|ConvertFrom-Json
+    if([int]$manifestDoc.schema_version -ne 2 -or -not $manifestDoc.accepted_snapshot){throw 'SNAPSHOT_MANIFEST_INVALID'}
+    if(@($manifestDoc.participants|Where-Object {$_.platform -ne 'ONEC'}).Count){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
+    $manifestSha=Get-Sha256File $manifest
+    if([string]$v.manifest_sha256 -and $manifestSha -ne [string]$v.manifest_sha256){throw 'SNAPSHOT_CHANGED_DURING_ADMISSION'}
+    if([string]$manifestDoc.accepted_snapshot.source_snapshot_id -ne [string]$v.source_snapshot_id){throw 'SOURCE_SNAPSHOT_ID_MISMATCH'}
     Write-ProviderConfig -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
     $goal=$null;$goalSha=$null
     if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){
         if([Text.Encoding]::UTF8.GetByteCount($TaskGoal) -gt 1024){throw 'TASK_GOAL_BYTE_CAP'}
         $goal=$TaskGoal;$goalSha=Get-Sha256Text $TaskGoal
     }
-    $a=[ordered]@{schema_version=2;project_id=$ProjectId;task_id=$TaskId;task_goal=$goal;task_goal_sha256=$goalSha;created_utc=(Get-Date).ToUniversalTime().ToString('o');manifest_path=$manifest;manifest_sha256=$manifestSha;source_snapshot_id=[string]$v.source_snapshot_id;snapshot_contract='ACCEPTED_SNAPSHOT_V1';provider_config_path=(Join-Path $ProgramDataRoot 'provider\provider-config.json');relay_url=$RelayUrl;helper_secret_path=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt');runtime_dir=(Join-Path $ProgramDataRoot 'runtime');caps=[ordered]@{ttl_minutes=360;max_requests=32;max_cumulative_result_bytes=36000;max_result_bytes=3000;max_search_matches=8;max_read_lines=20;max_write_file_bytes=32768;max_task_bytes=131072;max_task_files=8;max_read_chunk_bytes=1800}}
-    Write-JsonAtomic $a (Join-Path $ProgramDataRoot 'runtime\active-admission.json');[pscustomobject]$a
+
+    $policy=Get-S4AdmissionPolicy
+    $candidate=$policy.candidate
+    if($TaskRequestLimit -le 0 -or $TaskResultByteLimit -le 0 -or $TaskTtlMinutes -le 0){
+        if([string]$policy.qualification_status -ne 'QUALIFIED_CANDIDATE' -or -not $candidate){throw 'S4_CAP_QUALIFICATION_REQUIRED'}
+        if($TaskRequestLimit -le 0){$TaskRequestLimit=[int]$candidate.task_request_limit}
+        if($TaskResultByteLimit -le 0){$TaskResultByteLimit=[int]$candidate.task_result_byte_limit}
+        if($TaskTtlMinutes -le 0){$TaskTtlMinutes=[int]$candidate.task_ttl_minutes}
+    }
+    if($EpochSoftRequestLimit -le 0){$EpochSoftRequestLimit=[int]$policy.epoch_soft_request_limit}
+    if($EpochSoftResultByteLimit -le 0){$EpochSoftResultByteLimit=[int]$policy.epoch_soft_result_byte_limit}
+    $maxResult=[int]$policy.max_result_bytes
+    if($TaskRequestLimit -lt 1 -or $TaskResultByteLimit -lt 1 -or $TaskTtlMinutes -lt 1){throw 'S4_TASK_CAP_INVALID'}
+    if($EpochSoftRequestLimit -lt 1 -or $EpochSoftRequestLimit -gt $TaskRequestLimit){throw 'S4_EPOCH_REQUEST_CAP_INVALID'}
+    if($EpochSoftResultByteLimit -lt 1 -or $EpochSoftResultByteLimit -gt $TaskResultByteLimit -or $maxResult -gt $EpochSoftResultByteLimit){throw 'S4_EPOCH_BYTE_CAP_INVALID'}
+
+    $created=(Get-Date).ToUniversalTime()
+    $expires=$created.AddMinutes($TaskTtlMinutes)
+    $taskAdmissionId=[Guid]::NewGuid().ToString('N')
+    $stableSessionId=[Guid]::NewGuid().ToString('N')
+    $outputTaskRoot='Output/'+$TaskId
+    $a=[ordered]@{
+        schema_version=3
+        accounting_contract='S4_DURABLE_TASK_ACCOUNTING_V1'
+        task_admission_id=$taskAdmissionId
+        session_id=$stableSessionId
+        project_id=$ProjectId
+        task_id=$TaskId
+        task_goal=$goal
+        task_goal_sha256=$goalSha
+        created_utc=$created.ToString('o')
+        task_created_utc=$created.ToString('o')
+        task_expires_utc=$expires.ToString('o')
+        manifest_path=$manifest
+        manifest_sha256=$manifestSha
+        source_snapshot_id=[string]$v.source_snapshot_id
+        snapshot_contract='ACCEPTED_SNAPSHOT_V1'
+        output_task_root=$outputTaskRoot
+        provider_config_path=(Join-Path $ProgramDataRoot 'provider\provider-config.json')
+        relay_url=$RelayUrl
+        helper_secret_path=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
+        runtime_dir=(Join-Path $ProgramDataRoot 'runtime')
+        caps=[ordered]@{
+            ttl_minutes=$TaskTtlMinutes
+            task_request_limit=$TaskRequestLimit
+            task_result_byte_limit=$TaskResultByteLimit
+            epoch_soft_request_limit=$EpochSoftRequestLimit
+            epoch_soft_result_byte_limit=$EpochSoftResultByteLimit
+            max_requests=$EpochSoftRequestLimit
+            max_cumulative_result_bytes=$EpochSoftResultByteLimit
+            max_result_bytes=$maxResult
+            max_search_matches=8
+            max_read_lines=20
+            max_write_file_bytes=32768
+            max_task_bytes=131072
+            max_task_files=8
+            max_read_chunk_bytes=1800
+        }
+    }
+    Write-JsonAtomic $a (Join-Path $ProgramDataRoot 'runtime\active-admission.json')
+    [pscustomobject]$a
 }
 
 function Test-IsAdministrator {

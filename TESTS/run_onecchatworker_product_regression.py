@@ -40,6 +40,13 @@ required = [
     "tests/run_local_quality_adapter_regression.ps1",
     "tests/TestScratch.psm1",
     "tests/run_test_scratch_hygiene_regression.ps1",
+    "tests/run_s4_admission_regression.ps1",
+    "tests/s4-accounting-regression.mjs",
+    "relay/src/index.js",
+    "relay/src/s4-accounting.js",
+    "relay/wrangler.jsonc",
+    "relay/package.json",
+    "relay/package-lock.json",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -72,6 +79,10 @@ guided_progress_regression = (PRODUCT / "tests/run_guided_progress_regression.ps
 snapshot_fast_regression = (PRODUCT / "tests/run_snapshot_fast_path_regression.ps1").read_text(encoding="utf-8")
 test_scratch = (PRODUCT / "tests/TestScratch.psm1").read_text(encoding="utf-8")
 test_scratch_hygiene = (PRODUCT / "tests/run_test_scratch_hygiene_regression.ps1").read_text(encoding="utf-8")
+s4_accounting = (PRODUCT / "relay/src/s4-accounting.js").read_text(encoding="utf-8")
+s4_relay = (PRODUCT / "relay/src/index.js").read_text(encoding="utf-8")
+s4_admission_regression = (PRODUCT / "tests/run_s4_admission_regression.ps1").read_text(encoding="utf-8")
+s4_accounting_regression = (PRODUCT / "tests/s4-accounting-regression.mjs").read_text(encoding="utf-8")
 
 forbidden_helper = ["source_write", "delete_file", "start_process", "browser", "arbitrary_url"]
 rec("helper_has_no_forbidden_model_capability", not any(x in helper for x in forbidden_helper), [x for x in forbidden_helper if x in helper])
@@ -93,6 +104,19 @@ rec("quality_adapter_exact_target_binding", all(t in resolver_block for t in ["M
 rec("quality_adapter_cache_invalidation_contract", all(t in helper+quality_adapter for t in ["reportBindingMatches","source_snapshot_id","manifest_sha256","confirming_read","input_closure","adapter_contract_version","upstream_commit","overlay_sha256","quality_targets","slice(0,2)"]), "bounded cache is exact-binding and closure freshness aware")
 rec("quality_adapter_source_drift_contract", "SOURCE_CHANGED_DURING_RUN" in quality_adapter and "state.quality_targets=[]" in helper and "materializeClosure" in quality_adapter, "closure-only sandbox plus post-run source drift discard")
 rec("quality_adapter_windows_regression_covers_contract", all(t in quality_windows_regression for t in ["LOCAL_QUALITY_WINDOWS_PS51_REGRESSION_PASS","quality_only_after_successful_source_read","source_search_never_runs_quality","start_fast_path_preserved","status_fast_path_preserved","admission_fast_path_preserved","source_drift_discards_cache"]), "actual Windows PS5.1 regression owner")
+
+s4_lock = lock.get("hosted_mcp", {}).get("s4", {})
+relay_lock = lock.get("hosted_mcp", {}).get("relay_source", {})
+rec("s4_policy_pending_not_guessed", s4_lock.get("contract") == "S4_DURABLE_TASK_ACCOUNTING_V1" and s4_lock.get("admission_schema") == 3 and s4_lock.get("qualification_status") == "PENDING" and s4_lock.get("candidate") is None and s4_lock.get("epoch_soft_request_limit") == 32 and s4_lock.get("epoch_soft_result_byte_limit") == 36000 and s4_lock.get("max_result_bytes") == 3000, s4_lock)
+rec("s4_relay_source_owner_pinned", relay_lock.get("component") == "relay/src/index.js" and relay_lock.get("accepted_pre_s4_deployment") == "5971635f-448e-4ccc-bf48-59709ef95e1a" and relay_lock.get("accepted_pre_s4_source_sha256") == "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0" and relay_lock.get("current_candidate_source_sha256") == hashlib.sha256((PRODUCT/"relay/src/index.js").read_bytes()).hexdigest() and relay_lock.get("accounting_component_sha256") == hashlib.sha256((PRODUCT/"relay/src/s4-accounting.js").read_bytes()).hexdigest() and relay_lock.get("deployment_status") == "NOT_DEPLOYED_PENDING_CAP_ACCEPTANCE", relay_lock)
+relay_tools = re.findall(r"\{name:'(source_context|source_search|source_read|proposal_write|proposal_read)'", s4_relay)
+rec("s4_relay_model_surface_exact_five", relay_tools == expected_surface, relay_tools)
+rec("s4_durable_accounting_owner_contract", all(t in s4_accounting for t in ["S4_DURABLE_TASK_ACCOUNTING_V1","task_requests_used","task_result_bytes_used","epoch_requests_used","epoch_result_bytes_used","RECONNECT_WITH_UNRESOLVED_RESERVATION","TASK_SECURITY_BUDGET_EXHAUSTED","SNAPSHOT_MISMATCH"]), "relay durable + epoch accounting and recover-first reservation semantics")
+rec("s4_admission_v3_internal_identity", all(t in core for t in ["schema_version=3","task_admission_id=$taskAdmissionId","session_id=$stableSessionId","S4_CAP_QUALIFICATION_REQUIRED","epoch_soft_request_limit","task_result_byte_limit"]) and "task_admission_id" not in core[core.index("function New-Admission {"):core.index("Assert-SafeId $TaskId")], "manager mints task/session identity; unqualified cap fails closed")
+rec("s4_helper_stable_task_session", all(t in helper for t in ["admission.schema_version === 3","TASK_ADMISSION_ID","STABLE_SESSION_ID","TASK_EXPIRES_UTC","S4_HELLO_ACK","epoch_soft_request_limit"]) and "epoch_id" not in helper[helper.index("const TASK_ADMISSION_ID"):helper.index("const PROV_PATH")], "helper binds stable task/session; relay owns epoch")
+rec("s4_security_regression_required_cases", all(t in s4_accounting_regression for t in ["RECONNECT_PRESERVES_TASK_COUNTERS","HELPER_RESTART_PRESERVES_TASK_COUNTERS","EPOCH_ROTATION_PRESERVES_TASK_COUNTERS","ACCOUNTING_STATE_LOSS_FAILS_CLOSED","AMBIGUOUS_PROPOSAL_WRITE_RECOVERS_BEFORE_REPLAY","UNKNOWN_RESPONSE_SIZE_CANNOT_OVERSHOOT_TASK_CAP","RECONNECT_CHARGES_ORPHAN_RESERVED_BYTES","SNAPSHOT_MISMATCH_CONTEXT_IS_CONTROL_ONLY"]), "focused durable-accounting security regression")
+rec("s4_admission_regression_preserves_fast_path", all(t in s4_admission_regression for t in ["S4_ADMISSION_PS51_REGRESSION_PASS","unqualified_default_fails_closed","saved_exact_identity","task_expiry_fixed","no_deep_verify_in_admission"]), "Windows PS5.1 admission v3 regression includes explicit #83 no-deep-verify assertion")
+rec("s4_readme_cap_review_boundary", all(t in readme for t in ["task_admission_id","relay-owned durable usage","epoch soft quanta only","cap policy PENDING","fails closed rather than inventing"]), "S4 UX/security contract and unaccepted cap boundary")
 
 scratch_scripts = {
     "local": local_regression,

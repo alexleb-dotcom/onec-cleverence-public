@@ -15,6 +15,32 @@ This adapter does not replace SOURCE_FIRST, Project Context, requirements/releas
 
 If the active project/session is wrong, stop this path and return to the existing manager/admission/project lifecycle. Never invent an arbitrary project/root switch.
 
+## S4 task continuity and accounting
+
+Treat the admitted **task**, not the transport connection, as the durable security boundary.
+
+`source_context` is the compact authoritative lifecycle view. When S4 fields are present, preserve the opaque `task_admission_id`, stable `session_id`, `task_state`, task creation/expiry, internal `epoch_id` / `epoch_seq`, `continuation`, relay-owned durable request/byte usage and remaining budget, epoch soft usage/limits, and `max_result_bytes`.
+
+Epoch rollover or reconnect is transport continuity only. It must not change task admission, stable session, project/task, manifest/snapshot identity, expiry, or durable usage. Do not ask the operator to renew a normal task merely because an epoch soft quantum ended while durable task budget remains.
+
+If task accounting is unavailable or ambiguous, fail closed rather than assuming zero. If the durable budget is exhausted/expired or the bound snapshot/manifest changed, data-bearing work stops and operator re-admission is required. An exhausted control-only context may expose lifecycle/accounting only; it must not expose Source snippets, target hints, or prepared quality.
+
+For ambiguous requests, especially `proposal_write`, recover current authoritative state before any replay. A generated/committed/ambiguous result remains charged according to the relay contract even when response delivery fails.
+
+## Prepared quality consumption
+
+`source_search` remains candidate discovery only. `source_read` remains the exact current Source evidence operation and the only accepted target-binding trigger for local quality preparation.
+
+`META_INFO` and `FORM_INFO` prepared projections are `SUPPORTING_DETERMINISTIC_SUMMARY`. Use a fresh projection to avoid repeatedly reparsing large XML solely to reproduce the same deterministic structure. It is not semantic or runtime authority. Read raw exact Source whenever semantic reasoning, change design, declaration/signature/context, or contradiction resolution requires it.
+
+`FORM_VALIDATE` prepared projection by itself does **not** create MACHINE PASS. MACHINE evidence is available only when the corresponding full `LOCAL_QUALITY_REPORT_V1` is canonically verified through the existing `TOOLS/machine_receipts.py` owner for the exact registered property. The full report must remain fresh for the exact project/P-P-A/task/stable session, source snapshot, manifest SHA, confirming `source_read` SHA, exact input-closure digest, adapter contract, upstream/script pin, overlay identity, and report SHA.
+
+A canonical `OK` receipt proves only the exact validator-owned deterministic property registered by the receipt owner. `FINDINGS` map only to properties the validator actually proves; they are not generalized semantic defects. Adapter/input/integrity/timeout/source-drift/normalization/tool-exit errors are never Source findings and never PASS.
+
+Epoch rollover alone does not stale prepared evidence because stable task/session/source identity is unchanged. Any drift in task or stable session, project/P-P-A target, snapshot, manifest, confirming file SHA, exact input closure, adapter/tool/script/upstream/overlay/report identity makes the prepared evidence stale. If prepared evidence contradicts exact current Source, Source wins and the prepared evidence is stale/defective/pending.
+
+Prepared quality reduces deterministic parsing work; it never replaces SOURCE_FIRST or the existing review/validation/release owners.
+
 ## Proposal flow
 
 Source remains immutable. Proposal capability is Output delivery, not permission to mutate Source.

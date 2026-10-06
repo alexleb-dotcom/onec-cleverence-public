@@ -90,7 +90,11 @@ No PURGE action exists in this release.
 
 START performs exactly one FAST_STATE_CHECK_V1 for the selected project, then writes one manager-owned active-admission.json binding exactly one project, one task, the accepted source_snapshot_id, and the exact manifest SHA-256. New-Admission consumes that accepted identity and does not run a second deep VERIFY. The selected relay/helper endpoint is also fixed before helper launch. The model cannot switch project, root, task, or snapshot.
 
-The helper runs under the restricted local identity and connects outbound-only. Before connection it verifies the exact manifest SHA-256 and source_snapshot_id from admission against manifest v2. Its session recovery is bound to that snapshot; a changed manifest cannot silently reuse an older helper session.
+The helper runs under the restricted local identity and connects outbound-only. Before connection it verifies the exact manifest SHA-256 and source_snapshot_id from admission against manifest v2. Admission schema v3 adds an opaque manager-minted task_admission_id, one stable session_id, a fixed task expiry, durable task request/result-byte limits, and 32-request / 36000-byte epoch soft quanta. Epoch rollover is internal: task/session/project/snapshot/manifest identity, expiry, and relay-owned durable usage do not reset on reconnect or helper restart.
+
+The relay is the authoritative S4 accounting owner. Before a data-bearing request executes it reserves the applicable hard max_result_bytes; committed results reconcile to actual charged bytes, while ambiguous/generated results remain charged fail-closed. source_context exposes bounded task lifecycle, durable remaining budget, and current epoch state without adding a sixth tool. Exhausted/expired/snapshot-mismatched tasks allow only lifecycle/accounting control context and require operator re-admission for data-bearing work.
+
+The S4 implementation is reviewable before a production cap is accepted. runtime.lock.json deliberately keeps the durable cap policy PENDING until RP accepts benchmark-derived finite request/byte/TTL values. The current 32 / 36000 values are epoch soft quanta only, not production task caps; START/New-Admission fails closed rather than inventing an unqualified durable limit.
 
 STOP ends the local helper/admission and does not delete catalog, Participants, Output, Detached, or external Source.
 

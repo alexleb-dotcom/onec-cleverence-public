@@ -26,6 +26,7 @@ TOOL_CAPABILITIES={
     "TOOLS/analyze_cleverence_configuration.py":{"STATIC:CLEVERENCE_CONFIGURATION"},
     "TOOLS/check_bsl_call_signatures.py":{"STATIC:CALL_SIGNATURE"},
     "TOOLS/validate_project_snapshot_package.py":{"EVIDENCE:PROJECT_SNAPSHOT_PACKAGE_BINDING"},
+    "TOOLS/verify_local_quality_report.py":{"STATIC:ONEC_FORM_VALIDATE_CANONICAL_OK"},
 }
 ALLOWED_TOOLS=set(TOOL_CAPABILITIES)
 
@@ -68,6 +69,38 @@ def _validate_properties(relative_tool,properties):
     return unique
 
 
+def _arg_value(argv,name):
+    try:i=argv.index(name)
+    except ValueError:return None
+    return argv[i+1] if i+1<len(argv) else None
+
+def _validate_tool_input_binding(relative_tool,properties,argv,inputs):
+    if relative_tool!="TOOLS/verify_local_quality_report.py":return True
+    required_prop="STATIC:ONEC_FORM_VALIDATE_CANONICAL_OK"
+    if required_prop not in properties:raise ValueError("local quality verifier requires its exact registered property")
+    values={name:_arg_value(argv,name) for name in ("--report","--project-root","--manifest","--runtime-lock")}
+    if any(not _has_text(v) for v in values.values()):raise ValueError("local quality verifier requires --report, --project-root, --manifest and --runtime-lock")
+    report_path=Path(values["--report"]).resolve()
+    project_root=Path(values["--project-root"]).resolve()
+    runtime_lock=Path(values["--runtime-lock"]).resolve()
+    manifest=Path(values["--manifest"]).resolve()
+    report=json.loads(report_path.read_text(encoding="utf-8-sig"))
+    expected={report_path,manifest,runtime_lock,(ROOT/"PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs").resolve(),(ROOT/"PRODUCT/OneCChatWorker/runtime/quality/cc-1c-skills/form-validate.ps1").resolve()}
+    confirming=report.get("confirming_read") or {}
+    rels=[str(confirming.get("relative_path") or "")]
+    for row in report.get("input_closure") or []:rels.append(str((row or {}).get("relative_path") or ""))
+    for rel in rels:
+        if not rel:continue
+        normalized=rel.replace("\\","/").strip("/")
+        candidate=(project_root.joinpath(*normalized.split("/"))).resolve()
+        try:candidate.relative_to(project_root)
+        except ValueError:raise ValueError(f"local quality receipt input escapes project root: {rel}")
+        expected.add(candidate)
+    actual={Path(x["path"]).resolve() for x in inputs}
+    missing=sorted(str(x) for x in expected-actual)
+    if missing:raise ValueError(f"local quality receipt must snapshot report/manifest/lock/tool pins/exact input closure: missing={missing}")
+    return True
+
 def _validate_property_invocation(relative_tool,properties,argv):
     if relative_tool=="TOOLS/analyze_onec_bsl.py" and "STATIC:ONEC_BSL_BARE_SYMBOL" in properties and "--require-bare-symbol-proof" not in argv:
         raise ValueError("STATIC:ONEC_BSL_BARE_SYMBOL requires --require-bare-symbol-proof")
@@ -81,6 +114,7 @@ def create_receipt(tool,argv,input_paths,properties,receipt_path):
     argv=list(argv)
     if any(not isinstance(x,str) for x in argv):raise ValueError("machine receipt argv must contain strings")
     _validate_property_invocation(relative,properties,argv)
+    _validate_tool_input_binding(relative,properties,argv,inputs)
     run=_run(relative,tool_path,argv)
     receipt_path=Path(receipt_path); receipt_path.parent.mkdir(parents=True,exist_ok=True)
     stdout_path=receipt_path.with_suffix(receipt_path.suffix+".stdout")
@@ -154,6 +188,8 @@ def verify_receipt(path_value,replay=True):
     if relative:
         try:_validate_property_invocation(relative,properties,argv)
         except Exception as exc:errors.append({"type":"MACHINE_RECEIPT_PROPERTY_INVOCATION_INVALID","tool":relative,"error":str(exc)})
+        try:_validate_tool_input_binding(relative,properties,argv,inputs)
+        except Exception as exc:errors.append({"type":"MACHINE_RECEIPT_INPUT_BINDING_INVALID","tool":relative,"error":str(exc)})
     stored_exit=receipt.get("exit_code")
     if not isinstance(stored_exit,int):errors.append({"type":"MACHINE_RECEIPT_EXIT_INVALID","actual":stored_exit})
     derived="PASS" if stored_exit==0 else "FAIL"

@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 476,
+  "file_count": 486,
   "files": [
     {
       "path": ".gitattributes",
@@ -45,8 +45,8 @@
     },
     {
       "path": "KNOWLEDGE/CHAT_MCP_EXECUTION.md",
-      "size": 3856,
-      "sha256": "2a936e624cca540587ef8c85adbe0a0386bd4e41583ae9d292883145d2fece44"
+      "size": 7314,
+      "sha256": "1ae5862853a9040baf13791c538337215fbcf8e1856eba631dc6b5ff8f84e5ad"
     },
     {
       "path": "KNOWLEDGE/CLEVERENCE_COVERAGE_AUDIT.json",
@@ -385,13 +385,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
-      "size": 17101,
-      "sha256": "d5a9ff74982d10288a942112020925a87c9fa4b11a939f714aff87d917182f38"
+      "size": 18258,
+      "sha256": "a973ed63642be596096a02a1e146a8fe339e312239355a18efe0a8cf92903141"
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 116542,
-      "sha256": "a972af9597a1cd6aba68b08feb2edb0903bcb7ca85bb91a860e72af3635b777a"
+      "size": 119347,
+      "sha256": "2b9617366e2c74a387532a4e61f9d2f352f4bdd21531f8f825d7a1278648852f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -399,14 +399,39 @@
       "sha256": "9964bc44cdb351d5d4347685a70569561ae778c19b5e3070e691bcef1ddfaee5"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/relay/package-lock.json",
+      "size": 634,
+      "sha256": "059aed20a675a0b2edc9314c334ae5b5ab9dbfb68e43e7bd4f8668fce0420de5"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/package.json",
+      "size": 446,
+      "sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
+      "size": 22816,
+      "sha256": "f5bb68ace3070fc720d6d347d3f2a8b32e64d2b54e343a3a480921b3922dd2c4"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
+      "size": 10430,
+      "sha256": "ca57c0c25b0b0f2224adab3a7197d1f3a430bf3a01a61673e0dc0805e2a74430"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/wrangler.jsonc",
+      "size": 535,
+      "sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 3318,
-      "sha256": "6d2361e09e0bc5d85e050d037854f6116c0b706bc11776534e3923a8b7cd109a"
+      "size": 4911,
+      "sha256": "6114ac560d6d88ea613df9a6b30513b1cd843b66dab037142d0d718d7c8233a6"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
-      "size": 22323,
-      "sha256": "88ccf2f16b3bc28df005ed64cf8f08df232f222afd15c804b4469f0c9fd3ae9a"
+      "size": 25896,
+      "sha256": "223ed084e71a8324885f846966ea94761840018a52130c5183333d214e6f7f8d"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs",
@@ -479,6 +504,11 @@
       "sha256": "ddbd1890363c4bd0e22428707ee24504f69afd6a981690e85237d95f234733bb"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/run_s4_admission_regression.ps1",
+      "size": 4258,
+      "sha256": "af705874e1e8dd91ea3d1a9a06427088c47e6919bd5b7bf1fecd08a612a5e417"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
       "size": 15404,
       "sha256": "2bfe2aa6bf89f8823ffc475963dd0b6ad112648dcd4a5b405100320e559f626b"
@@ -492,6 +522,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_update_bootstrap_regression.ps1",
       "size": 13182,
       "sha256": "fce09e1e0dc4343c081f1e445665105a83d88e27933ec8c49d8e2327b6e8c218"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/s4-accounting-regression.mjs",
+      "size": 11062,
+      "sha256": "c866f13203a84a770e00cbb02548734b4c1c9c3a4c8d1c4de0d8304a47277081"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -755,8 +790,8 @@
     },
     {
       "path": "SKILL.md",
-      "size": 47362,
-      "sha256": "2384e59a1dcce2c43d0a7a6436518295b68a54a3c89e9bbb1be67aba6de08a19"
+      "size": 47495,
+      "sha256": "6622a4585075733f1a12bc475d33feaaeb66af4aa1bad2d23e2d6cf67fe169e3"
     },
     {
       "path": "TEMPLATES/CHANGE_PACKAGE_MANIFEST.json",
@@ -845,8 +880,8 @@
     },
     {
       "path": "TESTS/SEMANTIC_BEHAVIOR_CASES.json",
-      "size": 54450,
-      "sha256": "ded5f52014cad7388c9be877cd9f3f6cbee10d30da54c115b5ce8af670a4d31c"
+      "size": 57480,
+      "sha256": "216bcd490b2e9839d897e2a234c67e99b74998faa74ad17e5b01fa2cd6037b3f"
     },
     {
       "path": "TESTS/SEMANTIC_REGRESSION_CLASSES.md",
@@ -872,6 +907,11 @@
       "path": "TESTS/benchmark_local_quality_adapter.mjs",
       "size": 3396,
       "sha256": "db8fd2b32f89167cd17c03cea3c2e9054c61a00ec760ce7cc074f22cae80deb1"
+    },
+    {
+      "path": "TESTS/benchmark_s4_task_accounting.mjs",
+      "size": 8144,
+      "sha256": "87f128e62ae01dfe5f4e9ea26fcbb9e3340b69f380fadf03136bb86fd45b606f"
     },
     {
       "path": "TESTS/fixtures/TestApi_Module.bsl",
@@ -1870,8 +1910,8 @@
     },
     {
       "path": "TESTS/run_context_efficiency_regression.py",
-      "size": 54263,
-      "sha256": "0c364cfc85cfae3c93acaabdec97934761eef32f28695b1a636ea749de8834ba"
+      "size": 54635,
+      "sha256": "5f77c7f158bebc3d0d8bdebce2608cf58e8b8ca18903bafb04dc722a996b0dbb"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -1929,6 +1969,11 @@
       "sha256": "5d6a66a45e09ba674bdf84a1950eec3eb4a7cdef5d5f423111c6d1d16208b1ed"
     },
     {
+      "path": "TESTS/run_local_quality_machine_receipt_regression.py",
+      "size": 7350,
+      "sha256": "3c2cc449a916898b366d7ef73246fec12d28dbd083d47586d0100602a244203c"
+    },
+    {
       "path": "TESTS/run_mechanism_inventory_regression.py",
       "size": 20113,
       "sha256": "42c1210e9cce598eec09e6671aa722a1b27b7de9b065d2120b07a63fad867a1e"
@@ -1945,8 +1990,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 34027,
-      "sha256": "e648c147ef387db33276d40e87464d128adc51b8a6b1d2f7c78e0550bf799ae3"
+      "size": 38208,
+      "sha256": "9817cedf62a3bba68af9e7b86d03cfa7102b505c51a64dbcf4c7d6a4b18c60b5"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2055,8 +2100,8 @@
     },
     {
       "path": "TESTS/run_skill_freshness_regression.py",
-      "size": 4870,
-      "sha256": "9a8735a2d0d794bbc4f7374d25355c0cdc9fb7f46ac6d646e45dcf5f5c7e4543"
+      "size": 5117,
+      "sha256": "4066801e576341d8de4445e0eff412973e78fbc92b4640faff67c10c1e56cc15"
     },
     {
       "path": "TESTS/run_user_artifact_docx_regression.py",
@@ -2200,8 +2245,8 @@
     },
     {
       "path": "TOOLS/machine_receipts.py",
-      "size": 10680,
-      "sha256": "7ddf0384d7cfa52e14415d622b3d29671b3225b9182465a1072ecd63182ac346"
+      "size": 13107,
+      "sha256": "d3fb685c63b91eb4f5f7eeefc694b4d4b7b8673e07cb360c246f74e366f9736b"
     },
     {
       "path": "TOOLS/materialize_project_snapshot_collector.py",
@@ -2364,6 +2409,11 @@
       "sha256": "c820834099e84250a971a4921ceddfd3c7de3e004d436d9bdfdb875745b24c51"
     },
     {
+      "path": "TOOLS/verify_local_quality_report.py",
+      "size": 8184,
+      "sha256": "a011c8853941f8aab64eac92f47afbaf6cbb90ce2e8f330eb236e2055a74252f"
+    },
+    {
       "path": "WORKFLOW/DEVELOPMENT_PIPELINE.json",
       "size": 29578,
       "sha256": "07f71d1e8f4284148d542f7957c5e967c59edf230d5d625f756d01955a96d920"
@@ -2390,5 +2440,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6a27a812745abb2054f612ff8f7363d80401a4dbbc2146d7674306d48694d9b5"
+  "snapshot_digest": "0c47e6ea82a066ed940a6cc033567299335f0a253d1c6d1075a39776ef5a7152"
 }
