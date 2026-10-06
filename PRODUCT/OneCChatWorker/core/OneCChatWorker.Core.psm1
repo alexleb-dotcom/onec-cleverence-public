@@ -288,6 +288,10 @@ function Test-InstalledProductIntegrity {
     $map=[ordered]@{
         'runtime/source-reader-integration.mjs'=(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs')
         'runtime/hosted-helper.mjs'=(Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs')
+        'runtime/local-quality-adapter.mjs'=(Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs')
+        'runtime/quality/cc-1c-skills/meta-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\meta-info.ps1')
+        'runtime/quality/cc-1c-skills/form-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\form-info.ps1')
+        'runtime/quality/cc-1c-skills/form-validate.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\form-validate.ps1')
         'core/OneCChatWorker.Core.psm1'=(Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1')
         'OneCChatWorker.ps1'=(Join-Path $WorkerRoot 'OneCChatWorker.ps1')
         'README.md'=(Join-Path $ProgramDataRoot 'product\README.md')
@@ -1069,12 +1073,17 @@ function Write-ProviderConfig {
 }
 
 function New-Admission {
-    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl,$AcceptedState)
+    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[AllowNull()][string]$TaskGoal=$null,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl,$AcceptedState)
     Assert-SafeId $TaskId 'task_id'|Out-Null;$v=$AcceptedState;if(-not $v){$v=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot};if($v.project_id -ne $ProjectId -or $v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
     $manifest=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot;$manifestDoc=Get-Content -LiteralPath $manifest -Raw -Encoding UTF8|ConvertFrom-Json;if([int]$manifestDoc.schema_version -ne 2 -or -not $manifestDoc.accepted_snapshot){throw 'SNAPSHOT_MANIFEST_INVALID'};if(@($manifestDoc.participants|Where-Object {$_.platform -ne 'ONEC'}).Count){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
     $manifestSha=Get-Sha256File $manifest;if([string]$v.manifest_sha256 -and $manifestSha -ne [string]$v.manifest_sha256){throw 'SNAPSHOT_CHANGED_DURING_ADMISSION'};if([string]$manifestDoc.accepted_snapshot.source_snapshot_id -ne [string]$v.source_snapshot_id){throw 'SOURCE_SNAPSHOT_ID_MISMATCH'}
     Write-ProviderConfig -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
-    $a=[ordered]@{schema_version=2;project_id=$ProjectId;task_id=$TaskId;created_utc=(Get-Date).ToUniversalTime().ToString('o');manifest_path=$manifest;manifest_sha256=$manifestSha;source_snapshot_id=[string]$v.source_snapshot_id;snapshot_contract='ACCEPTED_SNAPSHOT_V1';provider_config_path=(Join-Path $ProgramDataRoot 'provider\provider-config.json');relay_url=$RelayUrl;helper_secret_path=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt');runtime_dir=(Join-Path $ProgramDataRoot 'runtime');caps=[ordered]@{ttl_minutes=360;max_requests=32;max_cumulative_result_bytes=36000;max_result_bytes=3000;max_search_matches=8;max_read_lines=20;max_write_file_bytes=32768;max_task_bytes=131072;max_task_files=8;max_read_chunk_bytes=1800}}
+    $goal=$null;$goalSha=$null
+    if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){
+        if([Text.Encoding]::UTF8.GetByteCount($TaskGoal) -gt 1024){throw 'TASK_GOAL_BYTE_CAP'}
+        $goal=$TaskGoal;$goalSha=Get-Sha256Text $TaskGoal
+    }
+    $a=[ordered]@{schema_version=2;project_id=$ProjectId;task_id=$TaskId;task_goal=$goal;task_goal_sha256=$goalSha;created_utc=(Get-Date).ToUniversalTime().ToString('o');manifest_path=$manifest;manifest_sha256=$manifestSha;source_snapshot_id=[string]$v.source_snapshot_id;snapshot_contract='ACCEPTED_SNAPSHOT_V1';provider_config_path=(Join-Path $ProgramDataRoot 'provider\provider-config.json');relay_url=$RelayUrl;helper_secret_path=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt');runtime_dir=(Join-Path $ProgramDataRoot 'runtime');caps=[ordered]@{ttl_minutes=360;max_requests=32;max_cumulative_result_bytes=36000;max_result_bytes=3000;max_search_matches=8;max_read_lines=20;max_write_file_bytes=32768;max_task_bytes=131072;max_task_files=8;max_read_chunk_bytes=1800}}
     Write-JsonAtomic $a (Join-Path $ProgramDataRoot 'runtime\active-admission.json');[pscustomobject]$a
 }
 
@@ -1253,7 +1262,7 @@ function Install-OneCChatWorker {
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $packageCheck=Test-ProductPackageIntegrity $PackageRoot
     $deps=Ensure-PinnedDependencies -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -NoInstall:$SkipDependencies
-    foreach($p in @($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'))){New-Item -ItemType Directory -Force -Path $p|Out-Null}
+    foreach($p in @($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'))){New-Item -ItemType Directory -Force -Path $p|Out-Null}
 
     $readerAction='REUSED'
     if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){
@@ -1266,6 +1275,8 @@ function Install-OneCChatWorker {
     $componentResults=@()
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
+    foreach($qualityScript in @('meta-info.ps1','form-info.ps1','form-validate.ps1')){$rel='runtime/quality/cc-1c-skills/'+$qualityScript;$componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot ('runtime\quality\cc-1c-skills\'+$qualityScript)) -Destination (Join-Path $ProgramDataRoot ('helper\quality\cc-1c-skills\'+$qualityScript)) -ExpectedSha256 ([string]$lock.components.$rel))}
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1') -Destination (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -ExpectedSha256 ([string]$lock.components.'core/OneCChatWorker.Core.psm1'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'OneCChatWorker.ps1') -Destination (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -ExpectedSha256 ([string]$lock.components.'OneCChatWorker.ps1'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'README.md') -Destination (Join-Path $ProgramDataRoot 'product\README.md') -ExpectedSha256 ([string]$lock.components.'README.md'))
@@ -1343,9 +1354,9 @@ function New-HelperRunAsCommand {
 }
 
 function Start-WorkerAdmission {
-    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl,$AcceptedState)
+    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string]$TaskId,[string]$TaskGoal,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$RelayUrl=$script:DefaultRelayUrl,$AcceptedState)
     if(-not(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'))){throw 'REMOTE_AUTH_REQUIRED'}
-    New-Admission -ProjectId $ProjectId -TaskId $TaskId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState|Out-Null
+    New-Admission -ProjectId $ProjectId -TaskId $TaskId -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState|Out-Null
     $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs';$existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)});if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
     $runAs="$env:SystemRoot\System32\runas.exe";$program=New-HelperRunAsCommand -HelperPath $helper -ProgramDataRoot $ProgramDataRoot;& $runAs "/profile" "/user:$env:COMPUTERNAME\$($script:ReaderName)" $program;if($LASTEXITCODE -ne 0){throw "RUNAS_FAILED_OR_CANCELLED: $LASTEXITCODE"}
     [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id}

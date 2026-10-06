@@ -21,6 +21,10 @@ required = [
     "core/OneCChatWorker.Core.psm1",
     "runtime/source-reader-integration.mjs",
     "runtime/hosted-helper.mjs",
+    "runtime/local-quality-adapter.mjs",
+    "runtime/quality/cc-1c-skills/meta-info.ps1",
+    "runtime/quality/cc-1c-skills/form-info.ps1",
+    "runtime/quality/cc-1c-skills/form-validate.ps1",
     "runtime.lock.json",
     "projects.example.json",
     "README.md",
@@ -32,6 +36,8 @@ required = [
     "tests/run_apply_quarantine_regression.ps1",
     "tests/run_guided_progress_regression.ps1",
     "tests/run_snapshot_fast_path_regression.ps1",
+    "tests/local-quality-adapter-regression.mjs",
+    "tests/run_local_quality_adapter_regression.ps1",
 ]
 missing = [p for p in required if not (PRODUCT / p).is_file()]
 rec("product_files_exist", not missing, missing)
@@ -49,6 +55,8 @@ for rel, expected in lock.get("components", {}).items():
 rec("component_hash_lock_matches", not hash_mismatches, hash_mismatches)
 
 helper = (PRODUCT / "runtime/hosted-helper.mjs").read_text(encoding="utf-8")
+quality_adapter = (PRODUCT / "runtime/local-quality-adapter.mjs").read_text(encoding="utf-8")
+quality_windows_regression = (PRODUCT / "tests/run_local_quality_adapter_regression.ps1").read_text(encoding="utf-8")
 core = (PRODUCT / "core/OneCChatWorker.Core.psm1").read_text(encoding="utf-8")
 launcher = (PRODUCT / "OneCChatWorker.ps1").read_text(encoding="utf-8")
 readme = (PRODUCT / "README.md").read_text(encoding="utf-8")
@@ -69,6 +77,18 @@ rec("helper_recover_first_cas", "existing&&replace&&existing.sha256===hash" in h
 rec("helper_active_manifest_scope", "collectArtifacts(manifest)" in helper and "artifactPrefixes" in helper, "manifest artifact prefixes")
 rec("helper_state_is_snapshot_bound", "s.snapshot_id===SNAPSHOT" in helper and "snapshot_id:SNAPSHOT" in helper, "session state bound to source snapshot")
 rec("helper_import_matches_installed_layout", "../provider/source-reader-integration.mjs" in helper, "installed helper/provider sibling layout")
+quality_lock = lock.get("local_quality_adapter", {})
+rec("quality_adapter_exact_contract", quality_lock.get("contract") == "LOCAL_QUALITY_ADAPTER_Q0_V1" and quality_lock.get("report_schema") == "LOCAL_QUALITY_REPORT_V1" and quality_lock.get("operations") == ["META_INFO","FORM_INFO","FORM_VALIDATE"], quality_lock)
+rec("quality_adapter_exact_upstream_pin", quality_lock.get("upstream_commit") == "1fa205b961f4ed3659f58f4b55d2d9b1d5e4810e" and quality_lock.get("license") == "MIT", quality_lock.get("upstream_commit"))
+rec("quality_adapter_shell_false_bounded", quality_lock.get("shell") is False and quality_lock.get("prepared_quality_max_bytes") == 1200 and quality_lock.get("session_cache_targets") == 2 and quality_lock.get("timeouts_ms") == {"META_INFO":15000,"FORM_INFO":15000,"FORM_VALIDATE":30000}, quality_lock)
+rec("quality_adapter_selected_scripts_exact", quality_lock.get("selected_scripts",{}).get("meta-info.ps1",{}).get("git_blob") == "cf1a233e7fb270325a91dd8403ca96794d26c7d9" and quality_lock.get("selected_scripts",{}).get("form-info.ps1",{}).get("git_blob") == "0edda69123ce565938bf368ff26039a890ac23d1" and quality_lock.get("selected_scripts",{}).get("form-validate.ps1",{}).get("git_blob") == "208e9ee4c543c7ef85ead5465f1abf5ecff19a3f", quality_lock.get("selected_scripts"))
+rec("quality_adapter_internal_only_after_read", helper.count("quality.runConfirmed(rel,v.sha256)") == 1 and helper.index("provider.callClientTool('source_read'") < helper.index("quality.runConfirmed(rel,v.sha256)") and "runConfirmed" not in helper[helper.index("async function sourceSearch"):helper.index("async function qualityPathHash")], "successful source_read precedes the only quality execution site; source_search cannot invoke it")
+rec("quality_adapter_no_generic_shell", "shell:false" in quality_adapter and "shell:true" not in quality_adapter and "exec(" not in quality_adapter and "execFile(" not in quality_adapter and "C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe" in quality_adapter, "fixed PS5.1 spawn only")
+resolver_block = quality_adapter[quality_adapter.index("async function exactTarget"):quality_adapter.index("function parseValidation")]
+rec("quality_adapter_exact_target_binding", all(t in resolver_block for t in ["METADATA_OBJECT","FORM","META_COLLECTIONS","Forms","Form.xml","Module.bsl"]) and "readdir" not in resolver_block and "walk" not in resolver_block.lower(), "direct structural resolver only; no recursive owner search")
+rec("quality_adapter_cache_invalidation_contract", all(t in helper+quality_adapter for t in ["reportBindingMatches","source_snapshot_id","manifest_sha256","confirming_read","input_closure","adapter_contract_version","upstream_commit","overlay_sha256","quality_targets","slice(0,2)"]), "bounded cache is exact-binding and closure freshness aware")
+rec("quality_adapter_source_drift_contract", "SOURCE_CHANGED_DURING_RUN" in quality_adapter and "state.quality_targets=[]" in helper and "materializeClosure" in quality_adapter, "closure-only sandbox plus post-run source drift discard")
+rec("quality_adapter_windows_regression_covers_contract", all(t in quality_windows_regression for t in ["LOCAL_QUALITY_WINDOWS_PS51_REGRESSION_PASS","quality_only_after_successful_source_read","source_search_never_runs_quality","start_fast_path_preserved","status_fast_path_preserved","admission_fast_path_preserved","source_drift_discards_cache"]), "actual Windows PS5.1 regression owner")
 machine_user_marker = "c:" + "\\users\\" + "alexl"
 rec("helper_has_no_machine_specific_project", not any(t.lower() in helper.lower() for t in ["nendo", "w1-rp", "w1-ta", machine_user_marker]), "no pilot/user hardcodes")
 

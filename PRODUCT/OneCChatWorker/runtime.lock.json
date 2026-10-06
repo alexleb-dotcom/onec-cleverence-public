@@ -15,10 +15,14 @@
   },
   "components": {
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
-    "runtime/hosted-helper.mjs": "985cc09135af868685aa6ca908504c1824bd41b24fd855ac8b697e2a56071d78",
-    "core/OneCChatWorker.Core.psm1": "92f8cc4b8fc627b216bee6e47656f16675f53d6388e4957587f0238cedba68c8",
-    "OneCChatWorker.ps1": "7f38a44fb9af217ff975e794a91de1fb5baf99a6deabd7408e3c215247b14cc1",
-    "README.md": "a9ff135d9162a1a05b6e767d0472cd266f051365e7728cc9865d3d945760667a"
+    "runtime/hosted-helper.mjs": "88ccf2f16b3bc28df005ed64cf8f08df232f222afd15c804b4469f0c9fd3ae9a",
+    "runtime/local-quality-adapter.mjs": "8964bcca9c16f0cf26ad49f6a974b21c5d27eb5918dc241081bdb66107de199a",
+    "runtime/quality/cc-1c-skills/meta-info.ps1": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a",
+    "runtime/quality/cc-1c-skills/form-info.ps1": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727",
+    "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
+    "core/OneCChatWorker.Core.psm1": "a972af9597a1cd6aba68b08feb2edb0903bcb7ca85bb91a860e72af3635b777a",
+    "OneCChatWorker.ps1": "517ccc6460f14e5c9d852cdea64ce6950a62b5e2168835547584be544da2cd41",
+    "README.md": "d5a9ff74982d10288a942112020925a87c9fa4b11a939f714aff87d917182f38"
   },
   "hosted_mcp": {
     "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
@@ -30,6 +34,43 @@
       "proposal_write",
       "proposal_read"
     ]
+  },
+  "local_quality_adapter": {
+    "contract": "LOCAL_QUALITY_ADAPTER_Q0_V1",
+    "report_schema": "LOCAL_QUALITY_REPORT_V1",
+    "prepared_quality_max_bytes": 1200,
+    "session_cache_targets": 2,
+    "shell": false,
+    "powershell51": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "upstream": "Nikolay-Shirokov/cc-1c-skills",
+    "upstream_commit": "1fa205b961f4ed3659f58f4b55d2d9b1d5e4810e",
+    "license": "MIT",
+    "operations": [
+      "META_INFO",
+      "FORM_INFO",
+      "FORM_VALIDATE"
+    ],
+    "timeouts_ms": {
+      "META_INFO": 15000,
+      "FORM_INFO": 15000,
+      "FORM_VALIDATE": 30000
+    },
+    "stdout_max_bytes": 65536,
+    "stderr_max_bytes": 16384,
+    "selected_scripts": {
+      "meta-info.ps1": {
+        "git_blob": "cf1a233e7fb270325a91dd8403ca96794d26c7d9",
+        "sha256": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a"
+      },
+      "form-info.ps1": {
+        "git_blob": "0edda69123ce565938bf368ff26039a890ac23d1",
+        "sha256": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727"
+      },
+      "form-validate.ps1": {
+        "git_blob": "208e9ee4c543c7ef85ead5465f1abf5ecff19a3f",
+        "sha256": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec"
+      }
+    }
   },
   "remote_call_budget": {
     "known_path_read_calls": 1,

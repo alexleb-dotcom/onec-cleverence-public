@@ -20,7 +20,13 @@ function New-Fixture([string]$Name){
 function Invoke-HelperExpect([string]$Name,$Admission,[string]$Expected){
  $layout=Join-Path $root 'helper-layout';$helperDir=Join-Path $layout 'helper';$providerDir=Join-Path $layout 'provider';New-Item -ItemType Directory -Force -Path $helperDir,$providerDir|Out-Null
  $installedHelper=Join-Path $helperDir 'hosted-helper.mjs'
- if(-not(Test-Path $installedHelper)){Copy-Item $helper $installedHelper -Force;Copy-Item (Join-Path (Join-Path $PackageRoot 'runtime') 'source-reader-integration.mjs') (Join-Path $providerDir 'source-reader-integration.mjs') -Force}
+ if(-not(Test-Path $installedHelper)){
+  Copy-Item $helper $installedHelper -Force
+  Copy-Item (Join-Path (Join-Path $PackageRoot 'runtime') 'source-reader-integration.mjs') (Join-Path $providerDir 'source-reader-integration.mjs') -Force
+  Copy-Item (Join-Path (Join-Path $PackageRoot 'runtime') 'local-quality-adapter.mjs') (Join-Path $helperDir 'local-quality-adapter.mjs') -Force
+  $qualityDst=Join-Path $helperDir 'quality\cc-1c-skills';New-Item -ItemType Directory -Force -Path $qualityDst|Out-Null
+  foreach($qualityScript in @('meta-info.ps1','form-info.ps1','form-validate.ps1')){Copy-Item (Join-Path $PackageRoot ('runtime\quality\cc-1c-skills\'+$qualityScript)) (Join-Path $qualityDst $qualityScript) -Force}
+ }
  $path=Join-Path $root ($Name+'.admission.json');$out=Join-Path $root ($Name+'.out.txt');$err=Join-Path $root ($Name+'.err.txt')
  [IO.File]::WriteAllText($path,($Admission|ConvertTo-Json -Depth 20),[Text.UTF8Encoding]::new($false))
  $old=$env:ONECCHAT_ADMISSION_PATH;$env:ONECCHAT_ADMISSION_PATH=$path

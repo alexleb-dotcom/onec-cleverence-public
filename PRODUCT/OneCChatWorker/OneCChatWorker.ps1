@@ -2,7 +2,7 @@
  [ValidateSet('MENU','PRECHECK','INSTALL','STATUS','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
- [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
+ [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
  [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCChatWorker',[string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker',
  [string]$ReaderName='OneCSourceReader',[string]$OperatorIdentity,[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
  [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath
@@ -28,6 +28,8 @@ function Require-AdminOrRelaunch {
  if(Is-Admin){return}
  $argsList=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode',$RequestedMode,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName,'-OperatorIdentity',$OperatorIdentity,'-RelayUrl',$RelayUrl)
  if(-not [string]::IsNullOrWhiteSpace($ProjectId)){$argsList+=@('-ProjectId',$ProjectId)}
+ if(-not [string]::IsNullOrWhiteSpace($TaskId)){$argsList+=@('-TaskId',$TaskId)}
+ if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){$argsList+=@('-TaskGoal',$TaskGoal)}
  if($SkipDependencies){$argsList+='-SkipDependencies'}
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
  if($Json){$argsList+='-Json'}
@@ -380,7 +382,7 @@ function Run-Start {
   if($v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
   $null=Update-WorkerOperation -Operation $op -Message ("Binding admission to project={0}, task={1}, snapshot={2}; no runtime project/task switching" -f $projectKey,$task,$v.source_snapshot_id) -Step 2 -Total 4 -State RUNNING -SafeDetails @{source_snapshot_id=$v.source_snapshot_id;manifest_sha256=$v.manifest_sha256} -ProgramDataRoot $ProgramDataRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Enter the local OneCSourceReader password in the Windows runas prompt' -Step 3 -Total 4 -State WAITING_FOR_USER -ProgramDataRoot $ProgramDataRoot
-  $start=Start-WorkerAdmission -ProjectId $projectKey -TaskId $task -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $v
+  $start=Start-WorkerAdmission -ProjectId $projectKey -TaskId $task -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $v
   $null=Update-WorkerOperation -Operation $op -Message 'Waiting for helper connection evidence' -Step 4 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $helper=$null
   for($i=0;$i -lt 10;$i++){
@@ -1139,6 +1141,7 @@ function Invoke-GuidedStart {
  $description=Read-GuidedValue -Label 'Task description' -What 'A human description of the specific work you want ChatGPT to do now.' -Why 'Each bounded work session has its own Output folder. A technical task id is created automatically.' -Allowed 'A short sentence describing the task.' -Example 'Исправить проведение документа Заказ клиента'
  $script:ProjectId=$ProjectKey
  $script:TaskId=Get-UniqueTaskId $ProjectKey $description
+ $script:TaskGoal=$description
  Write-Host ''
  Write-Host (T 'Windows will ask for the local OneCSourceReader password. This starts the restricted read-only Source helper.')
  $ok=Invoke-GuidedAction {Run-Start}

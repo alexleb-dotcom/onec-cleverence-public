@@ -8,12 +8,19 @@
       "trust": "SUPPORTING_REFERENCE",
       "load": "ON_DEMAND",
       "upstream": "https://github.com/Nikolay-Shirokov/cc-1c-skills",
+      "accepted_runtime_pin": "1fa205b961f4ed3659f58f4b55d2d9b1d5e4810e",
+      "selected_runtime_files": {
+        ".claude/skills/meta-info/scripts/meta-info.ps1": {"git_blob": "cf1a233e7fb270325a91dd8403ca96794d26c7d9", "sha256": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a"},
+        ".claude/skills/form-info/scripts/form-info.ps1": {"git_blob": "0edda69123ce565938bf368ff26039a890ac23d1", "sha256": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727"},
+        ".claude/skills/form-validate/scripts/form-validate.ps1": {"git_blob": "208e9ee4c543c7ef85ead5465f1abf5ecff19a3f", "sha256": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec"}
+      },
       "local_notice": "THIRD_PARTY/cc-1c-skills/NOTICE.md",
       "local_license": "THIRD_PARTY/cc-1c-skills/LICENSE.txt",
       "redistribution_status": "LICENSED_WITH_NOTICE",
       "consumed_by": [
         "KNOWLEDGE/EXTERNAL_1C_STRUCTURAL_REFERENCE.md",
-        "TOOLS/analyze_onec_xml.py"
+        "TOOLS/analyze_onec_xml.py",
+        "PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs"
       ],
       "refresh_policy": "Use upstream only for routed structural discovery/calibration. Promote a heuristic to blocking behavior only after validation against actual/official evidence."
     },
