@@ -1262,8 +1262,15 @@ function Invoke-TaskStateRetention {
 }
 
 function Get-S4AdmissionPolicy {
-    $packageRoot=Split-Path -Parent $PSScriptRoot
-    $lock=Read-RuntimeLock $packageRoot
+    $localLock=Join-Path $PSScriptRoot 'runtime.lock.json'
+    $parentRoot=Split-Path -Parent $PSScriptRoot
+    $parentLock=Join-Path $parentRoot 'runtime.lock.json'
+    $localExists=Test-Path -LiteralPath $localLock -PathType Leaf
+    $parentExists=Test-Path -LiteralPath $parentLock -PathType Leaf
+    if($localExists -and $parentExists){throw 'S4_RUNTIME_LOCK_LAYOUT_AMBIGUOUS'}
+    if($localExists){$lock=Read-RuntimeLock $PSScriptRoot}
+    elseif($parentExists){$lock=Read-RuntimeLock $parentRoot}
+    else{throw "RUNTIME_LOCK_MISSING: expected $localLock or $parentLock"}
     if(-not $lock.hosted_mcp -or -not $lock.hosted_mcp.s4){throw 'S4_RUNTIME_POLICY_MISSING'}
     $lock.hosted_mcp.s4
 }
