@@ -229,4 +229,16 @@ ok('MCP_READ_NONCE_OWNED_BY_RELAY_ACCOUNTING_LAYER',()=>{
   assert(!relay.includes("read_request_nonce"));
 });
 
+ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_GUARD',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  const block=relay.slice(relay.indexOf("if(body.op==='context'){\n      const base="),relay.indexOf("const bytes=payloadBytes(finalPayload);"));
+  assert(block.includes("const optional=['prepared_quality','target_hints']"));
+  assert(block.includes("delete base[field]"));
+  assert(block.includes("if(guess>record.max_result_bytes){fits=false;break;}"));
+  assert(block.includes("if(next>record.max_result_bytes){fits=false;break;}"));
+  assert(block.includes("finalPayload={...base,...lifecycleProjection(record)}"));
+  assert(relay.includes("chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'})"));
+  assert(relay.includes("commitRequest(record,{requestId:clientId,fingerprint,payloadBytes:bytes})"));
+});
+
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);
