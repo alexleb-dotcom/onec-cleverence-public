@@ -1,5 +1,5 @@
 import OAuthProvider, { AuthorizationError, CimdFetchError } from '@cloudflare/workers-oauth-provider';
-import { createTaskRecord, reconcileTaskHello, reserveRequest, commitRequest, chargeAmbiguousRequest, lifecycleProjection, minimalControlPayload, projectCommittedRecord, activityReceiptHashInput, sealActivityReceipt, unsealedTerminalReceipts, activityDelta, latestCheckpointRequestCursor, S4_ACTIVITY_CURSOR_SCHEMA } from './s4-accounting.js';
+import { createTaskRecord, reconcileTaskHello, reserveRequest, commitRequest, chargeAmbiguousRequest, lifecycleProjection, minimalControlPayload, projectCommittedRecord, activityReceiptHashInput, sealActivityReceipt, canonicalizeRecoveredOrphanPredecessor, unsealedTerminalReceipts, activityDelta, latestCheckpointRequestCursor, S4_ACTIVITY_CURSOR_SCHEMA } from './s4-accounting.js';
 
 const ORIGIN='https://onec-g1q1-relay.alex-lebad1.workers.dev';
 const RESOURCE=ORIGIN+'/mcp';
@@ -66,7 +66,12 @@ async function sealOneActivity(record,requestId,safeResult){
   sealActivityReceipt(record,{requestId,safeResult,activitySha256:hash});
 }
 async function sealPendingActivity(record){
-  for(const r of unsealedTerminalReceipts(record))await sealOneActivity(record,r.request_id,r.safe_result||{status:'ERROR',error_class:r.reason||'AMBIGUOUS_DELIVERY'});
+  for(const r of unsealedTerminalReceipts(record)){
+    // Reconnect-owned ambiguous charges may share the last committed cursor.
+    // Rebind only these recovered orphan receipts, preserving their original evidence.
+    canonicalizeRecoveredOrphanPredecessor(record,r.request_id);
+    await sealOneActivity(record,r.request_id,r.safe_result||{status:'ERROR',error_class:r.reason||'AMBIGUOUS_DELIVERY'});
+  }
   return record;
 }
 function s4UiProjection(record){

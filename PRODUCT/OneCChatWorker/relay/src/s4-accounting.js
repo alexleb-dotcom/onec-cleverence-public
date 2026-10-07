@@ -220,6 +220,34 @@ export function activityReceiptHashInput(record,requestId,safeResult){
   };
 }
 
+export function canonicalizeRecoveredOrphanPredecessor(record,requestId){
+  ensureActivity(record);
+  const r=record?.request_receipts?.[requestId];
+  if(!r)fail('REQUEST_RESERVATION_MISSING');
+  // Normal terminal receipts and existing sealed history must never be rebased.
+  if(r.state!=='AMBIGUOUS_CHARGED'||r.reason!=='RECONNECT_WITH_UNRESOLVED_RESERVATION'||r.activity_sha256)return record;
+  if(r.activity_seq!==record.activity_committed_seq+1)fail('ACTIVITY_SEQUENCE_GAP');
+  const current=activityCursor(record);
+  const prior=r.activity_cursor_before;
+  if(!prior||prior.task_admission_id!==record.task_admission_id||
+     !Number.isInteger(prior.activity_seq)||prior.activity_seq<0||
+     prior.activity_seq>=r.activity_seq||
+     (prior.receipt_sha256!==null&&!/^[a-f0-9]{64}$/.test(String(prior.receipt_sha256||''))))fail('ACTIVITY_PREDECESSOR_MISMATCH');
+  if(prior.activity_seq===current.activity_seq&&prior.receipt_sha256===current.receipt_sha256)return record;
+  // Only the historical shared, pre-recovery committed cursor is a valid source.
+  // Verify prior points to a sealed predecessor (or the genesis cursor).
+  if(prior.activity_seq!==0){
+    const source=Object.values(record.request_receipts||{}).find(x=>x?.activity_seq===prior.activity_seq&&x.activity_sha256===prior.receipt_sha256);
+    if(!source)fail('ACTIVITY_RECOVERY_PREDECESSOR_UNVERIFIED');
+  }else if(prior.receipt_sha256!==null)fail('ACTIVITY_RECOVERY_PREDECESSOR_UNVERIFIED');
+  if(current.activity_seq<=prior.activity_seq)fail('ACTIVITY_RECOVERY_PREDECESSOR_INVALID');
+  if(r.activity_cursor_before_original)fail('ACTIVITY_RECOVERY_ALREADY_REBASED');
+  r.activity_cursor_before_original=copy(prior);
+  r.activity_cursor_before=copy(current);
+  r.recovery_predecessor_canonicalized=true;
+  return record;
+}
+
 export function sealActivityReceipt(record,{requestId,safeResult,activitySha256}){
   ensureActivity(record);
   if(!/^[a-f0-9]{64}$/.test(String(activitySha256||'')))fail('ACTIVITY_INTEGRITY_INVALID');
