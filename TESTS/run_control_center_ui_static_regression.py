@@ -20,6 +20,7 @@ try:
     csproj=text(CC/"OneCArchitecture.ControlCenter.csproj")
     xaml=text(CC/"MainWindow.xaml")
     main=text(CC/"MainWindow.xaml.cs")
+    app_xaml=text(CC/"App.xaml")
     app=text(CC/"App.xaml.cs")
     client=text(CC/"WorkerClient.cs")
     startup=text(CC/"StartupRegistration.cs")
@@ -44,7 +45,7 @@ try:
     rec("dpi_manifest_permonitorv2",
         "<ApplicationManifest>app.manifest</ApplicationManifest>" in csproj and
         "<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>" in csproj and "longPathAware" in manifest)
-    all_ui="\n".join([xaml,main,app,client,startup,prefs,theme])
+    all_ui="\n".join([xaml,main,app_xaml,app,client,startup,prefs,theme])
     rec("no_webview_loopback_service_ps7",
         not re.search(r"WebView2|HttpListener|Kestrel|ServiceBase|WindowsService|\bpwsh\b|PowerShell 7", all_ui, re.I))
     rec("native_user_session_tray",
@@ -55,7 +56,7 @@ try:
     enum=re.search(r"internal enum WorkerAction\s*\{([^}]+)\}",client,re.S)
     rec("typed_worker_enum_present", enum is not None)
     actions={x.strip() for x in enum.group(1).replace("\n"," ").split(",") if x.strip()}
-    expected={"UiContext","Apply","Verify","Repair","Start","Continue","Stop","Update","AddProject","AddParticipant","SetMain","AddExtension"}
+    expected={"UiContext","Apply","Verify","Repair","Start","Continue","Stop","Update","AddProject","AddParticipant","SetMain","AddExtension","PrepareSourceUpdate","AcceptSourceUpdate","CancelSourceUpdate"}
     rec("typed_worker_actions_exact",actions==expected,sorted(actions))
     rec("typed_process_arguments_no_shell_concat","ArgumentList.Add" in client and "cmd.exe" not in client and " -Command " not in client)
     rec("no_password_capture",not re.search(r"PasswordBox|NetworkCredential|SecureString|savecred|CredentialManager|OneCSourceReader password",all_ui,re.I))
@@ -79,12 +80,38 @@ try:
     rec("control_center_exact_six_surface",lock["control_center"]["model_surface"]==lock["hosted_mcp"]["model_surface"])
 
     rec("theme_system_light_dark",all(f'Tag="{x}"' in xaml for x in ["system","light","dark"]) and "AppsUseLightTheme" in theme)
+    rec("dark_combo_popup_explicit_contrast",
+        all(x in app_xaml for x in ["PopupBrush","HoverBrush","SelectionBrush","TargetType=\"ComboBoxItem\"","IsDropDownOpen"]) and
+        "PopupBrush" in theme and "HoverBrush" in theme and "SelectionBrush" in theme)
+    rec("activity_grid_explicit_contrast",
+        'x:Name="ActivityList"' in xaml and
+        all(x in app_xaml for x in ['TargetType="DataGrid"','TargetType="DataGridColumnHeader"','TargetType="DataGridCell"','SelectionBrush']))
+    rec("utf8_ps51_process_boundary",
+        "StandardOutputEncoding = new UTF8Encoding(false)" in client and
+        "StandardErrorEncoding = new UTF8Encoding(false)" in client and
+        "[Console]::OutputEncoding=$utf8" in launcher and "$OutputEncoding=$utf8" in launcher)
+    rec("bounded_home_error_advanced_raw",
+        "ShowContextFailure" in main and "UiContextReason" in main and "Bound(raw, 4000)" in main and
+        "AdvancedText.Text" in main and "RecommendationReasonText.Text = result.StandardError" not in main)
+    rec("source_update_typed_ui_only",
+        all(x in client for x in ["PrepareSourceUpdate","AcceptSourceUpdate","CancelSourceUpdate"]) and
+        all(x in main for x in ["WorkerAction.PrepareSourceUpdate","WorkerAction.AcceptSourceUpdate","WorkerAction.CancelSourceUpdate"]) and
+        all(x in xaml for x in ["PrepareSourceUpdateButton","OpenIncomingButton","AcceptSourceUpdateButton","CancelSourceUpdateButton"]))
+    rec("source_update_no_ui_filesystem_publish",
+        not re.search(r"File\.Move|Directory\.Move|File\.Copy|CopyTo|MoveTo",main) and
+        "OpenIncoming_Click" in main and "explorer.exe" in main)
     en=ET.parse(CC/"Resources"/"Strings.resx").getroot()
     ru=ET.parse(CC/"Resources"/"Strings.ru.resx").getroot()
     enmap={x.attrib["name"]:(x.findtext("value") or "") for x in en.findall("data")}
     rumap={x.attrib["name"]:(x.findtext("value") or "") for x in ru.findall("data")}
     rec("ru_en_key_parity",set(enmap)==set(rumap),f"en={len(enmap)} ru={len(rumap)}")
     rec("ru_en_distinct_home",enmap.get("NavHome")=="Home" and rumap.get("NavHome") and rumap.get("NavHome")!="Home")
+    rec("full_operator_localization_surface",
+        len(enmap)>=80 and len(rumap)==len(enmap) and
+        all(k in enmap and k in rumap for k in ["NavActivity","StartupChoice","UiContextUnavailable","UiContextReason","HelperLabel","LanguageSystem","ThemeSystem","SourceUpdateTitle"]) and
+        any("\u0400" <= ch <= "\u04ff" for value in rumap.values() for ch in value) and
+        all("\ufffd" not in value for value in rumap.values()) and
+        all(x in main for x in ["SourceUpdateTitleLabel.Text = Localization.Get","WorkPromptLabel.Text = Localization.Get","CurrentOperationLabel.Text = Localization.Get","ActivityList.Columns[0].Header = Localization.Get","StartupCheckBox.Content = Localization.Get"]))
     rec("keyboard_accessibility_basics",'KeyboardNavigation.TabNavigation="Cycle"' in xaml and xaml.count("AutomationProperties.Name")>=8)
     rec("min_window_and_layout_rounding",'MinWidth="920"' in xaml and 'MinHeight="620"' in xaml and 'UseLayoutRounding="True"' in xaml and 'SnapsToDevicePixels="True"' in xaml)
 
