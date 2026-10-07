@@ -17,6 +17,11 @@ async function sha256HexValue(v){
   const digest=await crypto.subtle.digest('SHA-256',bytes);
   return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
+async function mcpAccountingRequestId(record,fingerprint){
+  const taskAdmissionId=String(record?.task_admission_id||''),sessionId=String(record?.session_id||''),fp=String(fingerprint||'');
+  if(!taskAdmissionId||!sessionId||!/^[a-f0-9]{64}$/.test(fp))throw new Error('REQUEST_IDENTITY_INVALID');
+  return 'mcp-'+await sha256HexValue({schema:'MCP_ACCOUNTING_REQUEST_ID_V1',task_admission_id:taskAdmissionId,session_id:sessionId,fingerprint:fp});
+}
 function safeRequestMeta(op,args){
   const a=args||{};
   if(op==='search')return {query:String(a.query||'').slice(0,256),max_matches:Number(a.max_matches||8)};
@@ -187,9 +192,8 @@ export class RelaySession {
       if(body.op==='context')return Response.json({status:'OK',metadata:{op:'context',control_only:true,helper_online:false},payload:minimalControlPayload(record),usage:lifecycleProjection(record).accounting});
       return Response.json({error:'HELPER_OFFLINE',usage:lifecycleProjection(record).accounting},{status:503});
     }
-    const clientId=String(body.client_request_id??'');
-    if(!clientId)return Response.json({error:'REQUEST_IDENTITY_INVALID'},{status:400});
     const fingerprint=await requestFingerprint(body.op,body.args);
+    let clientId;try{clientId=await mcpAccountingRequestId(record,fingerprint);}catch{return Response.json({error:'REQUEST_IDENTITY_INVALID'},{status:400});}
     let reservation;
     try{reservation=reserveRequest(record,{requestId:clientId,fingerprint,op:body.op,safeRequest:safeRequestMeta(body.op,body.args)});}
     catch(e){return Response.json({error:String(e?.code||e?.message||'ACCOUNTING_ERROR')},{status:409});}
@@ -308,7 +312,7 @@ const McpApiHandler={
     };}
     else return mcpError(msg.id,-32602,'Unknown tool');
     const stub=env.RELAY.get(env.RELAY.idFromName('q1'));
-    const rr=await stub.fetch('https://relay.invalid/rpc',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op,args:opArgs,client_request_id:String(msg.id)})});
+    const rr=await stub.fetch('https://relay.invalid/rpc',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op,args:opArgs})});
     const data=await rr.json(),isError=!rr.ok||data.status==='ERROR';
     return mcpResult(msg.id,{content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data,isError});
   }
