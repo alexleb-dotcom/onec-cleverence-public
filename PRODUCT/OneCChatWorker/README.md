@@ -76,7 +76,7 @@ APPLY materialization is failure-atomic. Each artifact copy has an explicit CREA
 
 Durable operation receipts keep a stable error_class plus bounded safe error_message, error_phase, error_path and cleanup_status fields when available. Human operation-log timestamps are explicitly labeled UTC. Guided mode turns APPLY failures into localized FAIL / Reason / Stage / Cleanup / Next / Details guidance instead of exposing a raw PowerShell stack.
 
-External business Source is never edited. A full publication enumerates Source metadata once, streams each file into bounded staging while computing its SHA-256, builds the aggregate tree digest from those collected rows without rereading stage, performs a metadata-only Source stability recheck, then commits staging and publishes fingerprint inventory + manifest last. SOURCE_CHANGED_DURING_SYNC aborts publication.
+External business Source is never edited. For EXTERNAL_XML_FOLDER, explicit APPLY/repair uses S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1: the pinned Node 26.7.0 process is a one-shot filesystem data plane for long-path-safe enumeration, copy and SHA-256 while Windows PowerShell 5.1 remains the lifecycle/control plane. The Node verb allowlist contains only EXTERNAL_FULL_SAFE_IMPORT; there is no generic executable, shell, arbitrary root switch, daemon or service. It validates local/UNC Windows paths before namespace expansion, rejects traversal, ADS, reparse/root escape and invalid namespaces, and does not depend on SUBST, LongPathsEnabled, or PowerShell 7. A full publication enumerates Source metadata once, streams each file into bounded staging while computing its SHA-256, builds the aggregate tree digest and fingerprint inventory from those collected rows without rereading stage, performs a metadata-only Source stability recheck, then uses the existing failure-atomic stage lifecycle and publishes manifest last. SOURCE_CHANGED_DURING_SYNC aborts publication. NATIVE_1C_INCREMENTAL is not implemented in this contour. STATUS, guided context, FAST_STATE, START, New-Admission and hosted source_context/source_read never invoke acquisition.
 
 ## Safe removal
 
@@ -100,13 +100,14 @@ STOP ends the local helper/admission and does not delete catalog, Participants, 
 
 ## Model-facing execution boundary
 
-The hosted app contract is exactly five semantic tools:
+The hosted app contract is exactly six semantic tools:
 
 - source_context
 - source_search
 - source_read
 - proposal_write
 - proposal_read
+- task_checkpoint_write
 
 There is no model-facing source write, delete, shell, process, browser, arbitrary URL, project switch, root switch, or task switch.
 

@@ -23,6 +23,7 @@ required = [
     "runtime/hosted-helper.mjs",
     "runtime/local-quality-adapter.mjs",
     "runtime/task-checkpoint-store.mjs",
+    "runtime/source-acquisition.mjs",
     "runtime/quality/cc-1c-skills/meta-info.ps1",
     "runtime/quality/cc-1c-skills/form-info.ps1",
     "runtime/quality/cc-1c-skills/form-validate.ps1",
@@ -45,6 +46,8 @@ required = [
     "tests/s4-accounting-regression.mjs",
     "tests/run_task_checkpoint_regression.ps1",
     "tests/task-checkpoint-regression.mjs",
+    "tests/source-acquisition-regression.mjs",
+    "tests/run_source_acquisition_regression.ps1",
     "relay/src/index.js",
     "relay/src/s4-accounting.js",
     "relay/wrangler.jsonc",
@@ -89,6 +92,9 @@ s4_accounting_regression = (PRODUCT / "tests/s4-accounting-regression.mjs").read
 task_checkpoint_store = (PRODUCT / "runtime/task-checkpoint-store.mjs").read_text(encoding="utf-8")
 task_checkpoint_regression = (PRODUCT / "tests/task-checkpoint-regression.mjs").read_text(encoding="utf-8")
 task_checkpoint_ps51 = (PRODUCT / "tests/run_task_checkpoint_regression.ps1").read_text(encoding="utf-8")
+source_acquisition = (PRODUCT / "runtime/source-acquisition.mjs").read_text(encoding="utf-8")
+source_acquisition_regression = (PRODUCT / "tests/source-acquisition-regression.mjs").read_text(encoding="utf-8")
+source_acquisition_ps51 = (PRODUCT / "tests/run_source_acquisition_regression.ps1").read_text(encoding="utf-8")
 task_checkpoint_knowledge = (ROOT / "KNOWLEDGE/TASK_CHECKPOINT.md").read_text(encoding="utf-8")
 chat_mcp_knowledge = (ROOT / "KNOWLEDGE/CHAT_MCP_EXECUTION.md").read_text(encoding="utf-8")
 skill_text = (ROOT / "SKILL.md").read_text(encoding="utf-8-sig")
@@ -229,7 +235,7 @@ rec("guided_update_failure_is_human_safe", all(t in launcher for t in ["The inst
 rec("apply_copy_is_failure_atomic", all(t in core for t in ["function Get-ApplyStageRoot","function Write-ApplyStageState","'CREATED','COPYING','VERIFIED','COMMITTED'","function Copy-ArtifactSafely","function Remove-ApplyStageTree","function Move-ApplyStageToQuarantine"]), "APPLY copy uses explicit stage lifecycle, bounded staging root and cleanup/quarantine")
 rec("apply_residue_is_recover_first", all(t in core for t in ["function Get-ApplyStageResidue","INCOMPLETE_APPLY_RESIDUE","ORPHAN_STAGE_PRESENT","APPLY_RESIDUE_REPAIR_REQUIRED","function Resolve-ApplyStageResidue","function Repair-WorkerProject"]), "VERIFY/APPLY/REPAIR classify and resolve incomplete APPLY residue before replay")
 rec("apply_failure_receipt_has_bounded_truth", all(t in core for t in ["error_message=$ErrorMessage","error_phase=$ErrorPhase","error_path=$ErrorPath","cleanup_status=$CleanupStatus","ConvertTo-BoundedDiagnosticText","[UTC]"]), "durable receipt keeps stable class plus bounded safe cause/phase/path/cleanup and labels human log UTC")
-rec("apply_failure_regression_covers_required_atomicity", all(t in apply_failure_regression for t in ["injected_apply_fails","failed_stage_cleaned","canonical_target_unchanged_after_midcopy_failure","manifest_unchanged_after_midcopy_failure","durable_error_class_stable","guided_ru_failure_localized","guided_english_fallback_actionable","verify_classifies_incomplete_apply_residue","repair_recover_first_reaches_ready","secret_not_in_operation_evidence","bounded_stage_root_avoids_guid_suffix_path_inflation"]), "Windows PS5.1 failure regression covers cleanup, immutable source/canonical state, diagnostics, localization, recover-first and long-path shape")
+rec("apply_failure_regression_covers_required_atomicity", all(t in apply_failure_regression for t in ["injected_apply_fails","failed_stage_cleaned","canonical_target_unchanged_after_midcopy_failure","manifest_unchanged_after_midcopy_failure","durable_error_class_stable","guided_ru_failure_localized","guided_english_fallback_actionable","verify_classifies_incomplete_apply_residue","repair_recover_first_reaches_ready","secret_not_in_operation_evidence","node_acquisition_replaces_ps51_path_preflight"]), "Windows PS5.1 failure regression covers cleanup, immutable source/canonical state, diagnostics, localization, recover-first and long-path shape")
 rec("apply_cleanup_failure_routes_to_quarantine", all(t in core for t in ["if($cleanup.status -in @('CLEANED','CLEANED_LONG_PATH','ALREADY_ABSENT'))","Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $projectRoot","action=$q.status","quarantine_path=$q.quarantine_path"]), "cleanup failure deterministically routes to quarantine/classification rather than leaving residue beside canonical Target")
 rec("apply_quarantine_regression_covers_fallback_move", all(t in apply_quarantine_regression for t in ["quarantine_move_reports_quarantined","quarantine_under_project_recovery","quarantined_metadata_present","canonical_target_preserved","detached_evidence_preserved","authoritative_source_preserved"]), "separate bounded regression exercises the real quarantine move and preservation boundaries")
 rec("guided_apply_failure_is_localized_and_actionable", all(t in launcher for t in ["The managed project copy could not be created.","Incomplete temporary copy was cleaned.","Original XML export was not changed.","Reason: {0}","Stage: {0}","Cleanup: {0}","APPLY_RESIDUE_REPAIR_REQUIRED"]), "default guided APPLY failure replaces raw lifecycle output with localized FAIL/Reason/Stage/Cleanup/Next/Details guidance")
@@ -243,16 +249,21 @@ rec("guided_progress_regression_covers_acceptance", all(t in guided_progress_reg
 fast_state_block = core[core.index("function Get-FastProjectState {"):core.index("function Test-LegacyManifestShape {")]
 status_block = core[core.index("function Get-WorkerStatus {"):core.index("function Get-WorkerDiagnostics {")]
 admission_block = core[core.index("function New-Admission {"):core.index("function Test-IsAdministrator {")]
-one_pass_block = core[core.index("function New-SourceCopyPlan {"):core.index("function Write-FingerprintInventory {")]
+acquisition_block = core[core.index("function Invoke-SourceAcquisition {"):core.index("function Write-FingerprintInventory {")]
 start_block = launcher[launcher.index("function Run-Start {"):launcher.index("function Run-Continue {")]
 rec("snapshot_fast_state_is_bounded", all(t in fast_state_block for t in ["ACCEPTED","APPLY_REQUIRED","CATALOG_DRIFT","INCOMPLETE_APPLY_RESIDUE","DEEP_VERIFY_REQUIRED","SNAPSHOT_MANIFEST_INVALID","SNAPSHOT_ROOT_MISSING"]) and not any(t in fast_state_block for t in ["Get-TreeDigest","Get-ChildItem -Recurse","rg.exe","Copy-Item"]), "FAST_STATE_CHECK_V1 is bounded by catalog/manifest/artifact roots")
 rec("snapshot_status_is_fast", "Get-FastProjectState" in status_block and not any(t in status_block for t in ["Verify-WorkerProject","Get-TreeDigest"]), "STATUS uses fast state only")
 rec("snapshot_start_is_single_fast_check", start_block.count("Get-FastProjectState") == 1 and "Verify-WorkerProject" not in start_block, "START performs exactly one fast-state check")
 rec("snapshot_admission_consumes_accepted_state", "AcceptedState" in admission_block and not any(t in admission_block for t in ["Verify-WorkerProject","Get-TreeDigest"]), "New-Admission binds accepted snapshot without deep verify")
+rec("s82_1_node_allowlist_and_bounds", "export const ALLOWED_VERBS = Object.freeze(['EXTERNAL_FULL_SAFE_IMPORT'])" in source_acquisition and "MAX_REQUEST_BYTES = 16384" in source_acquisition and "HARD_TIMEOUT_MS" in source_acquisition and "child_process" not in source_acquisition, "one-shot Node data plane has one verb, bounded request/timeout, and no generic process surface")
+rec("s82_1_path_security_contract", all(x in source_acquisition for x in ["TRAVERSAL_REJECTED","ADS_REJECTED","REPARSE_POINT","REPARSE_ESCAPE","ROOT_ESCAPE","INVALID_NAMESPACE","SOURCE_STAGE_OVERLAP","toNamespacedPath"]), "path validation precedes namespaced filesystem use")
+rec("s82_1_one_pass_metrics_contract", all(x in source_acquisition for x in ["source_enumeration_metadata: 1","source_content: 1","source_stability_metadata: 1","stage_content_rehash: 0","source_unchanged: true","shell: false","subst_required: false","long_paths_registry_required: false","powershell7_required: false"]), "full import reports bounded one-pass metrics and no workaround dependencies")
+rec("s82_1_windows_regression_contract", all(x in source_acquisition_ps51 for x in ["SOURCE_ACQUISITION_WINDOWS_PS51_PASS","FULL_SAFE_IMPORT","LONG_PATH_REGRESSION_EXPECTED_DISABLED_REGISTRY_ON_QUALIFICATION_HOST","PS51_CONTROL_PLANE_DEEP_FILE_IO_PRESENT","WARM_PATH_ACQUISITION_CALL","HOSTED_SOURCE_PATH_ACQUISITION_CALL"]) and all(x in source_acquisition_regression for x in ["source_absolute_file_over_260","stage_absolute_file_over_260","unc_long_path_pass","exact_sha_preserved","traversal_rejected","ads_rejected","reparse_escape_rejected","invalid_namespace_rejected"]), "actual Windows regression covers long paths, UNC, Unicode/SHA, path security, registry=0, and warm path absence")
+rec("s82_1_warm_paths_do_not_acquire", "Invoke-SourceAcquisition" not in status_block and "Invoke-SourceAcquisition" not in admission_block and "Invoke-SourceAcquisition" not in start_block and "source-acquisition" not in helper, "STATUS/START/New-Admission/hosted tools remain acquisition-free")
 rec("snapshot_manifest_v2_contract", all(t in core for t in ["ACCEPTED_SNAPSHOT_V1","source_snapshot_id","publication_generation","fingerprint_inventory_state","LEGACY_DEEP_VERIFIED","ABSENT_LEGACY"]), "manifest v2 accepted snapshot + legacy adoption contract")
-rec("snapshot_one_pass_bootstrap_contract", all(t in one_pass_block for t in ["New-SourceCopyPlan","Invoke-OnePassCopyHash","SOURCE_CHANGED_DURING_SYNC","[IO.File]::Open","TransformBlock","Assert-SourceCopyPlanStable"]) and "Get-TreeDigest" not in one_pass_block, "future bootstrap hashes while copying and metadata-rechecks Source without rereading stage")
+rec("snapshot_one_pass_bootstrap_contract", all(x in acquisition_block for x in ["Invoke-SourceAcquisition","S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1","UseShellExecute=$false","SOURCE_CHANGED_DURING_SYNC"]) and not any(x in acquisition_block for x in ["[IO.File]::Open","Get-ChildItem -Recurse","Get-TreeDigest"]), "explicit external import delegates deep filesystem I/O to bounded Node and never rehashes stage")
 rec("snapshot_helper_exact_binding", all(t in helper for t in ["ADMISSION_MANIFEST_HASH_MISMATCH","ADMISSION_SOURCE_SNAPSHOT_MISMATCH","manifest.accepted_snapshot.source_snapshot_id","admission.manifest_sha256","admission.source_snapshot_id"]), "helper fails closed on exact manifest/snapshot mismatch")
-rec("snapshot_regression_covers_required_fast_path", all(t in snapshot_fast_regression for t in ["SNAPSHOT_FAST_REGRESSION_PASS","one_pass_digest_equals_legacy","fast_accepted_with_external_source_offline","second_task_reuses_snapshot","helper_manifest_hash_mismatch","helper_snapshot_mismatch","missing_root_fast_reject","missing_config_fast_reject","catalog_drift_fast_reject","residue_fast_recover_first","legacy_insufficient_evidence_rejects","deep_verify_detects_seeded_drift","source_metadata_drift_aborts","start_exactly_one_fast_no_deep","status_no_deep_or_tree_digest","admission_no_deep_or_tree_digest","helper_six_ops_exact"]), "Windows PS5.1 #83 regression covers warm path, fail-closed negatives, deep verify and exact six-tool surface")
+rec("snapshot_regression_covers_required_fast_path", all(t in snapshot_fast_regression for t in ["SNAPSHOT_FAST_REGRESSION_PASS","one_pass_digest_equals_legacy","fast_accepted_with_external_source_offline","second_task_reuses_snapshot","helper_manifest_hash_mismatch","helper_snapshot_mismatch","missing_root_fast_reject","missing_config_fast_reject","catalog_drift_fast_reject","residue_fast_recover_first","legacy_insufficient_evidence_rejects","deep_verify_detects_seeded_drift","external_full_import_node_owner","start_exactly_one_fast_no_deep","status_no_deep_or_tree_digest","admission_no_deep_or_tree_digest","helper_six_ops_exact"]), "Windows PS5.1 #83 regression covers warm path, fail-closed negatives, deep verify and exact six-tool surface")
 
 operation_tokens = [
     "Start-WorkerOperation",

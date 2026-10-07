@@ -288,6 +288,7 @@ function Test-InstalledProductIntegrity {
     $map=[ordered]@{
         'runtime/source-reader-integration.mjs'=(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs')
         'runtime/hosted-helper.mjs'=(Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs')
+        'runtime/source-acquisition.mjs'=(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs')
         'runtime/local-quality-adapter.mjs'=(Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs')
         'runtime/quality/cc-1c-skills/meta-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\meta-info.ps1')
         'runtime/quality/cc-1c-skills/form-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\form-info.ps1')
@@ -768,81 +769,199 @@ function Adopt-AllLegacyAcceptedSnapshots {
     foreach($p in @($catalog.projects|Where-Object {$_.active -ne $false})){$manifestPath=Get-ProjectManifestPath -ProjectId $p.project_id -WorkerRoot $WorkerRoot;if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){continue};try{$m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{$rows+=,[pscustomobject]@{project_id=$p.project_id;status='DEEP_VERIFY_REQUIRED';reason='MANIFEST_PARSE_FAILED'};continue};if([int]$m.schema_version -eq 1){$rows+=,(Adopt-LegacyAcceptedSnapshot -ProjectId $p.project_id -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)}elseif([int]$m.schema_version -eq 2){$f=Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot;$rows+=,[pscustomobject]@{project_id=$p.project_id;status=$(if($f.state -eq 'ACCEPTED'){'ALREADY_ACCEPTED'}else{'DEEP_VERIFY_REQUIRED'});reason=$f.reason}}}
     @($rows)
 }
-function New-SourceCopyPlan {
-    param([Parameter(Mandatory)][string]$Source)
-    if(-not(Test-Path -LiteralPath $Source -PathType Container)){throw "SOURCE_FOLDER_NOT_FOUND: $Source"}
-    $root=[IO.Path]::GetFullPath($Source).TrimEnd('\');$rootItem=Get-Item -LiteralPath $root -Force -ErrorAction Stop
-    if(($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw "REPARSE_POINT: $root"}
-    $entries=@(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction Stop);$reparse=@($entries|Where-Object {($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0});if($reparse.Count){throw "REPARSE_POINT: $($reparse[0].FullName)"}
-    $files=@();$dirs=@();$sum=[int64]0;$maxChars=0;$maxRel=$null
-    foreach($e in $entries){$e.Refresh();$rel=$e.FullName.Substring($root.Length).TrimStart('\').Replace('\','/');if($e.PSIsContainer){$dirs+=,[pscustomobject]@{full_path=$e.FullName;relative_path=$rel;last_write_ticks=$e.LastWriteTimeUtc.Ticks}}else{$files+=,[pscustomobject]@{full_path=$e.FullName;relative_path=$rel;length=[int64]$e.Length;last_write_ticks=$e.LastWriteTimeUtc.Ticks};$sum+=[int64]$e.Length;if($rel.Length -gt $maxChars){$maxChars=$rel.Length;$maxRel=$rel}}}
-    $rootItem.Refresh()
-    [pscustomobject]@{root=$root;root_last_write_ticks=$rootItem.LastWriteTimeUtc.Ticks;files=@($files|Sort-Object full_path);directories=@($dirs|Sort-Object relative_path);file_count=$files.Count;bytes=$sum;max_relative_path_chars=$maxChars;max_relative_path=$maxRel}
+function Get-SourceAcquisitionModulePath {
+    $packageCandidate=Join-Path (Split-Path -Parent $PSScriptRoot) 'runtime\source-acquisition.mjs'
+    $installedCandidate=Join-Path $PSScriptRoot 'source-acquisition.mjs'
+    foreach($candidate in @($packageCandidate,$installedCandidate)){if(Test-Path -LiteralPath $candidate -PathType Leaf){return [IO.Path]::GetFullPath($candidate)}}
+    throw 'SOURCE_ACQUISITION_COMPONENT_MISSING'
 }
-function Assert-SourceCopyPlanStable {
-    param([Parameter(Mandatory)]$Plan)
-    try{$rootItem=Get-Item -LiteralPath $Plan.root -Force -ErrorAction Stop;if($rootItem.LastWriteTimeUtc.Ticks -ne [int64]$Plan.root_last_write_ticks){throw 'ROOT_METADATA_CHANGED'};foreach($d in @($Plan.directories)){$x=Get-Item -LiteralPath $d.full_path -Force -ErrorAction Stop;if(-not $x.PSIsContainer -or ($x.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $x.LastWriteTimeUtc.Ticks -ne [int64]$d.last_write_ticks){throw ("DIRECTORY_METADATA_CHANGED:"+$d.relative_path)}};foreach($f in @($Plan.files)){$x=Get-Item -LiteralPath $f.full_path -Force -ErrorAction Stop;if($x.PSIsContainer -or ($x.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or [int64]$x.Length -ne [int64]$f.length -or $x.LastWriteTimeUtc.Ticks -ne [int64]$f.last_write_ticks){throw ("FILE_METADATA_CHANGED:"+$f.relative_path)}}}catch{throw ("SOURCE_CHANGED_DURING_SYNC: "+$_.Exception.Message)}
+
+function Invoke-SourceAcquisition {
+    param(
+        [Parameter(Mandatory)][string]$Source,
+        [Parameter(Mandatory)][string]$Stage,
+        [Parameter(Mandatory)][string]$StageParent,
+        [scriptblock]$ProgressCallback,
+        [int]$TimeoutMs=21600000
+    )
+    $module=Get-SourceAcquisitionModulePath
+    $node=Get-Command node.exe -ErrorAction SilentlyContinue
+    if(-not $node -and (Test-Path -LiteralPath 'C:\Program Files\nodejs\node.exe' -PathType Leaf)){$node=Get-Item 'C:\Program Files\nodejs\node.exe'}
+    if(-not $node){throw 'NODE_REQUIRED_FOR_SOURCE_ACQUISITION'}
+    $nodePath=$(if($node.Source){[string]$node.Source}else{[string]$node.FullName})
+    $requestPath=$Stage+'.request.json'
+    $fingerprintPath=$Stage+'.fingerprints.jsonl'
+    $progressPath=$Stage+'.progress.json'
+    foreach($sidecar in @($requestPath,$fingerprintPath,$progressPath,$progressPath+'.tmp')){if(Test-Path -LiteralPath $sidecar){throw ("ACQUISITION_SIDECAR_ALREADY_EXISTS: "+$sidecar)}}
+    $request=[ordered]@{
+        contract='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1'
+        verb='EXTERNAL_FULL_SAFE_IMPORT'
+        source_root=[IO.Path]::GetFullPath($Source)
+        stage_parent=[IO.Path]::GetFullPath($StageParent)
+        stage_root=[IO.Path]::GetFullPath($Stage)
+        fingerprint_path=[IO.Path]::GetFullPath($fingerprintPath)
+        progress_path=[IO.Path]::GetFullPath($progressPath)
+        culture=[Globalization.CultureInfo]::CurrentCulture.Name
+        max_files=2000000
+        max_bytes=[int64]2199023255552
+        timeout_ms=$TimeoutMs
+    }
+    Write-JsonAtomic $request $requestPath
+
+    $psi=New-Object Diagnostics.ProcessStartInfo
+    $psi.FileName=$nodePath
+    $psi.Arguments=('"{0}"' -f $module.Replace('"','\"'))
+    $psi.UseShellExecute=$false
+    $psi.CreateNoWindow=$true
+    $psi.RedirectStandardOutput=$true
+    $psi.RedirectStandardError=$true
+    $psi.EnvironmentVariables['ONEC_ACQ_REQUEST']=$requestPath
+    $proc=New-Object Diagnostics.Process
+    $proc.StartInfo=$psi
+    $lastProgress=$null
+    if($ProgressCallback){
+        $initial=[pscustomobject]@{phase='SCAN';files_processed=0;files_total=$null;bytes_processed=[int64]0;bytes_total=$null}
+        & $ProgressCallback $initial
+        $lastProgress='SCAN|0||0|'
+    }
+    try{
+        if(-not $proc.Start()){throw 'SOURCE_ACQUISITION_PROCESS_START_FAILED'}
+        $deadline=[DateTime]::UtcNow.AddMilliseconds($TimeoutMs+5000)
+        while(-not $proc.WaitForExit(250)){
+            if([DateTime]::UtcNow -gt $deadline){try{$proc.Kill()}catch{};throw 'ACQUISITION_TIMEOUT'}
+            if($ProgressCallback -and (Test-Path -LiteralPath $progressPath -PathType Leaf)){
+                try{
+                    $progress=Get-Content -LiteralPath $progressPath -Raw -Encoding UTF8|ConvertFrom-Json
+                    if([string]$progress.phase -in @('SCAN','COPY_HASH')){
+                        $key=("{0}|{1}|{2}|{3}|{4}" -f $progress.phase,$progress.files_processed,$progress.files_total,$progress.bytes_processed,$progress.bytes_total)
+                        if($key -ne $lastProgress){& $ProgressCallback $progress;$lastProgress=$key}
+                    }
+                }catch{}
+            }
+        }
+        $proc.WaitForExit()
+        $stdout=$proc.StandardOutput.ReadToEnd()
+        $stderr=$proc.StandardError.ReadToEnd()
+        if($stdout.Length -gt 32768){throw 'ACQUISITION_STDOUT_LIMIT_EXCEEDED'}
+        if($stderr.Length -gt 16384){throw 'ACQUISITION_STDERR_LIMIT_EXCEEDED'}
+        if($proc.ExitCode -ne 0){
+            $code='ACQUISITION_EXECUTION_ERROR';$message=ConvertTo-BoundedDiagnosticText $stderr
+            try{$err=$stderr|ConvertFrom-Json;if($err.code){$code=[string]$err.code};if($err.message){$message=ConvertTo-BoundedDiagnosticText ([string]$err.message)}}catch{}
+            if($code -eq 'SOURCE_CHANGED_DURING_SYNC'){throw ("SOURCE_CHANGED_DURING_SYNC: "+$message)}
+            throw ($code+': '+$message)
+        }
+        try{$result=$stdout|ConvertFrom-Json}catch{throw 'ACQUISITION_RESULT_INVALID_JSON'}
+        if($result.contract -ne 'S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1' -or $result.result -ne 'PASS' -or $result.verb -ne 'EXTERNAL_FULL_SAFE_IMPORT'){throw 'ACQUISITION_RESULT_CONTRACT_MISMATCH'}
+        if(-not(Test-Path -LiteralPath $fingerprintPath -PathType Leaf)){throw 'ACQUISITION_FINGERPRINT_OUTPUT_MISSING'}
+        if($ProgressCallback){
+            $finalProgress=[pscustomobject]@{phase='COPY_HASH';files_processed=[int]$result.digest.files;files_total=[int]$result.digest.files;bytes_processed=[int64]$result.digest.bytes;bytes_total=[int64]$result.digest.bytes}
+            $finalKey=("{0}|{1}|{2}|{3}|{4}" -f $finalProgress.phase,$finalProgress.files_processed,$finalProgress.files_total,$finalProgress.bytes_processed,$finalProgress.bytes_total)
+            if($finalKey -ne $lastProgress){& $ProgressCallback $finalProgress;$lastProgress=$finalKey}
+        }
+        return $result
+    }finally{
+        if($proc){$proc.Dispose()}
+        Remove-Item -LiteralPath $requestPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath ($progressPath+'.tmp') -Force -ErrorAction SilentlyContinue
+    }
 }
-function Invoke-OnePassCopyHash {
-    param([Parameter(Mandatory)]$Plan,[Parameter(Mandatory)][string]$Stage,[scriptblock]$ProgressCallback)
-    New-Item -ItemType Directory -Force -Path $Stage|Out-Null
-    foreach($d in @($Plan.directories)){if(-not [string]::IsNullOrWhiteSpace([string]$d.relative_path)){New-Item -ItemType Directory -Force -Path (Join-Path $Stage $d.relative_path.Replace('/','\'))|Out-Null}}
-    if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='COPY_HASH';files_processed=0;files_total=$Plan.file_count;bytes_processed=[int64]0;bytes_total=[int64]$Plan.bytes})}
-    $aggregate=[Security.Cryptography.SHA256]::Create();$rows=New-Object Collections.Generic.List[object];$processed=0;$processedBytes=[int64]0
-    try{foreach($f in @($Plan.files)){$dest=Join-Path $Stage $f.relative_path.Replace('/','\');$parent=Split-Path -Parent $dest;if(-not(Test-Path -LiteralPath $parent)){New-Item -ItemType Directory -Force -Path $parent|Out-Null};$fileSha=[Security.Cryptography.SHA256]::Create();$input=$null;$output=$null;try{$input=[IO.File]::Open($f.full_path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read);$output=[IO.File]::Open($dest,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None);$buffer=New-Object byte[] 1048576;$written=[int64]0;while(($n=$input.Read($buffer,0,$buffer.Length)) -gt 0){$output.Write($buffer,0,$n);$null=$fileSha.TransformBlock($buffer,0,$n,$buffer,0);$written+=$n};$null=$fileSha.TransformFinalBlock([byte[]]@(),0,0);$output.Flush();if($written -ne [int64]$f.length){throw ("SOURCE_CHANGED_DURING_SYNC: length changed while copying "+$f.relative_path)}}finally{if($output){$output.Dispose()};if($input){$input.Dispose()}};$fh=([BitConverter]::ToString($fileSha.Hash)).Replace('-','').ToLowerInvariant();$fileSha.Dispose();if([int64](Get-Item -LiteralPath $dest -Force).Length -ne [int64]$f.length){throw ("APPLY_COPY_LENGTH_MISMATCH: "+$f.relative_path)};$row=[string]::Join([char]9,@([string]$f.relative_path,[string]$f.length,$fh))+[Environment]::NewLine;$line=[Text.Encoding]::UTF8.GetBytes($row);$null=$aggregate.TransformBlock($line,0,$line.Length,$line,0);$rows.Add([pscustomobject][ordered]@{path=[string]$f.relative_path;size=[int64]$f.length;sha256=$fh});$processed++;$processedBytes+=[int64]$f.length;if($ProgressCallback -and (($processed % 250) -eq 0 -or $processed -eq $Plan.file_count)){& $ProgressCallback ([pscustomobject]@{phase='COPY_HASH';files_processed=$processed;files_total=$Plan.file_count;bytes_processed=$processedBytes;bytes_total=[int64]$Plan.bytes})}};$null=$aggregate.TransformFinalBlock([byte[]]@(),0,0);$digest=([BitConverter]::ToString($aggregate.Hash)).Replace('-','').ToLowerInvariant()}finally{$aggregate.Dispose()}
-    Assert-SourceCopyPlanStable $Plan
-    [pscustomobject]@{digest=[pscustomobject]@{sha256=$digest;files=$Plan.file_count;bytes=[int64]$Plan.bytes;max_relative_path_chars=$Plan.max_relative_path_chars;max_relative_path=$Plan.max_relative_path};fingerprints=@($rows|ForEach-Object{$_})}
-}
+
 function Write-FingerprintInventory {
-    param([Parameter(Mandatory)][string]$ManifestDir,[Parameter(Mandatory)][string]$ParticipantId,[Parameter(Mandatory)][string]$ArtifactType,[Parameter(Mandatory)][string]$ArtifactId,[Parameter(Mandatory)]$Rows)
-    $dir=Join-Path $ManifestDir 'Fingerprints';New-Item -ItemType Directory -Force -Path $dir|Out-Null;$name=("{0}.{1}.{2}.jsonl" -f (Assert-SafeId $ParticipantId 'participant_id'),$ArtifactType.ToLowerInvariant(),(Assert-SafeId $ArtifactId 'artifact_id'));$path=Join-Path $dir $name;$tmp=$path+'.tmp-'+[Guid]::NewGuid().ToString('N');$writer=New-Object IO.StreamWriter($tmp,$false,(New-Object Text.UTF8Encoding($false)));try{foreach($r in @($Rows)){$writer.WriteLine(($r|ConvertTo-Json -Compress))}}finally{$writer.Dispose()};Move-Item -LiteralPath $tmp -Destination $path -Force;[pscustomobject]@{state='PRESENT';relative_path=("Fingerprints/$name");sha256=Get-Sha256File $path}
+    param(
+        [Parameter(Mandatory)][string]$ManifestDir,
+        [Parameter(Mandatory)][string]$ParticipantId,
+        [Parameter(Mandatory)][string]$ArtifactType,
+        [Parameter(Mandatory)][string]$ArtifactId,
+        $Rows,
+        [string]$PreparedFile,
+        [string]$ExpectedSha256
+    )
+    $dir=Join-Path $ManifestDir 'Fingerprints'
+    New-Item -ItemType Directory -Force -Path $dir|Out-Null
+    $name=("{0}.{1}.{2}.jsonl" -f (Assert-SafeId $ParticipantId 'participant_id'),$ArtifactType.ToLowerInvariant(),(Assert-SafeId $ArtifactId 'artifact_id'))
+    $path=Join-Path $dir $name
+    if(-not [string]::IsNullOrWhiteSpace($PreparedFile)){
+        if(-not(Test-Path -LiteralPath $PreparedFile -PathType Leaf)){throw 'FINGERPRINT_PREPARED_FILE_MISSING'}
+        $actual=Get-Sha256File $PreparedFile
+        if(-not [string]::IsNullOrWhiteSpace($ExpectedSha256) -and $actual -ne $ExpectedSha256){throw 'FINGERPRINT_PREPARED_SHA_MISMATCH'}
+        Move-Item -LiteralPath $PreparedFile -Destination $path -Force
+    }else{
+        if($null -eq $Rows){throw 'FINGERPRINT_ROWS_OR_PREPARED_FILE_REQUIRED'}
+        $tmp=$path+'.tmp-'+[Guid]::NewGuid().ToString('N')
+        $writer=New-Object IO.StreamWriter($tmp,$false,(New-Object Text.UTF8Encoding($false)))
+        try{foreach($r in @($Rows)){$writer.WriteLine(($r|ConvertTo-Json -Compress))}}finally{$writer.Dispose()}
+        Move-Item -LiteralPath $tmp -Destination $path -Force
+    }
+    [pscustomobject]@{state='PRESENT';relative_path=("Fingerprints/$name");sha256=Get-Sha256File $path}
 }
 
 function Copy-ArtifactSafely {
     param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Target,[switch]$ReplaceExisting,[Parameter(Mandatory)][string]$ProjectRoot,[Parameter(Mandatory)][string]$ArchiveKey,[string]$ExpectedTargetDigest,[scriptblock]$ProgressCallback)
-    $plan=New-SourceCopyPlan $Source
-    if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='SCAN';files_processed=0;files_total=$plan.file_count;bytes_processed=[int64]0;bytes_total=[int64]$plan.bytes})}
-    $archive=$null;$targetExisted=Test-Path -LiteralPath $Target -PathType Container;$workerRoot=Split-Path -Parent $ProjectRoot;$stageRoot=Get-ApplyStageRoot $workerRoot
+    $archive=$null
+    $targetExisted=Test-Path -LiteralPath $Target -PathType Container
+    $workerRoot=Split-Path -Parent $ProjectRoot
+    $stageRoot=Get-ApplyStageRoot $workerRoot
     New-Item -ItemType Directory -Force -Path $stageRoot|Out-Null
     do{$token=[Guid]::NewGuid().ToString('N').Substring(0,8);$stage=Join-Path $stageRoot ("a.stage-$token")}while(Test-Path -LiteralPath $stage)
-    $targetMaxChars=$(if($plan.max_relative_path_chars -gt 0){$Target.Length+1+[int]$plan.max_relative_path_chars}else{$Target.Length});$stageMaxChars=$(if($plan.max_relative_path_chars -gt 0){$stage.Length+1+[int]$plan.max_relative_path_chars}else{$stage.Length})
-    if($targetMaxChars -ge 260){throw (New-ApplyCopyException -Class 'APPLY_TARGET_PATH_TOO_LONG' -SafeMessage ("Managed target path would reach {0} characters; Windows PowerShell 5.1 safe limit is 259." -f $targetMaxChars) -Phase 'PREFLIGHT' -Path $Target)}
-    if($stageMaxChars -ge 260){throw (New-ApplyCopyException -Class 'APPLY_STAGE_PATH_TOO_LONG' -SafeMessage ("Internal staging path would reach {0} characters; safe copy was not started." -f $stageMaxChars) -Phase 'PREFLIGHT' -Path $stage)}
-    $stageState='CREATED';$archiveMoved=$false
+    $stageState='CREATED';$archiveMoved=$false;$copied=$null
     try{
         Write-ApplyStageState -StagePath $stage -State CREATED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
         $stageState='COPYING';Write-ApplyStageState -StagePath $stage -State COPYING -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
-        $copied=Invoke-OnePassCopyHash -Plan $plan -Stage $stage -ProgressCallback $ProgressCallback;$srcDigest=$copied.digest
+        $copied=Invoke-SourceAcquisition -Source $Source -Stage $stage -StageParent $stageRoot -ProgressCallback $ProgressCallback
+        $srcDigest=$copied.digest
+        $targetMaxChars=$(if([int]$srcDigest.max_relative_path_chars -gt 0){$Target.Length+1+[int]$srcDigest.max_relative_path_chars}else{$Target.Length})
+        $stageMaxChars=[int]$copied.metrics.max_stage_path_chars
         $stageState='VERIFIED';Write-ApplyStageState -StagePath $stage -State VERIFIED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
         if($targetExisted){
-            $targetHash=$ExpectedTargetDigest;if([string]::IsNullOrWhiteSpace($targetHash)){$targetHash=(Get-TreeDigest $Target).sha256}
-            if($targetHash -eq $srcDigest.sha256){$null=Remove-ApplyStageTree -StagePath $stage;Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue;return [pscustomobject]@{digest=$srcDigest;fingerprints=$copied.fingerprints;changed=$false;archived=$null;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}}
+            if([string]::IsNullOrWhiteSpace($ExpectedTargetDigest)){throw (New-ApplyCopyException -Class 'APPLY_TARGET_IDENTITY_REQUIRED' -SafeMessage 'Existing canonical Target has no manifest-bound digest; explicit recovery/deep verification is required before replacement.' -Phase 'PREFLIGHT' -Path $Target)}
+            $targetHash=$ExpectedTargetDigest
+            if($targetHash -eq $srcDigest.sha256){
+                $null=Remove-ApplyStageTree -StagePath $stage
+                Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+                return [pscustomobject]@{digest=$srcDigest;fingerprint_file=$copied.fingerprint_file;configuration_xml_sha256=$copied.configuration_xml_sha256;metrics=$copied.metrics;acquisition_contract=$copied.contract;changed=$false;archived=$null;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+            }
             if(-not $ReplaceExisting){throw "TARGET_CONFLICT: $Target"}
         }
-        if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='PUBLISH';files_processed=$plan.file_count;files_total=$plan.file_count;bytes_processed=[int64]$plan.bytes;bytes_total=[int64]$plan.bytes})}
+        if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='PUBLISH';files_processed=$srcDigest.files;files_total=$srcDigest.files;bytes_processed=[int64]$srcDigest.bytes;bytes_total=[int64]$srcDigest.bytes})}
         if($targetExisted){$stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ');$archive=Join-Path $ProjectRoot ("Detached\$ArchiveKey\$stamp");New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive)|Out-Null;Move-Item -LiteralPath $Target -Destination $archive -ErrorAction Stop;$archiveMoved=$true}else{$parent=Split-Path -Parent $Target;New-Item -ItemType Directory -Force -Path $parent|Out-Null}
         try{Move-Item -LiteralPath $stage -Destination $Target -ErrorAction Stop}catch{if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{}};throw}
-        $stageState='COMMITTED';Write-ApplyStageState -StagePath $stage -State COMMITTED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey;Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
-        [pscustomobject]@{digest=$srcDigest;fingerprints=$copied.fingerprints;changed=$true;archived=$archive;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+        $stageState='COMMITTED';Write-ApplyStageState -StagePath $stage -State COMMITTED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+        [pscustomobject]@{digest=$srcDigest;fingerprint_file=$copied.fingerprint_file;configuration_xml_sha256=$copied.configuration_xml_sha256;metrics=$copied.metrics;acquisition_contract=$copied.contract;changed=$true;archived=$archive;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
     }catch{
-        $cause=$_.Exception;$residue=[pscustomobject]@{stage_path=$stage;target_path=$Target;metadata_path=($stage+'.json')};$cleanup=Remove-ApplyStageTree -StagePath $stage;$cleanupStatus=$cleanup.status
+        $cause=$_.Exception
+        $residue=[pscustomobject]@{stage_path=$stage;target_path=$Target;metadata_path=($stage+'.json')}
+        $cleanup=Remove-ApplyStageTree -StagePath $stage
+        $cleanupStatus=$cleanup.status
+        foreach($sidecar in @($stage+'.fingerprints.jsonl',$stage+'.request.json',$stage+'.progress.json',$stage+'.progress.json.tmp')){Remove-Item -LiteralPath $sidecar -Force -ErrorAction SilentlyContinue}
         if($cleanup.status -eq 'CLEANUP_FAILED'){$q=Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $ProjectRoot;$cleanupStatus=$q.status}else{Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue}
         if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{throw (New-ApplyCopyException -Class 'APPLY_COMMIT_ROLLBACK_FAILED' -SafeMessage 'Verified stage commit failed and the previous canonical Target could not be restored automatically.' -Phase 'COMMIT_ROLLBACK' -Path $Target -CleanupStatus $cleanupStatus -InnerException $_.Exception)}}
         if($cause.Message -match '^SOURCE_CHANGED_DURING_SYNC:'){throw (New-ApplyCopyException -Class 'SOURCE_CHANGED_DURING_SYNC' -SafeMessage 'Source metadata changed while the managed snapshot was being copied; publication was aborted.' -Phase 'COPYING' -Path $Source -CleanupStatus $cleanupStatus -InnerException $cause)}
-        $class=$(if($stageState -eq 'COPYING'){'APPLY_COPY_FAILED'}elseif($stageState -eq 'VERIFIED'){'APPLY_COMMIT_FAILED'}else{'APPLY_STAGE_FAILED'});$safe=$(if($stageState -eq 'COPYING'){'Copying into the managed staging area failed.'}elseif($stageState -eq 'VERIFIED'){'Verified staging data could not be committed to the canonical Target.'}else{'Managed staging failed before copy could complete.'})
+        $class=$(if($stageState -eq 'COPYING'){'APPLY_COPY_FAILED'}elseif($stageState -eq 'VERIFIED'){'APPLY_COMMIT_FAILED'}else{'APPLY_STAGE_FAILED'})
+        $safe=$(if($stageState -eq 'COPYING'){'Copying into the managed staging area failed.'}elseif($stageState -eq 'VERIFIED'){'Verified staging data could not be committed to the canonical Target.'}else{'Managed staging failed before copy could complete.'})
         throw (New-ApplyCopyException -Class $class -SafeMessage $safe -Phase $stageState -Path $Target -CleanupStatus $cleanupStatus -InnerException $cause)
     }
+}
+
+function ConvertTo-ExtendedWindowsPath {
+    param([Parameter(Mandatory)][string]$Path)
+    $full=[IO.Path]::GetFullPath($Path)
+    if($full.StartsWith('\\')){return '\\?\UNC\'+$full.Substring(2)}
+    '\\?\'+$full
 }
 
 function Apply-ProjectAcl {
     param([Parameter(Mandatory)][string]$ProjectRoot)
     $reader="$env:COMPUTERNAME\$($script:ReaderName)"
     if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){return}
-    & icacls.exe $ProjectRoot /grant:r ($reader+':(RX)') | Out-Null
+    $projectAclPath=ConvertTo-ExtendedWindowsPath $ProjectRoot
+    & icacls.exe $projectAclPath /grant:r ($reader+':(RX)') | Out-Null
+    if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $ProjectRoot"}
     $participants=Join-Path $ProjectRoot 'Participants'
     $output=Join-Path $ProjectRoot 'Output'
-    if(Test-Path -LiteralPath $participants){& icacls.exe $participants /grant:r ($reader+':(OI)(CI)(RX)') /T | Out-Null}
-    if(Test-Path -LiteralPath $output){& icacls.exe $output /grant:r ($reader+':(OI)(CI)(M)') /T | Out-Null}
+    if(Test-Path -LiteralPath $participants){$aclPath=ConvertTo-ExtendedWindowsPath $participants;& icacls.exe $aclPath /grant:r ($reader+':(OI)(CI)(RX)') /T /C | Out-Null;if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $participants"}}
+    if(Test-Path -LiteralPath $output){$aclPath=ConvertTo-ExtendedWindowsPath $output;& icacls.exe $aclPath /grant:r ($reader+':(OI)(CI)(M)') /T /C | Out-Null;if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $output"}}
 }
 
 function Apply-WorkerProject {
@@ -861,17 +980,17 @@ function Apply-WorkerProject {
             Assert-OneCExportRoot $part.target.main.source_path;$rel="Participants/$participantKey/Target/Main";$target=Join-Path $projectRoot $rel.Replace('/','\');$oldDigest=$null
             if($oldManifest){$oa=@(Get-ManifestArtifactRows $oldManifest|Where-Object {$_.canonical_path -eq $rel}|Select-Object -First 1);if($oa.Count){$oldDigest=$oa[0].tree_sha256}}
             $copy=Copy-ArtifactSafely -Source $part.target.main.source_path -Target $target -ReplaceExisting:([bool]$part.target.main.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Main" -ExpectedTargetDigest $oldDigest -ProgressCallback $ProgressCallback
-            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='MAIN';artifact_id='main';source_input=$part.target.main.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived}
-            $mPart.target.main=[ordered]@{artifact_id='main';active=$true;canonical_path=$rel;source_path=$part.target.main.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=(Get-Sha256File (Join-Path $target 'Configuration.xml'))}
-            $fingerprintMap["$participantKey|MAIN|main"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType MAIN -ArtifactId main -Rows $copy.fingerprints
+            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='MAIN';artifact_id='main';source_input=$part.target.main.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived;acquisition_contract=$copy.acquisition_contract;acquisition_metrics=$copy.metrics}
+            $mPart.target.main=[ordered]@{artifact_id='main';active=$true;canonical_path=$rel;source_path=$part.target.main.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=[string]$copy.configuration_xml_sha256}
+            $fingerprintMap["$participantKey|MAIN|main"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType MAIN -ArtifactId main -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
         }
         foreach($ext in @($part.target.extensions|Where-Object {$_.active -ne $false})){
             $eid=Assert-SafeId $ext.extension_id 'extension_id';Assert-OneCExportRoot $ext.source_path;$rel="Participants/$participantKey/Target/Extensions/$eid";$target=Join-Path $projectRoot $rel.Replace('/','\');$oldDigest=$null
             if($oldManifest){$oa=@(Get-ManifestArtifactRows $oldManifest|Where-Object {$_.canonical_path -eq $rel}|Select-Object -First 1);if($oa.Count){$oldDigest=$oa[0].tree_sha256}}
             $copy=Copy-ArtifactSafely -Source $ext.source_path -Target $target -ReplaceExisting:([bool]$ext.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Extensions\$eid" -ExpectedTargetDigest $oldDigest -ProgressCallback $ProgressCallback
-            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='EXTENSION';artifact_id=$eid;source_input=$ext.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived}
-            $mPart.target.extensions+=,[ordered]@{extension_id=$eid;artifact_id=$eid;active=$true;canonical_path=$rel;source_path=$ext.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=(Get-Sha256File (Join-Path $target 'Configuration.xml'))}
-            $fingerprintMap["$participantKey|EXTENSION|$eid"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType EXTENSION -ArtifactId $eid -Rows $copy.fingerprints
+            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='EXTENSION';artifact_id=$eid;source_input=$ext.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived;acquisition_contract=$copy.acquisition_contract;acquisition_metrics=$copy.metrics}
+            $mPart.target.extensions+=,[ordered]@{extension_id=$eid;artifact_id=$eid;active=$true;canonical_path=$rel;source_path=$ext.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=[string]$copy.configuration_xml_sha256}
+            $fingerprintMap["$participantKey|EXTENSION|$eid"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType EXTENSION -ArtifactId $eid -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
         }
         $manifestParticipants+=,[pscustomobject]$mPart
     }
@@ -1431,6 +1550,7 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -Identity $identity -Secret
@@ -1442,7 +1562,7 @@ function Set-WorkerOperatorAcl {
         mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'task-state'))
         read_only=@((Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'product'))
         secret=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
-        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'))
+        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'),(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs'))
     }
 }
 
@@ -1464,6 +1584,7 @@ function Install-OneCChatWorker {
     $componentResults=@()
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-acquisition.mjs') -Destination (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-acquisition.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
     foreach($qualityScript in @('meta-info.ps1','form-info.ps1','form-validate.ps1')){$rel='runtime/quality/cc-1c-skills/'+$qualityScript;$componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot ('runtime\quality\cc-1c-skills\'+$qualityScript)) -Destination (Join-Path $ProgramDataRoot ('helper\quality\cc-1c-skills\'+$qualityScript)) -ExpectedSha256 ([string]$lock.components.$rel))}
