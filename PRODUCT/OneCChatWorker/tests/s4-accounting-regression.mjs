@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -34,6 +35,7 @@ const commit=(r,id,bytes,op='read')=>{
   assert.equal(q.action,'EXECUTE');
   commitRequest(r,{requestId:id,fingerprint:fp,payloadBytes:bytes,nowMs:Date.parse('2026-10-06T11:00:01Z')});
 };
+const mcpAccountingId=(record,fingerprint)=>'mcp-'+createHash('sha256').update(JSON.stringify({fingerprint,schema:'MCP_ACCOUNTING_REQUEST_ID_V1',session_id:record.session_id,task_admission_id:record.task_admission_id})).digest('hex');
 
 ok('OPERATOR_ACCEPTED_POLICY_EXACT',()=>{
   assert.equal(acceptedS4.qualification_status,'QUALIFIED_CANDIDATE');
@@ -162,6 +164,24 @@ ok('LEGACY_V2_REMAINS_LEGACY_NOT_ZERO_MIGRATED',()=>{
   assert(relay.includes("await this.state.storage.put('active_mode','legacy')"));
   assert(relay.includes("if(mode!=='s4')return this.rpcLegacy(body)"));
   assert(!relay.includes('seed durable counters from zero'));
+});
+
+
+ok('MCP_REUSED_JSONRPC_ID_DIFFERENT_FINGERPRINTS_DO_NOT_COLLIDE',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  assert(!relay.includes("client_request_id:String(msg.id)"));
+  assert(relay.includes("mcpAccountingRequestId(record,fingerprint)"));
+  assert(relay.includes("body:JSON.stringify({op,args:opArgs})"));
+  const r=make(),fpA='a'.repeat(64),fpB='b'.repeat(64),idA=mcpAccountingId(r,fpA),idB=mcpAccountingId(r,fpB);
+  assert.notEqual(idA,idB);assert.equal(idA.length,68);assert.equal(idB.length,68);
+  const a=reserveRequest(r,{requestId:idA,fingerprint:fpA,op:'search'});assert.equal(a.action,'EXECUTE');commitRequest(r,{requestId:idA,fingerprint:fpA,payloadBytes:10});
+  const b=reserveRequest(r,{requestId:idB,fingerprint:fpB,op:'read'});assert.equal(b.action,'EXECUTE');
+});
+ok('MCP_TRUE_DUPLICATE_RECOVERY_REMAINS_FAIL_CLOSED',()=>{
+  const r=make(),fpA='c'.repeat(64),fpB='d'.repeat(64),idA=mcpAccountingId(r,fpA);
+  const q=reserveRequest(r,{requestId:idA,fingerprint:fpA,op:'read'});assert.equal(q.action,'EXECUTE');commitRequest(r,{requestId:idA,fingerprint:fpA,payloadBytes:25});
+  const replay=reserveRequest(r,{requestId:idA,fingerprint:fpA,op:'read'});assert.equal(replay.action,'REPLAY_BLOCKED');
+  assert.throws(()=>reserveRequest(r,{requestId:idA,fingerprint:fpB,op:'read'}),/REQUEST_ID_REUSE/);
 });
 
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);
