@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
-      "size": 19326,
-      "sha256": "4631ef3ac12ae6c37b7c40e5b3551f9565a090fc67249404fdb49ecde8525da6"
+      "size": 19619,
+      "sha256": "2d974258fc191dcad08ffa23bb485ed34c09964d5d32bcacc67cfc0c186ec857"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/App.xaml",
@@ -520,8 +520,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 6914,
-      "sha256": "d33eed05827f77275dae752f77d833573a20ed5274b6f383fa6a1d29484399c8"
+      "size": 7271,
+      "sha256": "ea8e173d9b45e2eac2755f237e38e0be4b90b03bd9b60ba339fe65e0fd5825d7"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -630,8 +630,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_s4_admission_regression.ps1",
-      "size": 6324,
-      "sha256": "28d11c8e7f4391362d3579b8ac5d901d17a9fd44550738e94bb77be3297b2027"
+      "size": 6880,
+      "sha256": "5d0e4ccf092da0c6d402f773038c8a497d0c66605d00d88027048ee9f45ea11a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
@@ -665,8 +665,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/s4-accounting-regression.mjs",
-      "size": 11474,
-      "sha256": "745e903a54b30d41a3c31fb956b845ea8e8ac7e32a6e0b2df2fefcba1d7ee68a"
+      "size": 13679,
+      "sha256": "1aa39f850a87964ae4cb84adaa801507bf31ff6aca4292d0b4668e5368d70ea3"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/source-acquisition-regression.mjs",
@@ -2150,8 +2150,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 46897,
-      "sha256": "67a1c9e06381a9d17514a9536be584bfe480c29b2eca573e9f014c7c6d0bb106"
+      "size": 47491,
+      "sha256": "dedc6b6bc691b05dd4188614efa6197d42c4f8eb18728e91ca5880a4a3e4d103"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2605,5 +2605,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "538f09cb702d1d89aa3ee02b6a9ac8ed5791ef531e4d744bc61cbcb59af07e92"
+  "snapshot_digest": "8967061661b94c5c6a188f4cedc40d38a1cc12527ef5f1fb188940bbd640ea3a"
 }

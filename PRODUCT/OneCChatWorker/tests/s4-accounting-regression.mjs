@@ -9,6 +9,9 @@ import {
 
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const PRODUCT=path.resolve(HERE,'..');
+const runtimeLock=JSON.parse(fs.readFileSync(path.join(PRODUCT,'runtime.lock.json'),'utf8'));
+const acceptedS4=runtimeLock.hosted_mcp.s4;
+const acceptedCaps=acceptedS4.candidate;
 let passed=0;
 const ok=(name,fn)=>{fn();passed++;console.log('PASS',name);};
 const hello=(over={})=>({
@@ -31,6 +34,49 @@ const commit=(r,id,bytes,op='read')=>{
   assert.equal(q.action,'EXECUTE');
   commitRequest(r,{requestId:id,fingerprint:fp,payloadBytes:bytes,nowMs:Date.parse('2026-10-06T11:00:01Z')});
 };
+
+ok('OPERATOR_ACCEPTED_POLICY_EXACT',()=>{
+  assert.equal(acceptedS4.qualification_status,'QUALIFIED_CANDIDATE');
+  assert.deepEqual(
+    {
+      task_request_limit:acceptedCaps.task_request_limit,
+      task_result_byte_limit:acceptedCaps.task_result_byte_limit,
+      task_ttl_minutes:acceptedCaps.task_ttl_minutes,
+      epoch_soft_request_limit:acceptedCaps.epoch_soft_request_limit,
+      epoch_soft_result_byte_limit:acceptedCaps.epoch_soft_result_byte_limit,
+      max_result_bytes:acceptedCaps.max_result_bytes,
+    },
+    {
+      task_request_limit:2048,
+      task_result_byte_limit:2097152,
+      task_ttl_minutes:720,
+      epoch_soft_request_limit:32,
+      epoch_soft_result_byte_limit:36000,
+      max_result_bytes:3000,
+    }
+  );
+  assert.equal(acceptedCaps.status,'OPERATOR_ACCEPTED_PRODUCT_POLICY');
+  assert.equal(runtimeLock.hosted_mcp.relay_source.deployment_status,'NOT_DEPLOYED_PENDING_PRODUCTION_DEPLOYMENT');
+});
+ok('OPERATOR_ACCEPTED_POLICY_HARD_CAPS_ENFORCED',()=>{
+  const h=hello({caps:{
+    task_request_limit:acceptedCaps.task_request_limit,
+    task_result_byte_limit:acceptedCaps.task_result_byte_limit,
+    epoch_soft_request_limit:acceptedCaps.epoch_soft_request_limit,
+    epoch_soft_result_byte_limit:acceptedCaps.epoch_soft_result_byte_limit,
+    max_result_bytes:acceptedCaps.max_result_bytes,
+  }});
+  const requestExhausted=make(h);
+  requestExhausted.task_requests_used=acceptedCaps.task_request_limit;
+  const rq=reserveRequest(requestExhausted,{requestId:'accepted-request-over',fingerprint:'accepted-request-over',op:'read'});
+  assert.equal(rq.action,'BLOCKED');
+  assert.equal(rq.error,'TASK_SECURITY_BUDGET_EXHAUSTED');
+  const byteExhausted=make(h);
+  byteExhausted.task_result_bytes_used=acceptedCaps.task_result_byte_limit-acceptedCaps.max_result_bytes+1;
+  const bq=reserveRequest(byteExhausted,{requestId:'accepted-byte-over',fingerprint:'accepted-byte-over',op:'read'});
+  assert.equal(bq.action,'BLOCKED');
+  assert.equal(bq.error,'TASK_SECURITY_BUDGET_EXHAUSTED');
+});
 
 ok('RECONNECT_PRESERVES_TASK_COUNTERS',()=>{
   const h=hello(),r=make(h);commit(r,'1',500);const before=lifecycleProjection(r,Date.parse('2026-10-06T11:01:00Z'));
