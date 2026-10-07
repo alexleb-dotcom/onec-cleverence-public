@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -33,6 +34,14 @@ const commit=(r,id,bytes,op='read')=>{
   const q=reserveRequest(r,{requestId:id,fingerprint:fp,op,nowMs:Date.parse('2026-10-06T11:00:00Z'),epochIdFactory:epochFactory});
   assert.equal(q.action,'EXECUTE');
   commitRequest(r,{requestId:id,fingerprint:fp,payloadBytes:bytes,nowMs:Date.parse('2026-10-06T11:00:01Z')});
+};
+const stableJson=v=>Array.isArray(v)?v.map(stableJson):(v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,stableJson(v[k])])):v);
+const hashJson=v=>createHash('sha256').update(JSON.stringify(stableJson(v))).digest('hex');
+const mcpAccountingId=(record,{op,args={},readNonce=null})=>{
+  let invocation;
+  if(['context','search','read','proposal_read'].includes(op))invocation={kind:'read',op,nonce:readNonce};
+  else invocation={kind:'mutation',op,idempotency_key:String(args.idempotency_key||'')};
+  return 'mcp-'+hashJson({schema:'MCP_ACCOUNTING_REQUEST_ID_V2',task_admission_id:record.task_admission_id,session_id:record.session_id,invocation});
 };
 
 ok('OPERATOR_ACCEPTED_POLICY_EXACT',()=>{
@@ -162,6 +171,62 @@ ok('LEGACY_V2_REMAINS_LEGACY_NOT_ZERO_MIGRATED',()=>{
   assert(relay.includes("await this.state.storage.put('active_mode','legacy')"));
   assert(relay.includes("if(mode!=='s4')return this.rpcLegacy(body)"));
   assert(!relay.includes('seed durable counters from zero'));
+});
+
+
+ok('MCP_REUSED_JSONRPC_ID_DIFFERENT_FINGERPRINTS_DO_NOT_COLLIDE',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  assert(!relay.includes("client_request_id:String(msg.id)"));
+  assert(relay.includes("MCP_ACCOUNTING_REQUEST_ID_V2"));
+  assert(!relay.includes("read_request_nonce"));
+  assert(relay.includes("const nonce=crypto.randomUUID()"));
+  assert(relay.includes("mcpAccountingRequestId(record,body.op,body.args)"));
+  const r=make(),fpA='a'.repeat(64),fpB='b'.repeat(64);
+  const idA=mcpAccountingId(r,{op:'search',readNonce:'11111111-1111-4111-8111-111111111111'});
+  const idB=mcpAccountingId(r,{op:'read',readNonce:'22222222-2222-4222-8222-222222222222'});
+  assert.notEqual(idA,idB);assert.equal(idA.length,68);assert.equal(idB.length,68);
+  const a=reserveRequest(r,{requestId:idA,fingerprint:fpA,op:'search'});assert.equal(a.action,'EXECUTE');commitRequest(r,{requestId:idA,fingerprint:fpA,payloadBytes:10});
+  const b=reserveRequest(r,{requestId:idB,fingerprint:fpB,op:'read'});assert.equal(b.action,'EXECUTE');commitRequest(r,{requestId:idB,fingerprint:fpB,payloadBytes:10});
+  assert.equal(r.task_requests_used,2);
+});
+ok('MCP_IDENTICAL_READ_ONLY_CALLS_EXECUTE_INDEPENDENTLY',()=>{
+  const r=make(),fp='e'.repeat(64);
+  const idA=mcpAccountingId(r,{op:'read',readNonce:'33333333-3333-4333-8333-333333333333'});
+  const idB=mcpAccountingId(r,{op:'read',readNonce:'44444444-4444-4444-8444-444444444444'});
+  assert.notEqual(idA,idB);
+  const a=reserveRequest(r,{requestId:idA,fingerprint:fp,op:'read'});assert.equal(a.action,'EXECUTE');commitRequest(r,{requestId:idA,fingerprint:fp,payloadBytes:20});
+  const b=reserveRequest(r,{requestId:idB,fingerprint:fp,op:'read'});assert.equal(b.action,'EXECUTE');commitRequest(r,{requestId:idB,fingerprint:fp,payloadBytes:20});
+  assert.equal(r.task_requests_used,2);assert.equal(r.task_result_bytes_used,40);
+});
+ok('MCP_MUTATING_RETRY_AND_AMBIGUOUS_RECOVERY_REMAIN_FAIL_CLOSED',()=>{
+  const r=make(),args={idempotency_key:'proposal-1'},fpA='c'.repeat(64),fpB='d'.repeat(64);
+  const idA=mcpAccountingId(r,{op:'proposal_write',args});
+  const idRetry=mcpAccountingId(r,{op:'proposal_write',args});
+  assert.equal(idA,idRetry);
+  const q=reserveRequest(r,{requestId:idA,fingerprint:fpA,op:'proposal_write'});assert.equal(q.action,'EXECUTE');
+  chargeAmbiguousRequest(r,{requestId:idA,fingerprint:fpA,reason:'HELPER_TIMEOUT'});
+  const replay=reserveRequest(r,{requestId:idRetry,fingerprint:fpA,op:'proposal_write'});assert.equal(replay.action,'REPLAY_BLOCKED');assert.equal(replay.receipt.state,'AMBIGUOUS_CHARGED');
+  assert.throws(()=>reserveRequest(r,{requestId:idA,fingerprint:fpB,op:'proposal_write'}),/REQUEST_ID_REUSE/);
+});
+ok('MCP_PROPOSAL_WRITE_IDEMPOTENCY_REMAINS_SIDE_EFFECT_GUARD',()=>{
+  const helper=fs.readFileSync(path.join(PRODUCT,'runtime/hosted-helper.mjs'),'utf8');
+  const r=make(),same={idempotency_key:'proposal-2'},other={idempotency_key:'proposal-3'};
+  assert.equal(mcpAccountingId(r,{op:'proposal_write',args:same}),mcpAccountingId(r,{op:'proposal_write',args:same}));
+  assert.notEqual(mcpAccountingId(r,{op:'proposal_write',args:same}),mcpAccountingId(r,{op:'proposal_write',args:other}));
+  assert(helper.includes('existing&&replace&&existing.sha256===hash'));assert(helper.includes('IDEMPOTENCY_KEY_REUSE'));
+});
+ok('MCP_TASK_CHECKPOINT_RETRY_IDENTITY_USES_EXISTING_IDEMPOTENCY_KEY',()=>{
+  const r=make(),args={idempotency_key:'checkpoint-1'};
+  assert.equal(mcpAccountingId(r,{op:'task_checkpoint_write',args}),mcpAccountingId(r,{op:'task_checkpoint_write',args}));
+  assert.notEqual(mcpAccountingId(r,{op:'task_checkpoint_write',args}),mcpAccountingId(r,{op:'task_checkpoint_write',args:{idempotency_key:'checkpoint-2'}}));
+});
+
+ok('MCP_READ_NONCE_OWNED_BY_RELAY_ACCOUNTING_LAYER',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  assert(relay.includes("const nonce=crypto.randomUUID()"));
+  assert(relay.includes("mcpAccountingRequestId(record,body.op,body.args)"));
+  assert(relay.includes("body:JSON.stringify({op,args:opArgs})"));
+  assert(!relay.includes("read_request_nonce"));
 });
 
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);

@@ -1059,7 +1059,7 @@ function Get-SourceUpdateSelectionRows {
         if($type -notin @('MAIN','EXTENSION')){throw 'SOURCE_UPDATE_ARTIFACT_TYPE_INVALID'}
         if($type -eq 'MAIN' -and $aid -ne 'main'){throw 'SOURCE_UPDATE_MAIN_ID_INVALID'}
         $key="$participantKey|$type|$aid";if($seen.ContainsKey($key)){throw 'SOURCE_UPDATE_SELECTION_DUPLICATE'};$seen[$key]=$true
-        $match=@($rows|Where-Object {$_.participant_id -eq $pid -and $_.artifact_type -eq $type -and $_.artifact_id -eq $aid})
+        $match=@($rows|Where-Object {$_.participant_id -eq $participantKey -and $_.artifact_type -eq $type -and $_.artifact_id -eq $aid})
         if($match.Count -ne 1){throw ('SOURCE_UPDATE_ARTIFACT_NOT_FOUND: '+$key)}
         $result+=,$match[0]
     }
@@ -1804,8 +1804,15 @@ function Invoke-TaskStateRetention {
 }
 
 function Get-S4AdmissionPolicy {
-    $packageRoot=Split-Path -Parent $PSScriptRoot
-    $lock=Read-RuntimeLock $packageRoot
+    $localLock=Join-Path $PSScriptRoot 'runtime.lock.json'
+    $parentRoot=Split-Path -Parent $PSScriptRoot
+    $parentLock=Join-Path $parentRoot 'runtime.lock.json'
+    $localExists=Test-Path -LiteralPath $localLock -PathType Leaf
+    $parentExists=Test-Path -LiteralPath $parentLock -PathType Leaf
+    if($localExists -and $parentExists){throw 'S4_RUNTIME_LOCK_LAYOUT_AMBIGUOUS'}
+    if($localExists){$lock=Read-RuntimeLock $PSScriptRoot}
+    elseif($parentExists){$lock=Read-RuntimeLock $parentRoot}
+    else{throw "RUNTIME_LOCK_MISSING: expected $localLock or $parentLock"}
     if(-not $lock.hosted_mcp -or -not $lock.hosted_mcp.s4){throw 'S4_RUNTIME_POLICY_MISSING'}
     $lock.hosted_mcp.s4
 }
@@ -2254,6 +2261,102 @@ function New-HelperRunAsCommand {
     "powershell.exe -NoProfile -EncodedCommand $encoded"
 }
 
+function Read-HelperStateRecoveryFile {
+    param([Parameter(Mandatory)][string]$Path,[switch]$AllowMissing)
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){
+        if($AllowMissing){return $null}
+        throw "HELPER_STATE_FILE_MISSING: $Path"
+    }
+    $item=Get-Item -LiteralPath $Path
+    if($item.Length -gt 16777216){throw "HELPER_STATE_FILE_TOO_LARGE: $Path"}
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    try{$doc=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json}catch{throw "HELPER_STATE_FILE_CORRUPT: $Path"}
+    [pscustomobject]@{path=$Path;bytes=$bytes;doc=$doc;sha256=Get-Sha256File $Path}
+}
+
+function Test-HelperStateMatchesAdmission {
+    param([Parameter(Mandatory)]$State,[Parameter(Mandatory)]$Admission)
+    if([int]$Admission.schema_version -ne 3 -or [int]$State.schema_version -ne 2){return $false}
+    ([string]$State.task_admission_id -eq [string]$Admission.task_admission_id) -and
+    ([string]$State.session_id -eq [string]$Admission.session_id) -and
+    ([string]$State.project_id -eq [string]$Admission.project_id) -and
+    ([string]$State.task_id -eq [string]$Admission.task_id) -and
+    ([string]$State.snapshot_id -eq [string]$Admission.source_snapshot_id) -and
+    ([string]$State.manifest_sha256 -eq [string]$Admission.manifest_sha256) -and
+    ([string]$State.expires_utc -eq [string]$Admission.task_expires_utc)
+}
+
+function Save-HelperStateRecoveryEvidence {
+    param(
+        [Parameter(Mandatory)]$Entry,
+        [Parameter(Mandatory)][string]$ProgramDataRoot,
+        [Parameter(Mandatory)][ValidateSet('final','tmp')][string]$Kind
+    )
+    $root=Join-Path $ProgramDataRoot 'operations\helper-state-recovery'
+    New-Item -ItemType Directory -Force -Path $root|Out-Null
+    $target=Join-Path $root ("{0}-{1}.json" -f $Kind,[string]$Entry.sha256)
+    if(Test-Path -LiteralPath $target -PathType Leaf){
+        if((Get-Sha256File $target) -ne [string]$Entry.sha256){throw 'HELPER_STATE_RECOVERY_EVIDENCE_COLLISION'}
+    }else{
+        [IO.File]::WriteAllBytes($target,[byte[]]$Entry.bytes)
+        if((Get-Sha256File $target) -ne [string]$Entry.sha256){Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue;throw 'HELPER_STATE_RECOVERY_EVIDENCE_VERIFY_FAILED'}
+    }
+    [pscustomobject]@{kind=$Kind;sha256=[string]$Entry.sha256;path=$target}
+}
+
+function Repair-HelperStateForActiveAdmission {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'HELPER_STATE_RECOVERY_ADMISSION_MISSING'}
+    try{$admission=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'HELPER_STATE_RECOVERY_ADMISSION_CORRUPT'}
+    if([int]$admission.schema_version -ne 3 -or [string]$admission.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'HELPER_STATE_RECOVERY_ADMISSION_UNSUPPORTED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $live=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($live.Count){throw 'HELPER_STATE_RECOVERY_REQUIRES_STOPPED_HELPER'}
+
+    $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+    $tmpPath=$statePath+'.tmp'
+    $final=Read-HelperStateRecoveryFile -Path $statePath -AllowMissing
+    $tmp=Read-HelperStateRecoveryFile -Path $tmpPath -AllowMissing
+    $finalMatches=($null -ne $final -and (Test-HelperStateMatchesAdmission -State $final.doc -Admission $admission))
+    $tmpMatches=($null -ne $tmp -and (Test-HelperStateMatchesAdmission -State $tmp.doc -Admission $admission))
+    $evidence=@()
+
+    if($finalMatches){
+        if($tmp){
+            if($tmpMatches){
+                if([string]$tmp.sha256 -ne [string]$final.sha256){throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'}
+                Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+                return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+            }
+            $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+            Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+            return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='STALE_TMP_ARCHIVED_AND_REMOVED';evidence=@($evidence)}
+        }
+        return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='NONE';evidence=@()}
+    }
+
+    if($final){
+        $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+    }
+
+    if($tmp -and -not $tmpMatches){
+        $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+    }
+
+    if($final){Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop}
+
+    if($tmpMatches){
+        Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+        $published=Read-HelperStateRecoveryFile -Path $statePath
+        if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission)){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+        return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+    }
+
+    if($tmp){Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop}
+    [pscustomobject]@{status='RECOVERED';action=$(if($final){'STALE_FINAL_ARCHIVED_AND_CLEARED'}else{'STALE_TMP_ARCHIVED_AND_CLEARED'});evidence=@($evidence)}
+}
+
 function Start-WorkerAdmission {
     param(
         [Parameter(Mandatory)][string]$ProjectId,
@@ -2275,8 +2378,9 @@ function Start-WorkerAdmission {
     $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
     if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
     $newAdmission=New-Admission -ProjectId $ProjectId -TaskId $TaskId -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState -Predecessor $Predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
+    $stateRecovery=Repair-HelperStateForActiveAdmission -ProgramDataRoot $ProgramDataRoot
     $runAs="$env:SystemRoot\System32\runas.exe";$program=New-HelperRunAsCommand -HelperPath $helper -ProgramDataRoot $ProgramDataRoot;& $runAs "/profile" "/user:$env:COMPUTERNAME\$($script:ReaderName)" $program;if($LASTEXITCODE -ne 0){throw "RUNAS_FAILED_OR_CANCELLED: $LASTEXITCODE"}
-    [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id;task_admission_id=[string]$newAdmission.task_admission_id;session_id=[string]$newAdmission.session_id;continued=($null -ne $newAdmission.predecessor)}
+    [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id;task_admission_id=[string]$newAdmission.task_admission_id;session_id=[string]$newAdmission.session_id;continued=($null -ne $newAdmission.predecessor);helper_state_recovery=$stateRecovery}
 }
 
 function Continue-WorkerAdmission {
