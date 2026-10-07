@@ -178,7 +178,9 @@ ok('MCP_REUSED_JSONRPC_ID_DIFFERENT_FINGERPRINTS_DO_NOT_COLLIDE',()=>{
   const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
   assert(!relay.includes("client_request_id:String(msg.id)"));
   assert(relay.includes("MCP_ACCOUNTING_REQUEST_ID_V2"));
-  assert(relay.includes("readRequestNonce=MCP_READ_ONLY_OPS.has(op)?crypto.randomUUID():null"));
+  assert(!relay.includes("read_request_nonce"));
+  assert(relay.includes("const nonce=crypto.randomUUID()"));
+  assert(relay.includes("mcpAccountingRequestId(record,body.op,body.args)"));
   const r=make(),fpA='a'.repeat(64),fpB='b'.repeat(64);
   const idA=mcpAccountingId(r,{op:'search',readNonce:'11111111-1111-4111-8111-111111111111'});
   const idB=mcpAccountingId(r,{op:'read',readNonce:'22222222-2222-4222-8222-222222222222'});
@@ -217,6 +219,14 @@ ok('MCP_TASK_CHECKPOINT_RETRY_IDENTITY_USES_EXISTING_IDEMPOTENCY_KEY',()=>{
   const r=make(),args={idempotency_key:'checkpoint-1'};
   assert.equal(mcpAccountingId(r,{op:'task_checkpoint_write',args}),mcpAccountingId(r,{op:'task_checkpoint_write',args}));
   assert.notEqual(mcpAccountingId(r,{op:'task_checkpoint_write',args}),mcpAccountingId(r,{op:'task_checkpoint_write',args:{idempotency_key:'checkpoint-2'}}));
+});
+
+ok('MCP_READ_NONCE_OWNED_BY_RELAY_ACCOUNTING_LAYER',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  assert(relay.includes("const nonce=crypto.randomUUID()"));
+  assert(relay.includes("mcpAccountingRequestId(record,body.op,body.args)"));
+  assert(relay.includes("body:JSON.stringify({op,args:opArgs})"));
+  assert(!relay.includes("read_request_nonce"));
 });
 
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);
