@@ -288,6 +288,7 @@ function Test-InstalledProductIntegrity {
     $map=[ordered]@{
         'runtime/source-reader-integration.mjs'=(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs')
         'runtime/hosted-helper.mjs'=(Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs')
+        'runtime/helper-state-coordinator.mjs'=(Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs')
         'runtime/source-acquisition.mjs'=(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs')
         'runtime/local-quality-adapter.mjs'=(Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs')
         'runtime/quality/cc-1c-skills/meta-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\meta-info.ps1')
@@ -1556,6 +1557,7 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
@@ -1636,6 +1638,7 @@ function Install-OneCChatWorker {
     $componentResults=@()
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-state-coordinator.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-state-coordinator.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-acquisition.mjs') -Destination (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-acquisition.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
@@ -1744,6 +1747,40 @@ function Test-HelperStateMatchesAdmission {
     ([string]$State.expires_utc -eq [string]$Admission.task_expires_utc)
 }
 
+function Get-HelperStateProcessedMap {
+    param([Parameter(Mandatory)]$State)
+    $map=@{}
+    if($null -eq $State.processed){return $map}
+    foreach($prop in @($State.processed.PSObject.Properties)){
+        $key=[string]$prop.Name
+        $entry=$prop.Value
+        if([string]::IsNullOrWhiteSpace($key) -or $key.Length -gt 128){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry -or [string]$entry.type -ne 'result' -or [string]$entry.request_id -ne $key -or [string]$entry.status -notin @('OK','ERROR')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry.metadata -or -not($entry.PSObject.Properties.Name -contains 'payload')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        $map[$key]=($entry|ConvertTo-Json -Depth 30 -Compress)
+    }
+    $map
+}
+
+function Test-HelperStateStrictMonotonicProcessedSuperset {
+    param([Parameter(Mandatory)]$FinalState,[Parameter(Mandatory)]$TmpState)
+    try{
+        if([int]$FinalState.schema_version -ne 2 -or [int]$TmpState.schema_version -ne 2){return $false}
+        if([string]$FinalState.started_utc -ne [string]$TmpState.started_utc){return $false}
+        $finalIdem=$(if($null -eq $FinalState.idempotency){'{}'}else{$FinalState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        $tmpIdem=$(if($null -eq $TmpState.idempotency){'{}'}else{$TmpState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        if($finalIdem -ne $tmpIdem){return $false}
+        if(@($FinalState.quality_targets).Count -gt 2 -or @($TmpState.quality_targets).Count -gt 2){return $false}
+        $finalMap=Get-HelperStateProcessedMap -State $FinalState
+        $tmpMap=Get-HelperStateProcessedMap -State $TmpState
+        if($tmpMap.Count -le $finalMap.Count){return $false}
+        foreach($key in $finalMap.Keys){
+            if(-not $tmpMap.ContainsKey($key) -or [string]$tmpMap[$key] -ne [string]$finalMap[$key]){return $false}
+        }
+        return $true
+    }catch{return $false}
+}
+
 function Save-HelperStateRecoveryEvidence {
     param(
         [Parameter(Mandatory)]$Entry,
@@ -1783,9 +1820,20 @@ function Repair-HelperStateForActiveAdmission {
     if($finalMatches){
         if($tmp){
             if($tmpMatches){
-                if([string]$tmp.sha256 -ne [string]$final.sha256){throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'}
-                Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
-                return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+                if([string]$tmp.sha256 -eq [string]$final.sha256){
+                    Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+                    return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+                }
+                if(Test-HelperStateStrictMonotonicProcessedSuperset -FinalState $final.doc -TmpState $tmp.doc){
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+                    Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop
+                    Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+                    $published=Read-HelperStateRecoveryFile -Path $statePath
+                    if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission) -or [string]$published.sha256 -ne [string]$tmp.sha256){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+                    return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_MONOTONIC_SUPERSET_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+                }
+                throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'
             }
             $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
             Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop

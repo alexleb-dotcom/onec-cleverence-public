@@ -21,6 +21,7 @@ required = [
     "core/OneCChatWorker.Core.psm1",
     "runtime/source-reader-integration.mjs",
     "runtime/hosted-helper.mjs",
+    "runtime/helper-state-coordinator.mjs",
     "runtime/local-quality-adapter.mjs",
     "runtime/task-checkpoint-store.mjs",
     "runtime/source-acquisition.mjs",
@@ -43,6 +44,8 @@ required = [
     "tests/TestScratch.psm1",
     "tests/run_test_scratch_hygiene_regression.ps1",
     "tests/run_s4_admission_regression.ps1",
+    "tests/helper-state-race-regression.mjs",
+    "tests/run_helper_state_race_regression.ps1",
     "tests/s4-accounting-regression.mjs",
     "tests/run_task_checkpoint_regression.ps1",
     "tests/task-checkpoint-regression.mjs",
@@ -70,6 +73,9 @@ for rel, expected in lock.get("components", {}).items():
 rec("component_hash_lock_matches", not hash_mismatches, hash_mismatches)
 
 helper = (PRODUCT / "runtime/hosted-helper.mjs").read_text(encoding="utf-8")
+helper_state_coordinator = (PRODUCT / "runtime/helper-state-coordinator.mjs").read_text(encoding="utf-8")
+helper_state_race_regression = (PRODUCT / "tests/helper-state-race-regression.mjs").read_text(encoding="utf-8")
+helper_state_race_ps51 = (PRODUCT / "tests/run_helper_state_race_regression.ps1").read_text(encoding="utf-8")
 quality_adapter = (PRODUCT / "runtime/local-quality-adapter.mjs").read_text(encoding="utf-8")
 quality_windows_regression = (PRODUCT / "tests/run_local_quality_adapter_regression.ps1").read_text(encoding="utf-8")
 core = (PRODUCT / "core/OneCChatWorker.Core.psm1").read_text(encoding="utf-8")
@@ -107,6 +113,10 @@ rec("helper_recover_first_cas", "existing&&replace&&existing.sha256===hash" in h
 rec("helper_active_manifest_scope", "collectArtifacts(manifest)" in helper and "artifactPrefixes" in helper, "manifest artifact prefixes")
 rec("helper_state_is_snapshot_bound", "s.snapshot_id===SNAPSHOT" in helper and "snapshot_id:SNAPSHOT" in helper, "session state bound to source snapshot")
 rec("helper_import_matches_installed_layout", "../provider/source-reader-integration.mjs" in helper, "installed helper/provider sibling layout")
+rec("helper_state_serialized_persistence_contract", all(t in helper+helper_state_coordinator for t in ["createSerializedMessagePump","persistAndSendProcessed","saveStateAtomic","HELPER_STATE_PERSIST_FAILED","MESSAGE_HANDLER_ERROR","HELPER_STATE_PERSISTENCE_FATAL"]) and "ws.addEventListener('message',async ev=>" not in helper, "helper message dispatch serialized; processed result persists before send; persistence failure contained/classified")
+rec("helper_state_fixed_tmp_recovery_compatible", "const tmp=statePath+'.tmp'" in helper_state_coordinator and "CURRENT_TMP_MONOTONIC_SUPERSET_PROMOTED" in core and "HELPER_STATE_CURRENT_TMP_AMBIGUOUS" in core, "fixed tmp remains canonical recovery evidence; strict monotonic superset only")
+rec("helper_state_monotonic_recovery_regression", all(t in s4_admission_regression for t in ["helper_state_current_tmp_monotonic_superset_promoted","helper_state_monotonic_archives_both_pre_states","helper_state_current_tmp_ambiguous_fails_closed"]), "PS5.1 recovery covers strict superset promotion + divergent fail-closed")
+rec("helper_state_race_regression_contract", all(t in helper_state_race_regression for t in ["OVERLAPPING_REQUESTS_SERIALIZED_NO_CRASH","FINAL_STATE_HAS_EVERY_COMMITTED_REQUEST_ONCE","PROCESSED_REQUEST_REPLAY_STORED_RESULT","PERSIST_FAILURE_FINAL_VALID_TMP_RECOVERABLE","PERSIST_FAILURE_CLASSIFIED_QUEUE_CONTAINED","NEW_CONNECTION_PUMP_RECOVERS_AFTER_FAILURE","HELPER_WIRES_SERIALIZED_MESSAGE_PUMP","ORDINARY_CLOSE_ERROR_RECONNECT_LOOP_PRESERVED","HELPER_STATE_RACE_REGRESSION_PASS"]) and "HELPER_STATE_RACE_PS51_WRAPPER_PASS" in helper_state_race_ps51, "focused helper race/failure/reconnect regression declared")
 quality_lock = lock.get("local_quality_adapter", {})
 rec("quality_adapter_exact_contract", quality_lock.get("contract") == "LOCAL_QUALITY_ADAPTER_Q0_V1" and quality_lock.get("report_schema") == "LOCAL_QUALITY_REPORT_V1" and quality_lock.get("operations") == ["META_INFO","FORM_INFO","FORM_VALIDATE"], quality_lock)
 rec("quality_adapter_exact_upstream_pin", quality_lock.get("upstream_commit") == "1fa205b961f4ed3659f58f4b55d2d9b1d5e4810e" and quality_lock.get("license") == "MIT", quality_lock.get("upstream_commit"))
