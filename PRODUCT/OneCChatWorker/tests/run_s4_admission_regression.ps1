@@ -54,6 +54,35 @@ try{
  A 'continue_predecessor_not_operator_selectable' (-not($continueParams -contains 'Predecessor') -and -not($continueParams -contains 'ProjectId') -and -not($continueParams -contains 'TaskId'))
  $launcher=Get-Content (Join-Path $package 'OneCChatWorker.ps1') -Raw -Encoding UTF8
  A 'explicit_continue_operator_action_present' ($launcher.Contains("'CONTINUE' {Run-Continue;break}") -and $launcher.Contains("recommended='Continue previous task'"))
+ $packagePolicy=Get-S4AdmissionPolicy
+ A 'runtime_lock_package_layout_exact' ($packagePolicy.admission_schema -eq 3 -and $packagePolicy.candidate.task_request_limit -eq 2048 -and $packagePolicy.candidate.task_result_byte_limit -eq 2097152 -and $packagePolicy.candidate.task_ttl_minutes -eq 720)
+ $installedProduct=Join-Path $s.path 'installed-product';New-Item -ItemType Directory -Force -Path $installedProduct|Out-Null
+ $installedCore=Join-Path $installedProduct 'OneCChatWorker.Core.psm1'
+ Copy-Item -LiteralPath (Join-Path $package 'core\OneCChatWorker.Core.psm1') -Destination $installedCore
+ Copy-Item -LiteralPath (Join-Path $package 'runtime.lock.json') -Destination (Join-Path $installedProduct 'runtime.lock.json')
+ $probe=Join-Path $s.path 'runtime-lock-probe.ps1'
+ $probeText=@'
+param([Parameter(Mandatory)][string]$Core,[switch]$ExpectMissing)
+$ErrorActionPreference='Stop'
+Import-Module $Core -Force -DisableNameChecking
+try{
+ $policy=Get-S4AdmissionPolicy
+ if($ExpectMissing){Write-Output 'UNEXPECTED_SUCCESS';exit 7}
+ $policy|ConvertTo-Json -Depth 8 -Compress
+}catch{
+ if($ExpectMissing){Write-Output $_.Exception.Message;exit 0}
+ throw
+}
+'@
+ [IO.File]::WriteAllText($probe,$probeText,[Text.UTF8Encoding]::new($false))
+ $installedJson=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $probe -Core $installedCore
+ A 'runtime_lock_installed_layout_probe_exit' ($LASTEXITCODE -eq 0) ($installedJson -join [Environment]::NewLine)
+ $installedPolicy=($installedJson -join [Environment]::NewLine)|ConvertFrom-Json
+ A 'runtime_lock_installed_layout_exact' ($installedPolicy.admission_schema -eq 3 -and $installedPolicy.candidate.task_request_limit -eq 2048 -and $installedPolicy.candidate.task_result_byte_limit -eq 2097152 -and $installedPolicy.candidate.task_ttl_minutes -eq 720)
+ $missingRoot=Join-Path $s.path 'missing-product';New-Item -ItemType Directory -Force -Path $missingRoot|Out-Null
+ $missingCore=Join-Path $missingRoot 'OneCChatWorker.Core.psm1';Copy-Item -LiteralPath (Join-Path $package 'core\OneCChatWorker.Core.psm1') -Destination $missingCore
+ $missingOutput=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $probe -Core $missingCore -ExpectMissing
+ A 'runtime_lock_missing_layout_fails_closed' ($LASTEXITCODE -eq 0 -and (($missingOutput -join [Environment]::NewLine) -match '^RUNTIME_LOCK_MISSING: expected '))
  $default=New-Admission -ProjectId $project -TaskId 'accepted-policy-default' -TaskGoal 'operator accepted S4 policy' -WorkerRoot $worker -ProgramDataRoot $pd -RelayUrl 'wss://example.invalid/helper' -AcceptedState $accepted
  A 'accepted_policy_default_exact' ($default.caps.task_request_limit -eq 2048 -and $default.caps.task_result_byte_limit -eq 2097152 -and $default.caps.ttl_minutes -eq 720)
  A 'accepted_policy_epoch_and_result_exact' ($default.caps.epoch_soft_request_limit -eq 32 -and $default.caps.epoch_soft_result_byte_limit -eq 36000 -and $default.caps.max_result_bytes -eq 3000)
