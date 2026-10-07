@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 137122,
-      "sha256": "2021addc482f17c0b29851463e6c0f81850023636b4b5eb8f3b0911ed6e1140a"
+      "size": 142910,
+      "sha256": "73f6bb292f57476cfc29bbda9beb560c0724405ce6b2581eb991271fe0528875"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -521,7 +521,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7271,
-      "sha256": "d5506b254099b5c4a5f969f86ba9474d1b13b0ba8e0d694e9201a3840e87f19a"
+      "sha256": "8e295c39c01ffc12c5e41c9f075021298c3d1b347a3054be5590708c87d3094b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -630,8 +630,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_s4_admission_regression.ps1",
-      "size": 9237,
-      "sha256": "6a0ea17ec2e071b995482a6733d8e3ae74d4b42a397c6b66f9171f5c4cbaab29"
+      "size": 12427,
+      "sha256": "bd68dbe27807c40fba5c948d12afc651661d42ae9f35b21eeea08a1559531edb"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
@@ -2605,5 +2605,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "bf7be1d22ad9b6b3704745a9087d3bbf9919b02f694886f5f6c83ad1e9cc9f62"
+  "snapshot_digest": "da75d10d11cecfd471341299339806839bcee4bf701200e733346a7dc2d31fab"
 }
