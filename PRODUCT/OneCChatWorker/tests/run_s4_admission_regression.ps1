@@ -54,9 +54,11 @@ try{
  A 'continue_predecessor_not_operator_selectable' (-not($continueParams -contains 'Predecessor') -and -not($continueParams -contains 'ProjectId') -and -not($continueParams -contains 'TaskId'))
  $launcher=Get-Content (Join-Path $package 'OneCChatWorker.ps1') -Raw -Encoding UTF8
  A 'explicit_continue_operator_action_present' ($launcher.Contains("'CONTINUE' {Run-Continue;break}") -and $launcher.Contains("recommended='Continue previous task'"))
- $blocked=$false
- try{New-Admission -ProjectId $project -TaskId 'pending-default' -WorkerRoot $worker -ProgramDataRoot $pd -AcceptedState $accepted|Out-Null}catch{$blocked=$_.Exception.Message -eq 'S4_CAP_QUALIFICATION_REQUIRED'}
- A 'unqualified_default_fails_closed' $blocked
+ $default=New-Admission -ProjectId $project -TaskId 'accepted-policy-default' -TaskGoal 'operator accepted S4 policy' -WorkerRoot $worker -ProgramDataRoot $pd -RelayUrl 'wss://example.invalid/helper' -AcceptedState $accepted
+ A 'accepted_policy_default_exact' ($default.caps.task_request_limit -eq 2048 -and $default.caps.task_result_byte_limit -eq 2097152 -and $default.caps.ttl_minutes -eq 720)
+ A 'accepted_policy_epoch_and_result_exact' ($default.caps.epoch_soft_request_limit -eq 32 -and $default.caps.epoch_soft_result_byte_limit -eq 36000 -and $default.caps.max_result_bytes -eq 3000)
+ $ttlMinutes=([datetime]::Parse($default.task_expires_utc).ToUniversalTime()-[datetime]::Parse($default.task_created_utc).ToUniversalTime()).TotalMinutes
+ A 'accepted_policy_ttl_720_exact' ([math]::Abs($ttlMinutes-720) -lt 0.01) $ttlMinutes
  $core=Get-Content (Join-Path $package 'core\OneCChatWorker.Core.psm1') -Raw -Encoding UTF8
  $block=$core.Substring($core.IndexOf('function New-Admission {'),$core.IndexOf('function Test-IsAdministrator {')-$core.IndexOf('function New-Admission {'))
  A 'no_deep_verify_in_admission' (-not($block.Contains('Verify-WorkerProject')) -and -not($block.Contains('Get-TreeDigest')))

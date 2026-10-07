@@ -23,7 +23,7 @@
     "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
     "core/OneCChatWorker.Core.psm1": "97ae2c2e5b8351cfe5bd26640f9beebb0a0a2406a56419ed9a00a411f9b0f564",
     "OneCChatWorker.ps1": "6fbfc06148b617f7bb077d748c5d185e5c67964f298ada40eacfb69bd47a60ed",
-    "README.md": "4631ef3ac12ae6c37b7c40e5b3551f9565a090fc67249404fdb49ecde8525da6",
+    "README.md": "2d974258fc191dcad08ffa23bb485ed34c09964d5d32bcacc67cfc0c186ec857",
     "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",
     "control-center/publish/OneCArchitecture.ControlCenter.exe": "b875904a4e74dc257f06f9888d267f3c2db1df3daadd26b2c444cfc264972cc5"
   },
@@ -48,16 +48,25 @@
       "wrangler_sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da",
       "package_sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94",
       "package_lock_sha256": "059aed20a675a0b2edc9314c334ae5b5ab9dbfb68e43e7bd4f8668fce0420de5",
-      "deployment_status": "NOT_DEPLOYED_PENDING_CAP_ACCEPTANCE"
+      "deployment_status": "NOT_DEPLOYED_PENDING_PRODUCTION_DEPLOYMENT"
     },
     "s4": {
       "contract": "S4_DURABLE_TASK_ACCOUNTING_V1",
       "admission_schema": 3,
-      "qualification_status": "PENDING",
+      "qualification_status": "QUALIFIED_CANDIDATE",
       "epoch_soft_request_limit": 32,
       "epoch_soft_result_byte_limit": 36000,
       "max_result_bytes": 3000,
-      "candidate": null,
+      "candidate": {
+        "task_request_limit": 2048,
+        "task_result_byte_limit": 2097152,
+        "task_ttl_minutes": 720,
+        "status": "OPERATOR_ACCEPTED_PRODUCT_POLICY",
+        "authority": "#93 comment 6038448577",
+        "epoch_soft_request_limit": 32,
+        "epoch_soft_result_byte_limit": 36000,
+        "max_result_bytes": 3000
+      },
       "benchmark_candidate_review": {
         "task_request_limit": 480,
         "task_result_byte_limit": 576000,
