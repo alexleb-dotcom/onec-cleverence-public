@@ -520,8 +520,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 7440,
-      "sha256": "46ff8b9fc98369a49db8b1c4278a1c2cdec7fbc720eb32f90bbfaa6afa601116"
+      "size": 7271,
+      "sha256": "d12c9ed4dcbdf6ec4828e2dbf333e43de0effb1f180f3e68364f89d9b4d136e8"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -2610,5 +2610,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "550271a4c5bcbc14a6c23e21d1dcb64eb1ac11d889c25020737384abc81eed0b"
+  "snapshot_digest": "7f21ef1e1378b304745a9b1448b21337d2728b0ed8e19551232b2eff2407a4fc"
 }
