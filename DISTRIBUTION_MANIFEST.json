@@ -2155,8 +2155,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 47491,
-      "sha256": "dedc6b6bc691b05dd4188614efa6197d42c4f8eb18728e91ca5880a4a3e4d103"
+      "size": 47995,
+      "sha256": "cb8f57022761a136c59643738a0e6923ecc044b37e46a1fd8b6e7e459d78bd04"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2610,5 +2610,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "2f9f7f9498e503822af6d9d1711fcc8135f7fe5bd0966d7ecee79722dc09c218"
+  "snapshot_digest": "7585791ad89073b246b42cb92cde44c7c98782fd8692337d0101c04e7ce1d272"
 }
