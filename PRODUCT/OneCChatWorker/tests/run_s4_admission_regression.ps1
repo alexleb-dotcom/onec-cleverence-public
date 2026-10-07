@@ -109,8 +109,27 @@ try{
  $preserved=Repair-HelperStateForActiveAdmission -ProgramDataRoot $pd
  A 'helper_state_matching_current_preserved' ($preserved.status -eq 'CURRENT_STATE_PRESERVED' -and $preserved.action -eq 'DUPLICATE_CURRENT_TMP_REMOVED' -and (Get-Sha256File $statePath) -eq $currentSha -and -not(Test-Path -LiteralPath $tmpPath))
 
+ $monoFinal=Get-Content -LiteralPath $statePath -Raw -Encoding UTF8|ConvertFrom-Json
+ $monoFinal.processed=[pscustomobject][ordered]@{
+  'mcp-final'=[pscustomobject][ordered]@{type='result';request_id='mcp-final';status='OK';metadata=[pscustomobject]@{op='read'};payload=[pscustomobject]@{value='final'}}
+ }
+ $monoFinal.quality_targets=@([pscustomobject]@{target_relative='old-quality'})
+ Write-StateDoc $statePath $monoFinal
+ $monoFinalSha=Get-Sha256File $statePath
+ $monoTmp=($monoFinal|ConvertTo-Json -Depth 20|ConvertFrom-Json)
+ $monoTmp.processed|Add-Member -NotePropertyName 'mcp-tmp' -NotePropertyValue ([pscustomobject][ordered]@{type='result';request_id='mcp-tmp';status='ERROR';metadata=[pscustomobject]@{op='read';error_class='EPERM'};payload=[pscustomobject]@{error='EPERM'}})
+ $monoTmp.quality_targets=@([pscustomobject]@{target_relative='new-quality'})
+ Write-StateDoc $tmpPath $monoTmp
+ $monoTmpSha=Get-Sha256File $tmpPath
+ $monoRecovered=Repair-HelperStateForActiveAdmission -ProgramDataRoot $pd
+ $monoPublished=Get-Content -LiteralPath $statePath -Raw -Encoding UTF8|ConvertFrom-Json
+ $evidenceShas=@($monoRecovered.evidence|ForEach-Object{[string]$_.sha256})
+ A 'helper_state_current_tmp_monotonic_superset_promoted' ($monoRecovered.status -eq 'RECOVERED' -and $monoRecovered.action -eq 'CURRENT_TMP_MONOTONIC_SUPERSET_PROMOTED' -and (Get-Sha256File $statePath) -eq $monoTmpSha -and -not(Test-Path -LiteralPath $tmpPath) -and @($monoPublished.processed.PSObject.Properties).Count -eq 2)
+ A 'helper_state_monotonic_archives_both_pre_states' (@($monoRecovered.evidence).Count -eq 2 -and $evidenceShas -contains $monoFinalSha -and $evidenceShas -contains $monoTmpSha -and @($monoRecovered.evidence|Where-Object{Test-Path -LiteralPath ([string]$_.path) -PathType Leaf}).Count -eq 2)
+
+ $currentSha=Get-Sha256File $statePath
  $ambiguous=Get-Content -LiteralPath $statePath -Raw -Encoding UTF8|ConvertFrom-Json
- $ambiguous.processed=[pscustomobject]@{canary='different'}
+ $ambiguous.processed.'mcp-final'.payload.value='conflicting-content'
  Write-StateDoc $tmpPath $ambiguous
  $ambiguousFailed=$false
  try{Repair-HelperStateForActiveAdmission -ProgramDataRoot $pd|Out-Null}catch{$ambiguousFailed=$_.Exception.Message -eq 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'}
