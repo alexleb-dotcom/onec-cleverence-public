@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
   createTaskRecord,reconcileTaskHello,reserveRequest as reserveRequestRaw,commitRequest,chargeAmbiguousRequest,
-  lifecycleProjection,minimalControlPayload as minimalControlPayloadRaw,rotateEpoch,taskState as taskStateRaw,S4_ACCOUNTING_CONTRACT
+  lifecycleProjection,minimalControlPayload as minimalControlPayloadRaw,rotateEpoch,taskState as taskStateRaw,S4_ACCOUNTING_CONTRACT,canonicalizeRecoveredOrphanPredecessor,activityReceiptHashInput,sealActivityReceipt,unsealedTerminalReceipts
 } from '../relay/src/s4-accounting.js';
 
 const HERE=path.dirname(fileURLToPath(import.meta.url));
@@ -273,6 +273,58 @@ ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_DYNAMIC',()=>{
   assert(size(tooLarge)>3000);
   assert(relay.includes("if(bytes>record.max_result_bytes)"));
   assert(relay.includes("chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'})"));
+});
+
+ok('MULTIPLE_ORPHAN_RESERVATIONS_RECONNECT',()=>{
+ const h=hello(),r=make(h), ids=['orphan1','orphan2','orphan3','orphan4'];
+ for(const id of ids)assert.equal(reserveRequest(r,{requestId:id,fingerprint:'fp-'+id,op:'context',epochIdFactory:epochFactory}).action,'EXECUTE');
+ assert.equal(r.activity_seq,4);
+ const originals=ids.map(id=>structuredClone(r.request_receipts[id].activity_cursor_before));
+ assert(originals.every(c=>c.activity_seq===0&&c.receipt_sha256===null));
+ reconcileTaskHello(r,h,{nowMs:TEST_NOW+5000});
+ assert.equal(r.task_result_bytes_used,12000);
+ assert.equal(r.task_requests_used,4);
+ let prev=null;
+ for(let i=0;i<ids.length;i++){
+  const id=ids[i],receipt=r.request_receipts[id];
+  canonicalizeRecoveredOrphanPredecessor(r,id);
+  assert.equal(receipt.activity_cursor_before.receipt_sha256,prev);
+  if(i>0)assert.deepEqual(receipt.activity_cursor_before_original,originals[i]);
+  const digest=hashJson(activityReceiptHashInput(r,id,receipt.safe_result));
+  sealActivityReceipt(r,{requestId:id,safeResult:receipt.safe_result,activitySha256:digest});
+  prev=digest;
+ }
+ assert.equal(r.activity_committed_seq,4);
+ assert.equal(r.activity_integrity_sha256,prev);
+ assert.equal(unsealedTerminalReceipts(r).length,0);
+ assert.equal(r.task_result_bytes_used,12000);
+ assert.equal(r.session_id,h.session_id);
+});
+ok('RECONNECT_RECOVERY_IDEMPOTENT',()=>{
+ const h=hello(),r=make(h);
+ for(const id of ['a','b'])reserveRequest(r,{requestId:id,fingerprint:id,op:'read',epochIdFactory:epochFactory});
+ reconcileTaskHello(r,h);
+ for(const id of ['a','b']){
+  canonicalizeRecoveredOrphanPredecessor(r,id);
+  const receipt=r.request_receipts[id];
+  sealActivityReceipt(r,{requestId:id,safeResult:receipt.safe_result,activitySha256:hashJson(activityReceiptHashInput(r,id,receipt.safe_result))});
+ }
+ const before=JSON.stringify(r);
+ reconcileTaskHello(r,h);
+ assert.equal(JSON.stringify(r),before);
+ assert.equal(r.task_result_bytes_used,6000);
+});
+ok('GAP_OR_NONRECOVERABLE_CONTRADICTION_FAILS_CLOSED',()=>{
+ const h=hello(),r=make(h);
+ reserveRequest(r,{requestId:'a',fingerprint:'a',op:'read'});
+ reserveRequest(r,{requestId:'b',fingerprint:'b',op:'read'});
+ reconcileTaskHello(r,h);
+ assert.throws(()=>canonicalizeRecoveredOrphanPredecessor(r,'b'),/ACTIVITY_SEQUENCE_GAP/);
+ const a=r.request_receipts.a;
+ a.reason='HELPER_TIMEOUT';
+ a.activity_cursor_before.receipt_sha256='f'.repeat(64);
+ assert.equal(canonicalizeRecoveredOrphanPredecessor(r,'a'),r);
+ assert.throws(()=>sealActivityReceipt(r,{requestId:'a',safeResult:a.safe_result,activitySha256:hashJson(activityReceiptHashInput(r,'a',a.safe_result))}),/ACTIVITY_PREDECESSOR_MISMATCH/);
 });
 
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);
