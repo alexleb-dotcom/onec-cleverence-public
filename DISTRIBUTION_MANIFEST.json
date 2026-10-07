@@ -505,8 +505,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
-      "size": 32116,
-      "sha256": "b75fa19e5937818fef16063b5ce689a17f20f6baaaba7306bce3d179903858f2"
+      "size": 33479,
+      "sha256": "1e3d09ea04d05e289bbf13108fcb07ec00632cad88266ecbf6b5fb665f528621"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
@@ -521,7 +521,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7271,
-      "sha256": "8e295c39c01ffc12c5e41c9f075021298c3d1b347a3054be5590708c87d3094b"
+      "sha256": "12eaca909e6cf2ed1564a036c38da229defda9a0d0030db1d9451b7bff4eb2b0"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -665,8 +665,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/s4-accounting-regression.mjs",
-      "size": 13679,
-      "sha256": "1aa39f850a87964ae4cb84adaa801507bf31ff6aca4292d0b4668e5368d70ea3"
+      "size": 18059,
+      "sha256": "1bc3dae53a21be73258f793e5027fa5b652d09796849db9b4ac6b06c8c4ba145"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/source-acquisition-regression.mjs",
@@ -2150,8 +2150,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 47491,
-      "sha256": "dedc6b6bc691b05dd4188614efa6197d42c4f8eb18728e91ca5880a4a3e4d103"
+      "size": 47796,
+      "sha256": "29a4b3b1284aad6773c77ea7fca27b85aecf582a9682e954a1425df1d5407642"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2605,5 +2605,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "da75d10d11cecfd471341299339806839bcee4bf701200e733346a7dc2d31fab"
+  "snapshot_digest": "623704ac2b3e539885656cc987158165dc9254007ebae08b6b480c63bc57a817"
 }
