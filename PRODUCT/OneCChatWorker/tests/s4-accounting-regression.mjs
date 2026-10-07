@@ -241,4 +241,38 @@ ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_GUARD',()=>{
   assert(relay.includes("commitRequest(record,{requestId:clientId,fingerprint,payloadBytes:bytes})"));
 });
 
+ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_DYNAMIC',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  const start=relay.indexOf("    let finalPayload=result.payload;");
+  const end=relay.indexOf("    const bytes=payloadBytes(finalPayload);",start);
+  assert(start>0&&end>start);
+  // Exercise the exact production context-shaping statements, not a test reimplementation.
+  const shape=new Function('body','result','record','lifecycleProjection','projectCommittedRecord','payloadBytes',
+    relay.slice(start,end)+';return finalPayload;');
+  const size=obj=>Buffer.byteLength(JSON.stringify(obj),'utf8');
+  const project=(record,{payloadBytes})=>{
+    if(payloadBytes>record.max_result_bytes)throw new Error('RESULT_CAP');
+    return {...record,projected_bytes:payloadBytes};
+  };
+  const projection=record=>({accounting:{used:record.projected_bytes||0},task_state:'ACTIVE'});
+  const record={max_result_bytes:3000};
+  const base={task_id:'T',session_id:'s',snapshot_id:'x',recovery:{compatibility:'CURRENT'},core:'x'.repeat(1900),
+    prepared_quality:{report:'q'.repeat(950)},target_hints:['target']};
+  assert(size(base)<=3000);
+  assert(size({...base,...projection(record)})>3000);
+  const shaped=shape({op:'context'},{payload:base},record,projection,project,size);
+  assert(size(shaped)<=3000);
+  assert.equal(shaped.task_id,'T');
+  assert.deepEqual(shaped.recovery,{compatibility:'CURRENT'});
+  assert(shaped.accounting);
+  assert.equal(shaped.prepared_quality,undefined);
+  assert.equal(shaped.target_hints,'undefined'===typeof shaped.target_hints?undefined:shaped.target_hints);
+  const required={...base};delete required.prepared_quality;delete required.target_hints;
+  required.core='x'.repeat(3400);
+  const tooLarge=shape({op:'context'},{payload:required},record,projection,project,size);
+  assert(size(tooLarge)>3000);
+  assert(relay.includes("if(bytes>record.max_result_bytes)"));
+  assert(relay.includes("chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'})"));
+});
+
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);
