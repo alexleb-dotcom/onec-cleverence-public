@@ -81,9 +81,49 @@ jobs:
             --receipt "$RUNNER_TEMP/public-fast-receipt.json"
           cat "$RUNNER_TEMP/public-fast-receipt.json"
 
+  public-ui:
+    name: Public UI
+    needs: public-fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Resolve exact shareable root
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f DISTRIBUTION_MANIFEST.json; then
+            echo "VALIDATION_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          else
+            snapshot_root="$(mktemp -d)"
+            python TOOLS/build_distribution_snapshot.py --output "$snapshot_root/shareable.zip"
+            mkdir "$snapshot_root/extracted"
+            unzip -q "$snapshot_root/shareable.zip" -d "$snapshot_root/extracted"
+            echo "VALIDATION_ROOT=$snapshot_root/extracted/onec-cleverence" >> "$GITHUB_ENV"
+          fi
+      - name: Validate exact snapshot before UI gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VALIDATION_ROOT"
+          python TOOLS/validate_distribution_snapshot.py --root .
+      - name: Run public UI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$VALIDATION_ROOT"
+          python TESTS/run_control_center_ui_static_regression.py
+
   public-full:
     name: Public Full
-    needs: public-fast
+    needs: [public-fast, public-ui]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

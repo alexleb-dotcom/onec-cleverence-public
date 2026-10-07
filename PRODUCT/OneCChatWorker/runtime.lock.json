@@ -15,16 +15,17 @@
   },
   "components": {
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
-    "runtime/hosted-helper.mjs": "d3e2779016a3ae04e9b9347e84fbea7cbc2c9179b91988bbdc5f434b2db575ac",
+    "runtime/hosted-helper.mjs": "2000441082535f1b0860fe9d6685d8b3723737a841fca188bcd82a7ebd2c429d",
     "runtime/source-acquisition.mjs": "9742f8644f81288dc49b4191d557d564d8e5927c61656f586a4835505eff312e",
     "runtime/local-quality-adapter.mjs": "8964bcca9c16f0cf26ad49f6a974b21c5d27eb5918dc241081bdb66107de199a",
     "runtime/quality/cc-1c-skills/meta-info.ps1": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a",
     "runtime/quality/cc-1c-skills/form-info.ps1": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727",
     "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
-    "core/OneCChatWorker.Core.psm1": "bd3b961afae74889c68fbf079991d03d13380ff6c7ec029013582c0d86e328c6",
-    "OneCChatWorker.ps1": "271feb14bb9c05bee279937a6d28895ac1edc864ff0298777a2b42a6fa924a2f",
+    "core/OneCChatWorker.Core.psm1": "97ae2c2e5b8351cfe5bd26640f9beebb0a0a2406a56419ed9a00a411f9b0f564",
+    "OneCChatWorker.ps1": "6fbfc06148b617f7bb077d748c5d185e5c67964f298ada40eacfb69bd47a60ed",
     "README.md": "4631ef3ac12ae6c37b7c40e5b3551f9565a090fc67249404fdb49ecde8525da6",
-    "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348"
+    "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",
+    "control-center/publish/OneCArchitecture.ControlCenter.exe": "b875904a4e74dc257f06f9888d267f3c2db1df3daadd26b2c444cfc264972cc5"
   },
   "hosted_mcp": {
     "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
@@ -41,9 +42,9 @@
       "component": "relay/src/index.js",
       "accepted_pre_s4_deployment": "5971635f-448e-4ccc-bf48-59709ef95e1a",
       "accepted_pre_s4_source_sha256": "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0",
-      "current_candidate_source_sha256": "e73250524f1359db54e18b974c5b76f02f5b5799db3d10ef48438c4456088071",
+      "current_candidate_source_sha256": "b75fa19e5937818fef16063b5ce689a17f20f6baaaba7306bce3d179903858f2",
       "accounting_component": "relay/src/s4-accounting.js",
-      "accounting_component_sha256": "542c57717478b10471d8792b53f791bc71d46cb1568fb88b72f6cd1dc43d9e45",
+      "accounting_component_sha256": "b36eb841bd8b905e7c29275078a009163f212a061b288c58d15f06ab8eaf0802",
       "wrangler_sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da",
       "package_sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94",
       "package_lock_sha256": "059aed20a675a0b2edc9314c334ae5b5ab9dbfb68e43e7bd4f8668fce0420de5",
@@ -131,5 +132,29 @@
     "ordinary_nontrivial_target_max_calls": 3,
     "local_search_fanout": "one bounded provider search per admitted artifact inside one remote request",
     "polling_required": false
+  },
+  "control_center": {
+    "contract": "UX2_DESKTOP_CONTROL_CENTER_V1",
+    "framework": "net10.0-windows",
+    "runtime": "win-x64",
+    "self_contained": true,
+    "single_file": true,
+    "artifact": "control-center/publish/OneCArchitecture.ControlCenter.exe",
+    "signing_status": "UNSIGNED_INTERNAL_PILOT",
+    "start_menu_shortcut": "OneC Architecture Control Center.lnk",
+    "startup_policy": "HKCU_EXPLICIT_OPERATOR_CHOICE",
+    "service": false,
+    "loopback_listener": false,
+    "webview2": false,
+    "powershell7_required": false,
+    "ui_context_contract": "UI_CONTEXT_V1",
+    "model_surface": [
+      "source_context",
+      "source_search",
+      "source_read",
+      "proposal_write",
+      "proposal_read",
+      "task_checkpoint_write"
+    ]
   }
 }

@@ -304,6 +304,6 @@ export function activityDelta(record,{fromCursor,throughSeq,limit=48}={}){
   }
   const last=rows.length?rows[rows.length-1]:null;
   const toCursor={schema:S4_ACTIVITY_CURSOR_SCHEMA,task_admission_id:record.task_admission_id,activity_seq:end,receipt_sha256:end===0?null:(last&&last.activity_seq===end?last.activity_sha256:record.activity_integrity_sha256)};
-  const max=Math.max(1,Math.min(96,limit)),events=rows.slice(Math.max(0,rows.length-max)).map(r=>({seq:r.activity_seq,op:r.op,state:r.state,charged_bytes:r.charged_bytes,epoch_seq:r.epoch_seq,safe_request:copy(r.safe_request||{}),safe_result:copy(r.safe_result||{}),activity_sha256:r.activity_sha256}));
+  const max=Math.max(1,Math.min(96,limit)),events=rows.slice(Math.max(0,rows.length-max)).map(r=>({seq:r.activity_seq,op:r.op,state:r.state,charged_bytes:r.charged_bytes,epoch_seq:r.epoch_seq,created_utc:r.created_utc,committed_utc:r.committed_utc||null,safe_request:copy(r.safe_request||{}),safe_result:copy(r.safe_result||{}),activity_sha256:r.activity_sha256}));
   return {schema:'S4_ACTIVITY_DELTA_V1',available:true,from_cursor:copy(fromCursor),to_cursor:toCursor,request_count:rows.length,charged_result_bytes:charged,operation_counts:counts,safe_targets:targets,critical_events:critical,epoch_rollovers:rollovers,events,truncated:rows.length>events.length,receipt_identity:toCursor.receipt_sha256};
 }

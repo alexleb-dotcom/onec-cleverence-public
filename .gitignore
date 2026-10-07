@@ -22,6 +22,8 @@ temp/
 # Generated artifacts
 build/
 dist/
+**/bin/
+**/obj/
 
 # Release packages are published through GitHub Releases
 releases/*.zip

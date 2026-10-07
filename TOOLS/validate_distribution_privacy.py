@@ -56,6 +56,7 @@ SECRET_ASSIGNMENT_RE = re.compile(
 BASE64_PART_RE = re.compile(r"^(?P<prefix>.+\.b64)\.part(?P<part>[0-9A-Za-z]+)$")
 BINARY_REVIEW_POLICY_REL = "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json"
 BINARY_REVIEW_POLICY_ID = "shareable-binary-review-v1"
+REVIEWED_BINARY_SAFE_EMBEDDED_FINDINGS = {"PRIVATE_NETWORK_IPV4"}
 BASE64_MAX_PARTS = 64
 BASE64_MAX_ENCODED_BYTES = 1024 * 1024
 BASE64_MAX_DECODED_BYTES = 768 * 1024
@@ -291,6 +292,13 @@ def _validate_binary_review(
         return [{"type": "BINARY_REVIEW_TYPE_MISMATCH", "path": rel, "expected_type_class": row.get("type_class"), "actual_type_class": detected_type_class}]
     if not isinstance(row.get("reason"), str) or not row["reason"].strip():
         return [{"type": "BINARY_REVIEW_REASON_MISSING", "path": rel}]
+    allowed = row.get("allowed_embedded_findings", [])
+    if (
+        not isinstance(allowed, list)
+        or len(allowed) != len(set(allowed))
+        or any(not isinstance(value, str) or value not in REVIEWED_BINARY_SAFE_EMBEDDED_FINDINGS for value in allowed)
+    ):
+        return [{"type": "BINARY_REVIEW_FINDING_EXCEPTION_INVALID", "path": rel}]
     return []
 
 
@@ -452,9 +460,9 @@ def validate_distribution_paths(root: Path, rel_paths: list[str]) -> dict:
 
         data = path.read_bytes()
 
-        # Secret/local-path checks run for every selected file before type-specific policy.
+        # Secret/local-path checks run for every selected file. Exact hash-reviewed binary
+        # records may suppress only a hard-coded safe embedded-finding class after review succeeds.
         content_errors, text = _high_confidence_content_findings(data, rel)
-        errors.extend(content_errors)
 
         category, type_class = _detect_public_type(rel, data, text)
         classification_counts[category] += 1
@@ -463,7 +471,13 @@ def validate_distribution_paths(root: Path, rel_paths: list[str]) -> dict:
             if review_policy_errors is None:
                 review_policy, review_policy_errors = _load_review_policy(root)
                 errors.extend(review_policy_errors)
-            errors.extend(_validate_binary_review(rel, data, type_class, review_policy))
+            binary_review_errors = _validate_binary_review(rel, data, type_class, review_policy)
+            errors.extend(binary_review_errors)
+            if not binary_review_errors:
+                row = _policy_records(review_policy, "reviewed_binary_files").get(rel, {})
+                allowed = set(row.get("allowed_embedded_findings", []))
+                content_errors = [finding for finding in content_errors if finding.get("type") not in allowed]
+        errors.extend(content_errors)
 
         attribution_exact = False
         if rel.startswith("THIRD_PARTY/"):

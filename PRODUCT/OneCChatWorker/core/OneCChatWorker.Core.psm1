@@ -1,4 +1,4 @@
-﻿Set-StrictMode -Version Latest
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:ProductVersion = '1.0.0-preview1'
@@ -296,6 +296,7 @@ function Test-InstalledProductIntegrity {
         'core/OneCChatWorker.Core.psm1'=(Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1')
         'OneCChatWorker.ps1'=(Join-Path $WorkerRoot 'OneCChatWorker.ps1')
         'README.md'=(Join-Path $ProgramDataRoot 'product\README.md')
+        'control-center/publish/OneCArchitecture.ControlCenter.exe'=(Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe')
     }
     $rows=@()
     foreach($rel in $map.Keys){
@@ -1144,7 +1145,7 @@ function Get-OutputProposalSummary {
 function Get-WorkerStatus {
     param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
     $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing;$runtimeState=Join-Path $ProgramDataRoot 'runtime\active-admission.json';$active=$null;if(Test-Path -LiteralPath $runtimeState){try{$active=Get-Content $runtimeState -Raw|ConvertFrom-Json}catch{}}
-    $rows=@();foreach($p in @($catalog.projects)){$v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}};$rows+=,[pscustomobject]@{project_id=$p.project_id;display_name=$p.display_name;active=($p.active -ne $false);verification=$(if($v.state -eq 'ACCEPTED'){'READY'}else{$v.state});fast_state=$v.state;fast_reason=$v.reason;source_snapshot_id=$v.source_snapshot_id;participant_count=@($p.participants|Where-Object{$_.active -ne $false}).Count}}
+    $rows=@();foreach($p in @($catalog.projects)){$v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}};$snapshotId=$(if($v.PSObject.Properties.Name -contains 'source_snapshot_id'){$v.source_snapshot_id}else{$null});$reason=$(if($v.PSObject.Properties.Name -contains 'reason'){$v.reason}else{$null});$rows+=,[pscustomobject]@{project_id=$p.project_id;display_name=$p.display_name;active=($p.active -ne $false);verification=$(if($v.state -eq 'ACCEPTED'){'READY'}else{$v.state});fast_state=$v.state;fast_reason=$reason;source_snapshot_id=$snapshotId;participant_count=@($p.participants|Where-Object{$_.active -ne $false}).Count}}
     $recent=@(Get-RecentWorkerOperations -Limit 20 -ProgramDataRoot $ProgramDataRoot);$lastVerify=@($recent|Where-Object{$_.operation_type -eq 'VERIFY'}|Select-Object -First 1);$installedPath=Join-Path $ProgramDataRoot 'installed-state.json';$installed=$null;if(Test-Path -LiteralPath $installedPath -PathType Leaf){try{$installed=Get-Content -LiteralPath $installedPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
     $integrity=$null;if($installed){try{$integrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot}catch{$integrity=[pscustomobject]@{status='FAIL';error_class=(($_.Exception.Message -split ':',2)[0]);message=$_.Exception.Message}}}else{$integrity=[pscustomobject]@{status='NOT_INSTALLED'}}
     [pscustomobject]@{product_version=$script:ProductVersion;installed=($null -ne $installed);installed_state=$installed;installed_integrity=$integrity;worker_root=$WorkerRoot;catalog_path=Get-CatalogPath $WorkerRoot;dependencies=Get-WorkerDependencyHealth $ProgramDataRoot;projects=$rows;active_admission=$active;helper=Get-HelperConnectionState $ProgramDataRoot;current_operation=Get-CurrentWorkerOperation $ProgramDataRoot;last_operation=$(if($recent.Count){$recent[0]}else{$null});operation_recovery=Get-OperationRecoveryClassification $ProgramDataRoot;last_verify=$(if($lastVerify.Count){$lastVerify[0]}else{$null});output=Get-OutputProposalSummary $WorkerRoot;state_check_contract='FAST_STATE_CHECK_V1'}
@@ -1551,6 +1552,7 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -Identity $identity -Secret
@@ -1562,7 +1564,50 @@ function Set-WorkerOperatorAcl {
         mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'task-state'))
         read_only=@((Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'product'))
         secret=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
-        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'),(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs'))
+        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'),(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs'),(Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe'))
+    }
+}
+
+function Get-ControlCenterStartMenuShortcutPath {
+    param([string]$ShortcutRoot)
+    if([string]::IsNullOrWhiteSpace($ShortcutRoot)){
+        $ShortcutRoot=[Environment]::GetFolderPath([Environment+SpecialFolder]::CommonPrograms)
+    }
+    if([string]::IsNullOrWhiteSpace($ShortcutRoot)){throw 'START_MENU_ROOT_UNAVAILABLE'}
+    Join-Path $ShortcutRoot 'OneC Architecture Control Center.lnk'
+}
+
+function Install-ControlCenterArtifact {
+    param(
+        [Parameter(Mandatory)][string]$PackageRoot,
+        [Parameter(Mandatory)][string]$ProgramDataRoot,
+        [Parameter(Mandatory)]$RuntimeLock,
+        [string]$ShortcutRoot
+    )
+    $rel='control-center/publish/OneCArchitecture.ControlCenter.exe'
+    $expected=[string]$RuntimeLock.components.$rel
+    if([string]::IsNullOrWhiteSpace($expected)){throw 'CONTROL_CENTER_LOCK_COMPONENT_MISSING'}
+    $source=Join-Path $PackageRoot 'control-center\publish\OneCArchitecture.ControlCenter.exe'
+    $destination=Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe'
+    $copy=Copy-ProductComponent -Source $source -Destination $destination -ExpectedSha256 $expected
+    $shortcutPath=Get-ControlCenterStartMenuShortcutPath -ShortcutRoot $ShortcutRoot
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $shortcutPath)|Out-Null
+    $shell=New-Object -ComObject WScript.Shell
+    $shortcut=$shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath=$destination
+    $shortcut.WorkingDirectory=(Split-Path -Parent $destination)
+    $shortcut.Description='OneC Architecture Control Center'
+    $shortcut.Save()
+    $verify=$shell.CreateShortcut($shortcutPath)
+    if([string]$verify.TargetPath -ne $destination){throw 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH'}
+    [pscustomobject]@{
+        status='PASS'
+        component=$copy
+        executable_path=$destination
+        shortcut_path=$shortcutPath
+        startup_policy='HKCU_EXPLICIT_OPERATOR_CHOICE'
+        service_created=$false
+        loopback_listener_created=$false
     }
 }
 
@@ -1591,6 +1636,8 @@ function Install-OneCChatWorker {
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1') -Destination (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -ExpectedSha256 ([string]$lock.components.'core/OneCChatWorker.Core.psm1'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'OneCChatWorker.ps1') -Destination (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -ExpectedSha256 ([string]$lock.components.'OneCChatWorker.ps1'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'README.md') -Destination (Join-Path $ProgramDataRoot 'product\README.md') -ExpectedSha256 ([string]$lock.components.'README.md'))
+    $controlCenter=Install-ControlCenterArtifact -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -RuntimeLock $lock
+    $componentResults+=,$controlCenter.component
     Copy-Item -LiteralPath (Join-Path $PackageRoot 'runtime.lock.json') -Destination (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Force
 
     $catalogAction='REUSED'
@@ -1634,6 +1681,7 @@ function Install-OneCChatWorker {
         catalog=[pscustomobject]@{path=(Get-CatalogPath $WorkerRoot);action=$catalogAction}
         snapshot_adoption=$snapshotAdoption
         components=$componentResults
+        control_center=$controlCenter
         installed_integrity=$installedIntegrity
         next=$(if($secretReady){'ADD/APPLY/VERIFY project then START'}else{'Complete ChatGPT app authorization and SETTINGS helper enrollment, then ADD/APPLY/VERIFY/START'})
     }
@@ -1767,7 +1815,8 @@ function Get-UninstallPlan {
             (Join-Path $ProgramDataRoot 'secrets'),
             (Join-Path $ProgramDataRoot 'product'),
             (Join-Path $ProgramDataRoot 'installed-state.json'),
-            (Join-Path $WorkerRoot 'OneCChatWorker.ps1')
+            (Join-Path $WorkerRoot 'OneCChatWorker.ps1'),
+            (Get-ControlCenterStartMenuShortcutPath)
         )
         retain=@(
             (Get-CatalogPath $WorkerRoot),

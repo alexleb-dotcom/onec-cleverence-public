@@ -29,7 +29,8 @@ const SECRET_PATH = admission.helper_secret_path || path.join(PROGRAM_DATA,'secr
 const RUNTIME_DIR = admission.runtime_dir || path.join(PROGRAM_DATA,'runtime');
 const STATE_PATH = path.join(RUNTIME_DIR,'hosted-helper-state.json');
 const LOG_PATH = path.join(RUNTIME_DIR,'hosted-helper-log.jsonl');
-const VERSION = 'onecchat-hosted-helper/1.1.0';
+const UI_PROJECTION_PATH = path.join(RUNTIME_DIR,'s4-ui-projection.json');
+const VERSION = 'onecchat-hosted-helper/1.2.0';
 
 if (typeof RELAY !== 'string' || !/^wss:\/\//.test(RELAY)) throw new Error('ADMISSION_RELAY_INVALID');
 if (typeof MANIFEST_PATH !== 'string' || !MANIFEST_PATH) throw new Error('ADMISSION_MANIFEST_MISSING');
@@ -107,6 +108,15 @@ if(IS_S4){
 const PROV_PATH='_proposal_provenance.json';
 const allowedProposalExt=new Set(['.md','.txt','.diff','.patch','.bsl','.json']);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function saveUiProjection(projection){
+  if(!IS_S4||!projection||projection.schema!=='S4_UI_PROJECTION_V1')return;
+  if(String(projection.task_admission_id||'')!==TASK_ADMISSION_ID)return;
+  const bytes=Buffer.from(JSON.stringify(projection),'utf8');
+  if(bytes.length>32768)throw new Error('UI_PROJECTION_CAP');
+  const tmp=UI_PROJECTION_PATH+'.tmp';
+  await fsp.writeFile(tmp,bytes);
+  await fsp.rename(tmp,UI_PROJECTION_PATH);
+}
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function log(x){await fsp.appendFile(LOG_PATH,JSON.stringify({at_utc:new Date().toISOString(),...x})+'\n','utf8').catch(()=>{});}
 async function saveState(s){const t=STATE_PATH+'.tmp';await fsp.writeFile(t,JSON.stringify(s,null,2),'utf8');await fsp.rename(t,STATE_PATH);}
@@ -330,6 +340,7 @@ async function connectLoop(){
         ws.addEventListener('message',async ev=>{
           let m;try{m=JSON.parse(ev.data);}catch{return;}
           if(m.type==='hello_ack'){await log({event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used});return;}
+          if(m.type==='ui_projection'){await saveUiProjection(m.projection).catch(async e=>log({event:'UI_PROJECTION_REJECTED',error:String(e?.message||e).slice(0,120)}));return;}
           if(m.type==='hello_error'){await log({event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')});return;}
           if(m.type!=='request'||!m.request_id)return;
           if(state.processed[m.request_id]){ws.send(JSON.stringify(state.processed[m.request_id]));return;}

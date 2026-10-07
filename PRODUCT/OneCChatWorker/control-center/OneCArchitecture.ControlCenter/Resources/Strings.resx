@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>OneC Architecture</value></data>
+  <data name="NavHome" xml:space="preserve"><value>Home</value></data>
+  <data name="NavProjects" xml:space="preserve"><value>Projects</value></data>
+  <data name="NavWork" xml:space="preserve"><value>Work</value></data>
+  <data name="NavActivity" xml:space="preserve"><value>MCP Activity</value></data>
+  <data name="NavMaintenance" xml:space="preserve"><value>Maintenance</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>Settings</value></data>
+  <data name="NavAdvanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="CurrentWork" xml:space="preserve"><value>Current work</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Recommended</value></data>
+  <data name="McpTitle" xml:space="preserve"><value>MCP</value></data>
+  <data name="CheckpointTitle" xml:space="preserve"><value>Semantic checkpoint</value></data>
+  <data name="SourceTitle" xml:space="preserve"><value>Source snapshot</value></data>
+  <data name="OutputTitle" xml:space="preserve"><value>Output proposal</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="OpenOutput" xml:space="preserve"><value>Open Output</value></data>
+  <data name="OpenSource" xml:space="preserve"><value>Open Source folder</value></data>
+  <data name="StartWork" xml:space="preserve"><value>Start work</value></data>
+  <data name="ContinueWork" xml:space="preserve"><value>Continue previous task</value></data>
+  <data name="StopWork" xml:space="preserve"><value>Stop work</value></data>
+  <data name="ApplyRefresh" xml:space="preserve"><value>Refresh managed Source</value></data>
+  <data name="Verify" xml:space="preserve"><value>Deep verify</value></data>
+  <data name="Repair" xml:space="preserve"><value>Recover safely</value></data>
+  <data name="Update" xml:space="preserve"><value>Update Worker</value></data>
+  <data name="Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>System</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
+  <data name="AccountingPending" xml:space="preserve"><value>S4 production cap activation is pending. Durable usage is shown without invented limits.</value></data>
+  <data name="AccountingUnavailable" xml:space="preserve"><value>ACCOUNTING UNAVAILABLE</value></data>
+  <data name="NoActiveTask" xml:space="preserve"><value>No active task</value></data>
+  <data name="ExitInterface" xml:space="preserve"><value>Exit interface</value></data>
+  <data name="OpenApp" xml:space="preserve"><value>Open OneC Architecture</value></data>
+  <data name="CloseHint" xml:space="preserve"><value>Closing the window leaves the helper and admission untouched.</value></data>
+</root>

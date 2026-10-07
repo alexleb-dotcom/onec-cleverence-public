@@ -233,6 +233,46 @@ with tempfile.TemporaryDirectory() as td:
     report = validate_distribution_paths(root, ["private-ip.txt"])
     record("private_network_ipv4_blocks", "PRIVATE_NETWORK_IPV4" in finding_types(report), report)
 
+    reviewed_binary = root / "reviewed-runtime.exe"
+    reviewed_bytes = b"MZ\x00bundled-runtime-endpoint=" + private_ip.encode("ascii") + b"\x00"
+    reviewed_binary.write_bytes(reviewed_bytes)
+    policy_payload = json.loads(policy_path.read_text(encoding="utf-8"))
+    policy_payload["reviewed_binary_files"] = [{
+        "path": "reviewed-runtime.exe",
+        "policy_id": "shareable-binary-review-v1",
+        "sha256": hashlib.sha256(reviewed_bytes).hexdigest(),
+        "type_class": "executable/pe",
+        "reason": "exact reviewed regression PE fixture with bundled private IPv4 literal",
+        "allowed_embedded_findings": ["PRIVATE_NETWORK_IPV4"],
+    }]
+    policy_path.write_text(json.dumps(policy_payload, indent=2) + "\n", encoding="utf-8")
+    report = validate_distribution_paths(root, ["reviewed-runtime.exe"])
+    record(
+        "exact_reviewed_binary_can_bound_private_ipv4_false_positive",
+        report["result"] == "PASS" and "PRIVATE_NETWORK_IPV4" not in finding_types(report),
+        report,
+    )
+    reviewed_binary.write_bytes(reviewed_bytes + b"changed")
+    report = validate_distribution_paths(root, ["reviewed-runtime.exe"])
+    record(
+        "reviewed_binary_hash_drift_restores_fail_closed_scan",
+        "BINARY_REVIEW_HASH_MISMATCH" in finding_types(report)
+        and "PRIVATE_NETWORK_IPV4" in finding_types(report),
+        report,
+    )
+    reviewed_binary.write_bytes(reviewed_bytes)
+    policy_payload["reviewed_binary_files"][0]["allowed_embedded_findings"] = ["HIGH_CONFIDENCE_ACCESS_TOKEN"]
+    policy_path.write_text(json.dumps(policy_payload, indent=2) + "\n", encoding="utf-8")
+    report = validate_distribution_paths(root, ["reviewed-runtime.exe"])
+    record(
+        "reviewed_binary_disallowed_finding_exception_rejected",
+        "BINARY_REVIEW_FINDING_EXCEPTION_INVALID" in finding_types(report)
+        and "PRIVATE_NETWORK_IPV4" in finding_types(report),
+        report,
+    )
+    policy_payload["reviewed_binary_files"] = []
+    policy_path.write_text(json.dumps(policy_payload, indent=2) + "\n", encoding="utf-8")
+
     private_host = "build" + "." + "corp" + "." + "internal"
     private_host_file = root / "private-host.txt"
     private_host_file.write_text("endpoint=https://" + private_host + "/api", encoding="utf-8")
@@ -482,25 +522,33 @@ unsafe_workflow_tokens = [
     for token in ("pull_request_target", "secrets.", "write-all", "contents: write")
     if token in public_workflow
 ]
+checkout_count = public_workflow.count("uses: actions/checkout@")
+persist_false_count = public_workflow.count("persist-credentials: false")
 record(
     "public_workflow_has_read_only_untrusted_pr_boundary",
     not unsafe_workflow_tokens
-    and public_workflow.count("persist-credentials: false") == 2
+    and checkout_count >= 1
+    and persist_false_count == checkout_count
     and "permissions:\n  contents: read" in public_workflow,
     {
         "unsafe_tokens": unsafe_workflow_tokens,
-        "persist_credentials_false_count": public_workflow.count("persist-credentials: false"),
+        "checkout_count": checkout_count,
+        "persist_credentials_false_count": persist_false_count,
     },
 )
 record(
-    "public_workflow_exposes_fast_and_full_contexts",
+    "public_workflow_exposes_fast_ui_and_full_contexts",
     "name: Public Fast" in public_workflow
+    and "name: Public UI" in public_workflow
     and "name: Public Full" in public_workflow
-    and "needs: public-fast" in public_workflow,
+    and "needs: public-fast" in public_workflow
+    and "needs: [public-fast, public-ui]" in public_workflow,
     {
         "fast": "name: Public Fast" in public_workflow,
+        "ui": "name: Public UI" in public_workflow,
         "full": "name: Public Full" in public_workflow,
-        "dependency": "needs: public-fast" in public_workflow,
+        "ui_dependency": "needs: public-fast" in public_workflow,
+        "full_dependency": "needs: [public-fast, public-ui]" in public_workflow,
     },
 )
 
