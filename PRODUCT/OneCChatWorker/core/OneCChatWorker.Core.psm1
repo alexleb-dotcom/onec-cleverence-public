@@ -1055,10 +1055,10 @@ function Get-SourceUpdateSelectionRows {
     foreach($token in $Selections){
         $parts=@([string]$token -split '\|')
         if($parts.Count -ne 3){throw 'SOURCE_UPDATE_SELECTION_INVALID'}
-        $pid=Assert-SafeId $parts[0] 'participant_id';$type=[string]$parts[1].ToUpperInvariant();$aid=Assert-SafeId $parts[2] 'artifact_id'
+        $participantKey=Assert-SafeId $parts[0] 'participant_id';$type=[string]$parts[1].ToUpperInvariant();$aid=Assert-SafeId $parts[2] 'artifact_id'
         if($type -notin @('MAIN','EXTENSION')){throw 'SOURCE_UPDATE_ARTIFACT_TYPE_INVALID'}
         if($type -eq 'MAIN' -and $aid -ne 'main'){throw 'SOURCE_UPDATE_MAIN_ID_INVALID'}
-        $key="$pid|$type|$aid";if($seen.ContainsKey($key)){throw 'SOURCE_UPDATE_SELECTION_DUPLICATE'};$seen[$key]=$true
+        $key="$participantKey|$type|$aid";if($seen.ContainsKey($key)){throw 'SOURCE_UPDATE_SELECTION_DUPLICATE'};$seen[$key]=$true
         $match=@($rows|Where-Object {$_.participant_id -eq $pid -and $_.artifact_type -eq $type -and $_.artifact_id -eq $aid})
         if($match.Count -ne 1){throw ('SOURCE_UPDATE_ARTIFACT_NOT_FOUND: '+$key)}
         $result+=,$match[0]

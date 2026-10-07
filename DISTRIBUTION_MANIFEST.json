@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 6841,
-      "sha256": "764b6174fb68dc8cd997c9b2f6698e1d681067dff2bcc1506b7f8e4f15508e7d"
+      "size": 9158,
+      "sha256": "cba0a2fab59d9fef40ea0cf68b341062843660b1700d27251c8c323005758c68"
     },
     {
       "path": ".gitignore",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 183639,
-      "sha256": "7cf680753b7f26acbb4ae267372347352838b63a4e015589e49152d7203df541"
+      "size": 183661,
+      "sha256": "b30b6e3560598d8fb143eeaffcd9e81b444891e71dd985d5bec84d3ddb95e3ff"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -521,7 +521,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7271,
-      "sha256": "2fd67d135d9a3082845c0d5582d69203507d17809104fb260e176e57ff99dac8"
+      "sha256": "5d1f08cde4ee9a4584e9244f64dcad45b0cb455f2d61f73dd7c3797aea3a4e63"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
@@ -2610,5 +2610,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "04ce37100be04489680fdb3595e0c384e505f56e1a1f0701e2c20fad0b8b2fdb"
+  "snapshot_digest": "730d896abaa44d01e56bb52d8661f836c52b27d65fe49a656bf9e076366f18ce"
 }
