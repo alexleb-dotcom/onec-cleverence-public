@@ -29,6 +29,7 @@ function safeRequestMeta(op,args){
 function safeResultMeta(op,result){
   const m=result?.metadata||{},p=result?.payload||{};
   const out={status:String(result?.status||'ERROR').slice(0,16)};
+  if(Number.isFinite(Number(m.elapsed_ms)))out.duration_ms=Math.max(0,Math.round(Number(m.elapsed_ms)*1000)/1000);
   if(m.error_class)out.error_class=String(m.error_class).slice(0,96);
   if(op==='read'){if(m.relative_path)out.path=String(m.relative_path).slice(0,260);if(Array.isArray(m.range))out.range=m.range.slice(0,2);if(m.sha256)out.sha256=String(m.sha256).slice(0,64);}
   if(op==='proposal_write'){if(p.relative_path)out.path=String(p.relative_path).slice(0,180);if(p.sha256)out.sha256=String(p.sha256).slice(0,64);out.committed=p.status==='COMMITTED';out.read_back_verified=!!p.read_back_verified;out.recovered_commit=!!p.recovered_commit;}
@@ -49,6 +50,26 @@ async function sealOneActivity(record,requestId,safeResult){
 async function sealPendingActivity(record){
   for(const r of unsealedTerminalReceipts(record))await sealOneActivity(record,r.request_id,r.safe_result||{status:'ERROR',error_class:r.reason||'AMBIGUOUS_DELIVERY'});
   return record;
+}
+function s4UiProjection(record){
+  const lifecycle=lifecycleProjection(record);
+  const from={schema:S4_ACTIVITY_CURSOR_SCHEMA,task_admission_id:record.task_admission_id,activity_seq:0,receipt_sha256:null};
+  const delta=activityDelta(record,{fromCursor:from,throughSeq:record.activity_committed_seq,limit:24});
+  return {
+    schema:'S4_UI_PROJECTION_V1',generated_utc:new Date().toISOString(),
+    task_admission_id:record.task_admission_id,session_id:record.session_id,project_id:record.project_id,task_id:record.task_id,
+    task_state:lifecycle.task_state,task_created_utc:lifecycle.task_created_utc,task_expires_utc:lifecycle.task_expires_utc,
+    continuation:lifecycle.continuation,epoch_id:lifecycle.epoch_id,epoch_seq:lifecycle.epoch_seq,
+    accounting:lifecycle.accounting,activity:{
+      available:delta.available,reason:delta.reason??null,request_count:delta.request_count??0,
+      charged_result_bytes:delta.charged_result_bytes??0,epoch_rollovers:delta.epoch_rollovers??0,
+      operation_counts:delta.operation_counts??{},events:Array.isArray(delta.events)?delta.events.slice(-24):[],
+      truncated:!!delta.truncated,receipt_identity:delta.receipt_identity??null
+    }
+  };
+}
+function pushS4UiProjection(record){
+  try{this.helper?.send(JSON.stringify({type:'ui_projection',projection:s4UiProjection(record)}));}catch{}
 }
 
 export class RelaySession {
@@ -100,6 +121,7 @@ export class RelaySession {
         await this.state.storage.put('active_task_id',msg.task_admission_id);
         await this.state.storage.put('active_mode','s4');
         try{this.helper?.send(JSON.stringify({type:'hello_ack',lifecycle:lifecycleProjection(record)}));}catch{}
+        pushS4UiProjection.call(this,record);
         return;
       }
       const prev=await this.state.storage.get('meta'),c=msg.caps||{};
@@ -200,7 +222,7 @@ export class RelaySession {
     try{result=await resultP;}
     catch(e){
       record=await this.state.storage.get(key);
-      try{chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'HELPER_TIMEOUT'});await sealOneActivity(record,clientId,{status:'ERROR',error_class:'HELPER_TIMEOUT'});await this.state.storage.put(key,record);}catch{}
+      try{chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'HELPER_TIMEOUT'});await sealOneActivity(record,clientId,{status:'ERROR',error_class:'HELPER_TIMEOUT'});await this.state.storage.put(key,record);pushS4UiProjection.call(this,record);}catch{}
       return Response.json({error:'HELPER_TIMEOUT',usage:lifecycleProjection(record).accounting},{status:504});
     }
     let finalPayload=result.payload;
@@ -220,6 +242,7 @@ export class RelaySession {
       chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'});
       await sealOneActivity(record,clientId,{status:'ERROR',error_class:'RESULT_CAP'});
       await this.state.storage.put(key,record);
+      pushS4UiProjection.call(this,record);
       return Response.json({error:'RESULT_CAP',usage:lifecycleProjection(record).accounting},{status:502});
     }
     record=await this.state.storage.get(key);
@@ -227,6 +250,7 @@ export class RelaySession {
       commitRequest(record,{requestId:clientId,fingerprint,payloadBytes:bytes});
       await sealOneActivity(record,clientId,safeResultMeta(body.op,{...result,payload:finalPayload}));
       await this.state.storage.put(key,record);
+      pushS4UiProjection.call(this,record);
     }catch(e){return Response.json({error:String(e?.code||e?.message||'ACCOUNTING_COMMIT_FAILED')},{status:503});}
     return Response.json({status:result.status,metadata:{...result.metadata,epoch_id:record.epoch_id,epoch_seq:record.epoch_seq,activity_seq:record.activity_committed_seq},payload:finalPayload,usage:lifecycleProjection(record).accounting});
   }

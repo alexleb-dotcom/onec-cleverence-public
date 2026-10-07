@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
-  createTaskRecord,reconcileTaskHello,reserveRequest,commitRequest,chargeAmbiguousRequest,
-  lifecycleProjection,minimalControlPayload,rotateEpoch,taskState,S4_ACCOUNTING_CONTRACT
+  createTaskRecord,reconcileTaskHello,reserveRequest as reserveRequestRaw,commitRequest,chargeAmbiguousRequest,
+  lifecycleProjection,minimalControlPayload as minimalControlPayloadRaw,rotateEpoch,taskState as taskStateRaw,S4_ACCOUNTING_CONTRACT
 } from '../relay/src/s4-accounting.js';
 
 const HERE=path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +20,10 @@ const hello=(over={})=>({
   ...over
 });
 const epochFactory=(()=>{let n=0;return()=>('epoch-'+(++n));})();
+const TEST_NOW=Date.parse('2026-10-06T11:00:00Z');
+const reserveRequest=(record,args)=>reserveRequestRaw(record,{nowMs:TEST_NOW,...args});
+const taskState=(record,nowMs=TEST_NOW)=>taskStateRaw(record,nowMs);
+const minimalControlPayload=(record,nowMs=TEST_NOW)=>minimalControlPayloadRaw(record,nowMs);
 const make=(h=hello())=>createTaskRecord(h,{nowMs:Date.parse('2026-10-06T11:00:00Z'),epochIdFactory:epochFactory});
 const commit=(r,id,bytes,op='read')=>{
   const fp='fp-'+id;

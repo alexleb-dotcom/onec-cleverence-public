@@ -1,0 +1,202 @@
+<Window x:Class="OneCArchitecture.ControlCenter.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+        Title="OneC Architecture" Width="1180" Height="760" MinWidth="920" MinHeight="620"
+        WindowStartupLocation="CenterScreen" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        KeyboardNavigation.TabNavigation="Cycle" Closing="Window_Closing">
+  <Grid Background="{DynamicResource WindowBrush}">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="224"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+    <Border Grid.Column="0" Background="{DynamicResource NavBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock Text="OneC Architecture" FontSize="19" FontWeight="SemiBold" Margin="8,12,8,4"/>
+          <TextBlock x:Name="ProductVersionText" Text="Control Center" Foreground="{DynamicResource MutedTextBrush}" Margin="8,0,8,20"/>
+          <Button x:Name="NavHomeButton" Style="{StaticResource NavButton}" Content="Home" Tag="Home" Click="Nav_Click" AutomationProperties.Name="Home"/>
+          <Button x:Name="NavProjectsButton" Style="{StaticResource NavButton}" Content="Projects" Tag="Projects" Click="Nav_Click" AutomationProperties.Name="Projects"/>
+          <Button x:Name="NavWorkButton" Style="{StaticResource NavButton}" Content="Work" Tag="Work" Click="Nav_Click" AutomationProperties.Name="Work"/>
+          <Button x:Name="NavActivityButton" Style="{StaticResource NavButton}" Content="MCP Activity" Tag="Activity" Click="Nav_Click" AutomationProperties.Name="MCP Activity"/>
+          <Button x:Name="NavMaintenanceButton" Style="{StaticResource NavButton}" Content="Maintenance" Tag="Maintenance" Click="Nav_Click" AutomationProperties.Name="Maintenance"/>
+          <Button x:Name="NavSettingsButton" Style="{StaticResource NavButton}" Content="Settings" Tag="Settings" Click="Nav_Click" AutomationProperties.Name="Settings"/>
+          <Button x:Name="NavAdvancedButton" Style="{StaticResource NavButton}" Content="Advanced" Tag="Advanced" Click="Nav_Click" AutomationProperties.Name="Advanced"/>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
+          <TextBlock x:Name="CloseHintText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="8,12"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Column="1" Margin="28,22,28,22">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Grid Grid.Row="0" Margin="0,0,0,18">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock x:Name="PageTitle" Text="Home" FontSize="26" FontWeight="SemiBold"/>
+          <TextBlock x:Name="LastUpdatedText" Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+        <Border Grid.Column="1" CornerRadius="14" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12,7" Margin="0,0,10,0">
+          <TextBlock x:Name="HelperBadge" Text="Helper —" FontWeight="SemiBold"/>
+        </Border>
+        <Button Grid.Column="2" x:Name="RefreshButton" Content="Refresh" Click="Refresh_Click" AutomationProperties.Name="Refresh current state"/>
+      </Grid>
+
+      <Grid Grid.Row="1">
+        <!-- HOME -->
+        <ScrollViewer x:Name="HomePage" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,0,0,14">
+              <StackPanel>
+                <TextBlock x:Name="RecommendedLabel" Text="Recommended" FontSize="12" Foreground="{DynamicResource MutedTextBrush}"/>
+                <TextBlock x:Name="RecommendationText" FontSize="19" FontWeight="SemiBold" Margin="0,5,0,3"/>
+                <TextBlock x:Name="RecommendationReasonText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/>
+              </StackPanel>
+            </Border>
+
+            <Grid Margin="0,0,0,14">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Border Grid.Column="0" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,0,7,0">
+                <StackPanel>
+                  <TextBlock x:Name="CurrentWorkLabel" Text="Current work" FontSize="16" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="HomeProjectText" FontSize="22" FontWeight="SemiBold" Margin="0,12,0,3"/>
+                  <TextBlock x:Name="HomeTaskText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/>
+                  <TextBlock x:Name="HomeHelperText" Margin="0,10,0,10"/>
+                  <WrapPanel>
+                    <Button x:Name="HomeOpenOutputButton" Content="Open Output" Click="OpenOutput_Click" IsEnabled="False"/>
+                    <Button x:Name="HomeStopButton" Content="Stop work" Click="Stop_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="7,0,0,0">
+                <StackPanel>
+                  <TextBlock x:Name="McpTitleLabel" Text="MCP" FontSize="16" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="McpStateText" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,3"/>
+                  <TextBlock x:Name="McpUsageText" Margin="0,3"/>
+                  <TextBlock x:Name="McpEpochText" Margin="0,3"/>
+                  <TextBlock x:Name="McpPolicyText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" FontSize="12" Margin="0,8,0,0"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Border Grid.Column="0" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="16" Margin="0,0,7,0">
+                <StackPanel><TextBlock x:Name="SourceTitleLabel" Text="Source snapshot" FontWeight="SemiBold"/><TextBlock x:Name="SourceStateText" FontSize="17" Margin="0,8,0,6"/><Button x:Name="HomeOpenSourceButton" Content="Open Source folder" Click="OpenSource_Click" IsEnabled="False"/></StackPanel>
+              </Border>
+              <Border Grid.Column="1" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="16" Margin="7,0">
+                <StackPanel><TextBlock x:Name="CheckpointTitleLabel" Text="Semantic checkpoint" FontWeight="SemiBold"/><TextBlock x:Name="CheckpointStateText" FontSize="17" Margin="0,8,0,4"/><TextBlock x:Name="CheckpointSummaryText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/></StackPanel>
+              </Border>
+              <Border Grid.Column="2" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="16" Margin="7,0,0,0">
+                <StackPanel><TextBlock x:Name="OutputTitleLabel" Text="Output proposal" FontWeight="SemiBold"/><TextBlock x:Name="OutputStateText" FontSize="17" Margin="0,8,0,4"/><TextBlock x:Name="OutputSummaryText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/></StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- PROJECTS -->
+        <Grid x:Name="ProjectsPage" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <ListView x:Name="ProjectsList" AutomationProperties.Name="Projects list">
+            <ListView.View><GridView>
+              <GridViewColumn Header="Project" DisplayMemberBinding="{Binding DisplayName}" Width="250"/>
+              <GridViewColumn Header="State" DisplayMemberBinding="{Binding State}" Width="180"/>
+              <GridViewColumn Header="Participants" DisplayMemberBinding="{Binding Participants}" Width="110"/>
+            </GridView></ListView.View>
+          </ListView>
+          <WrapPanel Grid.Row="1" Margin="0,14,0,0">
+            <Button x:Name="AddProjectButton" Content="Add project" Click="AddProject_Click" IsEnabled="False"/>
+            <Button x:Name="OpenSourceButton" Content="Open Source folder" Click="OpenSource_Click" IsEnabled="False" Margin="8,4,0,4"/>
+            <Button x:Name="ApplyButton" Content="Refresh managed Source" Click="Apply_Click" IsEnabled="False" Margin="8,4,0,4"/>
+          </WrapPanel>
+        </Grid>
+
+        <!-- WORK -->
+        <ScrollViewer x:Name="WorkPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
+              <StackPanel>
+                <TextBlock x:Name="WorkStatusText" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock x:Name="WorkDetailText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,6,0,18"/>
+                <TextBlock Text="What needs to be done?" FontWeight="SemiBold"/>
+                <TextBox x:Name="TaskGoalTextBox" AcceptsReturn="True" TextWrapping="Wrap" Height="92" Margin="0,7,0,10" AutomationProperties.Name="Task description"/>
+                <WrapPanel>
+                  <Button x:Name="StartButton" Style="{StaticResource PrimaryButton}" Content="Start work" Click="Start_Click" IsEnabled="False"/>
+                  <Button x:Name="ContinueButton" Content="Continue previous task" Click="Continue_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                  <Button x:Name="StopButton" Content="Stop work" Click="Stop_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
+              <StackPanel><TextBlock Text="Recovery / checkpoint" FontWeight="SemiBold"/><TextBlock x:Name="WorkCheckpointText" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- ACTIVITY -->
+        <Grid x:Name="ActivityPage" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock x:Name="ActivitySummaryText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,10"/>
+          <ListView Grid.Row="1" x:Name="ActivityList" AutomationProperties.Name="Recent MCP activity">
+            <ListView.View><GridView>
+              <GridViewColumn Header="Time" DisplayMemberBinding="{Binding Time}" Width="145"/>
+              <GridViewColumn Header="#" DisplayMemberBinding="{Binding Seq}" Width="50"/>
+              <GridViewColumn Header="Operation" DisplayMemberBinding="{Binding Operation}" Width="120"/>
+              <GridViewColumn Header="Target" DisplayMemberBinding="{Binding Target}" Width="300"/>
+              <GridViewColumn Header="Bytes" DisplayMemberBinding="{Binding Bytes}" Width="80"/>
+              <GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration}" Width="90"/>
+              <GridViewColumn Header="Outcome" DisplayMemberBinding="{Binding Outcome}" Width="135"/>
+            </GridView></ListView.View>
+          </ListView>
+        </Grid>
+
+        <!-- MAINTENANCE -->
+        <ScrollViewer x:Name="MaintenancePage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <StackPanel MaxWidth="820" HorizontalAlignment="Left">
+            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
+              <StackPanel>
+                <TextBlock Text="Current operation" FontWeight="SemiBold"/>
+                <TextBlock x:Name="OperationText" TextWrapping="Wrap" Margin="0,8,0,12"/>
+                <WrapPanel>
+                  <Button x:Name="MaintenanceApplyButton" Content="Refresh managed Source" Click="Apply_Click" IsEnabled="False"/>
+                  <Button x:Name="VerifyButton" Content="Deep verify" Click="Verify_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                  <Button x:Name="RepairButton" Content="Recover safely" Click="Repair_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                  <Button x:Name="UpdateButton" Content="Update Worker" Click="Update_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
+              <StackPanel><TextBlock Text="Diagnostics" FontWeight="SemiBold"/><TextBlock x:Name="DiagnosticsText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Margin="0,8,0,0"/></StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- SETTINGS -->
+        <StackPanel x:Name="SettingsPage" Visibility="Collapsed" MaxWidth="620" HorizontalAlignment="Left">
+          <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <TextBlock x:Name="LanguageLabel" Text="Language" VerticalAlignment="Center"/>
+              <ComboBox Grid.Column="1" x:Name="LanguageCombo" SelectionChanged="LanguageCombo_SelectionChanged">
+                <ComboBoxItem Tag="system" Content="System"/><ComboBoxItem Tag="ru" Content="Русский"/><ComboBoxItem Tag="en" Content="English"/>
+              </ComboBox>
+              <TextBlock Grid.Row="1" x:Name="ThemeLabel" Text="Theme" VerticalAlignment="Center" Margin="0,12,0,0"/>
+              <ComboBox Grid.Row="1" Grid.Column="1" x:Name="ThemeCombo" SelectionChanged="ThemeCombo_SelectionChanged" Margin="0,12,0,0">
+                <ComboBoxItem Tag="system" Content="System"/><ComboBoxItem Tag="light" Content="Light"/><ComboBoxItem Tag="dark" Content="Dark"/>
+              </ComboBox>
+              <CheckBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="StartupCheckBox" Content="Start Control Center with Windows (operator choice)" Margin="0,18,0,0" Checked="StartupCheckBox_Changed" Unchecked="StartupCheckBox_Changed"/>
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <!-- ADVANCED -->
+        <ScrollViewer x:Name="AdvancedPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="Technical identities and receipts" FontSize="16" FontWeight="SemiBold"/>
+            <TextBox x:Name="AdvancedText" Margin="0,12,0,0" FontFamily="Consolas" FontSize="12" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MinHeight="480" AutomationProperties.Name="Technical identities and receipts"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

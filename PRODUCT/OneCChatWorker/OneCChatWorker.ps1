@@ -1,5 +1,5 @@
 ﻿param(
- [ValidateSet('MENU','PRECHECK','INSTALL','STATUS','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
+ [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
@@ -236,6 +236,23 @@ function Run-Install {
   if($x.remote_auth_ready){[pscustomobject]@{state='PASS';message='Installation verified'}}else{[pscustomobject]@{state='WAITING_FOR_USER';message='Installation complete; remote authorization/enrollment checkpoint remains'}}
  }
  if($Json){Show-JsonValue $r}else{Write-Host '';Write-Host 'INSTALL result:';Write-Host ('  Installed state : {0}' -f $r.install.installed_state);Write-Host ('  Remote auth     : {0}' -f $(if($r.remote_auth_ready){'READY'}else{'WAITING_FOR_USER'}))}
+}
+function Run-Update {
+ if(Require-AdminOrRelaunch 'UPDATE'){return}
+ $r=Invoke-ObservedAction -OperationType UPDATE -RequestedAction 'Update or repair OneCChatWorker from this verified package' -TotalSteps 3 -Body {
+  param($op)
+  $null=Update-WorkerOperation -Operation $op -Message 'Checking package/runtime lock before update' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $pre=Invoke-Precheck
+  $null=Update-WorkerOperation -Operation $op -Message 'Updating only product-owned runtime components; project/catalog/Source/Output retained' -Step 2 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $install=Install-OneCChatWorker -PackageRoot $PackageRoot -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity -SkipDependencies:$SkipDependencies
+  $null=Update-WorkerOperation -Operation $op -Message 'Verifying updated runtime integrity' -Step 3 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+  [pscustomobject]@{precheck=$pre;install=$install;status=$status;network_download_performed=$false}
+ } -FinalStateResolver {
+  param($x)
+  if($x.status.installed_integrity.status -eq 'PASS'){[pscustomobject]@{state='PASS';message='Package update verified'}}else{[pscustomobject]@{state='FAIL';message='Updated runtime integrity check failed'}}
+ }
+ Show-Value $r
 }
 function Run-AddProject {
  $projectKey=Need $ProjectId ProjectId
@@ -476,11 +493,61 @@ function Run-Uninstall {
  Show-Value $r
 }
 
+function Get-UiContext {
+ $status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+ $guided=Get-GuidedContext
+ $active=$status.active_admission
+ $checkpoint=$null
+ if($active -and [int]$active.schema_version -eq 3){
+  try{$checkpoint=(Read-TaskCheckpointContinuationHead -ProjectId ([string]$active.project_id) -TaskId ([string]$active.task_id) -ProgramDataRoot $ProgramDataRoot).head}catch{}
+ }
+ $s4=$null;$projectionPath=Join-Path $ProgramDataRoot 'runtime\s4-ui-projection.json'
+ if($active -and [int]$active.schema_version -eq 3 -and (Test-Path -LiteralPath $projectionPath -PathType Leaf)){
+  try{
+   $candidate=Get-Content -LiteralPath $projectionPath -Raw -Encoding UTF8|ConvertFrom-Json
+   if([string]$candidate.schema -eq 'S4_UI_PROJECTION_V1' -and [string]$candidate.task_admission_id -eq [string]$active.task_admission_id){
+    $s4=$candidate
+   }
+  }catch{}
+ }
+ $projectRows=@($status.projects|ForEach-Object{
+  [pscustomobject]@{project_id=$_.project_id;display_name=$_.display_name;active=$_.active;readiness=$_.verification;fast_state=$_.fast_state;fast_reason=$_.fast_reason;source_snapshot_id=$_.source_snapshot_id;participant_count=$_.participant_count}
+ })
+ $selectedProject=$null
+ if($active){$selectedProject=$projectRows|Where-Object{$_.project_id -eq [string]$active.project_id}|Select-Object -First 1}
+ if(-not $selectedProject -and $guided.project){$selectedProject=$projectRows|Where-Object{$_.project_id -eq [string]$guided.project.project_id}|Select-Object -First 1}
+ $output=$null
+ if($active){$output=$status.output|Where-Object{$_.project_id -eq [string]$active.project_id}|Select-Object -First 1}
+ $selectedProjectId=$(if($selectedProject){[string]$selectedProject.project_id}elseif($active){[string]$active.project_id}else{$null})
+ $navigation=[pscustomobject]@{
+  source_root=$(if($selectedProjectId){Join-Path (Join-Path $WorkerRoot $selectedProjectId) 'Source'}else{$null})
+  output_root=$(if($selectedProjectId){Join-Path (Join-Path $WorkerRoot $selectedProjectId) 'Output'}else{$null})
+ }
+ [pscustomobject]@{
+  schema='UI_CONTEXT_V1';generated_utc=(Get-Date).ToUniversalTime().ToString('o');bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1'
+  product=[pscustomobject]@{version=$status.product_version;installed=$status.installed;integrity_status=$status.installed_integrity.status;update_status='NOT_CHECKED_NO_NETWORK_SIDE_EFFECT'}
+  recommendation=[pscustomobject]@{state=$guided.state;action=$guided.recommended;reason=$guided.reason}
+  projects=$projectRows;selected_project=$selectedProject
+  work=[pscustomobject]@{active=$(if($active){$true}else{$false});project_id=$(if($active){$active.project_id}else{$null});task_id=$(if($active){$active.task_id}else{$null});task_goal=$(if($active){$active.task_goal}else{$null});task_created_utc=$(if($active){$active.task_created_utc}else{$null});task_expires_utc=$(if($active){$active.task_expires_utc}else{$null});helper=$status.helper;checkpoint=$checkpoint;continuation_available=($guided.state -eq 'CONTINUE_AVAILABLE')}
+  source=[pscustomobject]@{snapshot_id=$(if($selectedProject){$selectedProject.source_snapshot_id}else{$null});state=$(if($selectedProject){$selectedProject.fast_state}else{$null});acquisition_owner='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';deep_scan_performed=$false}
+  output=$output;navigation=$navigation
+  operation=[pscustomobject]@{current=$status.current_operation;last=$status.last_operation;recovery=$status.operation_recovery}
+  s4=[pscustomobject]@{policy_status='PENDING_CAP_ACTIVATION';accounting_available=($null -ne $s4);projection=$s4;authoritative_owner='relay task record/request_receipts';limits_display_allowed=$false}
+  safety=[pscustomobject]@{worker_authoritative=$true;relay_accounting_authoritative=$true;mcp_side_effect=$false;source_request_issued=$false;acquisition_called=$false;secret_values_included=$false;model_tool_surface_count=6}
+ }
+}
+function Run-UiContext {
+ $ctx=Get-UiContext
+ if($Json){Show-JsonValue $ctx}else{Show-Value $ctx}
+}
+
 function Invoke-CommandMode {
  switch($Mode){
   'PRECHECK' {Run-Precheck;break}
   'INSTALL' {Run-Install;break}
+  'UPDATE' {Run-Update;break}
   'STATUS' {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot);break}
+  'UI_CONTEXT' {Run-UiContext;break}
   'LIST' {Show-Value (Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing);break}
   'ADD_PROJECT' {Run-AddProject;break}
   'EDIT_PROJECT' {Run-EditProject;break}

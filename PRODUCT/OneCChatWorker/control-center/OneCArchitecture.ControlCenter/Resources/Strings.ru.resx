@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>OneC Architecture</value></data>
+  <data name="NavHome" xml:space="preserve"><value>Сейчас</value></data>
+  <data name="NavProjects" xml:space="preserve"><value>Проекты</value></data>
+  <data name="NavWork" xml:space="preserve"><value>Работа</value></data>
+  <data name="NavActivity" xml:space="preserve"><value>MCP Activity</value></data>
+  <data name="NavMaintenance" xml:space="preserve"><value>Обслуживание</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>Настройки</value></data>
+  <data name="NavAdvanced" xml:space="preserve"><value>Дополнительно</value></data>
+  <data name="CurrentWork" xml:space="preserve"><value>Текущая работа</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Рекомендуется</value></data>
+  <data name="McpTitle" xml:space="preserve"><value>MCP</value></data>
+  <data name="CheckpointTitle" xml:space="preserve"><value>Семантический checkpoint</value></data>
+  <data name="SourceTitle" xml:space="preserve"><value>Снимок Source</value></data>
+  <data name="OutputTitle" xml:space="preserve"><value>Output proposal</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Обновить</value></data>
+  <data name="OpenOutput" xml:space="preserve"><value>Открыть Output</value></data>
+  <data name="OpenSource" xml:space="preserve"><value>Открыть папку Source</value></data>
+  <data name="StartWork" xml:space="preserve"><value>Начать работу</value></data>
+  <data name="ContinueWork" xml:space="preserve"><value>Продолжить предыдущую задачу</value></data>
+  <data name="StopWork" xml:space="preserve"><value>Остановить работу</value></data>
+  <data name="ApplyRefresh" xml:space="preserve"><value>Обновить управляемый Source</value></data>
+  <data name="Verify" xml:space="preserve"><value>Глубокая проверка</value></data>
+  <data name="Repair" xml:space="preserve"><value>Безопасно восстановить</value></data>
+  <data name="Update" xml:space="preserve"><value>Обновить Worker</value></data>
+  <data name="Theme" xml:space="preserve"><value>Тема</value></data>
+  <data name="Language" xml:space="preserve"><value>Язык</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Системная</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Светлая</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Тёмная</value></data>
+  <data name="AccountingPending" xml:space="preserve"><value>Активация production-лимитов S4 ещё ожидается. Показано только фактическое использование без выдуманных лимитов.</value></data>
+  <data name="AccountingUnavailable" xml:space="preserve"><value>ACCOUNTING UNAVAILABLE</value></data>
+  <data name="NoActiveTask" xml:space="preserve"><value>Нет активной задачи</value></data>
+  <data name="ExitInterface" xml:space="preserve"><value>Выйти из интерфейса</value></data>
+  <data name="OpenApp" xml:space="preserve"><value>Открыть OneC Architecture</value></data>
+  <data name="CloseHint" xml:space="preserve"><value>Закрытие окна не останавливает helper и не меняет admission.</value></data>
+</root>
