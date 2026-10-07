@@ -246,11 +246,35 @@ export class RelaySession {
     if(body.op==='context'){
       const base={...(result.payload||{})};
       delete base.caps;delete base.expires_utc;
-      let guess=payloadBytes({...base,...lifecycleProjection(record)});
-      for(let i=0;i<5;i++){
-        const projected=projectCommittedRecord(record,{payloadBytes:guess});
-        const candidate={...base,...lifecycleProjection(projected)};
-        const next=payloadBytes(candidate);finalPayload=candidate;if(next===guess)break;guess=next;
+      // The relay adds lifecycle/accounting after the helper's local cap check.
+      // Optional helper hints yield to the required, relay-owned context envelope.
+      const optional=['prepared_quality','target_hints'];
+      for(let attempt=0;attempt<=optional.length;attempt++){
+        let guess=payloadBytes({...base,...lifecycleProjection(record)});
+        let fits=guess<=record.max_result_bytes;
+        if(fits){
+          for(let i=0;i<5;i++){
+            // projectCommittedRecord throws RESULT_CAP for an oversized guess.
+            // Never project an already-over-cap candidate.
+            if(guess>record.max_result_bytes){fits=false;break;}
+            const projected=projectCommittedRecord(record,{payloadBytes:guess});
+            const candidate={...base,...lifecycleProjection(projected)};
+            const next=payloadBytes(candidate);
+            if(next>record.max_result_bytes){fits=false;break;}
+            finalPayload=candidate;
+            if(next===guess)break;
+            guess=next;
+          }
+        }
+        if(fits)break;
+        const field=optional.find(name=>Object.prototype.hasOwnProperty.call(base,name));
+        if(!field){
+          // Required context cannot fit: use the existing structured,
+          // fail-closed RESULT_CAP/accounting path below, never HTTP 500.
+          finalPayload={...base,...lifecycleProjection(record)};
+          break;
+        }
+        delete base[field];
       }
     }
     const bytes=payloadBytes(finalPayload);
