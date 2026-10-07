@@ -43,7 +43,7 @@
       "component": "relay/src/index.js",
       "accepted_pre_s4_deployment": "5971635f-448e-4ccc-bf48-59709ef95e1a",
       "accepted_pre_s4_source_sha256": "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0",
-      "current_candidate_source_sha256": "831bb9b590438a896a5541c0a4035ca9d090d247d6f4b25d8ff4f7b09e48102b",
+      "current_candidate_source_sha256": "6049254acf585f2cc49eacf3357d8f70df4cb3664358e83f5d93670e9dc9515e",
       "accounting_component": "relay/src/s4-accounting.js",
       "accounting_component_sha256": "b36eb841bd8b905e7c29275078a009163f212a061b288c58d15f06ab8eaf0802",
       "wrangler_sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da",
