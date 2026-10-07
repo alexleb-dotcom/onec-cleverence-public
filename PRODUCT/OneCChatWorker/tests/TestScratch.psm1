@@ -1,4 +1,4 @@
-Set-StrictMode -Version 2.0
+﻿Set-StrictMode -Version 2.0
 $ErrorActionPreference='Stop'
 
 $script:ScratchSchemaVersion=1
@@ -143,11 +143,25 @@ function Remove-OneCTestScratch {
     try{
         Remove-Item -LiteralPath $full -Recurse -Force -ErrorAction Stop
     }catch{
-        if(-not(Test-OneCTestScratchAdmin)){throw}
-        & takeown.exe /F $full /R /D Y | Out-Null
-        & icacls.exe $full /grant '*S-1-5-32-544:F' /T /C | Out-Null
-        & icacls.exe $full /grant '*S-1-5-18:F' /T /C | Out-Null
-        Remove-Item -LiteralPath $full -Recurse -Force -ErrorAction Stop
+        $firstError=$_.Exception
+        try{
+            $extended=$(if($full.StartsWith('\\')){'\\?\UNC\'+$full.Substring(2)}else{'\\?\'+$full})
+            $cmd='rmdir /s /q "{0}"' -f $extended.Replace('"','""')
+            & $env:ComSpec /d /s /c $cmd | Out-Null
+        }catch{}
+        if(Test-Path -LiteralPath $full){
+            $node=Get-Command node.exe -ErrorAction SilentlyContinue
+            if($node){
+                try{& $node.Source -e "const fs=require('fs'),p=require('path');fs.rmSync(p.toNamespacedPath(process.argv[1]),{recursive:true,force:true});" $full | Out-Null}catch{}
+            }
+        }
+        if(Test-Path -LiteralPath $full){
+            if(-not(Test-OneCTestScratchAdmin)){throw $firstError}
+            & takeown.exe /F $full /R /D Y | Out-Null
+            & icacls.exe $full /grant '*S-1-5-32-544:F' /T /C | Out-Null
+            & icacls.exe $full /grant '*S-1-5-18:F' /T /C | Out-Null
+            Remove-Item -LiteralPath $full -Recurse -Force -ErrorAction Stop
+        }
     }
     if(Test-Path -LiteralPath $full){throw "SCRATCH_CLEANUP_FAILED: $full"}
     [pscustomobject]@{path=$full;status='REMOVED';run_id=[string]$m.run_id}

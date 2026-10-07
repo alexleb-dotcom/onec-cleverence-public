@@ -176,7 +176,7 @@ try{
  $oldSiblingStage=$pathTarget+'.stage-'+('f'*32)
  $oldProjected=$oldSiblingStage.Length+1+$relative.Length
  $pathCopy=Copy-ArtifactSafely -Source $pathSource -Target $pathTarget -ProjectRoot $pathProject -ArchiveKey 'p\Target\Main'
- Rec 'bounded_stage_root_avoids_guid_suffix_path_inflation' ($oldProjected -ge 260 -and $pathCopy.stage_max_path_chars -lt 260 -and $pathCopy.target_max_path_chars -lt 260) ("old=$oldProjected new_stage=$($pathCopy.stage_max_path_chars) target=$($pathCopy.target_max_path_chars)")
+ Rec 'node_acquisition_replaces_ps51_path_preflight' ($oldProjected -ge 260 -and $pathCopy.acquisition_contract -eq 'S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1' -and $pathCopy.metrics.recursive_passes.source_content -eq 1 -and $pathCopy.metrics.recursive_passes.stage_content_rehash -eq 0) ("old=$oldProjected new_stage=$($pathCopy.stage_max_path_chars) target=$($pathCopy.target_max_path_chars)")
  Rec 'long_path_shape_copy_commits' ((Get-TreeDigest $pathTarget).sha256 -eq (Get-TreeDigest $pathSource).sha256) ''
 
  Write-Host ("APPLY_FAILURE_REGRESSION_PASS checks={0} evidence_root={1}" -f $results.Count,$root)
