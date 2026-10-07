@@ -256,7 +256,7 @@ ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_DYNAMIC',()=>{
   };
   const projection=record=>({accounting:{used:record.projected_bytes||0},task_state:'ACTIVE'});
   const record={max_result_bytes:3000};
-  const base={task_id:'T',session_id:'s',snapshot_id:'x',recovery:{compatibility:'CURRENT'},core:'x'.repeat(1900),
+  const base={task_id:'T',session_id:'s',snapshot_id:'x',recovery:{compatibility:'CURRENT'},core:'x'.repeat(1750),
     prepared_quality:{report:'q'.repeat(950)},target_hints:['target']};
   assert(size(base)<=3000);
   assert(size({...base,...projection(record)})>3000);
