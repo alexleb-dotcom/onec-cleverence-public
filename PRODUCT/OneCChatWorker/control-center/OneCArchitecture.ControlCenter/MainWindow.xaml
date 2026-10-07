@@ -117,7 +117,7 @@
               <StackPanel>
                 <TextBlock x:Name="WorkStatusText" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock x:Name="WorkDetailText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,6,0,18"/>
-                <TextBlock Text="What needs to be done?" FontWeight="SemiBold"/>
+                <TextBlock x:Name="WorkPromptLabel" Text="What needs to be done?" FontWeight="SemiBold"/>
                 <TextBox x:Name="TaskGoalTextBox" AcceptsReturn="True" TextWrapping="Wrap" Height="92" Margin="0,7,0,10" AutomationProperties.Name="Task description"/>
                 <WrapPanel>
                   <Button x:Name="StartButton" Style="{StaticResource PrimaryButton}" Content="Start work" Click="Start_Click" IsEnabled="False"/>
@@ -127,7 +127,7 @@
               </StackPanel>
             </Border>
             <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
-              <StackPanel><TextBlock Text="Recovery / checkpoint" FontWeight="SemiBold"/><TextBlock x:Name="WorkCheckpointText" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel>
+              <StackPanel><TextBlock x:Name="WorkRecoveryLabel" Text="Recovery / checkpoint" FontWeight="SemiBold"/><TextBlock x:Name="WorkCheckpointText" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel>
             </Border>
           </StackPanel>
         </ScrollViewer>
@@ -136,17 +136,17 @@
         <Grid x:Name="ActivityPage" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <TextBlock x:Name="ActivitySummaryText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,10"/>
-          <ListView Grid.Row="1" x:Name="ActivityList" AutomationProperties.Name="Recent MCP activity">
-            <ListView.View><GridView>
-              <GridViewColumn Header="Time" DisplayMemberBinding="{Binding Time}" Width="145"/>
-              <GridViewColumn Header="#" DisplayMemberBinding="{Binding Seq}" Width="50"/>
-              <GridViewColumn Header="Operation" DisplayMemberBinding="{Binding Operation}" Width="120"/>
-              <GridViewColumn Header="Target" DisplayMemberBinding="{Binding Target}" Width="300"/>
-              <GridViewColumn Header="Bytes" DisplayMemberBinding="{Binding Bytes}" Width="80"/>
-              <GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration}" Width="90"/>
-              <GridViewColumn Header="Outcome" DisplayMemberBinding="{Binding Outcome}" Width="135"/>
-            </GridView></ListView.View>
-          </ListView>
+          <DataGrid Grid.Row="1" x:Name="ActivityList" AutoGenerateColumns="False" AlternationCount="2" AutomationProperties.Name="Recent MCP activity">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Time" Binding="{Binding Time}" Width="145"/>
+              <DataGridTextColumn Header="#" Binding="{Binding Seq}" Width="55"/>
+              <DataGridTextColumn Header="Operation" Binding="{Binding Operation}" Width="125"/>
+              <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*"/>
+              <DataGridTextColumn Header="Bytes" Binding="{Binding Bytes}" Width="90"/>
+              <DataGridTextColumn Header="Duration" Binding="{Binding Duration}" Width="100"/>
+              <DataGridTextColumn Header="Outcome" Binding="{Binding Outcome}" Width="145"/>
+            </DataGrid.Columns>
+          </DataGrid>
         </Grid>
 
         <!-- MAINTENANCE -->
@@ -154,7 +154,7 @@
           <StackPanel MaxWidth="820" HorizontalAlignment="Left">
             <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
               <StackPanel>
-                <TextBlock Text="Current operation" FontWeight="SemiBold"/>
+                <TextBlock x:Name="CurrentOperationLabel" Text="Current operation" FontWeight="SemiBold"/>
                 <TextBlock x:Name="OperationText" TextWrapping="Wrap" Margin="0,8,0,12"/>
                 <WrapPanel>
                   <Button x:Name="MaintenanceApplyButton" Content="Refresh managed Source" Click="Apply_Click" IsEnabled="False"/>
@@ -165,7 +165,21 @@
               </StackPanel>
             </Border>
             <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
-              <StackPanel><TextBlock Text="Diagnostics" FontWeight="SemiBold"/><TextBlock x:Name="DiagnosticsText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Margin="0,8,0,0"/></StackPanel>
+              <StackPanel>
+                <TextBlock x:Name="SourceUpdateTitleLabel" Text="Incoming Source update" FontWeight="SemiBold"/>
+                <TextBlock x:Name="SourceUpdateStatusText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,7,0,12"/>
+                <TextBlock x:Name="SourceUpdateSelectLabel" Text="Artifact" FontWeight="SemiBold"/>
+                <ComboBox x:Name="SourceArtifactCombo" DisplayMemberPath="Display" Margin="0,7,0,10" MinWidth="420" AutomationProperties.Name="Source update artifact"/>
+                <WrapPanel>
+                  <Button x:Name="PrepareSourceUpdateButton" Content="Prepare update folder" Click="PrepareSourceUpdate_Click" IsEnabled="False"/>
+                  <Button x:Name="OpenIncomingButton" Content="Open prepared folder" Click="OpenIncoming_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                  <Button x:Name="AcceptSourceUpdateButton" Content="Accept update" Click="AcceptSourceUpdate_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                  <Button x:Name="CancelSourceUpdateButton" Content="Cancel update" Click="CancelSourceUpdate_Click" IsEnabled="False" Margin="8,4,0,4"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
+              <StackPanel><TextBlock x:Name="DiagnosticsLabel" Text="Diagnostics" FontWeight="SemiBold"/><TextBlock x:Name="DiagnosticsText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Margin="0,8,0,0"/></StackPanel>
             </Border>
           </StackPanel>
         </ScrollViewer>
@@ -178,11 +192,11 @@
               <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
               <TextBlock x:Name="LanguageLabel" Text="Language" VerticalAlignment="Center"/>
               <ComboBox Grid.Column="1" x:Name="LanguageCombo" SelectionChanged="LanguageCombo_SelectionChanged">
-                <ComboBoxItem Tag="system" Content="System"/><ComboBoxItem Tag="ru" Content="Русский"/><ComboBoxItem Tag="en" Content="English"/>
+                <ComboBoxItem x:Name="LanguageSystemItem" Tag="system" Content="System"/><ComboBoxItem x:Name="LanguageRuItem" Tag="ru" Content="Русский"/><ComboBoxItem x:Name="LanguageEnItem" Tag="en" Content="English"/>
               </ComboBox>
               <TextBlock Grid.Row="1" x:Name="ThemeLabel" Text="Theme" VerticalAlignment="Center" Margin="0,12,0,0"/>
               <ComboBox Grid.Row="1" Grid.Column="1" x:Name="ThemeCombo" SelectionChanged="ThemeCombo_SelectionChanged" Margin="0,12,0,0">
-                <ComboBoxItem Tag="system" Content="System"/><ComboBoxItem Tag="light" Content="Light"/><ComboBoxItem Tag="dark" Content="Dark"/>
+                <ComboBoxItem x:Name="ThemeSystemItem" Tag="system" Content="System"/><ComboBoxItem x:Name="ThemeLightItem" Tag="light" Content="Light"/><ComboBoxItem x:Name="ThemeDarkItem" Tag="dark" Content="Dark"/>
               </ComboBox>
               <CheckBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="StartupCheckBox" Content="Start Control Center with Windows (operator choice)" Margin="0,18,0,0" Checked="StartupCheckBox_Changed" Unchecked="StartupCheckBox_Changed"/>
             </Grid>
@@ -192,7 +206,7 @@
         <!-- ADVANCED -->
         <ScrollViewer x:Name="AdvancedPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
           <StackPanel>
-            <TextBlock Text="Technical identities and receipts" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock x:Name="AdvancedTitleLabel" Text="Technical identities and receipts" FontSize="16" FontWeight="SemiBold"/>
             <TextBox x:Name="AdvancedText" Margin="0,12,0,0" FontFamily="Consolas" FontSize="12" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MinHeight="480" AutomationProperties.Name="Technical identities and receipts"/>
           </StackPanel>
         </ScrollViewer>

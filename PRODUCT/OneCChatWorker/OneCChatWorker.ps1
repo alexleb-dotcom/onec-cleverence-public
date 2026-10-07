@@ -1,13 +1,14 @@
 ﻿param(
- [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
+ [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
  [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCChatWorker',[string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker',
  [string]$ReaderName='OneCSourceReader',[string]$OperatorIdentity,[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
- [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath
+ [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath,[string]$ArtifactSelection,[switch]$SelectedArtifactFullSafeImport
 )
 $ErrorActionPreference='Stop'
+if($Json){$utf8=New-Object Text.UTF8Encoding($false);[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8}
 if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
 $PackageRoot=$PSScriptRoot
 $script:LauncherScriptPath=$PSCommandPath
@@ -30,6 +31,8 @@ function Require-AdminOrRelaunch {
  if(-not [string]::IsNullOrWhiteSpace($ProjectId)){$argsList+=@('-ProjectId',$ProjectId)}
  if(-not [string]::IsNullOrWhiteSpace($TaskId)){$argsList+=@('-TaskId',$TaskId)}
  if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){$argsList+=@('-TaskGoal',$TaskGoal)}
+ if(-not [string]::IsNullOrWhiteSpace($ArtifactSelection)){$argsList+=@('-ArtifactSelection',$ArtifactSelection)}
+ if($SelectedArtifactFullSafeImport){$argsList+='-SelectedArtifactFullSafeImport'}
  if($SkipDependencies){$argsList+='-SkipDependencies'}
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
  if($Json){$argsList+='-Json'}
@@ -334,6 +337,62 @@ function Run-Deactivate {
  }
  Show-Value $r
 }
+function Get-RequestedSourceUpdateSelections {
+ $raw=Need $ArtifactSelection ArtifactSelection
+ $values=@($raw.Split(';')|ForEach-Object{$_.Trim()}|Where-Object{$_})
+ if(-not $values.Count){throw 'SOURCE_UPDATE_SELECTION_REQUIRED'}
+ if($values.Count -gt 16){throw 'SOURCE_UPDATE_SELECTION_LIMIT_EXCEEDED'}
+ $values
+}
+function Run-PrepareSourceUpdate {
+ $projectKey=Need $ProjectId ProjectId
+ if(Require-AdminOrRelaunch 'PREPARE_SOURCE_UPDATE'){return}
+ $selections=@(Get-RequestedSourceUpdateSelections)
+ $r=Invoke-ObservedAction -OperationType SOURCE_UPDATE_PREPARE -RequestedAction 'Prepare exact operator-writable Incoming slots for selected artifacts' -TotalSteps 2 -Project $projectKey -Body {
+  param($op)
+  $null=Update-WorkerOperation -Operation $op -Message 'Validate current accepted snapshot and selected artifact identities' -Step 1 -Total 2 -State RUNNING -SafeDetails @{selection_count=$selections.Count} -ProgramDataRoot $ProgramDataRoot
+  $x=Prepare-SourceUpdate -ProjectId $projectKey -Selections $selections -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+  $null=Update-WorkerOperation -Operation $op -Message 'Incoming slots prepared; accepted Source remains unchanged' -Step 2 -Total 2 -State PASS -SafeDetails @{generation_id=$x.generation_id;slot_count=@($x.slots).Count;active_admission=$x.active_admission} -ProgramDataRoot $ProgramDataRoot
+  $x
+ } -FinalStateResolver {param($x);[pscustomobject]@{state='PASS';message='Selected Incoming slots are ready for operator/1C export'}}
+ Show-Value $r
+}
+function Run-AcceptSourceUpdate {
+ $projectKey=Need $ProjectId ProjectId
+ if(Require-AdminOrRelaunch 'ACCEPT_SOURCE_UPDATE'){return}
+ $r=Invoke-ObservedAction -OperationType SOURCE_UPDATE_ACCEPT -RequestedAction 'Seal, validate and publish selected Source artifacts through existing snapshot owner' -TotalSteps 4 -Project $projectKey -Body {
+  param($op)
+  $null=Update-WorkerOperation -Operation $op -Message 'Seal prepared Incoming slots and run selected-artifact validation/hash' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $x=Accept-SourceUpdate -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity -UseFullSafeImportFallback:$SelectedArtifactFullSafeImport
+  if($x.status -eq 'SEALED_VALIDATED'){
+   $null=Update-WorkerOperation -Operation $op -Message ('Selected intake validated but publication is blocked: '+[string]$x.reason) -Step 2 -Total 4 -State WAITING_FOR_USER -SafeDetails @{reason=$x.reason;fallback=$x.fallback;generation_id=$x.generation_id} -ProgramDataRoot $ProgramDataRoot
+   return $x
+  }
+  if($x.status -eq 'NO_CHANGE'){
+   $null=Update-WorkerOperation -Operation $op -Message 'Selected artifacts are identical; manifest/generation/snapshot unchanged' -Step 4 -Total 4 -State PASS -SafeDetails @{source_snapshot_id=$x.source_snapshot_id;publication_generation=$x.publication_generation} -ProgramDataRoot $ProgramDataRoot
+   return $x
+  }
+  $null=Update-WorkerOperation -Operation $op -Message 'Selected artifacts published; one accepted manifest committed' -Step 4 -Total 4 -State PASS -SafeDetails @{source_snapshot_id=$x.source_snapshot_id;publication_generation=$x.publication_generation;zero_copy=$x.zero_copy;copied_content_bytes=$x.copied_content_bytes} -ProgramDataRoot $ProgramDataRoot
+  $x
+ } -FinalStateResolver {
+  param($x)
+  if($x.status -in @('READY','NO_CHANGE')){[pscustomobject]@{state='PASS';message='Selected Source update completed'}}
+  elseif($x.status -eq 'SEALED_VALIDATED'){[pscustomobject]@{state='WAITING_FOR_USER';message=('Selected Source update is sealed and waiting: '+[string]$x.reason)}}
+  else{[pscustomobject]@{state='FAIL';message=('Selected Source update status='+[string]$x.status)}}
+ }
+ Show-Value $r
+}
+function Run-CancelSourceUpdate {
+ $projectKey=Need $ProjectId ProjectId
+ if(Require-AdminOrRelaunch 'CANCEL_SOURCE_UPDATE'){return}
+ $r=Invoke-ObservedAction -OperationType SOURCE_UPDATE_CANCEL -RequestedAction 'Discard exact unaccepted Incoming generation only' -TotalSteps 1 -Project $projectKey -Body {
+  param($op)
+  $x=Cancel-SourceUpdate -ProjectId $projectKey -WorkerRoot $WorkerRoot -OperatorIdentity $OperatorIdentity
+  $null=Update-WorkerOperation -Operation $op -Message 'Unaccepted Incoming generation removed; accepted Source unchanged' -Step 1 -Total 1 -State PASS -SafeDetails @{generation_id=$x.generation_id} -ProgramDataRoot $ProgramDataRoot
+  $x
+ } -FinalStateResolver {param($x);[pscustomobject]@{state='PASS';message='Unaccepted Incoming generation cancelled'}}
+ Show-Value $r
+}
 function Run-Apply {
  $projectKey=Need $ProjectId ProjectId
  $r=Invoke-ObservedAction -OperationType APPLY -RequestedAction 'Publish accepted managed Source snapshot from desired-state catalog' -TotalSteps 3 -Project $projectKey -Body {
@@ -384,7 +443,7 @@ function Run-Repair {
    param($x)
    $null=Update-WorkerOperation -Operation $op -Message ("{0}: files={1}/{2} bytes={3}/{4}" -f $x.phase,$x.files_processed,$x.files_total,$x.bytes_processed,$x.bytes_total) -Step 2 -Total 3 -State RUNNING -SafeDetails @{phase=$x.phase;files_processed=$x.files_processed;files_total=$x.files_total;bytes_processed=$x.bytes_processed;bytes_total=$x.bytes_total} -ProgramDataRoot $progressProgramDataRoot -Quiet
   }.GetNewClosure()
-  $x=Repair-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -ProgressCallback $progress
+  $x=Repair-WorkerProject -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -ProgressCallback $progress -OperatorIdentity $OperatorIdentity
   $null=Update-WorkerOperation -Operation $op -Message ("Repair result = {0}; action = {1}" -f $x.status,$x.repair_action) -Step 3 -Total 3 -State $(if($x.status -eq 'READY'){'RECOVERED'}else{'FAIL'}) -ProgramDataRoot $ProgramDataRoot
   $x
  } -FinalStateResolver {param($x);if($x.status -eq 'READY'){[pscustomobject]@{state='RECOVERED';message='Bounded repair completed and project is READY'}}else{[pscustomobject]@{state='FAIL';message='Repair did not reach READY'}}}
@@ -520,8 +579,20 @@ function Get-UiContext {
  if($active){$output=$status.output|Where-Object{$_.project_id -eq [string]$active.project_id}|Select-Object -First 1}
  $selectedProjectId=$(if($selectedProject){[string]$selectedProject.project_id}elseif($active){[string]$active.project_id}else{$null})
  $navigation=[pscustomobject]@{
-  source_root=$(if($selectedProjectId){Join-Path (Join-Path $WorkerRoot $selectedProjectId) 'Source'}else{$null})
+  source_root=$(if($selectedProjectId){Join-Path $WorkerRoot $selectedProjectId}else{$null})
   output_root=$(if($selectedProjectId){Join-Path (Join-Path $WorkerRoot $selectedProjectId) 'Output'}else{$null})
+ }
+ $sourceArtifacts=@()
+ if($selectedProjectId){
+  $manifestPath=Get-ProjectManifestPath -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot
+  if(Test-Path -LiteralPath $manifestPath -PathType Leaf){
+   try{
+    $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $sourceArtifacts=@(Get-ManifestArtifactRows $manifest|ForEach-Object{
+     [pscustomobject]@{key=(Get-SnapshotArtifactKey $_);participant_id=$_.participant_id;artifact_type=$_.artifact_type;artifact_id=$_.artifact_id;canonical_path=$_.canonical_path;files=$_.files;bytes=$_.bytes}
+    })
+   }catch{}
+  }
  }
  [pscustomobject]@{
   schema='UI_CONTEXT_V1';generated_utc=(Get-Date).ToUniversalTime().ToString('o');bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1'
@@ -529,10 +600,10 @@ function Get-UiContext {
   recommendation=[pscustomobject]@{state=$guided.state;action=$guided.recommended;reason=$guided.reason}
   projects=$projectRows;selected_project=$selectedProject
   work=[pscustomobject]@{active=$(if($active){$true}else{$false});project_id=$(if($active){$active.project_id}else{$null});task_id=$(if($active){$active.task_id}else{$null});task_goal=$(if($active){$active.task_goal}else{$null});task_created_utc=$(if($active){$active.task_created_utc}else{$null});task_expires_utc=$(if($active){$active.task_expires_utc}else{$null});helper=$status.helper;checkpoint=$checkpoint;continuation_available=($guided.state -eq 'CONTINUE_AVAILABLE')}
-  source=[pscustomobject]@{snapshot_id=$(if($selectedProject){$selectedProject.source_snapshot_id}else{$null});state=$(if($selectedProject){$selectedProject.fast_state}else{$null});acquisition_owner='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';deep_scan_performed=$false}
+  source=[pscustomobject]@{snapshot_id=$(if($selectedProject){$selectedProject.source_snapshot_id}else{$null});state=$(if($selectedProject){$selectedProject.fast_state}else{$null});artifacts=$sourceArtifacts;acquisition_owner='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';source_update=$(if($selectedProjectId){Get-SourceUpdateSummary -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot}else{$null});deep_scan_performed=$false}
   output=$output;navigation=$navigation
   operation=[pscustomobject]@{current=$status.current_operation;last=$status.last_operation;recovery=$status.operation_recovery}
-  s4=[pscustomobject]@{policy_status='PENDING_CAP_ACTIVATION';accounting_available=($null -ne $s4);projection=$s4;authoritative_owner='relay task record/request_receipts';limits_display_allowed=$false}
+  s4=[pscustomobject]@{policy_status='OPERATOR_ACCEPTED_PRODUCT_POLICY';accounting_available=($null -ne $s4);projection=$s4;authoritative_owner='relay task record/request_receipts';limits_display_allowed=$false}
   safety=[pscustomobject]@{worker_authoritative=$true;relay_accounting_authoritative=$true;mcp_side_effect=$false;source_request_issued=$false;acquisition_called=$false;secret_values_included=$false;model_tool_surface_count=6}
  }
 }
@@ -556,6 +627,9 @@ function Invoke-CommandMode {
   'SET_MAIN' {Run-SetMain;break}
   'ADD_EXTENSION' {Run-AddExtension;break}
   'DEACTIVATE' {Run-Deactivate;break}
+  'PREPARE_SOURCE_UPDATE' {Run-PrepareSourceUpdate;break}
+  'ACCEPT_SOURCE_UPDATE' {Run-AcceptSourceUpdate;break}
+  'CANCEL_SOURCE_UPDATE' {Run-CancelSourceUpdate;break}
   'APPLY' {Run-Apply;break}
   'VERIFY' {Run-Verify;break}
   'REPAIR' {Run-Repair;break}

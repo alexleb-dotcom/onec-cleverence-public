@@ -696,6 +696,11 @@ function Get-FastProjectState {
     param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
     $catalog=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $catalog $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'}
     if($p.active -eq $false){return [pscustomobject]@{project_id=$ProjectId;state='APPLY_REQUIRED';status='APPLY_REQUIRED';reason='PROJECT_INACTIVE'}}
+    $updatePaths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(Test-Path -LiteralPath $updatePaths.promotion_path -PathType Leaf){
+        try{$promotion=Get-Content -LiteralPath $updatePaths.promotion_path -Raw -Encoding UTF8|ConvertFrom-Json}catch{return [pscustomobject]@{project_id=$ProjectId;state='SOURCE_UPDATE_RECOVERY_REQUIRED';status='SOURCE_UPDATE_RECOVERY_REQUIRED';reason='PROMOTION_MARKER_CORRUPT'}}
+        if([string]$promotion.state -ne 'MANIFEST_COMMITTED'){return [pscustomobject]@{project_id=$ProjectId;state='SOURCE_UPDATE_RECOVERY_REQUIRED';status='SOURCE_UPDATE_RECOVERY_REQUIRED';reason='PROMOTION_MARKER_OPEN';generation_id=[string]$promotion.generation_id}}
+    }
     $residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot);if($residue.Count){return [pscustomobject]@{project_id=$ProjectId;state='INCOMPLETE_APPLY_RESIDUE';status='INCOMPLETE_APPLY_RESIDUE';reason='ORPHAN_STAGE_PRESENT';residue_count=$residue.Count}}
     $activeParticipants=@($p.participants|Where-Object {$_.active -ne $false})
     if(-not $activeParticipants.Count){return [pscustomobject]@{project_id=$ProjectId;state='APPLY_REQUIRED';status='APPLY_REQUIRED';reason='NO_ACTIVE_PARTICIPANTS'}}
@@ -866,6 +871,543 @@ function Invoke-SourceAcquisition {
         Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath ($progressPath+'.tmp') -Force -ErrorAction SilentlyContinue
     }
+}
+
+
+function Invoke-SourceAcquisitionInternalRequest {
+    param(
+        [Parameter(Mandatory)]$Request,
+        [Parameter(Mandatory)][string]$RequestRoot,
+        [Parameter(Mandatory)][string]$ExpectedVerb,
+        [Parameter(Mandatory)][string]$ExpectedContract,
+        [int]$TimeoutMs=21600000
+    )
+    $module=Get-SourceAcquisitionModulePath
+    $node=Get-Command node.exe -ErrorAction SilentlyContinue
+    if(-not $node -and (Test-Path -LiteralPath 'C:\Program Files\nodejs\node.exe' -PathType Leaf)){$node=Get-Item 'C:\Program Files\nodejs\node.exe'}
+    if(-not $node){throw 'NODE_REQUIRED_FOR_SOURCE_ACQUISITION'}
+    $nodePath=$(if($node.Source){[string]$node.Source}else{[string]$node.FullName})
+    New-Item -ItemType Directory -Force -Path $RequestRoot|Out-Null
+    $requestPath=Join-Path $RequestRoot ('node-request-'+[Guid]::NewGuid().ToString('N')+'.json')
+    Write-JsonAtomic $Request $requestPath
+    $psi=New-Object Diagnostics.ProcessStartInfo
+    $psi.FileName=$nodePath
+    $psi.Arguments=('"{0}"' -f $module.Replace('"','\"'))
+    $psi.UseShellExecute=$false
+    $psi.CreateNoWindow=$true
+    $psi.RedirectStandardOutput=$true
+    $psi.RedirectStandardError=$true
+    $psi.EnvironmentVariables['ONEC_ACQ_REQUEST']=$requestPath
+    $proc=New-Object Diagnostics.Process
+    $proc.StartInfo=$psi
+    try{
+        if(-not $proc.Start()){throw 'SOURCE_ACQUISITION_PROCESS_START_FAILED'}
+        if(-not $proc.WaitForExit($TimeoutMs+5000)){try{$proc.Kill()}catch{};throw 'ACQUISITION_TIMEOUT'}
+        $stdout=$proc.StandardOutput.ReadToEnd();$stderr=$proc.StandardError.ReadToEnd()
+        if($stdout.Length -gt 32768){throw 'ACQUISITION_STDOUT_LIMIT_EXCEEDED'}
+        if($stderr.Length -gt 16384){throw 'ACQUISITION_STDERR_LIMIT_EXCEEDED'}
+        if($proc.ExitCode -ne 0){
+            $code='ACQUISITION_EXECUTION_ERROR';$message=ConvertTo-BoundedDiagnosticText $stderr
+            try{$err=$stderr|ConvertFrom-Json;if($err.code){$code=[string]$err.code};if($err.message){$message=ConvertTo-BoundedDiagnosticText ([string]$err.message)}}catch{}
+            throw ($code+': '+$message)
+        }
+        try{$result=$stdout|ConvertFrom-Json}catch{throw 'ACQUISITION_RESULT_INVALID_JSON'}
+        if([string]$result.contract -ne $ExpectedContract -or [string]$result.verb -ne $ExpectedVerb -or [string]$result.result -ne 'PASS'){throw 'ACQUISITION_RESULT_CONTRACT_MISMATCH'}
+        return $result
+    }finally{
+        if($proc){$proc.Dispose()}
+        Remove-Item -LiteralPath $requestPath -Force -ErrorAction SilentlyContinue
+        if($Request.PSObject.Properties.Name -contains 'progress_path'){
+            Remove-Item -LiteralPath ([string]$Request.progress_path) -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath (([string]$Request.progress_path)+'.tmp') -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Invoke-SourceIntakeValidateHash {
+    param([Parameter(Mandatory)][string]$SourceRoot,[Parameter(Mandatory)][string]$ReceiptRoot,[Parameter(Mandatory)][string]$ReceiptName,[int]$TimeoutMs=21600000)
+    $safe=Assert-SafeId $ReceiptName 'receipt_name'
+    $fp=Join-Path $ReceiptRoot ($safe+'.fingerprints.jsonl')
+    $progress=Join-Path $ReceiptRoot ($safe+'.progress.json')
+    foreach($p in @($fp,$progress,$progress+'.tmp')){Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue}
+    $req=[pscustomobject][ordered]@{
+        verb='INTAKE_VALIDATE_HASH';source_root=[IO.Path]::GetFullPath($SourceRoot);output_parent=[IO.Path]::GetFullPath($ReceiptRoot)
+        fingerprint_path=[IO.Path]::GetFullPath($fp);progress_path=[IO.Path]::GetFullPath($progress)
+        culture=[Globalization.CultureInfo]::CurrentCulture.Name;max_files=2000000;max_bytes=[int64]2199023255552;timeout_ms=$TimeoutMs
+    }
+    Invoke-SourceAcquisitionInternalRequest -Request $req -RequestRoot $ReceiptRoot -ExpectedVerb 'INTAKE_VALIDATE_HASH' -ExpectedContract 'S82_2_INCOMING_VALIDATE_HASH_V1' -TimeoutMs $TimeoutMs
+}
+
+function Invoke-SourceIntakeMetadataVerify {
+    param([Parameter(Mandatory)][string]$SourceRoot,[Parameter(Mandatory)][string]$ReceiptRoot,[Parameter(Mandatory)][string]$ReceiptName,[Parameter(Mandatory)][string]$ExpectedMetadataIdentity,[int]$TimeoutMs=21600000)
+    $safe=Assert-SafeId $ReceiptName 'receipt_name'
+    $progress=Join-Path $ReceiptRoot ($safe+'.metadata.progress.json')
+    Remove-Item -LiteralPath $progress -Force -ErrorAction SilentlyContinue
+    $req=[pscustomobject][ordered]@{
+        verb='INTAKE_METADATA_VERIFY';source_root=[IO.Path]::GetFullPath($SourceRoot);output_parent=[IO.Path]::GetFullPath($ReceiptRoot)
+        progress_path=[IO.Path]::GetFullPath($progress);expected_metadata_identity_sha256=$ExpectedMetadataIdentity
+        culture=[Globalization.CultureInfo]::CurrentCulture.Name;max_files=2000000;max_bytes=[int64]2199023255552;timeout_ms=$TimeoutMs
+    }
+    Invoke-SourceAcquisitionInternalRequest -Request $req -RequestRoot $ReceiptRoot -ExpectedVerb 'INTAKE_METADATA_VERIFY' -ExpectedContract 'S82_2_INCOMING_VALIDATE_HASH_V1' -TimeoutMs $TimeoutMs
+}
+
+function Invoke-ZeroCopyArtifactMove {
+    param(
+        [Parameter(Mandatory)][string]$SourceParent,[Parameter(Mandatory)][string]$SourceRoot,
+        [Parameter(Mandatory)][string]$DestinationParent,[Parameter(Mandatory)][string]$DestinationRoot,
+        [Parameter(Mandatory)][string]$ReceiptRoot,[int]$TimeoutMs=120000
+    )
+    $req=[pscustomobject][ordered]@{
+        verb='ZERO_COPY_PROMOTE_ARTIFACT';source_parent=[IO.Path]::GetFullPath($SourceParent);source_root=[IO.Path]::GetFullPath($SourceRoot)
+        destination_parent=[IO.Path]::GetFullPath($DestinationParent);destination_root=[IO.Path]::GetFullPath($DestinationRoot);timeout_ms=$TimeoutMs
+    }
+    Invoke-SourceAcquisitionInternalRequest -Request $req -RequestRoot $ReceiptRoot -ExpectedVerb 'ZERO_COPY_PROMOTE_ARTIFACT' -ExpectedContract 'S82_2_ZERO_COPY_PROMOTION_V1' -TimeoutMs $TimeoutMs
+}
+
+function Get-SourceUpdatePaths {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $projectRoot=Join-Path $WorkerRoot (Assert-SafeId $ProjectId 'project_id')
+    $incoming=Join-Path $projectRoot 'Incoming'
+    [pscustomobject]@{
+        project_root=$projectRoot
+        incoming_root=$incoming
+        active_path=(Join-Path $incoming 'active-source-update.json')
+        promotion_path=(Join-Path $incoming 'promotion-source-update.json')
+    }
+}
+
+function Read-SourceUpdateState {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[switch]$AllowMissing)
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $paths.active_path -PathType Leaf)){if($AllowMissing){return $null};throw 'SOURCE_UPDATE_NOT_ACTIVE'}
+    try{$active=Get-Content -LiteralPath $paths.active_path -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'SOURCE_UPDATE_ACTIVE_MARKER_CORRUPT'}
+    if([string]$active.schema -ne 'SOURCE_UPDATE_ACTIVE_V1' -or [string]$active.project_id -ne $ProjectId){throw 'SOURCE_UPDATE_ACTIVE_MARKER_CORRUPT'}
+    $statePath=[string]$active.state_path
+    if([string]::IsNullOrWhiteSpace($statePath) -or -not(Test-Path -LiteralPath $statePath -PathType Leaf)){throw 'SOURCE_UPDATE_STATE_MISSING'}
+    try{$state=Get-Content -LiteralPath $statePath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'SOURCE_UPDATE_STATE_CORRUPT'}
+    if([string]$state.schema -ne 'SOURCE_UPDATE_V1' -or [string]$state.project_id -ne $ProjectId -or [string]$state.generation_id -ne [string]$active.generation_id){throw 'SOURCE_UPDATE_STATE_CORRUPT'}
+    $state
+}
+
+function Get-SourceUpdateSummary {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $paths.active_path -PathType Leaf)){
+        return [pscustomobject]@{status='NONE';generation_id=$null;state=$null;slots=@();promotion_state=$(if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){'RECOVERY_REQUIRED'}else{$null})}
+    }
+    try{$state=Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot}catch{return [pscustomobject]@{status='RECOVERY_REQUIRED';generation_id=$null;state='CORRUPT';slots=@();promotion_state='RECOVERY_REQUIRED'}}
+    $promotion=$null
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){try{$promotion=Get-Content -LiteralPath $paths.promotion_path -Raw -Encoding UTF8|ConvertFrom-Json}catch{$promotion=[pscustomobject]@{state='CORRUPT'}}}
+    $slots=@($state.selected|ForEach-Object{
+        [pscustomobject]@{
+            key=[string]$_.key;participant_id=[string]$_.participant_id;artifact_type=[string]$_.artifact_type;artifact_id=[string]$_.artifact_id
+            slot_path=[string]$_.slot_path;change_state=[string]$_.change_state
+            files=$(if($_.validation){[int64]$_.validation.digest.files}else{$null})
+            bytes=$(if($_.validation){[int64]$_.validation.digest.bytes}else{$null})
+        }
+    })
+    [pscustomobject]@{status=[string]$state.state;generation_id=[string]$state.generation_id;state=[string]$state.state;created_utc=[string]$state.created_utc;sealed_utc=$(if($state.PSObject.Properties.Name -contains 'sealed_utc'){$state.sealed_utc}else{$null});slots=$slots;promotion_state=$(if($promotion){[string]$promotion.state}else{$null})}
+}
+
+function Write-SourceUpdateState {
+    param([Parameter(Mandatory)]$State)
+    Write-JsonAtomic $State ([string]$State.state_path)
+    $State
+}
+
+function Set-SourceUpdateTreeAcl {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string]$OperatorIdentity,[switch]$Writable)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
+    $aclPath=ConvertTo-ExtendedWindowsPath $Path
+    if($Writable){
+        $system='*S-1-5-18:(OI)(CI)F';$admins='*S-1-5-32-544:(OI)(CI)F'
+        $operator=$identity.icacls_identity+':(OI)(CI)M';$reader=$identity.reader_icacls_identity+':(OI)(CI)RX'
+        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operator,$reader)
+        return
+    }
+    $system='*S-1-5-18:F';$admins='*S-1-5-32-544:F'
+    $operator=$identity.icacls_identity+':RX';$reader=$identity.reader_icacls_identity+':RX'
+    Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/inheritance:r')
+    Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/remove:g',$identity.icacls_identity,$identity.reader_icacls_identity)
+    Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/grant:r',$system,$admins,$operator,$reader)
+}
+
+function Protect-SourceUpdateMetadata {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string]$OperatorIdentity)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
+    $aclPath=ConvertTo-ExtendedWindowsPath $Path
+    if(Test-Path -LiteralPath $Path -PathType Container){
+        $system='*S-1-5-18:(OI)(CI)F';$admins='*S-1-5-32-544:(OI)(CI)F'
+        $operator=$identity.icacls_identity+':(OI)(CI)RX';$reader=$identity.reader_icacls_identity+':(OI)(CI)RX'
+        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operator,$reader)
+        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/inheritance:r','/grant:r',$system,$admins,$operator,$reader)
+    }elseif(Test-Path -LiteralPath $Path -PathType Leaf){
+        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/inheritance:r','/grant:r','*S-1-5-18:F','*S-1-5-32-544:F',($identity.icacls_identity+':RX'),($identity.reader_icacls_identity+':RX'))
+    }else{throw 'SOURCE_UPDATE_METADATA_PATH_MISSING'}
+}
+
+function Get-SourceUpdateSelectionRows {
+    param([Parameter(Mandatory)]$Manifest,[Parameter(Mandatory)][string[]]$Selections)
+    if(-not $Selections -or $Selections.Count -lt 1){throw 'SOURCE_UPDATE_SELECTION_REQUIRED'}
+    $rows=@(Get-ManifestArtifactRows $Manifest);$result=@();$seen=@{}
+    foreach($token in $Selections){
+        $parts=@([string]$token -split '\|')
+        if($parts.Count -ne 3){throw 'SOURCE_UPDATE_SELECTION_INVALID'}
+        $pid=Assert-SafeId $parts[0] 'participant_id';$type=[string]$parts[1].ToUpperInvariant();$aid=Assert-SafeId $parts[2] 'artifact_id'
+        if($type -notin @('MAIN','EXTENSION')){throw 'SOURCE_UPDATE_ARTIFACT_TYPE_INVALID'}
+        if($type -eq 'MAIN' -and $aid -ne 'main'){throw 'SOURCE_UPDATE_MAIN_ID_INVALID'}
+        $key="$pid|$type|$aid";if($seen.ContainsKey($key)){throw 'SOURCE_UPDATE_SELECTION_DUPLICATE'};$seen[$key]=$true
+        $match=@($rows|Where-Object {$_.participant_id -eq $pid -and $_.artifact_type -eq $type -and $_.artifact_id -eq $aid})
+        if($match.Count -ne 1){throw ('SOURCE_UPDATE_ARTIFACT_NOT_FOUND: '+$key)}
+        $result+=,$match[0]
+    }
+    @($result)
+}
+
+function Get-ManifestFingerprintMap {
+    param([Parameter(Mandatory)]$Manifest)
+    $map=@{}
+    foreach($a in @($Manifest.accepted_snapshot.artifacts)){
+        $map[(Get-SnapshotArtifactKey $a)]=[pscustomobject]@{state=[string]$a.fingerprint_inventory_state;relative_path=[string]$a.fingerprint_inventory_path;sha256=[string]$a.fingerprint_inventory_sha256}
+    }
+    $map
+}
+
+function Write-VersionedFingerprintInventory {
+    param(
+        [Parameter(Mandatory)][string]$ManifestDir,[Parameter(Mandatory)][string]$ParticipantId,[Parameter(Mandatory)][string]$ArtifactType,
+        [Parameter(Mandatory)][string]$ArtifactId,[Parameter(Mandatory)][string]$PreparedFile,[Parameter(Mandatory)][string]$ExpectedSha256
+    )
+    if(-not(Test-Path -LiteralPath $PreparedFile -PathType Leaf)){throw 'FINGERPRINT_PREPARED_FILE_MISSING'}
+    $actual=Get-Sha256File $PreparedFile;if($actual -ne $ExpectedSha256){throw 'FINGERPRINT_PREPARED_SHA_MISMATCH'}
+    $dir=Join-Path $ManifestDir 'Fingerprints';New-Item -ItemType Directory -Force -Path $dir|Out-Null
+    $name=("{0}.{1}.{2}.{3}.jsonl" -f (Assert-SafeId $ParticipantId 'participant_id'),$ArtifactType.ToLowerInvariant(),(Assert-SafeId $ArtifactId 'artifact_id'),$actual)
+    $path=Join-Path $dir $name
+    if(Test-Path -LiteralPath $path -PathType Leaf){
+        if((Get-Sha256File $path) -ne $actual){throw 'FINGERPRINT_VERSION_COLLISION'}
+    }else{
+        Copy-Item -LiteralPath $PreparedFile -Destination $path -ErrorAction Stop
+        if((Get-Sha256File $path) -ne $actual){Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue;throw 'FINGERPRINT_VERSION_COPY_MISMATCH'}
+    }
+    [pscustomobject]@{state='PRESENT';relative_path=("Fingerprints/$name");sha256=$actual}
+}
+
+function Test-ProjectActiveAdmission {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $path=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $path -PathType Leaf)){return $false}
+    try{$a=Get-Content -LiteralPath $path -Raw -Encoding UTF8|ConvertFrom-Json}catch{return $true}
+    [string]$a.project_id -eq $ProjectId
+}
+
+function Prepare-SourceUpdate {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string[]]$Selections,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(Test-Path -LiteralPath $paths.active_path -PathType Leaf){throw 'INTAKE_ALREADY_ACTIVE'}
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED'){throw ('PROJECT_NOT_READY: '+$fast.state)}
+    $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $selected=@(Get-SourceUpdateSelectionRows -Manifest $manifest -Selections $Selections)
+    $generation='update-'+[Guid]::NewGuid().ToString('N').Substring(0,16)
+    $generationRoot=Join-Path $paths.incoming_root $generation;$slotsRoot=Join-Path $generationRoot 'slots';$receiptRoot=Join-Path $generationRoot 'receipts'
+    New-Item -ItemType Directory -Force -Path $slotsRoot,$receiptRoot|Out-Null
+    $items=@();$index=0
+    foreach($row in $selected){
+        $index++;$slotName=('a{0:D2}-{1}-{2}-{3}' -f $index,$row.participant_id,$row.artifact_type.ToLowerInvariant(),$row.artifact_id)
+        $slot=Join-Path $slotsRoot $slotName;New-Item -ItemType Directory -Force -Path $slot|Out-Null
+        $items+=,[pscustomobject][ordered]@{key=(Get-SnapshotArtifactKey $row);participant_id=$row.participant_id;artifact_type=$row.artifact_type;artifact_id=$row.artifact_id;canonical_path=$row.canonical_path;slot_path=$slot;slot_name=$slotName;validation=$null;change_state='PENDING';detached_path=$null;promotion_phase='NONE'}
+    }
+    $baseManifestCopy=Join-Path $generationRoot 'base-manifest.json';Copy-Item -LiteralPath $manifestPath -Destination $baseManifestCopy -Force
+    $statePath=Join-Path $generationRoot 'source-update.json'
+    $state=[pscustomobject][ordered]@{
+        schema='SOURCE_UPDATE_V1';project_id=$ProjectId;generation_id=$generation;state='PREPARED_WRITABLE';created_utc=(Get-Date).ToUniversalTime().ToString('o')
+        state_path=$statePath;generation_root=$generationRoot;slots_root=$slotsRoot;receipt_root=$receiptRoot;base_manifest_path=$baseManifestCopy
+        base_manifest_sha256=$fast.manifest_sha256;base_source_snapshot_id=$fast.source_snapshot_id;base_publication_generation=$fast.publication_generation
+        catalog_sha256=$fast.catalog_sha256;operator_identity=$OperatorIdentity;selected=@($items)
+    }
+    Write-JsonAtomic $state $statePath
+    $active=[pscustomobject][ordered]@{schema='SOURCE_UPDATE_ACTIVE_V1';project_id=$ProjectId;generation_id=$generation;state_path=$statePath;created_utc=$state.created_utc}
+    New-Item -ItemType Directory -Force -Path $paths.incoming_root|Out-Null
+    Write-JsonAtomic $active $paths.active_path
+    Protect-SourceUpdateMetadata -Path $generationRoot -OperatorIdentity $OperatorIdentity
+    foreach($item in @($state.selected)){Set-SourceUpdateTreeAcl -Path ([string]$item.slot_path) -OperatorIdentity $OperatorIdentity -Writable}
+    Protect-SourceUpdateMetadata -Path $receiptRoot -OperatorIdentity $OperatorIdentity
+    Protect-SourceUpdateMetadata -Path $baseManifestCopy -OperatorIdentity $OperatorIdentity
+    Protect-SourceUpdateMetadata -Path $statePath -OperatorIdentity $OperatorIdentity
+    Protect-SourceUpdateMetadata -Path $paths.active_path -OperatorIdentity $OperatorIdentity
+    [pscustomobject]@{project_id=$ProjectId;status='PREPARED_WRITABLE';generation_id=$generation;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;slots=@($state.selected|Select-Object key,participant_id,artifact_type,artifact_id,slot_path);active_admission=(Test-ProjectActiveAdmission -ProjectId $ProjectId -ProgramDataRoot $ProgramDataRoot)}
+}
+
+function Remove-SourceUpdateGeneration {
+    param([Parameter(Mandatory)]$State,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $paths=Get-SourceUpdatePaths -ProjectId ([string]$State.project_id) -WorkerRoot $WorkerRoot
+    if(Test-Path -LiteralPath ([string]$State.generation_root)){Remove-Item -LiteralPath ([string]$State.generation_root) -Recurse -Force -ErrorAction Stop}
+    Remove-Item -LiteralPath $paths.active_path -Force -ErrorAction SilentlyContinue
+}
+
+function Cancel-SourceUpdate {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$OperatorIdentity)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
+    $state=Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
+    [pscustomobject]@{project_id=$ProjectId;status='CANCELLED';generation_id=$state.generation_id;accepted_source_mutated=$false}
+}
+
+function Set-ManifestArtifactFromValidation {
+    param([Parameter(Mandatory)]$Manifest,[Parameter(Mandatory)]$Item,[Parameter(Mandatory)]$Validation)
+    $part=$Manifest.participants|Where-Object {$_.participant_id -eq [string]$Item.participant_id}|Select-Object -First 1
+    if(-not $part){throw 'SOURCE_UPDATE_MANIFEST_PARTICIPANT_MISSING'}
+    if([string]$Item.artifact_type -eq 'MAIN'){$art=$part.target.main}else{$art=$part.target.extensions|Where-Object {$_.extension_id -eq [string]$Item.artifact_id}|Select-Object -First 1}
+    if(-not $art){throw 'SOURCE_UPDATE_MANIFEST_ARTIFACT_MISSING'}
+    $art.tree_sha256=[string]$Validation.digest.sha256;$art.files=[int64]$Validation.digest.files;$art.bytes=[int64]$Validation.digest.bytes;$art.configuration_xml_sha256=[string]$Validation.configuration_xml_sha256
+}
+
+function Invoke-SelectedArtifactFullSafeImportFallback {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)]$State,[Parameter(Mandatory)]$BaseManifest,[Parameter(Mandatory)]$Changed,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$OperatorIdentity,[string]$FaultInjection=''
+    )
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestDir=Split-Path -Parent $manifestPath;$projectRoot=[string]$paths.project_root
+    $candidate=Get-Content -LiteralPath ([string]$State.base_manifest_path) -Raw -Encoding UTF8|ConvertFrom-Json
+    $fingerprintMap=Get-ManifestFingerprintMap -Manifest $BaseManifest
+    $markerItems=@()
+    foreach($item in @($Changed)){
+        $target=Join-Path $projectRoot ([string]$item.canonical_path).Replace('/','\')
+        $markerItems+=,[pscustomobject][ordered]@{key=$item.key;slot_path=$item.slot_path;target_path=$target;detached_path=$null;phase='PENDING';mode='FULL_SAFE_IMPORT'}
+    }
+    $marker=[pscustomobject][ordered]@{
+        schema='SOURCE_UPDATE_PROMOTION_V1';project_id=$ProjectId;generation_id=$State.generation_id;state='FALLBACK_COPYING'
+        mode='SELECTED_ARTIFACT_FULL_SAFE_IMPORT';base_manifest_sha256=$State.base_manifest_sha256;candidate_manifest_path=$null;candidate_manifest_sha256=$null
+        expected_source_snapshot_id=$null;expected_publication_generation=([int]$State.base_publication_generation+1);items=$markerItems;created_utc=(Get-Date).ToUniversalTime().ToString('o')
+    }
+    Write-JsonAtomic $marker $paths.promotion_path;Protect-SourceUpdateMetadata -Path $paths.promotion_path -OperatorIdentity $OperatorIdentity
+    $State.state='PROMOTING';$null=Write-SourceUpdateState $State
+    if($FaultInjection -eq 'AFTER_MARKER'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_MARKER'}
+    $index=0
+    foreach($item in @($Changed)){
+        $index++;$mi=$marker.items|Where-Object {$_.key -eq $item.key}|Select-Object -First 1
+        $oldRow=@(Get-ManifestArtifactRows $BaseManifest|Where-Object {(Get-SnapshotArtifactKey $_) -eq [string]$item.key}|Select-Object -First 1)
+        if($oldRow.Count -ne 1){throw 'SOURCE_UPDATE_OLD_ROW_MISSING'}
+        $copy=Copy-ArtifactSafely -Source ([string]$item.slot_path) -Target ([string]$mi.target_path) -ReplaceExisting -ProjectRoot $projectRoot -ArchiveKey ("SourceUpdateFallback\"+[string]$State.generation_id+"\"+([string]$item.key).Replace('|','\')) -ExpectedTargetDigest ([string]$oldRow[0].tree_sha256)
+        $mi.detached_path=[string]$copy.archived;$mi.phase='NEW_PROMOTED';$mi|Add-Member -NotePropertyName copied_content_bytes -NotePropertyValue ([int64]$copy.metrics.copied_bytes) -Force
+        Write-JsonAtomic $marker $paths.promotion_path
+        if($index -eq 1 -and $FaultInjection -eq 'AFTER_FIRST_PROMOTE'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_FIRST_PROMOTE'}
+        $validation=[pscustomobject]@{digest=$copy.digest;configuration_xml_sha256=$copy.configuration_xml_sha256}
+        Set-ManifestArtifactFromValidation -Manifest $candidate -Item $item -Validation $validation
+        $fp=Write-VersionedFingerprintInventory -ManifestDir $manifestDir -ParticipantId ([string]$item.participant_id) -ArtifactType ([string]$item.artifact_type) -ArtifactId ([string]$item.artifact_id) -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
+        $fingerprintMap[[string]$item.key]=$fp
+    }
+    if($FaultInjection -eq 'AFTER_ALL_PROMOTED'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_ALL_PROMOTED'}
+    $candidate.applied_utc=(Get-Date).ToUniversalTime().ToString('o')
+    $candidate.accepted_snapshot=New-AcceptedSnapshot -ManifestParticipants @($candidate.participants) -CatalogSha256 ([string]$State.catalog_sha256) -ProofBasis 'SELECTED_ARTIFACT_FULL_SAFE_IMPORT_V1' -PublicationGeneration ([int]$State.base_publication_generation+1) -FingerprintMap $fingerprintMap
+    $candidatePath=Join-Path ([string]$State.generation_root) 'candidate-manifest.json';Write-JsonAtomic $candidate $candidatePath
+    $marker.candidate_manifest_path=$candidatePath;$marker.candidate_manifest_sha256=Get-Sha256File $candidatePath
+    $marker.expected_source_snapshot_id=[string]$candidate.accepted_snapshot.source_snapshot_id;$marker.expected_publication_generation=[int]$candidate.accepted_snapshot.publication_generation
+    $marker.state='PROMOTED_PRE_MANIFEST';Write-JsonAtomic $marker $paths.promotion_path
+    Write-JsonAtomic $candidate $manifestPath
+    if((Get-Sha256File $manifestPath) -ne [string]$marker.candidate_manifest_sha256){throw 'SOURCE_UPDATE_MANIFEST_READBACK_MISMATCH'}
+    $marker.state='MANIFEST_COMMITTED';Write-JsonAtomic $marker $paths.promotion_path
+    $State.state='MANIFEST_COMMITTED';$State|Add-Member -NotePropertyName expected_source_snapshot_id -NotePropertyValue ([string]$marker.expected_source_snapshot_id) -Force;$null=Write-SourceUpdateState $State
+    if($FaultInjection -eq 'AFTER_MANIFEST_COMMIT'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_MANIFEST_COMMIT'}
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$marker.expected_source_snapshot_id){throw 'SOURCE_UPDATE_FAST_STATE_NOT_ACCEPTED'}
+    Remove-Item -LiteralPath $paths.promotion_path -Force -ErrorAction Stop
+    if($FaultInjection -eq 'AFTER_MARKER_REMOVAL'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_MARKER_REMOVAL'}
+    $copied=[int64](@($marker.items|Measure-Object copied_content_bytes -Sum).Sum)
+    $result=[pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';generation_id=$State.generation_id;source_snapshot_id=$fast.source_snapshot_id;manifest_sha256=$fast.manifest_sha256;publication_generation=$fast.publication_generation;selected=@($State.selected|Select-Object key,change_state,validation);zero_copy=$false;fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT';copied_content_bytes=$copied;stage_content_rehash=0}
+    Remove-SourceUpdateGeneration -State $State -WorkerRoot $WorkerRoot
+    $result
+}
+
+function Test-SourceUpdateZeroCopyEligibility {
+    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)]$State,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $projectRoot=[IO.Path]::GetFullPath((Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot).project_root)
+    if($projectRoot.StartsWith('\\')){return [pscustomobject]@{eligible=$false;reason='UNC_WORKER_ROOT';fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT'}}
+    if($projectRoot -notmatch '^[A-Za-z]:\\'){return [pscustomobject]@{eligible=$false;reason='LOCAL_WINDOWS_PATH_REQUIRED';fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT'}}
+    $volume=[IO.Path]::GetPathRoot($projectRoot).ToLowerInvariant()
+    foreach($item in @($State.selected)){
+        $slot=[IO.Path]::GetFullPath([string]$item.slot_path)
+        $target=Join-Path $projectRoot ([string]$item.canonical_path).Replace('/','\')
+        if($slot.StartsWith('\\') -or $target.StartsWith('\\')){return [pscustomobject]@{eligible=$false;reason='UNC_ARTIFACT_PATH';fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT'}}
+        if([IO.Path]::GetPathRoot($slot).ToLowerInvariant() -ne $volume -or [IO.Path]::GetPathRoot($target).ToLowerInvariant() -ne $volume){return [pscustomobject]@{eligible=$false;reason='CROSS_VOLUME';fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT'}}
+    }
+    [pscustomobject]@{eligible=$true;reason='SAME_LOCAL_VOLUME';fallback=$null}
+}
+
+function Accept-SourceUpdate {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$OperatorIdentity,[switch]$UseFullSafeImportFallback,
+        [ValidateSet('','AFTER_VALIDATION','AFTER_MARKER','AFTER_FIRST_DETACH','AFTER_FIRST_PROMOTE','AFTER_ALL_PROMOTED','AFTER_MANIFEST_COMMIT','AFTER_MARKER_REMOVAL')][string]$FaultInjection=''
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
+    $state=Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'SOURCE_UPDATE_BASE_MANIFEST_MISSING'}
+    $currentManifestSha=Get-Sha256File $manifestPath
+    if($currentManifestSha -ne [string]$state.base_manifest_sha256){throw 'SOURCE_UPDATE_STALE_BASE'}
+    if((Get-CatalogHash -WorkerRoot $WorkerRoot) -ne [string]$state.catalog_sha256){throw 'SOURCE_UPDATE_STALE_CATALOG'}
+    $baseManifest=Get-Content -LiteralPath ([string]$state.base_manifest_path) -Raw -Encoding UTF8|ConvertFrom-Json
+    $oldFingerprintMap=Get-ManifestFingerprintMap -Manifest $baseManifest
+    if([string]$state.state -eq 'PREPARED_WRITABLE'){
+        foreach($item in @($state.selected)){Set-SourceUpdateTreeAcl -Path ([string]$item.slot_path) -OperatorIdentity $OperatorIdentity}
+        $state.state='SEALED';$state|Add-Member -NotePropertyName sealed_utc -NotePropertyValue ((Get-Date).ToUniversalTime().ToString('o')) -Force;$null=Write-SourceUpdateState $state
+        foreach($item in @($state.selected)){
+            $receiptName=([string]$item.slot_name).Replace('-','')
+            $validation=Invoke-SourceIntakeValidateHash -SourceRoot ([string]$item.slot_path) -ReceiptRoot ([string]$state.receipt_root) -ReceiptName $receiptName
+            $item.validation=$validation
+            $oldRow=@(Get-ManifestArtifactRows $baseManifest|Where-Object {(Get-SnapshotArtifactKey $_) -eq [string]$item.key}|Select-Object -First 1)
+            if(-not $oldRow){throw 'SOURCE_UPDATE_OLD_ROW_MISSING'}
+            $oldFp=$oldFingerprintMap[[string]$item.key]
+            $sameContent=([string]$oldRow[0].tree_sha256 -eq [string]$validation.digest.sha256 -and [int64]$oldRow[0].files -eq [int64]$validation.digest.files -and [int64]$oldRow[0].bytes -eq [int64]$validation.digest.bytes -and [string]$oldRow[0].configuration_xml_sha256 -eq [string]$validation.configuration_xml_sha256)
+            $sameFp=($oldFp -and [string]$oldFp.state -eq 'PRESENT' -and [string]$oldFp.sha256 -eq [string]$validation.fingerprint_file.sha256)
+            $item.change_state=$(if($sameContent -and $sameFp){'NO_CHANGE'}else{'CHANGED'})
+        }
+        $state.state='SEALED_VALIDATED';$state|Add-Member -NotePropertyName validated_utc -NotePropertyValue ((Get-Date).ToUniversalTime().ToString('o')) -Force;$null=Write-SourceUpdateState $state
+        if($FaultInjection -eq 'AFTER_VALIDATION'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_VALIDATION'}
+    }elseif([string]$state.state -ne 'SEALED_VALIDATED'){throw ('SOURCE_UPDATE_STATE_INVALID: '+[string]$state.state)}
+    if(Test-ProjectActiveAdmission -ProjectId $ProjectId -ProgramDataRoot $ProgramDataRoot){
+        return [pscustomobject]@{project_id=$ProjectId;status='SEALED_VALIDATED';reason='PROJECT_ADMISSION_ACTIVE';generation_id=$state.generation_id;selected=@($state.selected|Select-Object key,change_state,validation);publication_performed=$false}
+    }
+    $changed=@($state.selected|Where-Object {$_.change_state -eq 'CHANGED'})
+    if(-not $changed.Count){
+        $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        $result=[pscustomobject]@{project_id=$ProjectId;status='NO_CHANGE';generation_id=$state.generation_id;source_snapshot_id=$fast.source_snapshot_id;manifest_sha256=$fast.manifest_sha256;publication_generation=$fast.publication_generation;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
+        Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
+        return $result
+    }
+    $eligibility=Test-SourceUpdateZeroCopyEligibility -ProjectId $ProjectId -State $state -WorkerRoot $WorkerRoot
+    if(-not $eligibility.eligible -and -not $UseFullSafeImportFallback){
+        return [pscustomobject]@{project_id=$ProjectId;status='SEALED_VALIDATED';reason='ZERO_COPY_NOT_ELIGIBLE';zero_copy_reason=$eligibility.reason;fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT';generation_id=$state.generation_id;publication_performed=$false}
+    }
+    foreach($item in @($state.selected)){
+        $receiptName=(([string]$item.slot_name).Replace('-',''))+'meta'
+        $null=Invoke-SourceIntakeMetadataVerify -SourceRoot ([string]$item.slot_path) -ReceiptRoot ([string]$state.receipt_root) -ReceiptName $receiptName -ExpectedMetadataIdentity ([string]$item.validation.metadata_identity_sha256)
+    }
+    if(-not $eligibility.eligible -and $UseFullSafeImportFallback){
+        return Invoke-SelectedArtifactFullSafeImportFallback -ProjectId $ProjectId -State $state -BaseManifest $baseManifest -Changed $changed -WorkerRoot $WorkerRoot -OperatorIdentity $OperatorIdentity -FaultInjection $FaultInjection
+    }
+    $candidate=Get-Content -LiteralPath ([string]$state.base_manifest_path) -Raw -Encoding UTF8|ConvertFrom-Json
+    $manifestDir=Split-Path -Parent $manifestPath;$fingerprintMap=Get-ManifestFingerprintMap -Manifest $baseManifest
+    foreach($item in $changed){
+        $fp=Write-VersionedFingerprintInventory -ManifestDir $manifestDir -ParticipantId ([string]$item.participant_id) -ArtifactType ([string]$item.artifact_type) -ArtifactId ([string]$item.artifact_id) -PreparedFile ([string]$item.validation.fingerprint_file.path) -ExpectedSha256 ([string]$item.validation.fingerprint_file.sha256)
+        $fingerprintMap[[string]$item.key]=$fp
+        Set-ManifestArtifactFromValidation -Manifest $candidate -Item $item -Validation $item.validation
+    }
+    $candidate.applied_utc=(Get-Date).ToUniversalTime().ToString('o')
+    $candidate.accepted_snapshot=New-AcceptedSnapshot -ManifestParticipants @($candidate.participants) -CatalogSha256 ([string]$state.catalog_sha256) -ProofBasis 'ARTIFACT_SCOPED_ZERO_COPY_PROMOTION_V1' -PublicationGeneration ([int]$state.base_publication_generation+1) -FingerprintMap $fingerprintMap
+    $candidatePath=Join-Path ([string]$state.generation_root) 'candidate-manifest.json';Write-JsonAtomic $candidate $candidatePath
+    $candidateSha=Get-Sha256File $candidatePath
+    $projectRoot=[string](Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot).project_root
+    $markerItems=@()
+    foreach($item in $changed){
+        $target=Join-Path $projectRoot ([string]$item.canonical_path).Replace('/','\')
+        $detachedParent=Join-Path $projectRoot ("Detached\SourceUpdate\"+[string]$state.generation_id+"\"+[string]$item.participant_id+"\"+[string]$item.artifact_type.ToLowerInvariant())
+        New-Item -ItemType Directory -Force -Path $detachedParent|Out-Null
+        $detached=Join-Path $detachedParent ([string]$item.artifact_id)
+        $markerItems+=,[pscustomobject][ordered]@{key=$item.key;slot_path=$item.slot_path;target_path=$target;detached_path=$detached;phase='PENDING'}
+    }
+    $marker=[pscustomobject][ordered]@{schema='SOURCE_UPDATE_PROMOTION_V1';project_id=$ProjectId;generation_id=$state.generation_id;state='PROMOTING';base_manifest_sha256=$state.base_manifest_sha256;candidate_manifest_path=$candidatePath;candidate_manifest_sha256=$candidateSha;expected_source_snapshot_id=$candidate.accepted_snapshot.source_snapshot_id;expected_publication_generation=$candidate.accepted_snapshot.publication_generation;items=$markerItems;created_utc=(Get-Date).ToUniversalTime().ToString('o')}
+    Write-JsonAtomic $marker $paths.promotion_path;Protect-SourceUpdateMetadata -Path $paths.promotion_path -OperatorIdentity $OperatorIdentity
+    $state.state='PROMOTING';$null=Write-SourceUpdateState $state
+    if($FaultInjection -eq 'AFTER_MARKER'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_MARKER'}
+    try{
+        $promotionIndex=0
+        foreach($mi in @($marker.items)){
+            $promotionIndex++
+            $targetParent=Split-Path -Parent ([string]$mi.target_path);$detachedParent=Split-Path -Parent ([string]$mi.detached_path)
+            if(Test-Path -LiteralPath ([string]$mi.target_path) -PathType Container){
+                $null=Invoke-ZeroCopyArtifactMove -SourceParent $targetParent -SourceRoot ([string]$mi.target_path) -DestinationParent $detachedParent -DestinationRoot ([string]$mi.detached_path) -ReceiptRoot ([string]$state.receipt_root)
+                $mi.phase='OLD_DETACHED';Write-JsonAtomic $marker $paths.promotion_path
+                if($promotionIndex -eq 1 -and $FaultInjection -eq 'AFTER_FIRST_DETACH'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_FIRST_DETACH'}
+            }
+            $slotParent=Split-Path -Parent ([string]$mi.slot_path)
+            $null=Invoke-ZeroCopyArtifactMove -SourceParent $slotParent -SourceRoot ([string]$mi.slot_path) -DestinationParent $targetParent -DestinationRoot ([string]$mi.target_path) -ReceiptRoot ([string]$state.receipt_root)
+            $mi.phase='NEW_PROMOTED';Write-JsonAtomic $marker $paths.promotion_path
+            if($promotionIndex -eq 1 -and $FaultInjection -eq 'AFTER_FIRST_PROMOTE'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_FIRST_PROMOTE'}
+        }
+    }catch{
+        throw
+    }
+    if($FaultInjection -eq 'AFTER_ALL_PROMOTED'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_ALL_PROMOTED'}
+    $marker.state='PROMOTED_PRE_MANIFEST';Write-JsonAtomic $marker $paths.promotion_path
+    $candidateDoc=Get-Content -LiteralPath $candidatePath -Raw -Encoding UTF8|ConvertFrom-Json
+    Write-JsonAtomic $candidateDoc $manifestPath
+    if((Get-Sha256File $manifestPath) -ne $candidateSha){throw 'SOURCE_UPDATE_MANIFEST_READBACK_MISMATCH'}
+    $marker.state='MANIFEST_COMMITTED';$marker|Add-Member -NotePropertyName manifest_committed_utc -NotePropertyValue ((Get-Date).ToUniversalTime().ToString('o')) -Force;Write-JsonAtomic $marker $paths.promotion_path
+    $state.state='MANIFEST_COMMITTED';$state|Add-Member -NotePropertyName expected_source_snapshot_id -NotePropertyValue ([string]$marker.expected_source_snapshot_id) -Force;$null=Write-SourceUpdateState $state
+    if($FaultInjection -eq 'AFTER_MANIFEST_COMMIT'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_MANIFEST_COMMIT'}
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$marker.expected_source_snapshot_id -or [int]$fast.publication_generation -ne [int]$marker.expected_publication_generation){throw 'SOURCE_UPDATE_FAST_STATE_NOT_ACCEPTED'}
+    Remove-Item -LiteralPath $paths.promotion_path -Force -ErrorAction Stop
+    if($FaultInjection -eq 'AFTER_MARKER_REMOVAL'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_MARKER_REMOVAL'}
+    $mainSelected=@($state.selected|Where-Object {$_.artifact_type -eq 'MAIN'}).Count -gt 0;$result=[pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';generation_id=$state.generation_id;source_snapshot_id=$fast.source_snapshot_id;manifest_sha256=$fast.manifest_sha256;publication_generation=$fast.publication_generation;selected=@($state.selected|Select-Object key,change_state,validation);zero_copy=$true;copied_content_bytes=0;stage_content_rehash=0;main_selected=$mainSelected;main_content_bytes_read=$(if($mainSelected){$null}else{[int64]0});main_hashed_bytes=$(if($mainSelected){$null}else{[int64]0});main_copied_bytes=$(if($mainSelected){$null}else{[int64]0})}
+    Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
+    $result
+}
+
+function Recover-SourceUpdatePromotion {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf)){
+        $state=try{Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -AllowMissing}catch{$null}
+        if($state -and [string]$state.state -eq 'MANIFEST_COMMITTED'){
+            $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+            if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$state.expected_source_snapshot_id){throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'}
+            Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
+            return [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;recovery_action='FINALIZED_AFTER_MARKER_REMOVAL';source_snapshot_id=$fast.source_snapshot_id}
+        }
+        return [pscustomobject]@{status='NOT_REQUIRED';project_id=$ProjectId}
+    }
+    try{$marker=Get-Content -LiteralPath $paths.promotion_path -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'SOURCE_UPDATE_PROMOTION_MARKER_CORRUPT'}
+    if([string]$marker.schema -ne 'SOURCE_UPDATE_PROMOTION_V1' -or [string]$marker.project_id -ne $ProjectId){throw 'SOURCE_UPDATE_PROMOTION_MARKER_CORRUPT'}
+    $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestSha=$(if(Test-Path -LiteralPath $manifestPath -PathType Leaf){Get-Sha256File $manifestPath}else{$null})
+    $state=Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($manifestSha -eq [string]$marker.candidate_manifest_sha256){
+        foreach($mi in @($marker.items)){if(-not(Test-Path -LiteralPath ([string]$mi.target_path) -PathType Container)){throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'}}
+        $marker.state='MANIFEST_COMMITTED';Write-JsonAtomic $marker $paths.promotion_path
+        $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$marker.expected_source_snapshot_id){throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'}
+        Remove-Item -LiteralPath $paths.promotion_path -Force -ErrorAction Stop
+        Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
+        return [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;recovery_action='FINALIZED_COMMITTED_PROMOTION';source_snapshot_id=$fast.source_snapshot_id}
+    }
+    if($manifestSha -ne [string]$marker.base_manifest_sha256){throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'}
+    $rollbackItems=@($marker.items);[array]::Reverse($rollbackItems)
+    foreach($mi in $rollbackItems){
+        $target=[string]$mi.target_path;$detached=[string]$mi.detached_path;$slot=[string]$mi.slot_path
+        if(Test-Path -LiteralPath $detached -PathType Container){
+            if(Test-Path -LiteralPath $target -PathType Container){
+                $recoveryParent=Join-Path ([string]$state.generation_root) 'Recovery';New-Item -ItemType Directory -Force -Path $recoveryParent|Out-Null
+                $recovery=Join-Path $recoveryParent (([string]$mi.key).Replace('|','-'))
+                $null=Invoke-ZeroCopyArtifactMove -SourceParent (Split-Path -Parent $target) -SourceRoot $target -DestinationParent $recoveryParent -DestinationRoot $recovery -ReceiptRoot ([string]$state.receipt_root)
+            }
+            $null=Invoke-ZeroCopyArtifactMove -SourceParent (Split-Path -Parent $detached) -SourceRoot $detached -DestinationParent (Split-Path -Parent $target) -DestinationRoot $target -ReceiptRoot ([string]$state.receipt_root)
+        }elseif(-not(Test-Path -LiteralPath $target -PathType Container)){
+            throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'
+        }
+    }
+    Remove-Item -LiteralPath $paths.promotion_path -Force -ErrorAction Stop
+    Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$state.base_source_snapshot_id){throw 'SOURCE_UPDATE_ROLLBACK_NOT_ACCEPTED'}
+    [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;recovery_action='ROLLED_BACK_TO_BASE_SNAPSHOT';source_snapshot_id=$fast.source_snapshot_id}
 }
 
 function Write-FingerprintInventory {
@@ -1788,7 +2330,15 @@ function Stop-WorkerAdmission {
 }
 
 function Repair-WorkerProject {
-    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[scriptblock]$ProgressCallback)
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[scriptblock]$ProgressCallback,[string]$OperatorIdentity)
+    $updatePaths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $updateState=try{Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -AllowMissing}catch{$null}
+    if((Test-Path -LiteralPath $updatePaths.promotion_path -PathType Leaf) -or ($updateState -and [string]$updateState.state -eq 'MANIFEST_COMMITTED')){
+        $recovered=Recover-SourceUpdatePromotion -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+        $f=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($f.state -ne 'ACCEPTED'){throw 'SOURCE_UPDATE_RECOVERY_DID_NOT_RESTORE_ACCEPTED'}
+        return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action=$recovered.recovery_action;source_update_recovery=$recovered}
+    }
     $cleanup=$null;$state=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if($state.state -eq 'INCOMPLETE_APPLY_RESIDUE'){$cleanup=Resolve-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot;if($cleanup.status -ne 'CLEAN'){throw "APPLY_RESIDUE_CLEANUP_FAILED: $($cleanup|ConvertTo-Json -Depth 8 -Compress)"};$state=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot}
     if($state.state -eq 'ACCEPTED'){$r=[pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$state.source_snapshot_id;repair_action='FAST_ACCEPTED_NO_DEEP_VERIFY'};if($cleanup){$r|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force};return $r}

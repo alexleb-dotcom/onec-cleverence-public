@@ -8,7 +8,8 @@ namespace OneCArchitecture.ControlCenter;
 internal enum WorkerAction
 {
     UiContext, Apply, Verify, Repair, Start, Continue, Stop, Update,
-    AddProject, AddParticipant, SetMain, AddExtension
+    AddProject, AddParticipant, SetMain, AddExtension,
+    PrepareSourceUpdate, AcceptSourceUpdate, CancelSourceUpdate
 }
 
 internal sealed record WorkerActionArgs(
@@ -20,7 +21,9 @@ internal sealed record WorkerActionArgs(
     string? Role = null,
     string? TaskId = null,
     string? TaskGoal = null,
-    bool ReplaceExisting = false);
+    string? ArtifactSelection = null,
+    bool ReplaceExisting = false,
+    bool SelectedArtifactFullSafeImport = false);
 
 internal sealed record WorkerCallResult(int ExitCode, JsonObject? Json, string StandardOutput, string StandardError);
 
@@ -40,7 +43,10 @@ internal sealed class WorkerClient
             [WorkerAction.AddProject] = "ADD_PROJECT",
             [WorkerAction.AddParticipant] = "ADD_PARTICIPANT",
             [WorkerAction.SetMain] = "SET_MAIN",
-            [WorkerAction.AddExtension] = "ADD_EXTENSION"
+            [WorkerAction.AddExtension] = "ADD_EXTENSION",
+            [WorkerAction.PrepareSourceUpdate] = "PREPARE_SOURCE_UPDATE",
+            [WorkerAction.AcceptSourceUpdate] = "ACCEPT_SOURCE_UPDATE",
+            [WorkerAction.CancelSourceUpdate] = "CANCEL_SOURCE_UPDATE"
         };
 
     public string LauncherPath { get; }
@@ -74,9 +80,14 @@ internal sealed class WorkerClient
             CreateNoWindow = !elevated,
             RedirectStandardOutput = !elevated,
             RedirectStandardError = !elevated,
-            WindowStyle = elevated ? ProcessWindowStyle.Hidden : ProcessWindowStyle.Hidden,
+            WindowStyle = ProcessWindowStyle.Hidden,
             Verb = elevated ? "runas" : ""
         };
+        if (!elevated)
+        {
+            psi.StandardOutputEncoding = new UTF8Encoding(false);
+            psi.StandardErrorEncoding = new UTF8Encoding(false);
+        }
         Add(psi, "-NoProfile");
         Add(psi, "-ExecutionPolicy"); Add(psi, "Bypass");
         Add(psi, "-File"); Add(psi, LauncherPath);
@@ -93,7 +104,9 @@ internal sealed class WorkerClient
         AddIf(psi, "-Role", args.Role);
         AddIf(psi, "-TaskId", args.TaskId);
         AddIf(psi, "-TaskGoal", args.TaskGoal);
+        AddIf(psi, "-ArtifactSelection", args.ArtifactSelection);
         if (args.ReplaceExisting) Add(psi, "-ReplaceExisting");
+        if (args.SelectedArtifactFullSafeImport) Add(psi, "-SelectedArtifactFullSafeImport");
 
         try
         {
