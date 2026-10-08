@@ -10,7 +10,9 @@ import {createSerializedMessagePump,persistAndSendProcessed} from '../runtime/he
 const relayCode=fs.readFileSync(new URL('../relay/src/index.js',import.meta.url),'utf8');
 const helperCode=fs.readFileSync(new URL('../runtime/hosted-helper.mjs',import.meta.url),'utf8');
 const relayBody=relayCode.slice(relayCode.indexOf('const ORIGIN='),relayCode.indexOf('\nfunction mcpError(')).replace('export class RelaySession','class RelaySession');
-const helperBody=helperCode.slice(helperCode.indexOf('const advisoryPump='),helperCode.indexOf('\nlet fatalHelperError='));
+// Retain coverage of the legacy WebSocket lane. S4 Pull is exercised separately
+// through native workerd; this harness deliberately selects the old lane.
+const helperBody=helperCode.slice(helperCode.indexOf('const advisoryPump='),helperCode.indexOf('\nlet fatalHelperError=')).replace('  if(IS_S4){','  if(false){');
 const NOW=Date.parse('2026-10-08T11:00:00Z');
 class ClockDate extends Date {constructor(...args){super(...(args.length?args:[NOW]));}static now(){return NOW;}}
 const hello={

@@ -414,6 +414,16 @@
         "{python}",
         "TESTS/run_relay_helper_transport_regression.py"
       ]
+    },
+    {
+      "id": "https_pull_native",
+      "order": 300,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_https_pull_native_regression.py"
+      ]
     }
   ],
   "rule": "FAST is the ordered bounded prefix of the canonical public-safe inventory. FULL executes the complete ordered inventory. Every check is public-only and must resolve to a file present in SHAREABLE_CORE."
