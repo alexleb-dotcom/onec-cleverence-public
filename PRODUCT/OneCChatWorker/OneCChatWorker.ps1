@@ -563,7 +563,7 @@ function Run-Uninstall {
 
 function Get-UiContext {
  $status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
- $guided=Get-GuidedContext
+ $guided=Get-GuidedContext -SelectedProjectId $ProjectId
  $active=$status.active_admission
  $checkpoint=$null
  if($active -and [int]$active.schema_version -eq 3){
@@ -582,10 +582,11 @@ function Get-UiContext {
   [pscustomobject]@{project_id=$_.project_id;display_name=$_.display_name;active=$_.active;readiness=$_.verification;fast_state=$_.fast_state;fast_reason=$_.fast_reason;source_snapshot_id=$_.source_snapshot_id;participant_count=$_.participant_count}
  })
  $selectedProject=$null
- if($active){$selectedProject=$projectRows|Where-Object{$_.project_id -eq [string]$active.project_id}|Select-Object -First 1}
+ if($ProjectId){$selectedProject=$projectRows|Where-Object{$_.project_id -eq $ProjectId -and $_.active -ne $false}|Select-Object -First 1;if(-not $selectedProject){throw 'UI_PROJECT_SELECTION_INVALID'}}
+ elseif($active){$selectedProject=$projectRows|Where-Object{$_.project_id -eq [string]$active.project_id}|Select-Object -First 1}
  if(-not $selectedProject -and $guided.project){$selectedProject=$projectRows|Where-Object{$_.project_id -eq [string]$guided.project.project_id}|Select-Object -First 1}
  $output=$null
- if($active){$output=$status.output|Where-Object{$_.project_id -eq [string]$active.project_id}|Select-Object -First 1}
+ if($selectedProject){$output=$status.output|Where-Object{$_.project_id -eq [string]$selectedProject.project_id}|Select-Object -First 1}
  $selectedProjectId=$(if($selectedProject){[string]$selectedProject.project_id}elseif($active){[string]$active.project_id}else{$null})
  $navigation=[pscustomobject]@{
   source_root=$(if($selectedProjectId){Join-Path $WorkerRoot $selectedProjectId}else{$null})
@@ -603,13 +604,33 @@ function Get-UiContext {
    }catch{}
   }
  }
+ if(-not $ProjectId -and -not $active -and @($projectRows|Where-Object{$_.active -ne $false}).Count -gt 1){
+  $selectedProject=$null;$selectedProjectId=$null;$navigation.source_root=$null;$navigation.output_root=$null;$sourceArtifacts=@();$output=$null
+  $guided=[pscustomobject]@{state='PROJECT_SELECTION_REQUIRED';recommended='Choose project';reason='Choose the project explicitly before starting access.'}
+ }
+ $sourceUpdate=if($selectedProjectId){Get-SourceUpdateSummary -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot}else{$null}
+ $updateActive=$sourceUpdate -and $sourceUpdate.status -ne 'NONE'
+ $state=[string]$guided.state
+ $actions=[ordered]@{}
+ $enabled=[ordered]@{
+  start=($selectedProject -and -not $active -and $state -eq 'PROJECT_READY')
+  continue=($state -eq 'CONTINUE_AVAILABLE')
+  stop=($null -ne $active)
+  apply=($selectedProject -and -not $updateActive -and $state -in @('PROJECT_NEEDS_APPLY','PROJECT_READY'))
+  verify=($selectedProject -and -not $updateActive -and $state -eq 'PROJECT_NEEDS_VERIFY')
+  repair=($selectedProject -and $state -eq 'PROJECT_NEEDS_VERIFY')
+  update=$true;add_project=$true
+  prepare_source_update=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $updateActive -and $sourceArtifacts.Count -gt 0)
+  accept_source_update=([bool]$updateActive);cancel_source_update=([bool]$updateActive)
+ }
+ foreach($key in $enabled.Keys){$actions[$key]=[pscustomobject]@{enabled=[bool]$enabled[$key];reason=$(if($enabled[$key]){'AVAILABLE'}elseif($key -eq 'stop'){'NO_ACTIVE_SESSION'}elseif($key -eq 'continue'){'NO_VERIFIED_CONTINUATION'}elseif($active -and $key -eq 'start'){'SESSION_ALREADY_EXISTS'}elseif(-not $selectedProject){'PROJECT_SELECTION_REQUIRED'}elseif($key -in @('accept_source_update','cancel_source_update') -and -not $updateActive){'NO_SOURCE_UPDATE'}elseif($updateActive){'SOURCE_UPDATE_ACTIVE'}elseif($key -in @('verify','repair') -and $state -eq 'PROJECT_READY'){'VERIFICATION_NOT_REQUIRED'}elseif($key -eq 'prepare_source_update' -and -not $sourceArtifacts.Count){'NO_ARTIFACTS'}else{$state})}}
  [pscustomobject]@{
   schema='UI_CONTEXT_V1';generated_utc=(Get-Date).ToUniversalTime().ToString('o');bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1'
   product=[pscustomobject]@{version=$status.product_version;installed=$status.installed;integrity_status=$status.installed_integrity.status;update_status='NOT_CHECKED_NO_NETWORK_SIDE_EFFECT'}
   recommendation=[pscustomobject]@{state=$guided.state;action=$guided.recommended;reason=$guided.reason}
-  projects=$projectRows;selected_project=$selectedProject
+  projects=$projectRows;selected_project=$selectedProject;actions=[pscustomobject]$actions
   work=[pscustomobject]@{active=$(if($active){$true}else{$false});project_id=$(if($active){$active.project_id}else{$null});task_id=$(if($active){$active.task_id}else{$null});task_goal=$(if($active){$active.task_goal}else{$null});task_created_utc=$(if($active){$active.task_created_utc}else{$null});task_expires_utc=$(if($active){$active.task_expires_utc}else{$null});helper=$status.helper;checkpoint=$checkpoint;continuation_available=($guided.state -eq 'CONTINUE_AVAILABLE')}
-  source=[pscustomobject]@{snapshot_id=$(if($selectedProject){$selectedProject.source_snapshot_id}else{$null});state=$(if($selectedProject){$selectedProject.fast_state}else{$null});artifacts=$sourceArtifacts;acquisition_owner='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';source_update=$(if($selectedProjectId){Get-SourceUpdateSummary -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot}else{$null});deep_scan_performed=$false}
+  source=[pscustomobject]@{snapshot_id=$(if($selectedProject){$selectedProject.source_snapshot_id}else{$null});state=$(if($selectedProject){$selectedProject.fast_state}else{$null});artifacts=$sourceArtifacts;acquisition_owner='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';source_update=$sourceUpdate;deep_scan_performed=$false}
   output=$output;navigation=$navigation
   operation=[pscustomobject]@{current=$status.current_operation;last=$status.last_operation;recovery=$status.operation_recovery}
   s4=[pscustomobject]@{policy_status='OPERATOR_ACCEPTED_PRODUCT_POLICY';accounting_available=($null -ne $s4);projection=$s4;authoritative_owner='relay task record/request_receipts';limits_display_allowed=$false}
@@ -1069,6 +1090,7 @@ function Invoke-GuidedAction {
  }catch{Show-GuidedFailure $_.Exception;return $false}
 }
 function Get-GuidedContext {
+ param([string]$SelectedProjectId)
  $installed=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
  if(-not $installed){return [pscustomobject]@{state='NOT_INSTALLED';recommended='Install OneCChatWorker';project=$null;participant=$null;reason='Product runtime is not installed.'}}
  $preferredCurrent=Join-Path $ProgramDataRoot 'operations\current-operation.json'
@@ -1105,7 +1127,8 @@ function Get-GuidedContext {
  $projects=@($c.projects|Where-Object{$_.active -ne $false})
  if(-not $projects.Count){return [pscustomobject]@{state='NO_PROJECTS';recommended='Add local project';project=$null;participant=$null;reason='No local projects are configured yet.'}}
  $p=$null
- if($script:GuidedProjectId){$p=Find-Project $c $script:GuidedProjectId}
+ if($SelectedProjectId){$p=$projects|Where-Object{$_.project_id -eq $SelectedProjectId}|Select-Object -First 1;if(-not $p){throw 'UI_PROJECT_SELECTION_INVALID'}}
+ elseif($script:GuidedProjectId){$p=Find-Project $c $script:GuidedProjectId}
  if(-not $p){$p=$projects[0];$script:GuidedProjectId=$p.project_id}
  $parts=@($p.participants|Where-Object{$_.active -ne $false -and $_.platform -eq 'ONEC'})
  if(-not $parts.Count){return [pscustomobject]@{state='PROJECT_DRAFT';recommended='Complete project setup';project=$p;participant=$null;reason='Add the 1C system/base and its main XML export.'}}

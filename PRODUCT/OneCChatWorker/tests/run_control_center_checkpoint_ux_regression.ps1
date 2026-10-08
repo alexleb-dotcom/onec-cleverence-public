@@ -8,7 +8,7 @@ $client=Get-Content -LiteralPath (Join-Path $PackageRoot 'control-center\OneCArc
 $r=@()
 function Rec($n,$p,$d=''){$script:r+=,[pscustomobject]@{name=$n;pass=[bool]$p;detail=$d};if(-not $p){throw ('ASSERTION_FAILED:'+$n+':'+$d)}}
 Rec 'ui_context_uses_verified_checkpoint_owner' ($launcher -match 'Read-TaskCheckpointContinuationHead' -and $launcher -match 'checkpoint=\$checkpoint') ''
-Rec 'continue_visibility_worker_state' ($main -match 'state == "CONTINUE_AVAILABLE"' -and $xaml -match 'x:Name="ContinueButton"') ''
+Rec 'continue_visibility_worker_state' ($main.Contains('(ContinueButton, "continue")') -and $main.Contains('Bool(ctx, "actions", key, "enabled")') -and $launcher.Contains('continue=($state -eq ''CONTINUE_AVAILABLE'')') -and $xaml -match 'x:Name="ContinueButton"') ''
 Rec 'continue_action_fixed_typed' ($main -match 'WorkerAction\.Continue' -and $client -match '\[WorkerAction\.Continue\] = "CONTINUE"') ''
 Rec 'continue_core_exact_owner' ($core -match 'function Continue-WorkerAdmission' -and $core -match 'Read-TaskCheckpointContinuationHead') ''
 Rec 'checkpoint_card_present' ($xaml -match 'CheckpointTitleLabel' -and $main -match 'CheckpointStateText' -and $main -match 'WorkCheckpointText') ''

@@ -18,7 +18,20 @@ public partial class ProjectWizardWindow : Window
     {
         InitializeComponent();
         RoleBox.Text = "ERP";
-        SystemNameBox.Text = "Основная база 1С";
+        SystemNameBox.Text = Localization.Get("WizardDefaultSystem");
+        Title = Localization.Get("AddProject");
+        WizardTitleLabel.Text = Localization.Get("WizardTitle");
+        WizardProjectLabel.Text = Localization.Get("WizardProjectName");
+        WizardSystemLabel.Text = Localization.Get("WizardSystemName");
+        WizardRoleLabel.Text = Localization.Get("WizardRole");
+        WizardMainLabel.Text = Localization.Get("WizardMainFolder");
+        WizardExtensionLabel.Text = Localization.Get("WizardExtensionName");
+        WizardExtensionFolderLabel.Text = Localization.Get("WizardExtensionFolder");
+        ExtensionCheck.Content = Localization.Get("WizardAddExtension");
+        BrowseMainButton.Content = BrowseExtensionButton.Content = Localization.Get("WizardBrowse");
+        CancelButton.Content = Localization.Get("WizardCancel");
+        CreateButton.Content = Localization.Get("WizardCreate");
+        ExtensionNameBox.ToolTip = ExtensionPathBox.ToolTip = BrowseExtensionButton.ToolTip = Localization.Get("WizardExtensionDisabled");
     }
 
     private void BrowseMain_Click(object sender, RoutedEventArgs e) => BrowseInto(MainPathBox);
@@ -47,13 +60,13 @@ public partial class ProjectWizardWindow : Window
         if (string.IsNullOrWhiteSpace(projectName) || string.IsNullOrWhiteSpace(systemName) ||
             string.IsNullOrWhiteSpace(mainPath))
         {
-            System.Windows.MessageBox.Show("Project name, system/base and main XML folder are required.", "OneC Architecture");
+            System.Windows.MessageBox.Show(Localization.Get("WizardRequired"), "OneC Architecture");
             return;
         }
 
         if (!Directory.Exists(mainPath) || !File.Exists(Path.Combine(mainPath, "Configuration.xml")))
         {
-            System.Windows.MessageBox.Show("The selected main folder must directly contain Configuration.xml. Worker validation will run again before commit.", "OneC Architecture");
+            System.Windows.MessageBox.Show(Localization.Get("WizardInvalidFolder"), "OneC Architecture");
             return;
         }
 
@@ -65,7 +78,7 @@ public partial class ProjectWizardWindow : Window
             if (string.IsNullOrWhiteSpace(extName) || string.IsNullOrWhiteSpace(extPath) ||
                 !Directory.Exists(extPath) || !File.Exists(Path.Combine(extPath, "Configuration.xml")))
             {
-                System.Windows.MessageBox.Show("Extension name and a folder containing Configuration.xml are required.", "OneC Architecture");
+                System.Windows.MessageBox.Show(Localization.Get("WizardExtensionRequired"), "OneC Architecture");
                 return;
             }
             extId = SafeId(extName, "ext");

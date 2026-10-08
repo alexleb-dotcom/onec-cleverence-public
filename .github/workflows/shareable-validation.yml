@@ -180,6 +180,19 @@ jobs:
           $ErrorActionPreference='Stop'
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_ui_context_regression.ps1
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run isolated real WPF usability fixtures
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_control_center_wpf_fixture.ps1 -ArtifactsRoot "$env:RUNNER_TEMP\ux5-evidence"
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Preserve exact-head WPF fixture screenshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: control-center-ux5-fixtures
+          path: ${{ runner.temp }}/ux5-evidence/screenshots
+          if-no-files-found: error
+          retention-days: 14
       - name: Import Core and verify zero-copy typed surface
         shell: powershell
         run: |
