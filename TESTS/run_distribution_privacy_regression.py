@@ -537,18 +537,20 @@ record(
     },
 )
 record(
-    "public_workflow_exposes_fast_ui_and_full_contexts",
+    "public_workflow_exposes_fast_ui_windows_and_full_contexts",
     "name: Public Fast" in public_workflow
     and "name: Public UI" in public_workflow
+    and "name: Public Windows" in public_workflow
     and "name: Public Full" in public_workflow
-    and "needs: public-fast" in public_workflow
-    and "needs: [public-fast, public-ui]" in public_workflow,
+    and public_workflow.count("needs: public-fast") >= 2
+    and "needs: [public-fast, public-ui, public-windows]" in public_workflow,
     {
         "fast": "name: Public Fast" in public_workflow,
         "ui": "name: Public UI" in public_workflow,
+        "windows": "name: Public Windows" in public_workflow,
         "full": "name: Public Full" in public_workflow,
-        "ui_dependency": "needs: public-fast" in public_workflow,
-        "full_dependency": "needs: [public-fast, public-ui]" in public_workflow,
+        "fast_dependencies": public_workflow.count("needs: public-fast"),
+        "full_dependency": "needs: [public-fast, public-ui, public-windows]" in public_workflow,
     },
 )
 

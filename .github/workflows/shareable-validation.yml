@@ -121,9 +121,66 @@ jobs:
           cd "$VALIDATION_ROOT"
           python TESTS/run_control_center_ui_static_regression.py
 
+  public-windows:
+    name: Public Windows
+    needs: public-fast
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Validate exact snapshot before Windows gate
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          python TOOLS\validate_distribution_snapshot.py --root .
+      - name: Set up selected artifact test Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '26.7.0'
+      - name: Run isolated selected catalog update regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_selected_catalog_update_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Validate .NET 10 and build WPF
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $version=(& dotnet --version).Trim()
+          if(-not $version.StartsWith('10.')){throw ("DOTNET_10_REQUIRED:"+$version)}
+          dotnet restore PRODUCT\OneCChatWorker\control-center\OneCArchitecture.ControlCenter\OneCArchitecture.ControlCenter.csproj
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+          dotnet build PRODUCT\OneCChatWorker\control-center\OneCArchitecture.ControlCenter\OneCArchitecture.ControlCenter.csproj -c Release --no-restore
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run PS5.1 bounded UI context regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_ui_context_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Import Core and verify zero-copy typed surface
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $core='PRODUCT\OneCChatWorker\core\OneCChatWorker.Core.psm1'
+          $text=Get-Content -LiteralPath $core -Raw -Encoding UTF8
+          if($text -match '(?i)\$pid\s*='){throw 'READONLY_PID_ASSIGNMENT_PRESENT'}
+          Import-Module (Resolve-Path $core) -Force -DisableNameChecking
+          foreach($name in @('Prepare-SourceUpdate','Accept-SourceUpdate','Cancel-SourceUpdate','Recover-SourceUpdatePromotion')){
+            if(-not(Get-Command $name -ErrorAction SilentlyContinue)){throw ('SOURCE_UPDATE_COMMAND_MISSING:'+$name)}
+          }
+
   public-full:
     name: Public Full
-    needs: [public-fast, public-ui]
+    needs: [public-fast, public-ui, public-windows]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

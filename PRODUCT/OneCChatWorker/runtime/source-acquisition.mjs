@@ -5,7 +5,9 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const CONTRACT = 'S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';
-export const ALLOWED_VERBS = Object.freeze(['EXTERNAL_FULL_SAFE_IMPORT']);
+export const INTAKE_CONTRACT = 'S82_2_INCOMING_VALIDATE_HASH_V1';
+export const PROMOTION_CONTRACT = 'S82_2_ZERO_COPY_PROMOTION_V1';
+export const ALLOWED_VERBS = Object.freeze(['EXTERNAL_FULL_SAFE_IMPORT','INTAKE_VALIDATE_HASH','INTAKE_METADATA_VERIFY','ZERO_COPY_PROMOTE_ARTIFACT']);
 const DEFAULT_MAX_FILES = 2000000;
 const HARD_MAX_FILES = 5000000;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024 * 1024 * 1024;
@@ -270,7 +272,141 @@ async function copyHashFile(source, destination, expected, deadline) {
   return { sha256: sha.digest('hex'), bytes: written };
 }
 
-function validateRequest(input) {
+async function hashFileNoCopy(source, expected, deadline) {
+  const input = await fsp.open(fsPath(source), 'r');
+  const sha = crypto.createHash('sha256');
+  let read = 0;
+  try {
+    const buffer = Buffer.allocUnsafe(COPY_BUFFER_BYTES);
+    while (true) {
+      checkDeadline(deadline);
+      const r = await input.read(buffer, 0, buffer.length, null);
+      if (!r.bytesRead) break;
+      sha.update(buffer.subarray(0, r.bytesRead));
+      read += r.bytesRead;
+    }
+  } finally {
+    await input.close().catch(() => {});
+  }
+  if (read !== Number(expected.size)) fail('SOURCE_CHANGED_DURING_SYNC', 'length changed while hashing: ' + expected.relativePath);
+  const post = await statBig(source);
+  if (!sameStat(post, expected, 'file')) fail('SOURCE_CHANGED_DURING_SYNC', 'file metadata changed while hashing: ' + expected.relativePath);
+  return { sha256: sha.digest('hex'), bytes: read };
+}
+
+function metadataIdentity(plan) {
+  const h = crypto.createHash('sha256');
+  h.update('root\t' + plan.rootMtimeNs + '\n');
+  for (const d of plan.directories) h.update('d\t' + d.relativePath + '\t' + d.mtimeNs + '\n');
+  for (const f of plan.files) h.update('f\t' + f.relativePath + '\t' + f.size + '\t' + f.mtimeNs + '\n');
+  return h.digest('hex');
+}
+
+function requireLocalDrive(p, label) {
+  const x = validateWindowsPath(p, label);
+  if (!/^[A-Za-z]:\\/.test(x)) fail('LOCAL_VOLUME_REQUIRED', label);
+  return x;
+}
+
+function directChild(parent, child, code) {
+  if (normCase(path.win32.dirname(child)) !== normCase(parent)) fail(code, child);
+}
+
+function validateCommonLimits(input) {
+  return {
+    maxFiles: assertBoundedInt(input.max_files, DEFAULT_MAX_FILES, 1, HARD_MAX_FILES, 'max_files'),
+    maxBytes: assertBoundedInt(input.max_bytes, DEFAULT_MAX_BYTES, 1, HARD_MAX_BYTES, 'max_bytes'),
+    timeoutMs: assertBoundedInt(input.timeout_ms, DEFAULT_TIMEOUT_MS, 1000, HARD_TIMEOUT_MS, 'timeout_ms'),
+    culture: typeof input.culture === 'string' && input.culture.length <= 32 ? input.culture : 'en-US',
+  };
+}
+
+function validateIntakeRequest(input, verifyOnly=false) {
+  const sourceRoot = validateWindowsPath(input.source_root, 'source_root');
+  const progressPath = validateWindowsPath(input.progress_path, 'progress_path');
+  const outputParent = validateWindowsPath(input.output_parent, 'output_parent');
+  if (within(sourceRoot, outputParent) || within(outputParent, sourceRoot)) fail('SOURCE_OUTPUT_OVERLAP', 'source/output roots overlap');
+  directChild(outputParent, progressPath, 'PROGRESS_PATH_INVALID');
+  const limits = validateCommonLimits(input);
+  if (verifyOnly) {
+    const expectedMetadataIdentity = String(input.expected_metadata_identity_sha256 || '').toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(expectedMetadataIdentity)) fail('METADATA_IDENTITY_REQUIRED', 'expected_metadata_identity_sha256');
+    return {verb:input.verb,sourceRoot,progressPath,outputParent,expectedMetadataIdentity,...limits};
+  }
+  const fingerprintPath = validateWindowsPath(input.fingerprint_path, 'fingerprint_path');
+  directChild(outputParent, fingerprintPath, 'FINGERPRINT_PATH_INVALID');
+  if (!/\.fingerprints\.jsonl$/i.test(path.win32.basename(fingerprintPath))) fail('FINGERPRINT_PATH_INVALID', fingerprintPath);
+  return {verb:input.verb,sourceRoot,progressPath,outputParent,fingerprintPath,...limits};
+}
+
+function validatePromotionRequest(input) {
+  const sourceParent = requireLocalDrive(input.source_parent, 'source_parent');
+  const sourceRoot = requireLocalDrive(input.source_root, 'source_root');
+  const destinationParent = requireLocalDrive(input.destination_parent, 'destination_parent');
+  const destinationRoot = requireLocalDrive(input.destination_root, 'destination_root');
+  directChild(sourceParent, sourceRoot, 'PROMOTION_SOURCE_ESCAPE');
+  directChild(destinationParent, destinationRoot, 'PROMOTION_DESTINATION_ESCAPE');
+  if (path.win32.parse(sourceRoot).root.toLowerCase() !== path.win32.parse(destinationRoot).root.toLowerCase()) fail('CROSS_VOLUME_ZERO_COPY_REJECTED', 'source/destination volume mismatch');
+  if (normCase(sourceRoot) === normCase(destinationRoot)) fail('PROMOTION_PATH_COLLISION', sourceRoot);
+  const timeoutMs = assertBoundedInt(input.timeout_ms, 120000, 1000, HARD_TIMEOUT_MS, 'timeout_ms');
+  return {verb:input.verb,sourceParent,sourceRoot,destinationParent,destinationRoot,timeoutMs};
+}
+
+async function executeIntake(req) {
+  const started=Date.now(),deadline=started+req.timeoutMs;
+  const outputStat=await statBig(req.outputParent).catch(()=>null);
+  if(!outputStat||!outputStat.isDirectory()||outputStat.isSymbolicLink()) fail('OUTPUT_PARENT_INVALID',req.outputParent);
+  const outputReal=validateWindowsPath(await realPathNormal(req.outputParent),'output_parent_realpath');
+  if(normCase(outputReal)!==normCase(req.outputParent)) fail('REPARSE_ESCAPE','output_parent');
+  await writeProgress(req.progressPath,{phase:'SCAN',files_processed:0,files_total:null,bytes_processed:0,bytes_total:null});
+  const plan=await enumerateSource(req.sourceRoot,{maxFiles:req.maxFiles,maxBytes:req.maxBytes},req.culture,deadline,req.progressPath);
+  const meta=metadataIdentity(plan);
+  if(req.verb==='INTAKE_METADATA_VERIFY'){
+    await verifyStable(plan,deadline);
+    if(meta!==req.expectedMetadataIdentity) fail('SEALED_SOURCE_DRIFT','metadata identity mismatch');
+    await writeProgress(req.progressPath,{phase:'COMPLETE',files_processed:plan.fileCount,files_total:plan.fileCount,bytes_processed:0,bytes_total:plan.bytes});
+    return {contract:INTAKE_CONTRACT,verb:req.verb,result:'PASS',metadata_identity_sha256:meta,digest:{files:plan.fileCount,bytes:plan.bytes},metrics:{hashed_files:0,hashed_bytes:0,copied_files:0,copied_bytes:0,source_content_passes:0,source_metadata_passes:2,stage_content_rehash:0,shell:false}};
+  }
+  try{await fsp.lstat(fsPath(req.fingerprintPath));fail('FINGERPRINT_OUTPUT_EXISTS',req.fingerprintPath)}catch(e){if(e instanceof AcquisitionError)throw e;if(e?.code!=='ENOENT')throw e}
+  await writeProgress(req.progressPath,{phase:'HASH',files_processed:0,files_total:plan.fileCount,bytes_processed:0,bytes_total:plan.bytes});
+  const aggregate=crypto.createHash('sha256'),fingerprintHash=crypto.createHash('sha256');
+  const fp=await fsp.open(fsPath(req.fingerprintPath),'wx');
+  let hashedBytes=0,hashedFiles=0,fingerprintBytes=0,configSha=null;
+  try{
+    for(const f of plan.files){
+      const hv=await hashFileNoCopy(f.fullPath,f,deadline);
+      hashedBytes+=hv.bytes;hashedFiles++;
+      if(f.relativePath.toLowerCase()==='configuration.xml')configSha=hv.sha256;
+      aggregate.update(Buffer.from(f.relativePath+'\t'+f.size+'\t'+hv.sha256+'\r\n','utf8'));
+      const line=Buffer.from(JSON.stringify({path:f.relativePath,size:Number(f.size),sha256:hv.sha256})+'\n','utf8');
+      fingerprintHash.update(line);await writeChunk(fp,line,line.length,fingerprintBytes);fingerprintBytes+=line.length;
+      if(hashedFiles===1||hashedFiles%250===0||hashedFiles===plan.fileCount)await writeProgress(req.progressPath,{phase:'HASH',files_processed:hashedFiles,files_total:plan.fileCount,bytes_processed:hashedBytes,bytes_total:plan.bytes});
+    }
+    await fp.sync();
+  }finally{await fp.close().catch(()=>{})}
+  await verifyStable(plan,deadline);
+  if(!configSha)fail('ONEC_CONFIGURATION_XML_MISSING',req.sourceRoot);
+  return {contract:INTAKE_CONTRACT,verb:req.verb,result:'PASS',digest:{sha256:aggregate.digest('hex'),files:plan.fileCount,bytes:plan.bytes,max_relative_path_chars:plan.maxRelativePathChars,max_relative_path:plan.maxRelativePath},configuration_xml_sha256:configSha,fingerprint_file:{path:req.fingerprintPath,sha256:fingerprintHash.digest('hex'),rows:plan.fileCount},metadata_identity_sha256:meta,metrics:{discovered_files:plan.fileCount,discovered_bytes:plan.bytes,hashed_files:hashedFiles,hashed_bytes:hashedBytes,copied_files:0,copied_bytes:0,max_source_path_chars:plan.maxSourcePathChars,source_stable:true,source_unchanged:true,recursive_passes:{source_enumeration_metadata:1,source_content:1,source_stability_metadata:1,stage_content_rehash:0},shell:false,subst_required:false,long_paths_registry_required:false,powershell7_required:false,elapsed_ms:Date.now()-started}};
+}
+
+async function executePromotion(req) {
+  const started=Date.now(),deadline=started+req.timeoutMs;checkDeadline(deadline);
+  for(const pair of [['source_parent',req.sourceParent],['destination_parent',req.destinationParent]]){
+    const label=pair[0],p=pair[1],st=await statBig(p).catch(()=>null);
+    if(!st||!st.isDirectory()||st.isSymbolicLink())fail('PROMOTION_PARENT_INVALID',label);
+    const real=validateWindowsPath(await realPathNormal(p),label+'_realpath');if(normCase(real)!==normCase(p))fail('REPARSE_ESCAPE',label);
+  }
+  const sourceStat=await statBig(req.sourceRoot).catch(()=>null);if(!sourceStat||!sourceStat.isDirectory()||sourceStat.isSymbolicLink())fail('PROMOTION_SOURCE_INVALID',req.sourceRoot);
+  const sourceReal=validateWindowsPath(await realPathNormal(req.sourceRoot),'promotion_source_realpath');if(!within(req.sourceParent,sourceReal))fail('REPARSE_ESCAPE','source_root');
+  try{await fsp.lstat(fsPath(req.destinationRoot));fail('PROMOTION_DESTINATION_EXISTS',req.destinationRoot)}catch(e){if(e instanceof AcquisitionError)throw e;if(e?.code!=='ENOENT')throw e}
+  await fsp.rename(fsPath(req.sourceRoot),fsPath(req.destinationRoot));checkDeadline(deadline);
+  const srcAfter=await statBig(req.sourceRoot).catch(()=>null);if(srcAfter)fail('PROMOTION_SOURCE_STILL_PRESENT',req.sourceRoot);
+  const dst=await statBig(req.destinationRoot).catch(()=>null);if(!dst||!dst.isDirectory()||dst.isSymbolicLink())fail('PROMOTION_DESTINATION_INVALID',req.destinationRoot);
+  const dstReal=validateWindowsPath(await realPathNormal(req.destinationRoot),'promotion_destination_realpath');if(!within(req.destinationParent,dstReal))fail('REPARSE_ESCAPE','destination_root');
+  return {contract:PROMOTION_CONTRACT,verb:req.verb,result:'PASS',same_volume:true,source_volume:path.win32.parse(req.sourceRoot).root.toUpperCase(),destination_volume:path.win32.parse(req.destinationRoot).root.toUpperCase(),source_absent:true,destination_present:true,copied_content_bytes:0,copied_content_files:0,elapsed_ms:Date.now()-started,shell:false};
+}
+
+function validateFullImportRequest(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('REQUEST_INVALID', 'object required');
   if (!ALLOWED_VERBS.includes(input.verb)) fail('VERB_NOT_ALLOWED', String(input.verb || ''));
   const sourceRoot = validateWindowsPath(input.source_root, 'source_root');
@@ -290,7 +426,7 @@ function validateRequest(input) {
   return { sourceRoot, stageParent, stageRoot, fingerprintPath, progressPath, maxFiles, maxBytes, timeoutMs, culture };
 }
 
-async function executeValidated(req) {
+async function executeFullImport(req) {
   const started = Date.now();
   const deadline = started + req.timeoutMs;
   await fsp.mkdir(fsPath(req.stageParent), { recursive: true });
@@ -411,8 +547,13 @@ async function executeValidated(req) {
 }
 
 export async function executeRequest(input) {
-  const req = validateRequest(input);
-  return executeValidated(req);
+  if (!input || typeof input !== 'object' || Array.isArray(input)) fail('REQUEST_INVALID', 'object required');
+  if (!ALLOWED_VERBS.includes(input.verb)) fail('VERB_NOT_ALLOWED', String(input.verb || ''));
+  if (input.verb === 'EXTERNAL_FULL_SAFE_IMPORT') return executeFullImport(validateFullImportRequest(input));
+  if (input.verb === 'INTAKE_VALIDATE_HASH') return executeIntake(validateIntakeRequest(input, false));
+  if (input.verb === 'INTAKE_METADATA_VERIFY') return executeIntake(validateIntakeRequest(input, true));
+  if (input.verb === 'ZERO_COPY_PROMOTE_ARTIFACT') return executePromotion(validatePromotionRequest(input));
+  fail('VERB_NOT_ALLOWED', String(input.verb || ''));
 }
 
 async function main() {

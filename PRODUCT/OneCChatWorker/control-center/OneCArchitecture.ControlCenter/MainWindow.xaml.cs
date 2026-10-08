@@ -21,6 +21,8 @@ public partial class MainWindow : Window
 
     private sealed record ProjectRow(string ProjectId, string DisplayName, string State, int Participants);
     private sealed record ActivityRow(string Time, int Seq, string Operation, string Target, long Bytes, string Duration, string Outcome);
+    private sealed record ArtifactRow(string Key, string Display, string ParticipantId, string ArtifactType, string ArtifactId, long Files, long Bytes);
+    private string _lastDiagnostic = "";
 
     public MainWindow()
     {
@@ -89,9 +91,45 @@ public partial class MainWindow : Window
         VerifyButton.Content = Localization.Get("Verify");
         RepairButton.Content = Localization.Get("Repair");
         UpdateButton.Content = Localization.Get("Update");
+        AddProjectButton.Content = Localization.Get("AddProject");
+        WorkPromptLabel.Text = Localization.Get("WorkPrompt");
+        WorkRecoveryLabel.Text = Localization.Get("WorkRecovery");
+        CurrentOperationLabel.Text = Localization.Get("CurrentOperation");
+        DiagnosticsLabel.Text = Localization.Get("Diagnostics");
+        SourceUpdateTitleLabel.Text = Localization.Get("SourceUpdateTitle");
+        SourceUpdateSelectLabel.Text = Localization.Get("SourceUpdateArtifact");
+        PrepareSourceUpdateButton.Content = Localization.Get("PrepareSourceUpdate");
+        OpenIncomingButton.Content = Localization.Get("OpenIncoming");
+        AcceptSourceUpdateButton.Content = Localization.Get("AcceptSourceUpdate");
+        CancelSourceUpdateButton.Content = Localization.Get("CancelSourceUpdate");
         LanguageLabel.Text = Localization.Get("Language");
         ThemeLabel.Text = Localization.Get("Theme");
+        LanguageSystemItem.Content = Localization.Get("LanguageSystem");
+        LanguageRuItem.Content = Localization.Get("LanguageRussian");
+        LanguageEnItem.Content = Localization.Get("LanguageEnglish");
+        ThemeSystemItem.Content = Localization.Get("ThemeSystem");
+        ThemeLightItem.Content = Localization.Get("ThemeLight");
+        ThemeDarkItem.Content = Localization.Get("ThemeDark");
+        StartupCheckBox.Content = Localization.Get("StartupChoice");
+        AdvancedTitleLabel.Text = Localization.Get("AdvancedTitle");
         CloseHintText.Text = Localization.Get("CloseHint");
+
+        if (ProjectsList.View is GridView projectsView && projectsView.Columns.Count >= 3)
+        {
+            projectsView.Columns[0].Header = Localization.Get("ProjectHeader");
+            projectsView.Columns[1].Header = Localization.Get("StateHeader");
+            projectsView.Columns[2].Header = Localization.Get("ParticipantsHeader");
+        }
+        if (ActivityList.Columns.Count >= 7)
+        {
+            ActivityList.Columns[0].Header = Localization.Get("TimeHeader");
+            ActivityList.Columns[1].Header = Localization.Get("SeqHeader");
+            ActivityList.Columns[2].Header = Localization.Get("OperationHeader");
+            ActivityList.Columns[3].Header = Localization.Get("TargetHeader");
+            ActivityList.Columns[4].Header = Localization.Get("BytesHeader");
+            ActivityList.Columns[5].Header = Localization.Get("DurationHeader");
+            ActivityList.Columns[6].Header = Localization.Get("OutcomeHeader");
+        }
     }
 
     private async Task RefreshContextAsync()
@@ -103,65 +141,90 @@ public partial class MainWindow : Window
             var result = await _worker.GetContextAsync();
             if (result.ExitCode != 0 || result.Json is null)
             {
-                RecommendationText.Text = "UI_CONTEXT unavailable";
-                RecommendationReasonText.Text = string.IsNullOrWhiteSpace(result.StandardError)
-                    ? $"Worker exit={result.ExitCode}" : result.StandardError.Trim();
-                HelperBadge.Text = "Helper —";
+                ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
                 return;
             }
             _context = result.Json;
+            _lastDiagnostic = "";
             ApplyContext(result.Json);
         }
         catch (Exception ex)
         {
-            RecommendationText.Text = "UI_CONTEXT unavailable";
-            RecommendationReasonText.Text = ex.Message;
+            ShowContextFailure(-1, ex.ToString(), "");
         }
         finally { _refreshing = false; }
+    }
+
+    private void ShowContextFailure(int exitCode, string? stderr, string? stdout)
+    {
+        var raw = string.Join(Environment.NewLine, new[] { stderr, stdout }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
+        _lastDiagnostic = Bound(raw, 4000);
+        RecommendationText.Text = Localization.Get("UiContextUnavailable");
+        RecommendationReasonText.Text = Localization.Get("UiContextReason") +
+            (exitCode >= 0 ? $" {Localization.Get("WorkerExit")}: {exitCode}." : "");
+        HelperBadge.Text = Localization.Get("HelperLabel") + " · —";
+        DiagnosticsText.Text = Localization.Get("UiContextUnavailable");
+        AdvancedText.Text = string.IsNullOrWhiteSpace(_lastDiagnostic)
+            ? $"{Localization.Get("WorkerExit")}: {exitCode}"
+            : _lastDiagnostic;
+    }
+
+    private static string Bound(string? value, int maxChars)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "";
+        var single = value.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Trim();
+        while (single.Contains("  ", StringComparison.Ordinal)) single = single.Replace("  ", " ", StringComparison.Ordinal);
+        return single.Length <= maxChars ? single : single[..maxChars] + "…";
     }
 
     private void ApplyContext(JsonObject ctx)
     {
         ProductVersionText.Text = $"Control Center · Worker {Text(ctx, "product", "version") ?? "—"}";
-        LastUpdatedText.Text = $"Updated {DateTime.Now:T}";
+        LastUpdatedText.Text = $"{Localization.Get("UpdatedLabel")} {DateTime.Now:T}";
         var helper = Text(ctx, "work", "helper", "status") ?? "OFFLINE";
-        HelperBadge.Text = $"Helper · {helper}";
-        RecommendationText.Text = Text(ctx, "recommendation", "action") ?? "—";
-        RecommendationReasonText.Text = Text(ctx, "recommendation", "reason") ?? "";
+        HelperBadge.Text = $"{Localization.Get("HelperLabel")} · {helper}";
+
+        var recommendationState = Text(ctx, "recommendation", "state") ?? "";
+        RecommendationText.Text = RecommendationTitle(recommendationState);
+        RecommendationReasonText.Text = string.IsNullOrWhiteSpace(recommendationState)
+            ? ""
+            : $"{Localization.Get("StateLabel")}: {recommendationState}";
 
         var projectName = Text(ctx, "selected_project", "display_name") ?? Text(ctx, "work", "project_id") ?? "—";
         var taskGoal = Text(ctx, "work", "task_goal");
         HomeProjectText.Text = projectName;
         HomeTaskText.Text = taskGoal ?? Localization.Get("NoActiveTask");
-        HomeHelperText.Text = $"Helper: {helper}";
+        HomeHelperText.Text = $"{Localization.Get("HelperLabel")}: {helper}";
 
         SourceStateText.Text = Text(ctx, "source", "state") ?? "—";
         var checkpoint = Node(ctx, "work", "checkpoint") as JsonObject;
-        CheckpointStateText.Text = checkpoint is null ? "No checkpoint" : (Text(checkpoint, "head_status") ?? "Available");
+        CheckpointStateText.Text = checkpoint is null ? Localization.Get("NoCheckpoint") : Localization.Get("CheckpointAvailable");
         CheckpointSummaryText.Text = checkpoint is null
-            ? "Semantic recovery state is not available for the current task."
-            : $"seq {Text(checkpoint, "head_seq") ?? "—"} · {Text(checkpoint, "updated_utc") ?? ""}";
+            ? Localization.Get("CheckpointNoRecovery")
+            : $"#{Text(checkpoint, "head_seq") ?? "—"} · {Text(checkpoint, "updated_utc") ?? ""}";
         WorkCheckpointText.Text = checkpoint is null
-            ? "No verified TASK_CHECKPOINT_V1 is available."
-            : $"Checkpoint {Text(checkpoint, "head_seq")} · {Text(checkpoint, "head_status")} · {Text(checkpoint, "updated_utc")}";
+            ? Localization.Get("CheckpointVerified")
+            : $"#{Text(checkpoint, "head_seq")} · {Text(checkpoint, "updated_utc")}";
 
         var output = Node(ctx, "output") as JsonObject;
         var taskCount = Long(output, "task_count");
-        OutputStateText.Text = output is null ? "No Output" : $"{taskCount} task folder(s)";
+        OutputStateText.Text = output is null ? Localization.Get("NoOutput") : $"{taskCount} {Localization.Get("OutputTasks")}";
         OutputSummaryText.Text = GetProposalSummary(output);
 
         var s4Available = Bool(ctx, "s4", "accounting_available");
         McpStateText.Text = s4Available ? (Text(ctx, "s4", "projection", "task_state") ?? "ACTIVE") : Localization.Get("AccountingUnavailable");
         var usedReq = Long(ctx, "s4", "projection", "accounting", "task_requests_used");
         var usedBytes = Long(ctx, "s4", "projection", "accounting", "task_result_bytes_used");
-        McpUsageText.Text = s4Available ? $"{usedReq} requests · {usedBytes:N0} bytes returned" : "Relay accounting projection is not available.";
+        McpUsageText.Text = s4Available
+            ? $"{usedReq:N0} · {usedBytes:N0} {Localization.Get("BytesHeader")}"
+            : Localization.Get("RelayUnavailable");
         var epoch = Long(ctx, "s4", "projection", "epoch_seq");
         var rollovers = Long(ctx, "s4", "projection", "activity", "epoch_rollovers");
-        McpEpochText.Text = s4Available ? $"Epoch {epoch} · {rollovers} rollover(s)" : "";
+        McpEpochText.Text = s4Available ? $"S4 #{epoch} · {rollovers} {Localization.Get("EpochRollovers")}" : "";
         McpPolicyText.Text = Localization.Get("AccountingPending");
 
         WorkStatusText.Text = Bool(ctx, "work", "active") ? projectName : Localization.Get("NoActiveTask");
-        WorkDetailText.Text = taskGoal ?? Text(ctx, "recommendation", "reason") ?? "";
+        WorkDetailText.Text = taskGoal ?? (string.IsNullOrWhiteSpace(recommendationState) ? "" : $"{Localization.Get("StateLabel")}: {recommendationState}");
 
         var projects = new ObservableCollection<ProjectRow>();
         if (Node(ctx, "projects") is JsonArray arr)
@@ -175,6 +238,26 @@ public partial class MainWindow : Window
         }
         ProjectsList.ItemsSource = projects;
 
+        var previousArtifactKey = (SourceArtifactCombo.SelectedItem as ArtifactRow)?.Key;
+        var artifacts = new ObservableCollection<ArtifactRow>();
+        if (Node(ctx, "source", "artifacts") is JsonArray artifactArray)
+        {
+            foreach (var n in artifactArray.OfType<JsonObject>())
+            {
+                var key = Text(n, "key") ?? "";
+                var participantId = Text(n, "participant_id") ?? "";
+                var artifactType = Text(n, "artifact_type") ?? "";
+                var artifactId = Text(n, "artifact_id") ?? "";
+                var files = Long(n, "files");
+                var bytes = Long(n, "bytes");
+                var kind = artifactType == "MAIN" ? Localization.Get("ArtifactMain") : Localization.Get("ArtifactExtension");
+                var display = $"{kind} · {participantId} / {artifactId} · {files:N0} · {bytes:N0} {Localization.Get("BytesHeader")}";
+                artifacts.Add(new(key, display, participantId, artifactType, artifactId, files, bytes));
+            }
+        }
+        SourceArtifactCombo.ItemsSource = artifacts;
+        SourceArtifactCombo.SelectedItem = artifacts.FirstOrDefault(a => a.Key == previousArtifactKey) ?? artifacts.FirstOrDefault();
+
         var activities = new ObservableCollection<ActivityRow>();
         if (Node(ctx, "s4", "projection", "activity", "events") is JsonArray events)
         {
@@ -187,7 +270,7 @@ public partial class MainWindow : Window
                 var time = Text(n, "committed_utc") ?? Text(n, "created_utc") ?? "—";
                 var durationMs = Double(n, "safe_result", "duration_ms");
                 var outcome = Text(n, "safe_result", "status") ?? Text(n, "state") ?? "—";
-                if (Bool(n, "safe_result", "read_back_verified")) outcome += " · read-back";
+                if (Bool(n, "safe_result", "read_back_verified")) outcome += " · verified";
                 activities.Add(new(
                     time,
                     (int)Long(n, "seq"),
@@ -200,18 +283,36 @@ public partial class MainWindow : Window
         }
         ActivityList.ItemsSource = activities;
         ActivitySummaryText.Text = s4Available
-            ? $"Authoritative relay activity · {usedReq} durable requests · {usedBytes:N0} bytes"
+            ? $"{Localization.Get("ActivitySummary")} · {usedReq:N0} · {usedBytes:N0} {Localization.Get("BytesHeader")}"
             : Localization.Get("AccountingUnavailable");
 
         var opType = Text(ctx, "operation", "current", "operation_type");
         var opState = Text(ctx, "operation", "current", "state");
-        var opMessage = Text(ctx, "operation", "current", "message");
-        OperationText.Text = opType is null ? "No operation in progress." : $"{opType} · {opState}\n{opMessage}";
-        DiagnosticsText.Text = $"State: {Text(ctx, "recommendation", "state")}\nRecovery: {Text(ctx, "operation", "recovery", "classification")}\nFast contract: {Text(ctx, "state_check_contract")}";
+        OperationText.Text = opType is null ? Localization.Get("NoOperation") : $"{opType} · {opState}";
+        DiagnosticsText.Text =
+            $"{Localization.Get("StateLabel")}: {recommendationState}\n" +
+            $"{Localization.Get("RecoveryLabel")}: {Text(ctx, "operation", "recovery", "classification")}\n" +
+            $"{Localization.Get("FastContractLabel")}: {Text(ctx, "state_check_contract")}";
+
+        var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
+        SourceUpdateStatusText.Text = updateStatus == "NONE"
+            ? $"{Localization.Get("SourceUpdateNone")} {Localization.Get("SourceUpdateChoose")}"
+            : $"{Localization.Get("SourceUpdateTitle")}: {updateStatus}";
 
         AdvancedText.Text = ctx.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         UpdateReadOnlyAvailability(ctx);
     }
+
+    private string RecommendationTitle(string state) => state switch
+    {
+        "PROJECT_READY" => Localization.Get("StartWork"),
+        "CONTINUE_AVAILABLE" => Localization.Get("ContinueWork"),
+        "PROJECT_NEEDS_APPLY" => Localization.Get("ApplyRefresh"),
+        "PROJECT_NEEDS_VERIFY" => Localization.Get("Verify"),
+        "RECOVERY_REQUIRED" => Localization.Get("Repair"),
+        "TASK_ACTIVE" => Localization.Get("CurrentWork"),
+        _ => Localization.Get("Recommended")
+    };
 
     private void UpdateReadOnlyAvailability(JsonObject ctx)
     {
@@ -222,14 +323,30 @@ public partial class MainWindow : Window
 
         var active = Bool(ctx, "work", "active");
         var state = Text(ctx, "recommendation", "state") ?? "";
+        var sourceState = Text(ctx, "source", "state") ?? "";
+        var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
+        var sourceUpdateActive = updateStatus != "NONE";
+        var slotPath = FirstSourceUpdateSlotPath(ctx);
+
         StartButton.IsEnabled = _mutationsEnabled && !active && state == "PROJECT_READY";
         ContinueButton.IsEnabled = _mutationsEnabled && state == "CONTINUE_AVAILABLE";
         StopButton.IsEnabled = HomeStopButton.IsEnabled = _mutationsEnabled && active;
-        ApplyButton.IsEnabled = MaintenanceApplyButton.IsEnabled = _mutationsEnabled && state is "PROJECT_NEEDS_APPLY" or "PROJECT_READY";
-        VerifyButton.IsEnabled = _mutationsEnabled && state == "PROJECT_NEEDS_VERIFY";
+        ApplyButton.IsEnabled = MaintenanceApplyButton.IsEnabled = _mutationsEnabled && !sourceUpdateActive && state is "PROJECT_NEEDS_APPLY" or "PROJECT_READY";
+        VerifyButton.IsEnabled = _mutationsEnabled && !sourceUpdateActive && state == "PROJECT_NEEDS_VERIFY";
         RepairButton.IsEnabled = _mutationsEnabled && state is "PROJECT_NEEDS_VERIFY" or "RECOVERY_REQUIRED";
         UpdateButton.IsEnabled = _mutationsEnabled;
         AddProjectButton.IsEnabled = _mutationsEnabled;
+
+        PrepareSourceUpdateButton.IsEnabled = _mutationsEnabled && sourceState == "ACCEPTED" && !sourceUpdateActive && SourceArtifactCombo.SelectedItem is ArtifactRow;
+        AcceptSourceUpdateButton.IsEnabled = _mutationsEnabled && sourceUpdateActive;
+        CancelSourceUpdateButton.IsEnabled = _mutationsEnabled && sourceUpdateActive;
+        OpenIncomingButton.IsEnabled = sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath) && Directory.Exists(slotPath);
+    }
+
+    private static string? FirstSourceUpdateSlotPath(JsonObject ctx)
+    {
+        if (Node(ctx, "source", "source_update", "slots") is not JsonArray slots) return null;
+        return slots.OfType<JsonObject>().Select(s => Text(s, "slot_path")).FirstOrDefault(p => !string.IsNullOrWhiteSpace(p));
     }
 
     private void Nav_Click(object sender, RoutedEventArgs e)
@@ -260,6 +377,42 @@ public partial class MainWindow : Window
 
     private void OpenSource_Click(object sender, RoutedEventArgs e) => OpenFolder(Text(_context, "navigation", "source_root"));
     private void OpenOutput_Click(object sender, RoutedEventArgs e) => OpenFolder(Text(_context, "navigation", "output_root"));
+    private void OpenIncoming_Click(object sender, RoutedEventArgs e)
+    {
+        if (_context is not null) OpenFolder(FirstSourceUpdateSlotPath(_context));
+    }
+
+    private async void PrepareSourceUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_mutationsEnabled || _context is null || SourceArtifactCombo.SelectedItem is not ArtifactRow artifact) return;
+        var projectId = Text(_context, "selected_project", "project_id");
+        if (string.IsNullOrWhiteSpace(projectId)) return;
+        var result = await _worker.RunAsync(
+            WorkerAction.PrepareSourceUpdate,
+            new(ProjectId: projectId, ArtifactSelection: artifact.Key),
+            elevated: true);
+        await ShowActionResultAndRefresh("PREPARE_SOURCE_UPDATE", result);
+    }
+
+    private async void AcceptSourceUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_mutationsEnabled || _context is null) return;
+        var projectId = Text(_context, "selected_project", "project_id");
+        if (string.IsNullOrWhiteSpace(projectId)) return;
+        var result = await _worker.RunAsync(WorkerAction.AcceptSourceUpdate, new(ProjectId: projectId), elevated: true);
+        await ShowActionResultAndRefresh("ACCEPT_SOURCE_UPDATE", result);
+    }
+
+    private async void CancelSourceUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_mutationsEnabled || _context is null) return;
+        var projectId = Text(_context, "selected_project", "project_id");
+        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (System.Windows.MessageBox.Show(Localization.Get("CancelSourceUpdate") + "?", Localization.Get("AppTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var result = await _worker.RunAsync(WorkerAction.CancelSourceUpdate, new(ProjectId: projectId), elevated: true);
+        await ShowActionResultAndRefresh("CANCEL_SOURCE_UPDATE", result);
+    }
+
     private static void OpenFolder(string? path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return;
@@ -371,8 +524,19 @@ public partial class MainWindow : Window
     private async Task ShowActionResultAndRefresh(string action, WorkerCallResult result)
     {
         if (result.ExitCode != 0 && result.ExitCode != 1223)
-            System.Windows.MessageBox.Show($"{action}: {result.StandardError}", Localization.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowActionFailure(action, result);
         await RefreshContextAsync();
+    }
+
+    private void ShowActionFailure(string action, WorkerCallResult result)
+    {
+        _lastDiagnostic = Bound(string.Join(Environment.NewLine, new[] { result.StandardError, result.StandardOutput }.Where(x => !string.IsNullOrWhiteSpace(x))), 4000);
+        AdvancedText.Text = _lastDiagnostic;
+        System.Windows.MessageBox.Show(
+            $"{Localization.Get("ActionFailed")}: {action}. {Localization.Get("WorkerExit")}: {result.ExitCode}.",
+            Localization.Get("AppTitle"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
     }
 
     private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -411,7 +575,9 @@ public partial class MainWindow : Window
         try { StartupRegistration.Apply(_preferences.StartWithWindows); }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Startup preference could not be applied: {ex.Message}", Localization.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            _lastDiagnostic = Bound(ex.ToString(), 4000);
+            AdvancedText.Text = _lastDiagnostic;
+            System.Windows.MessageBox.Show(Localization.Get("StartupError"), Localization.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

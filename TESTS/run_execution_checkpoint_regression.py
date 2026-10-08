@@ -59,7 +59,7 @@ def spec_for(cwd: Path, code: str, *, stage="P3b1", check="checkpoint", outputs=
 def counter_code(exit_code=0, sleep_seconds=0.0, output=False):
     return (
         "from pathlib import Path; import time,sys; "
-        "p=Path('counter.txt'); n=int(p.read_text() or '0') if p.exists() else 0; p.write_text(str(n+1)); "
+        "p=Path('counter.txt'); n=int(p.read_text() or '0') if p.exists() else 0; q=Path('counter.tmp'); q.write_text(str(n+1)); q.replace(p); "
         + (f"time.sleep({sleep_seconds}); " if sleep_seconds else "")
         + ("Path('out.txt').write_text('payload'); Path('report.json').write_text('{\\\"ok\\\":true}'); " if output else "")
         + f"sys.exit({exit_code})"

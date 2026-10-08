@@ -27,6 +27,9 @@ internal static class ThemeService
         Set("NavBrush", dark ? "#111827" : "#FFFFFF");
         Set("CardBrush", dark ? "#20242B" : "#FFFFFF");
         Set("CardAltBrush", dark ? "#292E37" : "#F8FAFC");
+        Set("PopupBrush", dark ? "#20242B" : "#FFFFFF");
+        Set("HoverBrush", dark ? "#323946" : "#E9EEF6");
+        Set("SelectionBrush", dark ? "#1E3A5F" : "#DBEAFE");
         Set("TextBrush", dark ? "#F3F4F6" : "#172033");
         Set("MutedTextBrush", dark ? "#AAB2C0" : "#667085");
         Set("BorderBrush", dark ? "#384152" : "#DCE2EA");

@@ -44,7 +44,7 @@ try {
   Rec 'schema_exact' ($ctx.schema -eq 'UI_CONTEXT_V1') $ctx.schema
   Rec 'bounded_fast_contract' ($ctx.bounded -and $ctx.fast_only -and $ctx.state_check_contract -eq 'FAST_STATE_CHECK_V1') ''
   Rec 'relay_projection_exact_binding' ($ctx.s4.accounting_available -and $ctx.s4.projection.task_admission_id -eq $admission.task_admission_id) ''
-  Rec 'pending_policy_hides_limits' (-not $ctx.s4.limits_display_allowed -and $ctx.s4.policy_status -eq 'PENDING_CAP_ACTIVATION') ''
+  Rec 'accepted_policy_identity_no_invented_limit_projection' (-not $ctx.s4.limits_display_allowed -and $ctx.s4.policy_status -eq 'OPERATOR_ACCEPTED_PRODUCT_POLICY') ''
   Rec 'six_tool_surface' ([int]$ctx.safety.model_tool_surface_count -eq 6) ''
   Rec 'no_side_effect_flags' (-not $ctx.safety.mcp_side_effect -and -not $ctx.safety.source_request_issued -and -not $ctx.safety.acquisition_called) ''
   Rec 'no_secret_values' (-not ($joined -match 'not-a-real-secret-value-for-test')) ''
@@ -59,6 +59,9 @@ try {
   $start=$launcherText.IndexOf('function Get-UiContext {');$end=$launcherText.IndexOf('function Run-UiContext {')
   $block=$launcherText.Substring($start,$end-$start)
   Rec 'static_no_deep_verify_or_acquisition' (-not ($block -match 'Verify-WorkerProject|Get-TreeDigest|Invoke-SourceAcquisition|source_context|source_read')) ''
+  Rec 'bounded_manifest_artifact_projection_only' ($block -match 'Get-ManifestArtifactRows' -and $block -match 'sourceArtifacts' -and -not ($block -match 'Get-ChildItem.+-Recurse|Get-FileHash|Invoke-SourceIntake')) ''
+  Rec 'source_update_status_projection_present' ($block -match 'Get-SourceUpdateSummary' -and $block -match 'source_update=') ''
+  Rec 'source_navigation_uses_project_root' ($block -match 'source_root=\$\(if\(\$selectedProjectId\)\{Join-Path \$WorkerRoot \$selectedProjectId') ''
   Rec 'ui_context_mode_is_read_only' ($launcherText -match "'UI_CONTEXT' \{Run-UiContext;break\}") ''
   Write-Host ("UI_CONTEXT_REGRESSION_PASS checks={0}" -f $results.Count)
   $results|ConvertTo-Json -Depth 8

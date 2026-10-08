@@ -11,10 +11,11 @@ Rec 'launcher_update_mode_exact' ($launcher -match "'UPDATE'" -and $launcher -ma
 $update=$launcher.Substring($launcher.IndexOf('function Run-Update'),$launcher.IndexOf('function Run-AddProject')-$launcher.IndexOf('function Run-Update'))
 Rec 'update_reuses_install_owner' ($update.Contains('Install-OneCChatWorker') -and $update.Contains('network_download_performed=$false')) ''
 Rec 'update_no_remote_downloader' (-not ($update -match 'Invoke-WebRequest|Start-BitsTransfer|curl|wget|HttpClient')) ''
-$expected=@('UI_CONTEXT','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','UPDATE','ADD_PROJECT','ADD_PARTICIPANT','SET_MAIN','ADD_EXTENSION')
+$expected=@('UI_CONTEXT','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','UPDATE','ADD_PROJECT','ADD_PARTICIPANT','SET_MAIN','ADD_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE')
 foreach($m in $expected){Rec ('typed_mode_'+$m) ($client -match ('"'+$m+'"')) ''}
 Rec 'no_generic_mode_parameter' (-not ($client -match 'string mode|RequestedMode|Mode = args')) ''
 Rec 'argumentlist_no_shell_concat' ($client -match 'ArgumentList\.Add' -and -not ($client -match 'cmd\.exe| -Command |ProcessStartInfo\("pwsh')) ''
+Rec 'source_update_args_are_fixed_typed' ($client -match 'ArtifactSelection' -and $client -match 'SelectedArtifactFullSafeImport' -and $main -match 'new\(ProjectId: projectId, ArtifactSelection: artifact\.Key\)') ''
 Rec 'mutations_enabled_after_readonly_gate' ($main -match '_mutationsEnabled = true') ''
 Rec 'wizard_fixed_sequence' ($main -match 'WorkerAction\.AddProject' -and $main -match 'WorkerAction\.AddParticipant' -and $main -match 'WorkerAction\.SetMain' -and $main -match 'WorkerAction\.AddExtension' -and $main -match 'WorkerAction\.Apply') ''
 Rec 'wizard_stop_on_failure' ($main -match 'if \(result\.ExitCode != 0\)' -and $main -match 'if \(ext\.ExitCode != 0\)') ''
