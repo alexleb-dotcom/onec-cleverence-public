@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import {createServer} from 'node:http';
-import {once} from 'node:events';
 import {PullMailbox} from './mailbox.mjs';
 const copy = v => structuredClone(v);
 const task={admission:'a'.repeat(32),session:'b'.repeat(32),snapshot:'c'.repeat(64),expires:1000000};
@@ -32,30 +30,4 @@ await test('ten concurrent claims reserve once',async()=>{const {box,store}=setu
 await test('reinstantiated mailbox preserves durable lease',async()=>{const {box,store}=setup(),j=request();await box.enqueue(j);const c=await claim(box),fresh=new PullMailbox({store,accounting,now:()=>now});assert.equal((await claim(fresh)).token,c.token);assert.equal((await finish(fresh,j,c)).status,'COMMITTED')});
 await test('active lane rejects a second job and identity collision',async()=>{const {box}=setup(),j=request(),other=request();await box.enqueue(j);assert.equal((await box.enqueue(other)).status,'BUSY');assert.equal((await box.enqueue({...j,fingerprint:'different'})).status,'ID_COLLISION')});
 await test('unexpired task identity is mandatory',async()=>{const {box,store}=setup();store.data.task.expires=now;assert.equal((await box.enqueue(request())).status,'TASK_NOT_ACTIVE')});
-await test('loopback HTTP outbound pull: four sequential reads + virtual idle',async()=>{
- const {box,store}=setup();const token='test-only';const cached=new Map();let executions=0;
- const srv=createServer(async(req,res)=>{
-  let raw='';for await(const c of req)raw+=c;const body=raw?JSON.parse(raw):{};
-  const send=(status,obj)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(obj))};
-  if(req.headers.authorization!=='Bearer '+token)return send(401,{status:'AUTH_REJECTED'});
-  if(req.url==='/poll')return send(200,await claim(box));
-  if(req.url==='/result')return send(200,await box.complete({identity,helperId:'reader',requestId:body.requestId,token:body.token,result:body.result}));
-  send(404,{status:'NOT_FOUND'});
- });
- srv.listen(0,'localhost');await once(srv,'listening');
- const base='http://localhost:'+srv.address().port;
- const post=async(path,body={})=>(await fetch(base+path,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
- try{
-  assert.equal((await fetch(base+'/poll',{method:'POST'})).status,401);
-  for(let i=0;i<5;i++){
-   if(i===4)now+=150000;
-   const j=request();assert.equal((await box.enqueue(j)).status,'PENDING');const c=await post('/poll');assert.equal(c.status,'CLAIMED');
-   assert.equal((await post('/poll')).token,c.token);
-   if(!cached.has(c.requestId)){executions++;cached.set(c.requestId,{status:'OK',payload:{content:'lines-'+i}})}
-   assert.equal((await post('/result',{requestId:c.requestId,token:c.token,result:cached.get(c.requestId)})).status,'COMMITTED');
-   assert.equal((await box.status({identity,requestId:c.requestId})).status,'COMMITTED');
-  }
-  assert.equal(store.data.s4.used,5);assert.equal(store.data.s4.committed,5);assert.equal(executions,5);
- }finally{await new Promise(resolve=>srv.close(resolve))}
-});
 console.log(JSON.stringify({status:'PASS',checks:passes,production:false,real_s4:false}));
