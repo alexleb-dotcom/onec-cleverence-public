@@ -55,16 +55,18 @@ ok('BAD_CORRELATION_OR_UNRECOGNIZED_OP_FAILS_CLOSED',()=>{
 
 ok('DIAGNOSTIC_EVENTS_COVER_EXACT_TRANSPORT_BOUNDARIES',()=>{
   for(const event of [
-    'socket_accepted','socket_replaced','socket_closed','socket_error',
+    'socket_accepted','socket_replaced',
     's4_hello_ack','rpc_received','rpc_dispatch','result_frame','rpc_deadline',
     'message_handler_rejected'
   ])assert(code.includes("traceWs('"+event+"'"),event);
+  for(const event of ['socket_closed','socket_error'])assert(code.includes("this.helperDisconnected(socket,'"+event+"')"),event);
 });
 
 ok('PENDING_REQUEST_CORRELATION_PRESERVED',()=>{
-  assert(code.includes("this.pending.set(request_id,{startedAt,generation,resolve:"));
+  assert(code.includes("this.pending.set(request_id,{startedAt,generation,socket:dispatchedSocket,reject:fail,resolve:"));
   assert(code.includes("const p=this.pending.get(msg.request_id);"));
-  assert(code.includes("if(p){this.pending.delete(msg.request_id);this.busy=false;p.resolve(msg);}"));
+  assert(code.includes("const matched=!!p&&p.socket===socket&&p.generation===generation;"));
+  assert(code.includes("if(matched){this.pending.delete(msg.request_id);p.resolve(msg);}"));
   assert(code.includes("},15000);"),'existing S4 timeout must not silently change');
 });
 

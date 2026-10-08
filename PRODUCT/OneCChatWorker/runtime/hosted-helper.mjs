@@ -325,6 +325,11 @@ async function exec(op,args){
 }
 async function handleRelayMessage(ws,ev){
   let m;try{m=JSON.parse(ev.data);}catch{return;}
+  // Transport-only challenge; no Source execution, processed cache or S4 usage.
+  if(m.type==='transport_ping'){
+    if(typeof m.nonce==='string'&&/^[0-9a-f-]{36}$/i.test(m.nonce))ws.send(JSON.stringify({type:'transport_pong',nonce:m.nonce}));
+    return;
+  }
   if(m.type==='hello_ack'){await log({event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used});return;}
   if(m.type==='ui_projection'){await saveUiProjection(m.projection).catch(async e=>log({event:'UI_PROJECTION_REJECTED',error:String(e?.message||e).slice(0,120)}));return;}
   if(m.type==='hello_error'){await log({event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')});return;}
