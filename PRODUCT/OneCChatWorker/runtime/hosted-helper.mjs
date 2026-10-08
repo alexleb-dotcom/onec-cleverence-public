@@ -323,6 +323,41 @@ async function exec(op,args){
     fail('UNKNOWN_OP');
   }catch(e){return {status:'ERROR',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3),error_class:String(e?.code||e?.name||'ERROR')},payload:{error:String(e?.message||e).slice(0,400)}};}
 }
+// Advisory disk I/O must not hold the execution/readiness lane after a result
+// has been persisted and sent. Keep projections/logs ordered across reconnects;
+// this lane never reads or mutates the processed cache or Source.
+const advisoryPump=createSerializedMessagePump({handle:async message=>{
+  if(message.type==='ui_projection_slot'){
+    try{
+      while(pendingUiProjection){
+        const projection=pendingUiProjection;pendingUiProjection=null;
+        try{await saveUiProjection(projection);}catch(e){
+          await log({event:'UI_PROJECTION_REJECTED',error:String(e?.message||e).slice(0,120)}).catch(()=>{});
+        }
+      }
+    }finally{uiProjectionQueued=false;}
+    return;
+  }
+  try{
+    await log(message.entry);
+  }catch{}
+}});
+let advisoryLogsQueued=0,pendingUiProjection=null,uiProjectionQueued=false;
+const queueAdvisory=message=>{
+  if(message.type==='ui_projection'){
+    // Keep the newest projection when disk is delayed; never accumulate full
+    // historical projections or replay an older UI state after reconnect.
+    pendingUiProjection=message.projection;
+    if(!uiProjectionQueued){uiProjectionQueued=true;void advisoryPump.dispatch({type:'ui_projection_slot'});}
+    return;
+  }
+  // Logging is best effort. A stuck disk must not create an unbounded queue
+  // as the authoritative request lane continues to make progress.
+  if(advisoryLogsQueued>=64)return;
+  message={...message,entry:{at_utc:new Date().toISOString(),...message.entry}};
+  advisoryLogsQueued++;
+  void advisoryPump.dispatch(message).finally(()=>{advisoryLogsQueued--;});
+};
 async function handleRelayMessage(ws,ev){
   let m;try{m=JSON.parse(ev.data);}catch{return;}
   // Transport-only challenge; no Source execution, processed cache or S4 usage.
@@ -330,9 +365,9 @@ async function handleRelayMessage(ws,ev){
     if(typeof m.nonce==='string'&&/^[0-9a-f-]{36}$/i.test(m.nonce))ws.send(JSON.stringify({type:'transport_pong',nonce:m.nonce}));
     return;
   }
-  if(m.type==='hello_ack'){await log({event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used});return;}
-  if(m.type==='ui_projection'){await saveUiProjection(m.projection).catch(async e=>log({event:'UI_PROJECTION_REJECTED',error:String(e?.message||e).slice(0,120)}));return;}
-  if(m.type==='hello_error'){await log({event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')});return;}
+  if(m.type==='hello_ack'){queueAdvisory({entry:{event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used}});return;}
+  if(m.type==='ui_projection'){queueAdvisory(m);return;}
+  if(m.type==='hello_error'){queueAdvisory({entry:{event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')}});return;}
   if(m.type!=='request'||!m.request_id)return;
   if(state.processed[m.request_id]){ws.send(JSON.stringify(state.processed[m.request_id]));return;}
   const res=await exec(m.op,m.args);
@@ -346,7 +381,7 @@ async function handleRelayMessage(ws,ev){
     persist:saveState,
     send:async stored=>ws.send(JSON.stringify(stored))
   });
-  await log({event:'RESULT',request_id:m.request_id,op:m.op,status:res.status,attempted_payload_bytes:attemptedPayloadBytes,elapsed_ms:res.metadata.elapsed_ms});
+  queueAdvisory({entry:{event:'RESULT',request_id:m.request_id,op:m.op,status:res.status,attempted_payload_bytes:attemptedPayloadBytes,elapsed_ms:res.metadata.elapsed_ms}});
 }
 async function connectLoop(){
   const secret=(await fsp.readFile(SECRET_PATH,'utf8')).trim(); if(secret.length<20)throw new Error('HELPER_SECRET_INVALID');
@@ -360,8 +395,6 @@ async function connectLoop(){
         predecessor:admission.predecessor??null,
         controlled_restart_done:false,caps:{task_request_limit:caps.task_request_limit,task_result_byte_limit:caps.task_result_byte_limit,epoch_soft_request_limit:caps.epoch_soft_request_limit,epoch_soft_result_byte_limit:caps.epoch_soft_result_byte_limit,max_result_bytes:caps.max_result_bytes}
       }:{type:'hello',session_id:state.session_id,snapshot_id:SNAPSHOT,helper_version:VERSION,started_utc:state.started_utc,expires_utc:state.expires_utc,task_id:TASK,caps:{max_requests:caps.max_requests,max_cumulative_result_bytes:caps.max_cumulative_result_bytes,max_result_bytes:caps.max_result_bytes}};
-      ws.send(JSON.stringify(hello));
-      await log({event:'CONNECTED',session_id:state.session_id,snapshot_id:SNAPSHOT,project_id:PROJECT,task_id:TASK});
       let fatalPersistenceError=null;
       await new Promise(resolve=>{
         const pump=createSerializedMessagePump({
@@ -378,6 +411,10 @@ async function connectLoop(){
         const settle=()=>{void pump.drain().finally(resolve);};
         ws.addEventListener('close',settle,{once:true});
         ws.addEventListener('error',settle,{once:true});
+        // Install listeners before hello: an immediate ACK/probe/close must
+        // not be lost while CONNECTED logging waits for Windows disk I/O.
+        ws.send(JSON.stringify(hello));
+        queueAdvisory({entry:{event:'CONNECTED',session_id:state.session_id,snapshot_id:SNAPSHOT,project_id:PROJECT,task_id:TASK}});
       });
       if(fatalPersistenceError)throw fatalPersistenceError;
     }catch(e){
@@ -397,5 +434,5 @@ catch(e){
   fatalHelperError=e;
   await log({event:'HELPER_FATAL',error_class:String(e?.code||e?.name||'ERROR'),error:String(e?.message||e).slice(0,240)});
 }
-finally{await provider.shutdown().catch(()=>{});}
+finally{await advisoryPump.drain();await provider.shutdown().catch(()=>{});}
 if(fatalHelperError)process.exitCode=1;

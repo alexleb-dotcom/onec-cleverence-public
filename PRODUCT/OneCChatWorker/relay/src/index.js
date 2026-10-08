@@ -145,21 +145,28 @@ export class RelaySession {
     const attachment=socket.deserializeAttachment();
     socket.serializeAttachment({...attachment,ready:false});
     this.helper=null;this.helperReady=false;
-    this.probe?.finish(false);
+    this.probe?.finish(false,'probe_disconnected');
     for(const p of this.pending.values())if(p.socket===socket)p.reject(new Error('HELPER_TIMEOUT'));
   }
-  async verifyHelper(socket,generation){
-    if(!this.helperReady||!this.isCurrentHelper(socket,generation))return false;
+  async verifyHelper(socket,generation,request_id){
+    if(!this.helperReady||!this.isCurrentHelper(socket,generation)){
+      traceWs('probe_not_ready',{request_id,generation,socket_state:socket?.readyState??null});
+      return false;
+    }
     const nonce=crypto.randomUUID();
+    const startedAt=Date.now();
     return await new Promise(resolve=>{
-      const finish=ready=>{
+      const finish=(ready,event=ready?'probe_ready':'probe_expired')=>{
         if(this.probe!==probe)return;
-        clearTimeout(timer);this.probe=null;resolve(ready);
+        clearTimeout(timer);this.probe=null;
+        traceWs(event,{request_id,generation,age_ms:Date.now()-startedAt,socket_state:socket.readyState});
+        resolve(ready);
       };
       const probe={socket,generation,nonce,finish};
       const timer=setTimeout(()=>finish(false),2500);
       this.probe=probe;
-      try{socket.send(JSON.stringify({type:'transport_ping',nonce}));}catch{finish(false);}
+      traceWs('probe_started',{request_id,generation,socket_state:socket.readyState});
+      try{socket.send(JSON.stringify({type:'transport_ping',nonce}));}catch{finish(false,'probe_send_failed');}
     });
   }
   async fetch(request) {
@@ -320,9 +327,12 @@ export class RelaySession {
     const fingerprint=await requestFingerprint(body.op,body.args);
     let clientId;try{clientId=await mcpAccountingRequestId(record,body.op,body.args);}catch{return Response.json({error:'REQUEST_IDENTITY_INVALID'},{status:400});}
     const readySocket=this.helper,readyGeneration=this.socketGeneration;
-    if(!await this.verifyHelper(readySocket,readyGeneration)||!this.isCurrentHelper(readySocket,readyGeneration)){
+    if(!await this.verifyHelper(readySocket,readyGeneration,clientId)||!this.isCurrentHelper(readySocket,readyGeneration)){
       // No reservation yet: retire only this failed transport generation.
       if(this.helper===readySocket){
+        // A failed close may leave an OPEN host socket. Never reconstruct its
+        // old successful-hello readiness on the next hibernation wake.
+        readySocket.serializeAttachment({schema:'RELAY_HELPER_SOCKET_V1',generation:readyGeneration,ready:false});
         this.helper=null;this.helperReady=false;
         try{readySocket.close(4002,'transport not ready');}catch{}
       }

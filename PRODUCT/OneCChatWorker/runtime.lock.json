@@ -15,7 +15,7 @@
   },
   "components": {
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
-    "runtime/hosted-helper.mjs": "1835dc673f902c9682d1f2b9747fcef96415c8df81798d70b358cb63de5d6343",
+    "runtime/hosted-helper.mjs": "55e50e187d9c042917d227c60348f829d0c0b905a163b9ea1b79ff982b21eb54",
     "runtime/helper-state-coordinator.mjs": "6e1e38808b61f58f1e52ebf70ffc3aa37ab77f0947d7e39334cd6bd3226e9cef",
     "runtime/source-acquisition.mjs": "9742f8644f81288dc49b4191d557d564d8e5927c61656f586a4835505eff312e",
     "runtime/local-quality-adapter.mjs": "8964bcca9c16f0cf26ad49f6a974b21c5d27eb5918dc241081bdb66107de199a",
@@ -43,7 +43,7 @@
       "component": "relay/src/index.js",
       "accepted_pre_s4_deployment": "5971635f-448e-4ccc-bf48-59709ef95e1a",
       "accepted_pre_s4_source_sha256": "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0",
-      "current_candidate_source_sha256": "e99bf9c9ec4cc16aa7e6763b036fb3073a628401d27c703674bd928736fa8327",
+      "current_candidate_source_sha256": "10aebe883f7dded994de95d3f7191ac9b8863d942dd96f925d427fa771f0ab82",
       "accounting_component": "relay/src/s4-accounting.js",
       "accounting_component_sha256": "09290230166826db3ebdc48880e43e8fe9c5414a1455d5646c32ad822f1fa952",
       "wrangler_sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da",
