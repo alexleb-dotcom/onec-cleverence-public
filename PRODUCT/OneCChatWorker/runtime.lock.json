@@ -15,7 +15,7 @@
   },
   "components": {
     "runtime/source-reader-integration.mjs": "6204d8b545c064ea9fc5f320e9a509602ba847f8833d08a98b515e756659847e",
-    "runtime/hosted-helper.mjs": "55e50e187d9c042917d227c60348f829d0c0b905a163b9ea1b79ff982b21eb54",
+    "runtime/hosted-helper.mjs": "0dd6b424a5c5844f04d111ca59caffb65e2bb6e9adcd1c06b1da7a053d4d7887",
     "runtime/helper-state-coordinator.mjs": "6e1e38808b61f58f1e52ebf70ffc3aa37ab77f0947d7e39334cd6bd3226e9cef",
     "runtime/source-acquisition.mjs": "9742f8644f81288dc49b4191d557d564d8e5927c61656f586a4835505eff312e",
     "runtime/local-quality-adapter.mjs": "8964bcca9c16f0cf26ad49f6a974b21c5d27eb5918dc241081bdb66107de199a",
@@ -26,7 +26,9 @@
     "OneCChatWorker.ps1": "6fbfc06148b617f7bb077d748c5d185e5c67964f298ada40eacfb69bd47a60ed",
     "README.md": "2d974258fc191dcad08ffa23bb485ed34c09964d5d32bcacc67cfc0c186ec857",
     "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",
-    "control-center/publish/OneCArchitecture.ControlCenter.exe": "b875904a4e74dc257f06f9888d267f3c2db1df3daadd26b2c444cfc264972cc5"
+    "control-center/publish/OneCArchitecture.ControlCenter.exe": "b875904a4e74dc257f06f9888d267f3c2db1df3daadd26b2c444cfc264972cc5",
+    "runtime/helper-https-pull.mjs": "b92ec6cda970752419fbc28ccc5fcd8f3b694ba0754de4aba5dc58a447a9255d",
+    "runtime/https-pull-auth.mjs": "951d0593afbf0833c979b6f4428e4b56149683bec5b362706d812f8e1d91431f"
   },
   "hosted_mcp": {
     "endpoint": "https://onec-g1q1-relay.alex-lebad1.workers.dev/mcp",
@@ -43,13 +45,17 @@
       "component": "relay/src/index.js",
       "accepted_pre_s4_deployment": "5971635f-448e-4ccc-bf48-59709ef95e1a",
       "accepted_pre_s4_source_sha256": "d57ccecc41fc27940c98908bf1c2e844e78c7f612cfec2de46952209e87dd9b0",
-      "current_candidate_source_sha256": "10aebe883f7dded994de95d3f7191ac9b8863d942dd96f925d427fa771f0ab82",
+      "current_candidate_source_sha256": "734c0252988c83b649014560062b356b957c6741f87f606d5cbc8485e142156c",
       "accounting_component": "relay/src/s4-accounting.js",
       "accounting_component_sha256": "09290230166826db3ebdc48880e43e8fe9c5414a1455d5646c32ad822f1fa952",
       "wrangler_sha256": "25528c6a34f4c151d8f19de7653dda7316ccfbe9c735831a53130005e04f96da",
       "package_sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94",
       "package_lock_sha256": "059aed20a675a0b2edc9314c334ae5b5ab9dbfb68e43e7bd4f8668fce0420de5",
-      "deployment_status": "NOT_DEPLOYED_PENDING_PRODUCTION_DEPLOYMENT"
+      "deployment_status": "NOT_DEPLOYED_PENDING_PRODUCTION_DEPLOYMENT",
+      "transport_component": "relay/src/https-pull.mjs",
+      "transport_component_sha256": "700991f5cfc02e3c219c5ab20704a636b6b4014823505c17bb5775c2d4e91127",
+      "mailbox_component": "relay/experiments/https-pull/mailbox.mjs",
+      "mailbox_component_sha256": "43a25a3ebb73fd37a66fe184c3839faec368d835e87a625a94093bb89185dc98"
     },
     "s4": {
       "contract": "S4_DURABLE_TASK_ACCOUNTING_V1",

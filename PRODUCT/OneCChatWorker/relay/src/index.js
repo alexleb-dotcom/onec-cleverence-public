@@ -1,4 +1,6 @@
 import OAuthProvider, { AuthorizationError, CimdFetchError } from '@cloudflare/workers-oauth-provider';
+import { DurablePullTransport } from './https-pull.mjs';
+import { PULL_PREFIX } from '../../runtime/https-pull-auth.mjs';
 import { startBoundedResponseRetries } from './ws-response-retry.mjs';
 import { createTaskRecord, reconcileTaskHello, reserveRequest, commitRequest, chargeAmbiguousRequest, lifecycleProjection, minimalControlPayload, projectCommittedRecord, activityReceiptHashInput, sealActivityReceipt, canonicalizeRecoveredOrphanPredecessor, unsealedTerminalReceipts, activityDelta, latestCheckpointRequestCursor, S4_ACTIVITY_CURSOR_SCHEMA } from './s4-accounting.js';
 
@@ -112,6 +114,45 @@ function pushS4UiProjection(record){
   try{this.helper?.send(JSON.stringify({type:'ui_projection',projection:s4UiProjection(record)}));}catch{}
 }
 
+function pullFinalPayload(record,op,result){
+    let pullPayload=result.payload;
+    if(op==='context'){
+      const base={...(result.payload||{})};
+      delete base.caps;delete base.expires_utc;
+      // The relay adds lifecycle/accounting after the helper's local cap check.
+      // Optional helper hints yield to the required, relay-owned context envelope.
+      const optional=['prepared_quality','target_hints'];
+      for(let attempt=0;attempt<=optional.length;attempt++){
+        let guess=payloadBytes({...base,...lifecycleProjection(record)});
+        let fits=guess<=record.max_result_bytes;
+        if(fits){
+          for(let i=0;i<5;i++){
+            // projectCommittedRecord throws RESULT_CAP for an oversized guess.
+            // Never project an already-over-cap candidate.
+            if(guess>record.max_result_bytes){fits=false;break;}
+            const projected=projectCommittedRecord(record,{payloadBytes:guess});
+            const candidate={...base,...lifecycleProjection(projected)};
+            const next=payloadBytes(candidate);
+            if(next>record.max_result_bytes){fits=false;break;}
+            pullPayload=candidate;
+            if(next===guess)break;
+            guess=next;
+          }
+        }
+        if(fits)break;
+        const field=optional.find(name=>Object.prototype.hasOwnProperty.call(base,name));
+        if(!field){
+          // Required context cannot fit: use the existing structured,
+          // fail-closed RESULT_CAP/accounting path below, never HTTP 500.
+          pullPayload={...base,...lifecycleProjection(record)};
+          break;
+        }
+        delete base[field];
+      }
+    }
+  return pullPayload;
+}
+
 export class RelaySession {
   constructor(state, env) {
     this.state=state;this.env=env;this.helper=null;this.helperReady=false;
@@ -169,8 +210,13 @@ export class RelaySession {
       try{socket.send(JSON.stringify({type:'transport_ping',nonce}));}catch{finish(false,'probe_send_failed');}
     });
   }
+  pullTransport(){
+    return this.pull??=new DurablePullTransport(this,{safeRequestMeta,safeResultMeta,sealOneActivity,sealPendingActivity,s4UiProjection,finalPayload:pullFinalPayload,mcpAccountingRequestId,requestFingerprint});
+  }
+  async alarm(){await this.pullTransport().alarm();}
   async fetch(request) {
     const url=new URL(request.url);
+    if(url.pathname.startsWith('/helper/pull/'))return this.pullTransport().endpoint(request);
     if(url.pathname==='/helper') return this.acceptHelper(request);
     if(url.pathname==='/rpc') return this.rpc(request);
     if(url.pathname==='/status') return this.status();
@@ -182,7 +228,7 @@ export class RelaySession {
     const token=new URL(request.url).searchParams.get('token')||'';
     if(token!==this.env.HELPER_SECRET) return new Response('unauthorized',{status:401});
     // Never replace a socket while a probe, reservation or commit owns the lane.
-    if(this.busy||this.pending.size)return new Response('relay busy',{status:409});
+    if(this.busy||this.pending.size||await this.state.storage.get('active_transport')==='https-pull')return new Response('relay busy',{status:409});
     const pair=new WebSocketPair(), client=pair[0], server=pair[1];
     this.state.acceptWebSocket(server,['helper']);
     const generation=++this.socketGeneration;
@@ -205,7 +251,7 @@ export class RelaySession {
     }
     if(msg.type==='hello'){
       // A duplicate/late hello must not reconcile an active RESERVED receipt.
-      if(this.busy)return;
+      if(this.busy||await this.state.storage.get('active_transport')==='https-pull')return;
       this.busy=true;
       this.helperReady=false;
       try{
@@ -270,7 +316,11 @@ export class RelaySession {
   }
   async status(){
     const mode=await this.state.storage.get('active_mode');
-    if(mode==='s4')return Response.json({online:!!this.helper,mode,meta:await this.activeTaskRecord()});
+    if(mode==='s4'){
+      const pull=await this.state.storage.get('active_transport')==='https-pull';
+      const mailbox=pull?await this.state.storage.get('https_pull_v1'):null;
+      return Response.json({online:pull?Date.now()-(mailbox?.helper?.lastSeen||0)<15000:!!this.helper,mode,meta:await this.activeTaskRecord()});
+    }
     const meta=await this.state.storage.get('meta');return Response.json({online:!!this.helper,mode:mode||'legacy',meta:meta||null});
   }
   async reset(request){
@@ -312,6 +362,7 @@ export class RelaySession {
     traceWs('rpc_received',{generation:this.socketGeneration,op:body.op,pending_count:this.pending.size,socket_state:this.helper?.readyState??null});
     const mode=await this.state.storage.get('active_mode');
     if(mode!=='s4')return this.rpcLegacy(body);
+    if(await this.state.storage.get('active_transport')==='https-pull')return this.pullTransport().rpc(body,rpcReceivedAt);
     const taskId=await this.state.storage.get('active_task_id');
     if(!taskId)return Response.json({error:'ACCOUNTING_STATE_UNAVAILABLE'},{status:503});
     const key='task:'+taskId;
@@ -536,6 +587,10 @@ const DefaultHandler={
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==='/health')return Response.json({service:'onec-g1q1-relay',version:'g1q1-relay/2-oauth',source_storage:'none',oauth:'cloudflare-workers-oauth-provider-1.2.1'});
+  if(url.pathname.startsWith(PULL_PREFIX)){
+    if(request.method!=='POST'||url.search||request.headers.get('authorization')!=='Bearer '+env.HELPER_SECRET||typeof env.HELPER_SECRET!=='string'||env.HELPER_SECRET.length<20)return new Response('unauthorized',{status:401});
+    return env.RELAY.get(env.RELAY.idFromName('q1')).fetch(request);
+  }
   if(url.pathname==='/helper')return env.RELAY.get(env.RELAY.idFromName('q1')).fetch(request);
   if(url.pathname==='/authorize'){
    const oauth=env.OAUTH_PROVIDER;

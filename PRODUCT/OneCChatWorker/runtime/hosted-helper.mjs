@@ -1,3 +1,4 @@
+import { HttpsPullHelper } from './helper-https-pull.mjs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -385,6 +386,16 @@ async function handleRelayMessage(ws,ev){
 }
 async function connectLoop(){
   const secret=(await fsp.readFile(SECRET_PATH,'utf8')).trim(); if(secret.length<20)throw new Error('HELPER_SECRET_INVALID');
+  if(IS_S4){
+    const hello={
+        type:'hello',admission_schema_version:3,task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,project_id:PROJECT,task_id:TASK,task_goal_sha256:admission.task_goal_sha256??null,
+        manifest_sha256:manifestHash,snapshot_id:SNAPSHOT,output_task_root:OUTPUT_TASK_ROOT,helper_version:VERSION,task_created_utc:TASK_CREATED_UTC,task_expires_utc:TASK_EXPIRES_UTC,
+        predecessor:admission.predecessor??null,
+        controlled_restart_done:false,caps:{task_request_limit:caps.task_request_limit,task_result_byte_limit:caps.task_result_byte_limit,epoch_soft_request_limit:caps.epoch_soft_request_limit,epoch_soft_result_byte_limit:caps.epoch_soft_result_byte_limit,max_result_bytes:caps.max_result_bytes}
+      };
+    await new HttpsPullHelper({relayUrl:RELAY,secret,hello,state,persist:saveState,handle:handleRelayMessage,onProjection:projection=>queueAdvisory({type:'ui_projection',projection})}).run();
+    return;
+  }
   while(Date.now()<Date.parse(state.expires_utc)){
     try{
       const ws=new WebSocket(RELAY+'?token='+encodeURIComponent(secret));

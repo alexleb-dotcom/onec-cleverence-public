@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 529,
+  "file_count": 540,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 6841,
-      "sha256": "764b6174fb68dc8cd997c9b2f6698e1d681067dff2bcc1506b7f8e4f15508e7d"
+      "size": 7361,
+      "sha256": "5f24f97a5c73facff31a03dcf739c6533e66e7a7b3b405af56d87ccf3e036659"
     },
     {
       "path": ".gitignore",
@@ -494,9 +494,24 @@
       "sha256": "9964bc44cdb351d5d4347685a70569561ae778c19b5e3070e691bcef1ddfaee5"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/relay/HTTPS_PULL_ROLLOUT.md",
+      "size": 10999,
+      "sha256": "31b991a0056b17b1df577f6d36b0ca4c3454b38bc8328e0b89d5155fc6f9e369"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/relay/TRANSPORT_RELIABILITY.md",
       "size": 9444,
       "sha256": "d522db76ccb2e847a9c013ff75dc3fdf5066a176284373f98a130ee4a05c0957"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/mailbox.mjs",
+      "size": 7020,
+      "sha256": "43a25a3ebb73fd37a66fe184c3839faec368d835e87a625a94093bb89185dc98"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/test.mjs",
+      "size": 5004,
+      "sha256": "0f4730ae93dbe11d4912af3329a572ee37df515bd92d160269a88a16a285cebe"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/package-lock.json",
@@ -509,9 +524,14 @@
       "sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/relay/src/https-pull.mjs",
+      "size": 14940,
+      "sha256": "700991f5cfc02e3c219c5ab20704a636b6b4014823505c17bb5775c2d4e91127"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
-      "size": 43129,
-      "sha256": "10aebe883f7dded994de95d3f7191ac9b8863d942dd96f925d427fa771f0ab82"
+      "size": 46135,
+      "sha256": "734c0252988c83b649014560062b356b957c6741f87f606d5cbc8485e142156c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
@@ -530,8 +550,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 7383,
-      "sha256": "d120407f5758feeb263a7f0de7e97fbe072b1a9627b5af31ac12a1da8117b8fe"
+      "size": 7925,
+      "sha256": "9f41abe71e8b648ef3d1d9f7ca33ed984ba4d663312752eb29eb1baab124a501"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
+      "size": 4596,
+      "sha256": "b92ec6cda970752419fbc28ccc5fcd8f3b694ba0754de4aba5dc58a447a9255d"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-state-coordinator.mjs",
@@ -540,8 +565,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
-      "size": 31212,
-      "sha256": "55e50e187d9c042917d227c60348f829d0c0b905a163b9ea1b79ff982b21eb54"
+      "size": 32243,
+      "sha256": "0dd6b424a5c5844f04d111ca59caffb65e2bb6e9adcd1c06b1da7a053d4d7887"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/https-pull-auth.mjs",
+      "size": 3776,
+      "sha256": "951d0593afbf0833c979b6f4428e4b56149683bec5b362706d812f8e1d91431f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs",
@@ -589,14 +619,34 @@
       "sha256": "38ad7ff241445bb1c4fcbdaaa8aa478969beb71f275c56b2deeec8418d7a2cdc"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/https-pull-security-regression.mjs",
+      "size": 5073,
+      "sha256": "71e08eff0fc6eeed31bd7c09d81d8c5f327352581b42063c2606f7146a42219f"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/local-quality-adapter-regression.mjs",
       "size": 9869,
       "sha256": "52d93ffdeb2370c36dc856c50f1f3eaa1bdf79e9dad88861f9c2d33a24feba0c"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/native/package-lock.json",
+      "size": 45162,
+      "sha256": "1cf7979fe20c4b576935ea014bab539aeb4a4cbed790108dcb24f822dce799e5"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/native/package.json",
+      "size": 322,
+      "sha256": "a56a35671fb90659d63e4c6a469bb8b642f7ab2b67ed7b70888d89852b628f50"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/native/regression.mjs",
+      "size": 27431,
+      "sha256": "1c4905049671ec4a25bbb5fe4bdda9f73d0e745072c4486d32275e630a4bedaa"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/relay-helper-lifecycle-regression.mjs",
-      "size": 25467,
-      "sha256": "8173388bec4c78a6321b1f2ae575abcf8b98374797d695dc1c4ff8625c75cbc0"
+      "size": 25662,
+      "sha256": "766d60aa9ba873597ca11148ff17fe1fee76acb6965828e269f05d51542d0118"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/relay-ws-response-retry-regression.mjs",
@@ -2164,6 +2214,11 @@
       "sha256": "3f2a05a78ff90088d768cee9724bd56f08c59491467228f37edf2e1d4e1dd0a9"
     },
     {
+      "path": "TESTS/run_https_pull_native_regression.py",
+      "size": 1456,
+      "sha256": "6178568e2fa41c6bdfe1e788577c50a7d7a06caf0d741927cfb490b658d29722"
+    },
+    {
       "path": "TESTS/run_llm_bypass_regression.py",
       "size": 20420,
       "sha256": "5d6a66a45e09ba674bdf84a1950eec3eb4a7cdef5d5f423111c6d1d16208b1ed"
@@ -2275,8 +2330,8 @@
     },
     {
       "path": "TESTS/run_relay_helper_transport_regression.py",
-      "size": 1598,
-      "sha256": "b0cd816a1521a12125440fc0334e3766251a40c96355e16e18f272096374ffe2"
+      "size": 1640,
+      "sha256": "3aba05f33210c25a4bcec9882741d5cf3c6a8d9d0479d19621e9f1c516f3b4bd"
     },
     {
       "path": "TESTS/run_relay_helper_workerd_regression.mjs",
@@ -2335,8 +2390,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 10079,
-      "sha256": "ad870f3b28798fcc0a6e9c9aa40b9161eb64ac2c99b414cf80a35cb0517ce2f4"
+      "size": 10312,
+      "sha256": "f265d384f16e03e6f7c6c33c3ad3ba986d13f6ea3a41d119b59b40f93c63c0dd"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -2655,5 +2710,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "a6e5cb6f6cddc6b951ac10ba52501ba576ba25fc7ae6c8e269c63db3d7b45aa5"
+  "snapshot_digest": "656af0753791b4276e4cde399244e7f46043fa5c9f0c6b7a9aa61e0b1396ab3f"
 }

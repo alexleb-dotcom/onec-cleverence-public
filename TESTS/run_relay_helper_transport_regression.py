@@ -19,6 +19,7 @@ tests = (
     "helper-state-race-regression.mjs",
     "s4-accounting-regression.mjs",
     "task-checkpoint-regression.mjs",
+    "https-pull-security-regression.mjs",
 )
 with tempfile.TemporaryDirectory(prefix="onec-transport-tests-") as scratch:
     scratch_path = Path(scratch).resolve()
