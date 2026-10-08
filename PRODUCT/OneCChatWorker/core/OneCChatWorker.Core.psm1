@@ -1685,15 +1685,15 @@ function Verify-WorkerProject {
 
 function Get-WorkerDependencyHealth {
     param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
-    $node=Get-Command node.exe -ErrorAction SilentlyContinue
-    $nodeVersion=$(if($node){(& $node.Source --version).Trim()}else{$null})
+    $nodePath=Get-HelperNodeExecutablePath
+    $nodeVersion=$(if(Test-Path -LiteralPath $nodePath -PathType Leaf){(& $nodePath --version).Trim()}else{$null})
     $rgPath=Join-Path $ProgramDataRoot 'runtime\rg.exe'
     $rgVersion=$null
     if(Test-Path -LiteralPath $rgPath -PathType Leaf){
         try{$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}catch{}
     }
     [pscustomobject]@{
-        node=[pscustomobject]@{required=$script:NodeVersion;actual=$nodeVersion;healthy=($nodeVersion -eq "v$($script:NodeVersion)")}
+        node=[pscustomobject]@{required=$script:NodeVersion;actual=$nodeVersion;path=$nodePath;healthy=($nodeVersion -eq "v$($script:NodeVersion)")}
         ripgrep=[pscustomobject]@{required=$script:RgVersion;actual=$rgVersion;healthy=($rgVersion -eq $script:RgVersion);path=$rgPath}
         python_required=$false
         cloudflare_cli_required=$false
@@ -2044,6 +2044,10 @@ function Find-RipgrepExecutable {
     return $null
 }
 
+function Get-HelperNodeExecutablePath {
+    'C:\Program Files\nodejs\node.exe'
+}
+
 function Ensure-PinnedDependencies {
     param(
         [Parameter(Mandatory)][string]$PackageRoot,
@@ -2055,20 +2059,21 @@ function Ensure-PinnedDependencies {
     $nodeSpec=$lock.dependencies.node
     $rgSpec=$lock.dependencies.ripgrep
 
-    $node=Get-Command node.exe -ErrorAction SilentlyContinue
-    if(-not $node -and (Test-Path -LiteralPath 'C:\Program Files\nodejs\node.exe' -PathType Leaf)){$node=Get-Item 'C:\Program Files\nodejs\node.exe'}
-    $nodePath=$(if($node){if($node.PSObject.Properties.Name -contains 'Source' -and $node.Source){[string]$node.Source}else{[string]$node.FullName}}else{$null})
+    $nodePath=Get-HelperNodeExecutablePath
+    $nodeExists=Test-Path -LiteralPath $nodePath -PathType Leaf
     $nodeAction='REUSED'
-    $nodeVersion=$(if($nodePath){(& $nodePath --version).Trim()}else{$null})
-    if(-not $node -or $nodeVersion -ne "v$($nodeSpec.version)"){
-        if($NoInstall){throw "NODE_REQUIRED_PIN_MISSING: $($nodeSpec.version)"}
+    $nodeVersion=$(if($nodeExists){(& $nodePath --version).Trim()}else{$null})
+    if(-not $nodeExists -or $nodeVersion -ne "v$($nodeSpec.version)"){
+        if($NoInstall){
+            if(-not $nodeExists){throw "NODE_LAUNCH_PATH_MISSING: $nodePath"}
+            throw "NODE_VERSION_MISMATCH: $nodePath expected v$($nodeSpec.version), actual $nodeVersion"
+        }
         if(-not(Get-Command winget.exe -ErrorAction SilentlyContinue)){throw 'WAITING_FOR_NODE: winget unavailable'}
-        $nodeAction=if($node){'UPDATED'}else{'INSTALLED'}
+        $nodeAction=if($nodeExists){'UPDATED'}else{'INSTALLED'}
         & winget.exe install --id $nodeSpec.winget_id --version $nodeSpec.version --exact --silent --accept-package-agreements --accept-source-agreements
         if($LASTEXITCODE -ne 0){throw 'NODE_INSTALL_FAILED'}
-        $nodePath='C:\Program Files\nodejs\node.exe'
         if(-not(Test-Path -LiteralPath $nodePath -PathType Leaf)){throw 'NODE_NOT_FOUND_AFTER_INSTALL'}
-        $node=Get-Item $nodePath;$nodeVersion=(& $nodePath --version).Trim()
+        $nodeVersion=(& $nodePath --version).Trim()
     }
     if($nodeVersion -ne "v$($nodeSpec.version)"){throw "NODE_VERSION_MISMATCH: $nodeVersion"}
     $nodeHash=Get-Sha256File $nodePath
@@ -2333,7 +2338,8 @@ function New-HelperRunAsCommand {
     $programDataLiteral=$ProgramDataRoot.Replace("'","''")
     $admissionLiteral=$admissionPath.Replace("'","''")
     $helperLiteral=$HelperPath.Replace("'","''")
-    $launchScript="`$env:ONECCHAT_PROGRAM_DATA='$programDataLiteral'; `$env:ONECCHAT_ADMISSION_PATH='$admissionLiteral'; & 'C:\Program Files\nodejs\node.exe' '$helperLiteral'"
+    $nodeLiteral=(Get-HelperNodeExecutablePath).Replace("'","''")
+    $launchScript="`$env:ONECCHAT_PROGRAM_DATA='$programDataLiteral'; `$env:ONECCHAT_ADMISSION_PATH='$admissionLiteral'; & '$nodeLiteral' '$helperLiteral'"
     $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($launchScript))
     "powershell.exe -NoProfile -EncodedCommand $encoded"
 }

@@ -150,6 +150,12 @@ jobs:
           $ErrorActionPreference='Stop'
           powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_selected_catalog_update_regression.ps1
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run isolated Node launch path regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_node_launch_path_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Validate .NET 10 and build WPF
         shell: powershell
         run: |

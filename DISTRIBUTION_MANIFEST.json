@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 546,
+  "file_count": 547,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 10162,
-      "sha256": "595de93185f44bbb4f83846236c54aebbf0082c7df6678619530e90a86dd8f30"
+      "size": 10457,
+      "sha256": "4934e5ebe8df8caf64527d26808384c79c900515f3440664dda6805dba22fcf0"
     },
     {
       "path": ".gitignore",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 201126,
-      "sha256": "c938d0b690534fcdd9104b5ced00153708c61cd401aadccf97ae68b00f90a05c"
+      "size": 201098,
+      "sha256": "882701224c7348af644a3fe5fe3e70535546193ccf4bd64f116604cffadf8787"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -551,7 +551,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "6f00cb78ebade62b245366d02e0ff16c590a132352e7ea85896226da1d4d26e7"
+      "sha256": "6472d03585605006dde25c9de1e3feafad4b6273b009905f9b0fee1a9a959a6b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -722,6 +722,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_local_regression.ps1",
       "size": 14770,
       "sha256": "97731aec63c91f6deddab52f0054b7ff44b8c7845bf6db5812a45934290528d7"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_node_launch_path_regression.ps1",
+      "size": 5207,
+      "sha256": "85b18dbf142e0f824597b1a7ed2b4d5a5bc2da98922ffa98399931fe22cd9ccf"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_operator_acl_regression.ps1",
@@ -2740,5 +2745,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "9b72fa30abe6f38f2e5af91603e8b8de8ba7876453a42e71b4af82c5173ef01e"
+  "snapshot_digest": "697e41a8ebbaee2889df34a507387648f4ef1d60a996e1520771bbb71718f19b"
 }
