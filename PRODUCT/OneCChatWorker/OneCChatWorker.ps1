@@ -1090,6 +1090,10 @@ function Get-GuidedContext {
  }
  if($hasAdmission){
   if($active -and [int]$active.schema_version -eq 3){
+   $assessment=Get-ActiveAdmissionRecoveryAssessment -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+   return [pscustomobject]@{state='ACTIVE_ADMISSION_OFFLINE';recommended='Diagnostics';project=$null;participant=$null;reason=('Existing S4 admission is retained. Connection recovery is blocked: '+$assessment.reason+'. Do not clear, START or CONTINUE this task.');helper=$helper;active=$active;recovery_assessment=$assessment}
+  }
+  if($active -and [int]$active.schema_version -ne 3){
    try{
     $checkpoint=Read-TaskCheckpointContinuationHead -ProjectId ([string]$active.project_id) -TaskId ([string]$active.task_id) -ProgramDataRoot $ProgramDataRoot
     return [pscustomobject]@{state='CONTINUE_AVAILABLE';recommended='Continue previous task';project=$null;participant=$null;reason='A verified semantic task checkpoint is available for explicit re-admission.';helper=$helper;active=$active;checkpoint=$checkpoint.head}
@@ -1126,6 +1130,7 @@ function Get-GuidedStateLabel {
   'RUNNING' {T 'Work session running'}
   'STARTING' {T 'Work session starting'}
   'START_INCOMPLETE' {T 'Start incomplete'}
+  'ACTIVE_ADMISSION_OFFLINE' {T 'Active task connection lost; admission preserved'}
   'CONTINUE_AVAILABLE' {T 'Previous task checkpoint available'}
   'RECOVERY_REQUIRED' {T 'Recovery required'}
   default {$State}
@@ -1538,6 +1543,10 @@ function Guided-MainMenu {
    'CONTINUE_AVAILABLE' {
     Write-Host (T 'A verified semantic checkpoint is available. Continuing creates a new finite S4 admission and keeps the same logical task/goal.')
     $null=Invoke-GuidedAction {Run-Continue}
+   }
+   'ACTIVE_ADMISSION_OFFLINE' {
+    Write-Host $ctx.reason
+    Write-Host 'Fail closed: retain admission, helper state and temp evidence; independent recovery acceptance is required.'
    }
    'START_INCOMPLETE' {
     Write-Host (T 'Clearing only the incomplete local start/admission state. Project Source and Output are retained.')

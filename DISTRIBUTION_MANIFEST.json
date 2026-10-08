@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 547,
+  "file_count": 549,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 10457,
-      "sha256": "4934e5ebe8df8caf64527d26808384c79c900515f3440664dda6805dba22fcf0"
+      "size": 10904,
+      "sha256": "11b22ae36bf1d04929b5e155dc4645b3e2e6b3b9a57aa8ed4d6b80edaefc24ba"
     },
     {
       "path": ".gitignore",
@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 121473,
-      "sha256": "5e0fa2b8ace31052a6d1cb67ebad9f148ceccbd1080728b13547e0644b145709"
+      "size": 122242,
+      "sha256": "be4ce9876223f3960e4eb57785fad7f87cb9e2f8dadb536871f3078e00a89ab5"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 201098,
-      "sha256": "882701224c7348af644a3fe5fe3e70535546193ccf4bd64f116604cffadf8787"
+      "size": 203819,
+      "sha256": "9337988bd7add8876aac2f5c3f06ca77bad03aa44399045c1532ffb77cfe17ab"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -551,7 +551,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "6472d03585605006dde25c9de1e3feafad4b6273b009905f9b0fee1a9a959a6b"
+      "sha256": "d219e58e6c19aa6c8862fb618ce6c773b50b5a6f2e099e2fb3613128a7d25de9"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -560,13 +560,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-state-coordinator.mjs",
-      "size": 1738,
-      "sha256": "6e1e38808b61f58f1e52ebf70ffc3aa37ab77f0947d7e39334cd6bd3226e9cef"
+      "size": 4585,
+      "sha256": "bbf1c8b4ca43b85babe8c872b1b46bb6a107703ece325c6230d3c5d439eca5e5"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
-      "size": 32243,
-      "sha256": "0dd6b424a5c5844f04d111ca59caffb65e2bb6e9adcd1c06b1da7a053d4d7887"
+      "size": 32749,
+      "sha256": "7d5292179c63aeb68ee5231e0560adc0580a7dd76147790736ce0816dad69472"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/https-pull-auth.mjs",
@@ -619,9 +619,14 @@
       "sha256": "2593061e86ca0aef1a46949e262fae1a262df39e826453bb80f48ec670e824d9"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/helper-persistence-regression.mjs",
+      "size": 10309,
+      "sha256": "c26bc0d3d8854a572320f537c4c8c242d5857c76319e563fa6cf8583ea1e5e58"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/helper-state-race-regression.mjs",
-      "size": 5835,
-      "sha256": "38ad7ff241445bb1c4fcbdaaa8aa478969beb71f275c56b2deeec8418d7a2cdc"
+      "size": 5816,
+      "sha256": "7e665d224b0d489cc87be618be118aaa4140b18089d6822b1acfbc0cb774b0e6"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/https-pull-security-regression.mjs",
@@ -650,8 +655,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/relay-helper-lifecycle-regression.mjs",
-      "size": 25662,
-      "sha256": "766d60aa9ba873597ca11148ff17fe1fee76acb6965828e269f05d51542d0118"
+      "size": 26306,
+      "sha256": "b714283834d9a7fcdbf71ddcaa225fb203e284a06a3f6f3d6b1bd580536ec2dd"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/relay-ws-response-retry-regression.mjs",
@@ -662,6 +667,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/relay-ws-telemetry-regression.mjs",
       "size": 3830,
       "sha256": "0d62c2686ef64d212b91dadcb75487730749226e04bb6c2141d423cec5e5d803"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_admission_recovery_guard_regression.ps1",
+      "size": 4310,
+      "sha256": "6582ed5b3b317e2a3370079c3d7fc0af768e644be952cf9d992e63ad5e790a63"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_apply_failure_regression.ps1",
@@ -775,8 +785,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_ui_context_regression.ps1",
-      "size": 7455,
-      "sha256": "a6afb52108359bdbf1c1f253c8a22f0b418689eb958d2343f6fe7a5be3038e4a"
+      "size": 7698,
+      "sha256": "6c35f0d27fbca4eef639c136e214756fbc4d604c8131e37d5377415ef39a5585"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_update_bootstrap_regression.ps1",
@@ -2365,8 +2375,8 @@
     },
     {
       "path": "TESTS/run_relay_helper_transport_regression.py",
-      "size": 1640,
-      "sha256": "3aba05f33210c25a4bcec9882741d5cf3c6a8d9d0479d19621e9f1c516f3b4bd"
+      "size": 1681,
+      "sha256": "50df0801cd1f8c993746ddf7a3bfc2422b544bf5f4d6cd2e01ca1e4a972df47b"
     },
     {
       "path": "TESTS/run_relay_helper_workerd_regression.mjs",
@@ -2745,5 +2755,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "697e41a8ebbaee2889df34a507387648f4ef1d60a996e1520771bbb71718f19b"
+  "snapshot_digest": "10e2a9ac6190d3a5f78ab01f84429aac8dc4f2ea5b459d2f36c0aa1eca4fbc27"
 }

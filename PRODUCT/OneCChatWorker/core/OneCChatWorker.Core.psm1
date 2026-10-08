@@ -2485,6 +2485,35 @@ function Repair-HelperStateForActiveAdmission {
     [pscustomobject]@{status='RECOVERED';action=$(if($final){'STALE_FINAL_ARCHIVED_AND_CLEARED'}else{'STALE_TMP_ARCHIVED_AND_CLEARED'});evidence=@($evidence)}
 }
 
+function Get-ActiveAdmissionRecoveryAssessment {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    # Read-only gate. Local cache/UI counters cannot attest relay-owned leases
+    # and receipts. Never repair files, remint an admission or launch here.
+    $reason='RELAY_RECOVERY_EVIDENCE_UNAVAILABLE'
+    try{
+        $path=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+        $a=Get-Content -LiteralPath $path -Raw -Encoding UTF8|ConvertFrom-Json
+        if([int]$a.schema_version -ne 3 -or [string]$a.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'RECOVERY_ADMISSION_UNSUPPORTED'}
+        if((Get-Date).ToUniversalTime() -ge ([datetime]::Parse($a.task_expires_utc).ToUniversalTime())){throw 'RECOVERY_ADMISSION_EXPIRED'}
+        $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+        $live=@(Get-CimInstance Win32_Process -ErrorAction Stop|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+        if($live.Count){throw 'RECOVERY_HELPER_ALREADY_RUNNING'}
+        $accepted=Get-FastProjectState -ProjectId ([string]$a.project_id) -WorkerRoot $WorkerRoot
+        if($accepted.state -ne 'ACCEPTED' -or [string]$accepted.source_snapshot_id -ne [string]$a.source_snapshot_id -or [string]$accepted.manifest_sha256 -ne [string]$a.manifest_sha256){throw 'RECOVERY_SNAPSHOT_MISMATCH'}
+        $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+        if(Test-Path -LiteralPath ($statePath+'.tmp')){throw 'RECOVERY_TMP_REQUIRES_ADJUDICATION'}
+        $entry=Read-HelperStateRecoveryFile -Path $statePath
+        if(-not(Test-HelperStateMatchesAdmission -State $entry.doc -Admission $a)){throw 'RECOVERY_CACHE_BINDING_MISMATCH'}
+        $cache=Get-HelperStateProcessedMap -State $entry.doc
+        if([string]$entry.doc.pull_helper_id -notmatch '^[a-fA-F0-9-]{36}$' -or $null -eq $entry.doc.idempotency){throw 'RECOVERY_CACHE_IDENTITY_MISSING'}
+        if(($entry.doc.PSObject.Properties.Name -contains 'pull_inflight') -and $entry.doc.pull_inflight -and -not $cache.ContainsKey([string]$entry.doc.pull_inflight.request_id)){throw 'RECOVERY_EXECUTION_AMBIGUOUS'}
+    }catch{
+        $message=[string]$_.Exception.Message
+        $reason=if($message -match '^([A-Z][A-Z0-9_]{2,63})(?::|$)'){$Matches[1]}else{'RECOVERY_TRUSTED_LOCAL_EVIDENCE_UNAVAILABLE'}
+    }
+    [pscustomobject]@{status='BLOCKED';reason=$reason;admission_preserved=$true;launch_allowed=$false;accounting_owner='relay';required_evidence='Fresh authenticated relay lease/receipt reconciliation for this unchanged admission/session/snapshot; local UI projection is insufficient'}
+}
+
 function Start-WorkerAdmission {
     param(
         [Parameter(Mandatory)][string]$ProjectId,

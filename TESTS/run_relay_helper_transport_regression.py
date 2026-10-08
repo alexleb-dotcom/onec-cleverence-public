@@ -17,6 +17,7 @@ tests = (
     "relay-ws-response-retry-regression.mjs",
     "relay-ws-telemetry-regression.mjs",
     "helper-state-race-regression.mjs",
+    "helper-persistence-regression.mjs",
     "s4-accounting-regression.mjs",
     "task-checkpoint-regression.mjs",
     "https-pull-security-regression.mjs",

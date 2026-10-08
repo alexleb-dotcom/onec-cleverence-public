@@ -20,7 +20,7 @@ await ok('OVERLAPPING_REQUESTS_SERIALIZED_NO_CRASH',async()=>{
   let active=0,maxActive=0;
   const sent=[];
   const delayedFs={
-    writeFile:async(...a)=>{await fsp.writeFile(...a);await sleep(12);},
+    open:async(...a)=>{await sleep(12);return fsp.open(...a);},
     rename:(...a)=>fsp.rename(...a)
   };
   const pump=createSerializedMessagePump({
@@ -71,7 +71,7 @@ await ok('PERSIST_FAILURE_FINAL_VALID_TMP_RECOVERABLE',async()=>{
   const state=JSON.parse(await fsp.readFile(statePath,'utf8'));
   const before=JSON.parse(JSON.stringify(state));
   const failingFs={
-    writeFile:(...a)=>fsp.writeFile(...a),
+    open:(...a)=>fsp.open(...a),
     rename:async()=>{const e=new Error('injected rename failure');e.code='EPERM';throw e;}
   };
   let sent=false,error=null;
