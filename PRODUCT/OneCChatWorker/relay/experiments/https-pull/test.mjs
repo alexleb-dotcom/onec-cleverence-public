@@ -42,8 +42,8 @@ await test('loopback HTTP outbound pull: four sequential reads + virtual idle',a
   if(req.url==='/result')return send(200,await box.complete({identity,helperId:'reader',requestId:body.requestId,token:body.token,result:body.result}));
   send(404,{status:'NOT_FOUND'});
  });
- srv.listen(0,'127.0.0.1');await once(srv,'listening');
- const base='http://127.0.0.1:'+srv.address().port;
+ srv.listen(0,'localhost');await once(srv,'listening');
+ const base='http://localhost:'+srv.address().port;
  const post=async(path,body={})=>(await fetch(base+path,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
  try{
   assert.equal((await fetch(base+'/poll',{method:'POST'})).status,401);
