@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 523,
+  "file_count": 525,
   "files": [
     {
       "path": ".gitattributes",
@@ -505,13 +505,18 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
-      "size": 37331,
-      "sha256": "692722d3e93fffc1a479dc6e89c6bee989628f2fcc13afdc7dbe07d8e062855a"
+      "size": 38094,
+      "sha256": "29cf04b002692cd65347ca6c45ab0aba01bea006fc17886a3e40e6a5e7435520"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
       "size": 21874,
       "sha256": "09290230166826db3ebdc48880e43e8fe9c5414a1455d5646c32ad822f1fa952"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/src/ws-response-retry.mjs",
+      "size": 953,
+      "sha256": "fde04dd12f3b1e84ece10f4e4bccd92903bf6f840bc3b8c87d9c2bddf32b1cdc"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/wrangler.jsonc",
@@ -521,7 +526,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7383,
-      "sha256": "d5dc4c16c694431352b5f2f8cd6acc3c1fb031678bafc409fdab91adfa26d466"
+      "sha256": "311569987165fa708c8e5729636486a66747327eb699ab87513fb1cf16b5f560"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-state-coordinator.mjs",
@@ -582,6 +587,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/local-quality-adapter-regression.mjs",
       "size": 9869,
       "sha256": "52d93ffdeb2370c36dc856c50f1f3eaa1bdf79e9dad88861f9c2d33a24feba0c"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/relay-ws-response-retry-regression.mjs",
+      "size": 5721,
+      "sha256": "cd2347815a469e31e0b95422d94ba1b6e95242a29e60046c9d8f3b332bb05f18"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/relay-ws-telemetry-regression.mjs",
@@ -2625,5 +2635,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "16c8ad03b93ec776e52f1507dea916805be09e51d0b265ff981aa004467d3cba"
+  "snapshot_digest": "04e4be30189d1ed5bf3b9587d4c4a57b36ecd5837caacd57d29dbd427f1bec7b"
 }
