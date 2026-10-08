@@ -424,6 +424,16 @@
         "{python}",
         "TESTS/run_https_pull_native_regression.py"
       ]
+    },
+    {
+      "id": "helper_installer_imports",
+      "order": 310,
+      "phase": "FULL",
+      "scope": "PUBLIC_SHAREABLE_CORE_ONLY",
+      "command": [
+        "{python}",
+        "TESTS/run_helper_installer_regression.py"
+      ]
     }
   ],
   "rule": "FAST is the ordered bounded prefix of the canonical public-safe inventory. FULL executes the complete ordered inventory. Every check is public-only and must resolve to a file present in SHAREABLE_CORE."

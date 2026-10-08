@@ -288,7 +288,10 @@ function Test-InstalledProductIntegrity {
     $map=[ordered]@{
         'runtime/source-reader-integration.mjs'=(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs')
         'runtime/hosted-helper.mjs'=(Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs')
+        'runtime/helper-https-pull.mjs'=(Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs')
+        'runtime/https-pull-auth.mjs'=(Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs')
         'runtime/helper-state-coordinator.mjs'=(Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs')
+        'runtime/task-checkpoint-store.mjs'=(Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs')
         'runtime/source-acquisition.mjs'=(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs')
         'runtime/local-quality-adapter.mjs'=(Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs')
         'runtime/quality/cc-1c-skills/meta-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\meta-info.ps1')
@@ -1557,6 +1560,8 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
@@ -1638,6 +1643,8 @@ function Install-OneCChatWorker {
     $componentResults=@()
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-https-pull.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-https-pull.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\https-pull-auth.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/https-pull-auth.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-state-coordinator.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-state-coordinator.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-acquisition.mjs') -Destination (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-acquisition.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))

@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 540,
+  "file_count": 543,
   "files": [
     {
       "path": ".gitattributes",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 146452,
-      "sha256": "ff1000fa541d89e67906be54ac8b73b145e84c9cf543aeeaa65fca97c220612c"
+      "size": 147504,
+      "sha256": "1dbc877dfb532e416fa2ec5e2e5945718df0b3780663e571694cf2fb5efabfb1"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -551,7 +551,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "9f41abe71e8b648ef3d1d9f7ca33ed984ba4d663312752eb29eb1baab124a501"
+      "sha256": "0050c4afeea4a08539d955869474b007519bd7126cf920450cb404cb30780c04"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -612,6 +612,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/TestScratch.psm1",
       "size": 10439,
       "sha256": "845d90384d31341057d9f01ba2a79ddd7ba844a83d9b34e041dfeda316c35807"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/helper-import-link.mjs",
+      "size": 1716,
+      "sha256": "2593061e86ca0aef1a46949e262fae1a262df39e826453bb80f48ec670e824d9"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/helper-state-race-regression.mjs",
@@ -697,6 +702,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_guided_ui_regression.ps1",
       "size": 13824,
       "sha256": "2fadba7f723ed7355bfb4d3b0c79a3f0a5b3d4b0e2d5f7d1433e849231502803"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_helper_installer_regression.ps1",
+      "size": 8620,
+      "sha256": "2a4c8aade35897ad2eb95c96f43ecb6c5bef638ea1ee57c0bbe4d539355e293b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_helper_state_race_regression.ps1",
@@ -2214,6 +2224,11 @@
       "sha256": "3f2a05a78ff90088d768cee9724bd56f08c59491467228f37edf2e1d4e1dd0a9"
     },
     {
+      "path": "TESTS/run_helper_installer_regression.py",
+      "size": 4654,
+      "sha256": "7231e0288fe1ccb4abf2262447be8865e398f73918f170bbe0d91cd90cebde54"
+    },
+    {
       "path": "TESTS/run_https_pull_native_regression.py",
       "size": 1456,
       "sha256": "6178568e2fa41c6bdfe1e788577c50a7d7a06caf0d741927cfb490b658d29722"
@@ -2390,8 +2405,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 10312,
-      "sha256": "f265d384f16e03e6f7c6c33c3ad3ba986d13f6ea3a41d119b59b40f93c63c0dd"
+      "size": 10551,
+      "sha256": "c184c3700c01677817b24b35e40cb92d3cb7ca2a0e579a5b8755d238d326b560"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -2710,5 +2725,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "656af0753791b4276e4cde399244e7f46043fa5c9f0c6b7a9aa61e0b1396ab3f"
+  "snapshot_digest": "5c931dc3004d79f7fa86a46c2e8f74925c82eaefe29203b1b7c2e97d084de410"
 }
