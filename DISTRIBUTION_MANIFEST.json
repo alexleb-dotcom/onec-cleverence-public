@@ -506,7 +506,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/test.mjs",
       "size": 6942,
-      "sha256": "8b5a5554f4f86899d379a8fbfdeb9b46b2b33dd2b271b2ad72d73b6a42bd4a11"
+      "sha256": "778fff5661dd93e0ae8a4e141f19725326ad44ceee266fdf77f8fff8815964bd"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/package-lock.json",
@@ -2665,5 +2665,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "09bf7053e424f74336e62c0de2e793ea36eca3b5398c692c9bc88ae2e034f3d6"
+  "snapshot_digest": "a5c4ff00d8726860a4cee48c47a1c80be39e3d6a14af364a789fa39dc208371d"
 }
