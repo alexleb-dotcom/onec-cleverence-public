@@ -12,6 +12,22 @@ async function requestFingerprint(op,args){
   return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 const payloadBytes=v=>new TextEncoder().encode(JSON.stringify(v??null)).length;
+// #108: bounded transport diagnostics. Only allowlisted fields are emitted;
+// request IDs are already opaque hashes and are shortened; never emit WS URLs,
+// credentials, task identity, Source paths, request args, or result payloads.
+function traceWs(event,{request_id=null,generation=null,op=null,age_ms=null,matched=null,pending_count=null,socket_state=null}={}){
+  const request_key=typeof request_id==='string'&&/^mcp-[a-f0-9]{64}$/.test(request_id)?request_id.slice(-12):null;
+  const allowedOps=new Set(['context','search','read','proposal_write','proposal_read','task_checkpoint_write']);
+  const eventName=String(event).slice(0,48);
+  const record={event:eventName,at_ms:Date.now(),request_key,
+    generation:Number.isSafeInteger(generation)?generation:null,
+    op:allowedOps.has(op)?op:null,
+    age_ms:Number.isFinite(age_ms)?Math.max(0,Math.round(age_ms)):null,
+    matched:typeof matched==='boolean'?matched:null,
+    pending_count:Number.isSafeInteger(pending_count)?pending_count:null,
+    socket_state:Number.isSafeInteger(socket_state)?socket_state:null};
+  console.log('RELAY_WS_TRACE',JSON.stringify(record));
+}
 async function sha256HexValue(v){
   const bytes=new TextEncoder().encode(typeof v==='string'?v:JSON.stringify(stable(v)));
   const digest=await crypto.subtle.digest('SHA-256',bytes);
@@ -96,7 +112,7 @@ function pushS4UiProjection(record){
 }
 
 export class RelaySession {
-  constructor(state, env) { this.state=state; this.env=env; this.helper=null; this.pending=new Map(); this.busy=false; }
+  constructor(state, env) { this.state=state; this.env=env; this.helper=null; this.pending=new Map(); this.busy=false; this.socketGeneration=0; }
   async fetch(request) {
     const url=new URL(request.url);
     if(url.pathname==='/helper') return this.acceptHelper(request);
@@ -110,14 +126,19 @@ export class RelaySession {
     const token=new URL(request.url).searchParams.get('token')||'';
     if(token!==this.env.HELPER_SECRET) return new Response('unauthorized',{status:401});
     const pair=new WebSocketPair(), client=pair[0], server=pair[1]; server.accept();
-    if(this.helper){try{this.helper.close(4001,'replaced');}catch{}}
+    const generation=++this.socketGeneration;
+    if(this.helper){
+      traceWs('socket_replaced',{generation,pending_count:this.pending.size,socket_state:this.helper.readyState});
+      try{this.helper.close(4001,'replaced');}catch{}
+    }
     this.helper=server;
-    server.addEventListener('message',e=>this.onHelperMessage(e.data));
-    server.addEventListener('close',()=>{if(this.helper===server)this.helper=null;});
-    server.addEventListener('error',()=>{if(this.helper===server)this.helper=null;});
+    traceWs('socket_accepted',{generation,pending_count:this.pending.size,socket_state:server.readyState});
+    server.addEventListener('message',e=>{void this.onHelperMessage(e.data,generation).catch(()=>traceWs('message_handler_rejected',{generation}));});
+    server.addEventListener('close',()=>{traceWs('socket_closed',{generation,pending_count:this.pending.size,socket_state:server.readyState});if(this.helper===server)this.helper=null;});
+    server.addEventListener('error',()=>{traceWs('socket_error',{generation,pending_count:this.pending.size,socket_state:server.readyState});if(this.helper===server)this.helper=null;});
     return new Response(null,{status:101,webSocket:client});
   }
-  async onHelperMessage(raw) {
+  async onHelperMessage(raw,generation=null) {
     let msg;try{msg=JSON.parse(raw);}catch{return;}
     if(msg.type==='hello'){
       if(msg.admission_schema_version===3&&msg.task_admission_id){
@@ -144,6 +165,7 @@ export class RelaySession {
         await this.state.storage.put('active_task_id',msg.task_admission_id);
         await this.state.storage.put('active_mode','s4');
         try{this.helper?.send(JSON.stringify({type:'hello_ack',lifecycle:lifecycleProjection(record)}));}catch{}
+        traceWs('s4_hello_ack',{generation,pending_count:this.pending.size});
         pushS4UiProjection.call(this,record);
         return;
       }
@@ -159,6 +181,7 @@ export class RelaySession {
     }
     if(msg.type==='result'&&msg.request_id){
       const p=this.pending.get(msg.request_id);
+      traceWs('result_frame',{generation,request_id:msg.request_id,matched:!!p,pending_count:this.pending.size,age_ms:p?Date.now()-p.startedAt:null});
       if(p){this.pending.delete(msg.request_id);this.busy=false;p.resolve(msg);}
     }
   }
@@ -197,7 +220,8 @@ export class RelaySession {
   }
   async rpc(request){
     if(request.method!=='POST')return new Response('method',{status:405});
-    const body=await request.json();
+    const body=await request.json(),rpcReceivedAt=Date.now();
+    traceWs('rpc_received',{generation:this.socketGeneration,op:body.op,pending_count:this.pending.size,socket_state:this.helper?.readyState??null});
     const mode=await this.state.storage.get('active_mode');
     if(mode!=='s4')return this.rpcLegacy(body);
     const taskId=await this.state.storage.get('active_task_id');
@@ -238,7 +262,17 @@ export class RelaySession {
       helperArgs={...helperArgs,__s4:{activity_cursor_before:cursorBefore,activity_delta:currentActivityDelta,predecessor_activity_delta:predecessorActivityDelta}};
     }
     const request_id=clientId;this.busy=true;
-    const resultP=new Promise((resolve,reject)=>{const timer=setTimeout(()=>{if(this.pending.delete(request_id)){this.busy=false;reject(new Error('HELPER_TIMEOUT'));}},15000);this.pending.set(request_id,{resolve:v=>{clearTimeout(timer);resolve(v);}});});
+    const startedAt=Date.now(),generation=this.socketGeneration;
+    const resultP=new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{
+        if(this.pending.delete(request_id)){
+          traceWs('rpc_deadline',{request_id,generation,op:body.op,age_ms:Date.now()-startedAt,pending_count:this.pending.size,socket_state:this.helper?.readyState??null});
+          this.busy=false;reject(new Error('HELPER_TIMEOUT'));
+        }
+      },15000);
+      this.pending.set(request_id,{startedAt,generation,resolve:v=>{clearTimeout(timer);resolve(v);}});
+    });
+    traceWs('rpc_dispatch',{request_id,generation,op:body.op,age_ms:startedAt-rpcReceivedAt,pending_count:this.pending.size,socket_state:this.helper?.readyState??null});
     this.helper.send(JSON.stringify({type:'request',request_id,op:body.op,args:helperArgs}));
     let result;
     try{result=await resultP;}
