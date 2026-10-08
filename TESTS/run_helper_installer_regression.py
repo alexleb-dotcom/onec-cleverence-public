@@ -91,6 +91,11 @@ if os.name == 'nt':
                     '-PackageRoot', str(PRODUCT)], check=True, timeout=120)
     windows = 'PASS'
 else:
-    windows = 'WINDOWS_ONLY; Linux validated plans and actual Node linking'
+    pwsh = shutil.which('pwsh')
+    assert pwsh, 'PowerShell is required for executing actual launcher bootstrap'
+    with tempfile.TemporaryDirectory(prefix='onec-installer-bootstrap-') as scratch:
+        subprocess.run([pwsh, '-NoProfile', '-File', str(PRODUCT / 'tests/run_package_core_bootstrap_regression.ps1'),
+                        '-PackageRoot', str(PRODUCT), '-FixtureRoot', scratch], check=True, timeout=90)
+    windows = 'WINDOWS_ONLY; Linux executed launcher bootstrap and actual Node linking'
 print(json.dumps({'result': 'PASS', 'static_imports': sorted(closure), 'windows_owner_execution': windows,
                   'production': 'UNTOUCHED'}))
