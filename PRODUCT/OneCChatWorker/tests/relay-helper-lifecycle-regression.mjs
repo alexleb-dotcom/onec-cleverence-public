@@ -10,7 +10,7 @@ import {createSerializedMessagePump,persistAndSendProcessed} from '../runtime/he
 const relayCode=fs.readFileSync(new URL('../relay/src/index.js',import.meta.url),'utf8');
 const helperCode=fs.readFileSync(new URL('../runtime/hosted-helper.mjs',import.meta.url),'utf8');
 const relayBody=relayCode.slice(relayCode.indexOf('const ORIGIN='),relayCode.indexOf('\nfunction mcpError(')).replace('export class RelaySession','class RelaySession');
-const helperBody=helperCode.slice(helperCode.indexOf('async function handleRelayMessage('),helperCode.indexOf('\nasync function connectLoop('));
+const helperBody=helperCode.slice(helperCode.indexOf('const advisoryPump='),helperCode.indexOf('\nlet fatalHelperError='));
 const NOW=Date.parse('2026-10-08T11:00:00Z');
 class ClockDate extends Date {constructor(...args){super(...(args.length?args:[NOW]));}static now(){return NOW;}}
 const hello={
@@ -23,7 +23,9 @@ const hello={
 const key='task:'+hello.task_admission_id;
 const clone=v=>v===undefined?undefined:structuredClone(v);
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function until(test){for(let i=0;i<100;i++){if(test())return;await tick();}assert.fail('deterministic phase did not arrive');}
+// Crypto digests use the native host thread pool. Bound the host phase wait by
+// time, not a rapid setImmediate spin count; transport deadlines stay virtual.
+async function until(test){const deadline=Date.now()+5000;while(Date.now()<deadline){if(test())return;await new Promise(r=>setTimeout(r,1));}assert.fail('deterministic phase did not arrive');}
 class Socket {
   readyState=1;frames=[];closed=[];attachment=null;onSend=()=>{};
   send(raw){if(this.readyState!==1)throw Error('closed');this.frames.push(JSON.parse(raw));this.onSend(raw);}
@@ -38,7 +40,7 @@ class HostResponse {
   static json(...args){return Response.json(...args);}
 }
 function harness(){
-  const h={sockets:[],jobs:[],puts:[],reservations:0,executions:0,persists:0,errors:[],dropRequests:0,dropResults:0,dropPongs:false};
+  const h={sockets:[],jobs:[],puts:[],traces:[],reservations:0,executions:0,persists:0,errors:[],dropRequests:0,dropResults:0,dropPongs:false};
   h.data=new Map([['active_mode','s4'],['active_task_id',hello.task_admission_id],[key,accounting.createTaskRecord(hello,{nowMs:NOW,epochIdFactory:()=> 'epoch-1'})]]);
   h.storage={get:async k=>clone(h.data.get(k)),put:async(k,v)=>{if(h.beforePut)await h.beforePut(k,v);h.puts.push(k);h.data.set(k,clone(v));},delete:async k=>h.data.delete(k)};
   h.ctx={storage:h.storage,getWebSockets:tag=>{assert.equal(tag,'helper');return h.sockets;},acceptWebSocket:(s,tags)=>{assert.deepEqual(tags,['helper']);h.sockets.push(s);}};
@@ -48,17 +50,25 @@ function harness(){
   const deps={...accounting,reserveRequest:(...a)=>{h.reservations++;return accounting.reserveRequest(...a);}};
   const Pair=function(){return {0:new Socket(),1:new Socket()};};
   h.Relay=new Function(...Object.keys(deps),'startBoundedResponseRetries','crypto','Date','setTimeout','clearTimeout','Response','WebSocketPair','console',relayBody+'\nreturn RelaySession;')(
-    ...Object.values(deps),options=>startBoundedResponseRetries({...options,schedule:h.schedule,cancel:h.cancel}),webcrypto,ClockDate,h.schedule,h.cancel,HostResponse,Pair,{log:()=>{}}
+    ...Object.values(deps),options=>startBoundedResponseRetries({...options,schedule:h.schedule,cancel:h.cancel}),webcrypto,ClockDate,h.schedule,h.cancel,HostResponse,Pair,{log:(label,line)=>h.traces.push(JSON.parse(line))}
   );
   h.relay=new h.Relay(h.ctx,{HELPER_SECRET:'test-secret-not-real'});
   h.record=()=>clone(h.data.get(key));
   h.helperState={processed:{}};h.disk={processed:{}};
-  h.handle=new Function('state','caps','persistAndSendProcessed','saveState','exec','log','saveUiProjection','TASK_ADMISSION_ID',helperBody+'\nreturn handleRelayMessage;')(
-    h.helperState,{max_result_bytes:3000},persistAndSendProcessed,
-    async state=>{h.persists++;h.disk=clone(state);},
-    async op=>{h.executions++;return {status:'OK',metadata:{op,elapsed_ms:1},payload:{content:'bounded fixture'}};},
-    async()=>{},async()=>{},hello.task_admission_id
-  );
+  const helperDeps={state:h.helperState,caps:hello.caps,persistAndSendProcessed,createSerializedMessagePump,
+    saveState:async state=>{await h.onPersist?.();h.persists++;h.disk=clone(state);},
+    exec:async op=>{h.executions++;return {status:'OK',metadata:{op,elapsed_ms:1},payload:{content:'bounded fixture'}};},
+    log:async entry=>{await h.onLog?.(entry);},saveUiProjection:async projection=>{await h.onProjection?.(projection);},
+    TASK_ADMISSION_ID:hello.task_admission_id,STABLE_SESSION_ID:hello.session_id,IS_S4:true,
+    PROJECT:hello.project_id,TASK:hello.task_id,SNAPSHOT:hello.snapshot_id,manifestHash:hello.manifest_sha256,
+    TASK_CREATED_UTC:hello.task_created_utc,TASK_EXPIRES_UTC:hello.task_expires_utc,OUTPUT_TASK_ROOT:hello.output_task_root,
+    VERSION:hello.helper_version,admission:hello,SECRET_PATH:'fixture',RELAY:'wss://fixture.invalid/helper',
+    fsp:{readFile:async()=> 'fixture-secret-not-real'},Date:ClockDate,sleep:async()=>{},
+    WebSocket:function(url){return h.makeClient(url);}
+  };
+  const helper=new Function(...Object.keys(helperDeps),helperBody+'\nreturn {handle:handleRelayMessage,drain:()=>advisoryPump.drain(),connectLoop};')(...Object.values(helperDeps));
+  h.handle=helper.handle;
+  h.connectLoop=helper.connectLoop;h.drainAdvisory=helper.drain;
   h.wire=s=>{
     const helperSocket={send:raw=>{
       const m=JSON.parse(raw);
@@ -67,12 +77,13 @@ function harness(){
       void h.relay.webSocketMessage(s,raw);
     }};
     const pump=createSerializedMessagePump({handle:ev=>h.handle(helperSocket,ev),onFailure:async e=>h.errors.push(e)});
+    h.dispatch=ev=>pump.dispatch(ev);
     s.onSend=raw=>{
       const m=JSON.parse(raw);
       if(m.type==='request'&&h.dropRequests-->0)return;
       void pump.dispatch({data:raw});
     };
-    h.drain=()=>pump.drain();
+    h.drain=async()=>{await pump.drain();await helper.drain();};
   };
   h.accept=async()=>{
     const response=await h.relay.acceptHelper(new Request('https://relay.invalid/helper?token=test-secret-not-real',{headers:{Upgrade:'websocket'}}));
@@ -86,6 +97,138 @@ function harness(){
 }
 let passed=0;
 async function ok(name,test){await test();passed++;console.log('PASS '+name);}
+
+await ok('CONTEXT_THEN_READ_WHILE_ADVISORY_IO_IS_DELAYED',async()=>{
+  for(const lane of ['result-log','ui-projection']){
+    const h=harness(),s=await h.connect();await h.drain();
+    let release,blocked=false;
+    const barrier=new Promise(resolve=>{release=resolve;});
+    if(lane==='result-log')h.onLog=async entry=>{if(entry.event==='RESULT'){blocked=true;await barrier;}};
+    else h.onProjection=async()=>{blocked=true;await barrier;};
+    try{
+      assert.equal((await h.rpc('context',{})).status,200);
+      await until(()=>blocked);
+      const before=h.record(),next=h.rpc();
+      for(let i=0;i<10;i++)await tick();
+      // Advance exactly the existing probe deadline if advisory I/O blocked it.
+      // The healthy socket and helper remain connected throughout the stall.
+      if(h.relay.probe)h.fire(2500);
+      const response=await next;
+      assert.equal(response.status,200,lane+' must not prevent application readiness');
+      assert.equal(h.record().task_requests_used,before.task_requests_used+1);
+      assert.equal(h.reservations,2);assert.equal(h.executions,2);
+      assert.equal(h.relay.helper,s);h.noTimers();
+    }finally{release();await h.drain();}
+  }
+});
+await ok('LISTENERS_PRECEDE_HELLO_AND_DELAYED_CONNECTED_LOG',async()=>{
+  const h=harness(),frames=[],listeners=new Map();let release,blocked=false;
+  const barrier=new Promise(resolve=>{release=resolve;});
+  h.helperState.expires_utc=hello.task_expires_utc;
+  h.onLog=async entry=>{if(entry.event==='CONNECTED'){blocked=true;await barrier;}};
+  const emit=(name,event)=>{for(const fn of listeners.get(name)||[])fn(event);};
+  h.makeClient=()=>{
+    const ws={
+      addEventListener:(name,fn)=>{listeners.set(name,[...(listeners.get(name)||[]),fn]);},
+      send:raw=>{
+        const m=JSON.parse(raw);frames.push(m);
+        if(m.type==='hello')queueMicrotask(()=>{
+          emit('message',{data:JSON.stringify({type:'hello_ack'})});
+          emit('message',{data:JSON.stringify({type:'transport_ping',nonce:'12345678-1234-4234-8234-123456789abc'})});
+          emit('message',{data:JSON.stringify({type:'request',request_id:'startup-fixture',op:'read'})});
+        });
+        if(m.type==='result')queueMicrotask(()=>{
+          h.helperState.expires_utc='2000-01-01T00:00:00Z';emit('close',{});
+        });
+      },close:()=>emit('close',{})
+    };
+    queueMicrotask(()=>emit('open',{}));return ws;
+  };
+  const loop=h.connectLoop();
+  try{
+    await until(()=>frames.some(m=>m.type==='result'));
+    await loop;await until(()=>blocked);
+    assert.equal(frames.filter(m=>m.type==='transport_pong').length,1);
+    assert.equal(h.executions,1);assert.equal(h.persists,1);
+    assert(h.disk.processed['startup-fixture']);
+  }finally{release();await h.drainAdvisory();}
+});
+await ok('PROBE_WAITS_FOR_AUTHORITATIVE_PERSISTENCE',async()=>{
+  const h=harness(),s=await h.connect();await h.drain();let release,blocked=false;
+  const barrier=new Promise(resolve=>{release=resolve;});
+  h.onPersist=async()=>{blocked=true;await barrier;};
+  const request=h.rpc();await until(()=>blocked);
+  const probe=h.dispatch({data:JSON.stringify({type:'transport_ping',nonce:'12345678-1234-4234-8234-123456789abc'})});
+  // Only the RPC preflight ping has completed. The second challenge is queued
+  // behind authoritative persistence, not allowed to claim readiness early.
+  for(let i=0;i<5;i++)await tick();
+  assert.equal(h.persists,0);assert.equal(s.frames.filter(m=>m.type==='request').length,1);
+  let settled=false;void probe.then(()=>{settled=true;});await tick();assert.equal(settled,false);
+  release();assert.equal((await request).status,200);await probe;await h.drain();
+  assert.equal(h.persists,1);assert.equal(h.reservations,1);h.noTimers();
+});
+await ok('DELAYED_PONG_BEFORE_DEADLINE_PASSES_ONCE',async()=>{
+  const h=harness(),s=await h.connect();h.dropPongs=true;
+  const p=h.rpc();await until(()=>h.relay.probe);
+  await h.relay.webSocketMessage(s,JSON.stringify({type:'transport_pong',nonce:h.relay.probe.nonce}));
+  assert.equal((await p).status,200);assert.equal(h.reservations,1);h.noTimers();
+});
+await ok('EXPIRED_PROBE_LATE_PONG_AND_RECONNECT_PRESERVE_CACHE',async()=>{
+  const h=harness(),s=await h.connect();assert.equal((await h.rpc()).status,200);await h.drain();
+  const before=h.record(),cache=clone(h.disk);h.dropPongs=true;
+  const p=h.rpc();await until(()=>h.relay.probe);
+  const late=JSON.stringify({type:'transport_pong',nonce:h.relay.probe.nonce});
+  assert.equal((await h.relay.acceptHelper(new Request('https://relay.invalid/helper?token=test-secret-not-real',{headers:{Upgrade:'websocket'}}))).status,409);
+  await h.relay.webSocketMessage(s,JSON.stringify(hello));assert.deepEqual(h.record(),before);
+  h.fire(2500);assert.equal((await p).status,503);
+  const expired=h.traces.find(t=>t.event==='probe_expired');assert(expired?.request_key);
+  assert(h.traces.some(t=>t.event==='probe_started'&&t.request_key===expired.request_key));
+  assert(!h.traces.some(t=>t.event==='rpc_dispatch'&&t.request_key===expired.request_key));
+  await h.relay.webSocketMessage(s,late);assert.deepEqual(h.record(),before);
+  assert.equal(s.deserializeAttachment().ready,false);assert.deepEqual(h.disk,cache);
+  h.dropPongs=false;const next=await h.connect();
+  await h.relay.webSocketMessage(s,late);assert.equal(h.relay.helper,next);
+  assert.equal((await h.rpc()).status,200);assert.equal(h.reservations,2);
+  assert.equal(h.record().task_requests_used,before.task_requests_used+1);
+  for(const [id,result] of Object.entries(cache.processed))assert.deepEqual(h.disk.processed[id],result);
+  h.noTimers();
+});
+await ok('FAILED_CLOSE_CANNOT_RESTORE_STALE_READY_ATTACHMENT',async()=>{
+  const h=harness(),s=await h.connect();h.dropPongs=true;s.close=()=>{throw Error('close failed');};
+  const before=h.record(),p=h.rpc();await until(()=>h.relay.probe);h.fire(2500);
+  assert.equal((await p).status,503);assert.equal(s.readyState,1);assert.equal(s.deserializeAttachment().ready,false);
+  h.relay=new h.Relay(h.ctx,{HELPER_SECRET:'test-secret-not-real'});
+  assert.equal(h.relay.helperReady,false);assert.equal((await h.rpc()).status,503);
+  assert.deepEqual(h.record(),before);assert.equal(h.reservations,0);
+  h.dropPongs=false;await h.connect();assert.equal((await h.rpc()).status,200);
+  assert.equal(h.reservations,1);h.noTimers();
+});
+await ok('ADVISORY_ORDER_SURVIVES_RECONNECT_AND_WRITE_REJECTION',async()=>{
+  const h=harness();let active=0,maxActive=0,release,blocked=false;const seen=[];
+  const barrier=new Promise(resolve=>{release=resolve;});
+  h.onProjection=async p=>{
+    active++;maxActive=Math.max(maxActive,active);seen.push(p.activity.request_count);
+    try{if(seen.length===1){blocked=true;await barrier;throw Error('projection rejected');}}finally{active--;}
+  };
+  await h.connect();await until(()=>blocked);
+  assert.equal((await h.rpc()).status,200);await h.connect();assert.equal((await h.rpc()).status,200);
+  release();await h.drain();
+  assert.equal(maxActive,1);assert.deepEqual(seen,[0,2]);
+  assert.equal(h.errors.length,0);assert.equal(h.executions,2);assert.equal(h.reservations,2);
+  h.noTimers();
+});
+await ok('ADVISORY_BACKLOG_IS_BOUNDED_AND_LATEST_PROJECTION_RETAINED',async()=>{
+  const h=harness();await h.connect();await h.drain();let release,blocked=false,logs=0;const projections=[];
+  const barrier=new Promise(resolve=>{release=resolve;});
+  h.onLog=async e=>{if(e.event==='RESULT'){logs++;blocked=true;await barrier;}};
+  h.onProjection=async p=>projections.push(p.activity.request_count);
+  try{
+    for(let i=0;i<70;i++)assert.equal((await h.rpc()).status,200);
+    await until(()=>blocked);assert.equal(h.reservations,70);assert.equal(h.persists,70);
+    release();await h.drain();assert.equal(logs,64);assert.deepEqual(projections,[70]);
+    assert.equal(h.record().task_requests_used,70);assert.equal(h.errors.length,0);h.noTimers();
+  }finally{release();await h.drain();}
+});
 
 await ok('HIBERNATION_RESTORES_TRANSPORT_WITHOUT_HELLO_OR_S4_RECONCILIATION',async()=>{
   const h=harness(),s=await h.connect();
