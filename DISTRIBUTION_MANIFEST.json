@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 201137,
-      "sha256": "af6074562932a9ff1a6342ed07bd124c15389bb28b401f19dbffcc8682f1fdf3"
+      "size": 201126,
+      "sha256": "c938d0b690534fcdd9104b5ced00153708c61cd401aadccf97ae68b00f90a05c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -551,7 +551,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "91e83cd21fac10d273c19764b9fa021e10a857cf85044ab190b998539c46d24a"
+      "sha256": "6f00cb78ebade62b245366d02e0ff16c590a132352e7ea85896226da1d4d26e7"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -2740,5 +2740,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "baa5be322107f76024359eea54baa5b6d6105a8f99e468c3984790616de902ab"
+  "snapshot_digest": "9b72fa30abe6f38f2e5af91603e8b8de8ba7876453a42e71b4af82c5173ef01e"
 }

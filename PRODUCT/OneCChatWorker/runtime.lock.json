@@ -22,7 +22,7 @@
     "runtime/quality/cc-1c-skills/meta-info.ps1": "7ca179021cad602bbf326a483229d56e4c0a8ad9733137bd10049ee75eec815a",
     "runtime/quality/cc-1c-skills/form-info.ps1": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727",
     "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
-    "core/OneCChatWorker.Core.psm1": "af6074562932a9ff1a6342ed07bd124c15389bb28b401f19dbffcc8682f1fdf3",
+    "core/OneCChatWorker.Core.psm1": "c938d0b690534fcdd9104b5ced00153708c61cd401aadccf97ae68b00f90a05c",
     "OneCChatWorker.ps1": "5e0fa2b8ace31052a6d1cb67ebad9f148ceccbd1080728b13547e0644b145709",
     "README.md": "2d974258fc191dcad08ffa23bb485ed34c09964d5d32bcacc67cfc0c186ec857",
     "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",

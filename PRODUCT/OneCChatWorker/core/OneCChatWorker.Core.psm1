@@ -698,10 +698,10 @@ function Set-ManifestAcceptedSnapshot {
 }
 function Get-FastProjectState {
     param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
-    Get-ProjectSnapshotState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -CatalogSha256 (Get-CatalogHash $WorkerRoot)
+    Get-ProjectSnapshotState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
 }
 function Get-ProjectSnapshotState {
-    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[Parameter(Mandatory)][string]$CatalogSha256)
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$CatalogSha256)
     $catalog=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $catalog $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'}
     if($p.active -eq $false){return [pscustomobject]@{project_id=$ProjectId;state='APPLY_REQUIRED';status='APPLY_REQUIRED';reason='PROJECT_INACTIVE'}}
     $updatePaths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
@@ -717,7 +717,7 @@ function Get-ProjectSnapshotState {
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){return [pscustomobject]@{project_id=$ProjectId;state='APPLY_REQUIRED';status='APPLY_REQUIRED';reason='MANIFEST_MISSING'}}
     try{$m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{return [pscustomobject]@{project_id=$ProjectId;state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason='MANIFEST_PARSE_FAILED'}}
-    $catalogHash=$CatalogSha256
+    $catalogHash=$(if($CatalogSha256){$CatalogSha256}else{Get-CatalogHash $WorkerRoot})
     if([string]$m.catalog_sha256 -ne $catalogHash){return [pscustomobject]@{project_id=$ProjectId;state='CATALOG_DRIFT';status='CATALOG_DRIFT';reason='CATALOG_HASH_MISMATCH';catalog_sha256=$catalogHash;manifest_catalog_sha256=[string]$m.catalog_sha256}}
     if([int]$m.schema_version -eq 1){return [pscustomobject]@{project_id=$ProjectId;state='DEEP_VERIFY_REQUIRED';status='DEEP_VERIFY_REQUIRED';reason='LEGACY_MANIFEST_REQUIRES_ADOPTION';catalog_sha256=$catalogHash}}
     if([int]$m.schema_version -ne 2 -or -not $m.accepted_snapshot){return [pscustomobject]@{project_id=$ProjectId;state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason='MANIFEST_SCHEMA_UNSUPPORTED'}}
