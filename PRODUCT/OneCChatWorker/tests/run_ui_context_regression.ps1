@@ -46,6 +46,7 @@ try {
   Rec 'relay_projection_exact_binding' ($ctx.s4.accounting_available -and $ctx.s4.projection.task_admission_id -eq $admission.task_admission_id) ''
   Rec 'accepted_policy_identity_no_invented_limit_projection' (-not $ctx.s4.limits_display_allowed -and $ctx.s4.policy_status -eq 'OPERATOR_ACCEPTED_PRODUCT_POLICY') ''
   Rec 'six_tool_surface' ([int]$ctx.safety.model_tool_surface_count -eq 6) ''
+  Rec 'offline_s4_admission_never_clear_incomplete' ($ctx.recommendation.state -eq 'ACTIVE_ADMISSION_OFFLINE' -and $ctx.recommendation.action -ne 'Clear incomplete start' -and $ctx.recommendation.reason -match 'RECOVERY_ADMISSION_EXPIRED') ''
   Rec 'no_side_effect_flags' (-not $ctx.safety.mcp_side_effect -and -not $ctx.safety.source_request_issued -and -not $ctx.safety.acquisition_called) ''
   Rec 'no_secret_values' (-not ($joined -match 'not-a-real-secret-value-for-test')) ''
   $after=@(Get-ChildItem -LiteralPath $s.path -Recurse -File|ForEach-Object{$_.FullName+'|'+$_.Length+'|'+$_.LastWriteTimeUtc.Ticks})

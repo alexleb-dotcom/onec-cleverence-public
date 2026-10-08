@@ -49,7 +49,16 @@ function harness(){
   h.schedule=(fn,ms)=>{const j={fn,ms,cancelled:false};h.jobs.push(j);return j;};
   h.cancel=j=>{j.cancelled=true;};
   h.fire=ms=>{const j=h.jobs.find(j=>j.ms===ms&&!j.cancelled);assert(j,'missing timer '+ms);j.cancelled=true;j.fn();};
-  const deps={...accounting,reserveRequest:(...a)=>{h.reservations++;return accounting.reserveRequest(...a);}};
+  // Imported S4 functions otherwise use the real host Date and eventually
+  // expire this virtual fixture. Give both owners the SAME virtual clock.
+  const deps={...accounting,
+    createTaskRecord:(r,o={})=>accounting.createTaskRecord(r,{nowMs:NOW,...o}),
+    reconcileTaskHello:(r,v,o={})=>accounting.reconcileTaskHello(r,v,{nowMs:NOW,...o}),
+    lifecycleProjection:(r,n=NOW)=>accounting.lifecycleProjection(r,n),
+    minimalControlPayload:(r,n=NOW)=>accounting.minimalControlPayload(r,n),
+    reserveRequest:(r,o)=>{h.reservations++;return accounting.reserveRequest(r,{nowMs:NOW,...o});},
+    commitRequest:(r,o)=>accounting.commitRequest(r,{nowMs:NOW,...o}),
+    chargeAmbiguousRequest:(r,o)=>accounting.chargeAmbiguousRequest(r,{nowMs:NOW,...o})};
   const Pair=function(){return {0:new Socket(),1:new Socket()};};
   h.Relay=new Function(...Object.keys(deps),'startBoundedResponseRetries','crypto','Date','setTimeout','clearTimeout','Response','WebSocketPair','console',relayBody+'\nreturn RelaySession;')(
     ...Object.values(deps),options=>startBoundedResponseRetries({...options,schedule:h.schedule,cancel:h.cancel}),webcrypto,ClockDate,h.schedule,h.cancel,HostResponse,Pair,{log:(label,line)=>h.traces.push(JSON.parse(line))}

@@ -156,6 +156,14 @@ jobs:
           $ErrorActionPreference='Stop'
           powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_node_launch_path_regression.ps1
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run isolated persistence and admission recovery guards
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          node PRODUCT\OneCChatWorker\tests\helper-persistence-regression.mjs
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+          powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_admission_recovery_guard_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Validate .NET 10 and build WPF
         shell: powershell
         run: |

@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { SourceReaderIntegration, PROVIDER_VERSION } from '../provider/source-reader-integration.mjs';
 import { LocalQualityAdapter, boundedTargetHints, reportBindingMatches } from './local-quality-adapter.mjs';
 import { createTaskCheckpointStore } from './task-checkpoint-store.mjs';
-import { createSerializedMessagePump, persistAndSendProcessed, saveStateAtomic } from './helper-state-coordinator.mjs';
+import { createSerializedMessagePump, persistAndSendProcessed, saveStateAtomic, loadPersistedState, safePersistenceCode } from './helper-state-coordinator.mjs';
 
 const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneCChatWorker';
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
@@ -127,7 +127,11 @@ const SNAPSHOT = admission.schema_version >= 2
   : (admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8')));
 const checkpointStore=IS_S4?createTaskCheckpointStore({programDataRoot:PROGRAM_DATA,admission}):null;
 async function loadState(){
-  try{
+  if(IS_S4){
+    const existing=await loadPersistedState(STATE_PATH,{schema_version:2,task_admission_id:TASK_ADMISSION_ID,session_id:STABLE_SESSION_ID,project_id:PROJECT,task_id:TASK,snapshot_id:SNAPSHOT,manifest_sha256:manifestHash,expires_utc:TASK_EXPIRES_UTC});
+    if(existing){if(Date.now()>=Date.parse(existing.expires_utc))throw new Error('TASK_EXPIRED');return existing;}
+  }
+  if(!IS_S4)try{
     const s=JSON.parse(await fsp.readFile(STATE_PATH,'utf8'));
     const s4ok=!IS_S4||(s.task_admission_id===TASK_ADMISSION_ID&&s.session_id===STABLE_SESSION_ID&&s.manifest_sha256===manifestHash&&s.expires_utc===TASK_EXPIRES_UTC);
     if(s.project_id===PROJECT && s.task_id===TASK && s.snapshot_id===SNAPSHOT && s4ok && Date.now()<Date.parse(s.expires_utc)) return s;
@@ -443,7 +447,7 @@ let fatalHelperError=null;
 try{await connectLoop();}
 catch(e){
   fatalHelperError=e;
-  await log({event:'HELPER_FATAL',error_class:String(e?.code||e?.name||'ERROR'),error:String(e?.message||e).slice(0,240)});
+  await log({event:'HELPER_FATAL',error_class:String(e?.code||e?.name||'ERROR'),cause_code:safePersistenceCode(e),persist_phase:e?.persist_phase??null,error:String(e?.message||e).slice(0,240)});
 }
 finally{await advisoryPump.drain();await provider.shutdown().catch(()=>{});}
 if(fatalHelperError)process.exitCode=1;
