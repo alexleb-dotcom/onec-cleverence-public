@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 525,
+  "file_count": 528,
   "files": [
     {
       "path": ".gitattributes",
@@ -494,6 +494,11 @@
       "sha256": "9964bc44cdb351d5d4347685a70569561ae778c19b5e3070e691bcef1ddfaee5"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/relay/TRANSPORT_RELIABILITY.md",
+      "size": 6567,
+      "sha256": "bfa5eb5e09efb20eb1dc4a8bb7472caccb4b56bcb09094e8f8e20268165f9849"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/relay/package-lock.json",
       "size": 634,
       "sha256": "059aed20a675a0b2edc9314c334ae5b5ab9dbfb68e43e7bd4f8668fce0420de5"
@@ -505,8 +510,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
-      "size": 38094,
-      "sha256": "29cf04b002692cd65347ca6c45ab0aba01bea006fc17886a3e40e6a5e7435520"
+      "size": 42413,
+      "sha256": "e99bf9c9ec4cc16aa7e6763b036fb3073a628401d27c703674bd928736fa8327"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
@@ -526,7 +531,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7383,
-      "sha256": "311569987165fa708c8e5729636486a66747327eb699ab87513fb1cf16b5f560"
+      "sha256": "7dbf57f50aec7df5a6cb7393a026f537c9373c9c2d75204e300b87340024a997"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-state-coordinator.mjs",
@@ -535,8 +540,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
-      "size": 29252,
-      "sha256": "119df4b8617e1fa42a8a5195369e87cbea5588095ea48c156ab1b5daf571862d"
+      "size": 29513,
+      "sha256": "1835dc673f902c9682d1f2b9747fcef96415c8df81798d70b358cb63de5d6343"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs",
@@ -589,14 +594,19 @@
       "sha256": "52d93ffdeb2370c36dc856c50f1f3eaa1bdf79e9dad88861f9c2d33a24feba0c"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/relay-helper-lifecycle-regression.mjs",
+      "size": 16384,
+      "sha256": "2558bf7cc65614b8c1cc428f2892efd24482ac60970b8fce556d6c96a859c9ea"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/relay-ws-response-retry-regression.mjs",
       "size": 5721,
       "sha256": "cd2347815a469e31e0b95422d94ba1b6e95242a29e60046c9d8f3b332bb05f18"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/relay-ws-telemetry-regression.mjs",
-      "size": 3612,
-      "sha256": "5c9c293b0c769b16b39029fa25ee0e35405f4b7d300181ebcdca5b0f745b36ef"
+      "size": 3830,
+      "sha256": "0d62c2686ef64d212b91dadcb75487730749226e04bb6c2141d423cec5e5d803"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_apply_failure_regression.ps1",
@@ -2264,6 +2274,11 @@
       "sha256": "4813c7ac40b671f505b4937f6faedb3449d482d9789fcf1ef2b352f8540d5aaf"
     },
     {
+      "path": "TESTS/run_relay_helper_transport_regression.py",
+      "size": 1598,
+      "sha256": "b0cd816a1521a12125440fc0334e3766251a40c96355e16e18f272096374ffe2"
+    },
+    {
       "path": "TESTS/run_release_trust_boundary_phase2.py",
       "size": 4527,
       "sha256": "aa87032fb48ec196920f4432ea1dd26438db63d94785a19f5a9ceb72581ae149"
@@ -2315,8 +2330,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 9836,
-      "sha256": "b3d2a6162f08d47ee883a739ee251616862651de72cc0e02044419d6e7679dc9"
+      "size": 10079,
+      "sha256": "ad870f3b28798fcc0a6e9c9aa40b9161eb64ac2c99b414cf80a35cb0517ce2f4"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -2635,5 +2650,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "04e4be30189d1ed5bf3b9587d4c4a57b36ecd5837caacd57d29dbd427f1bec7b"
+  "snapshot_digest": "3d79bb035dc02f4f71ba98d220b59dbe27c54f377c9f0bf315565b84ceead0a5"
 }
