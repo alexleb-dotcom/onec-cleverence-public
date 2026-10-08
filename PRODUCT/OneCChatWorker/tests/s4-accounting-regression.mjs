@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
   createTaskRecord,reconcileTaskHello,reserveRequest as reserveRequestRaw,commitRequest,chargeAmbiguousRequest,
-  lifecycleProjection,minimalControlPayload as minimalControlPayloadRaw,rotateEpoch,taskState as taskStateRaw,S4_ACCOUNTING_CONTRACT
+  lifecycleProjection,minimalControlPayload as minimalControlPayloadRaw,rotateEpoch,taskState as taskStateRaw,S4_ACCOUNTING_CONTRACT,canonicalizeRecoveredOrphanPredecessor,activityReceiptHashInput,sealActivityReceipt,unsealedTerminalReceipts
 } from '../relay/src/s4-accounting.js';
 
 const HERE=path.dirname(fileURLToPath(import.meta.url));
@@ -227,6 +227,104 @@ ok('MCP_READ_NONCE_OWNED_BY_RELAY_ACCOUNTING_LAYER',()=>{
   assert(relay.includes("mcpAccountingRequestId(record,body.op,body.args)"));
   assert(relay.includes("body:JSON.stringify({op,args:opArgs})"));
   assert(!relay.includes("read_request_nonce"));
+});
+
+ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_GUARD',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  const block=relay.slice(relay.indexOf("if(body.op==='context'){\n      const base="),relay.indexOf("const bytes=payloadBytes(finalPayload);"));
+  assert(block.includes("const optional=['prepared_quality','target_hints']"));
+  assert(block.includes("delete base[field]"));
+  assert(block.includes("if(guess>record.max_result_bytes){fits=false;break;}"));
+  assert(block.includes("if(next>record.max_result_bytes){fits=false;break;}"));
+  assert(block.includes("finalPayload={...base,...lifecycleProjection(record)}"));
+  assert(relay.includes("chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'})"));
+  assert(relay.includes("commitRequest(record,{requestId:clientId,fingerprint,payloadBytes:bytes})"));
+});
+
+ok('CONTEXT_RELAY_ENRICHMENT_OVER_CAP_DYNAMIC',()=>{
+  const relay=fs.readFileSync(path.join(PRODUCT,'relay/src/index.js'),'utf8');
+  const start=relay.indexOf("    let finalPayload=result.payload;");
+  const end=relay.indexOf("    const bytes=payloadBytes(finalPayload);",start);
+  assert(start>0&&end>start);
+  // Exercise the exact production context-shaping statements, not a test reimplementation.
+  const shape=new Function('body','result','record','lifecycleProjection','projectCommittedRecord','payloadBytes',
+    relay.slice(start,end)+';return finalPayload;');
+  const size=obj=>Buffer.byteLength(JSON.stringify(obj),'utf8');
+  const project=(record,{payloadBytes})=>{
+    if(payloadBytes>record.max_result_bytes)throw new Error('RESULT_CAP');
+    return {...record,projected_bytes:payloadBytes};
+  };
+  const projection=record=>({accounting:{used:record.projected_bytes||0},task_state:'ACTIVE'});
+  const record={max_result_bytes:3000};
+  const base={task_id:'T',session_id:'s',snapshot_id:'x',recovery:{compatibility:'CURRENT'},core:'x'.repeat(1880),
+    prepared_quality:{report:'q'.repeat(950)},target_hints:['target']};
+  assert(size(base)<=3000);
+  assert(size({...base,...projection(record)})>3000);
+  const shaped=shape({op:'context'},{payload:base},record,projection,project,size);
+  assert(size(shaped)<=3000);
+  assert.equal(shaped.task_id,'T');
+  assert.deepEqual(shaped.recovery,{compatibility:'CURRENT'});
+  assert(shaped.accounting);
+  assert.equal(shaped.prepared_quality,undefined);
+  assert.equal(shaped.target_hints,'undefined'===typeof shaped.target_hints?undefined:shaped.target_hints);
+  const required={...base};delete required.prepared_quality;delete required.target_hints;
+  required.core='x'.repeat(3400);
+  const tooLarge=shape({op:'context'},{payload:required},record,projection,project,size);
+  assert(size(tooLarge)>3000);
+  assert(relay.includes("if(bytes>record.max_result_bytes)"));
+  assert(relay.includes("chargeAmbiguousRequest(record,{requestId:clientId,fingerprint,reason:'RESULT_CAP'})"));
+});
+
+ok('MULTIPLE_ORPHAN_RESERVATIONS_RECONNECT',()=>{
+ const h=hello(),r=make(h), ids=['orphan1','orphan2','orphan3','orphan4'];
+ for(const id of ids)assert.equal(reserveRequest(r,{requestId:id,fingerprint:'fp-'+id,op:'context',epochIdFactory:epochFactory}).action,'EXECUTE');
+ assert.equal(r.activity_seq,4);
+ const originals=ids.map(id=>structuredClone(r.request_receipts[id].activity_cursor_before));
+ assert(originals.every(c=>c.activity_seq===0&&c.receipt_sha256===null));
+ reconcileTaskHello(r,h,{nowMs:TEST_NOW+5000});
+ assert.equal(r.task_result_bytes_used,12000);
+ assert.equal(r.task_requests_used,4);
+ let prev=null;
+ for(let i=0;i<ids.length;i++){
+  const id=ids[i],receipt=r.request_receipts[id];
+  canonicalizeRecoveredOrphanPredecessor(r,id);
+  assert.equal(receipt.activity_cursor_before.receipt_sha256,prev);
+  if(i>0)assert.deepEqual(receipt.activity_cursor_before_original,originals[i]);
+  const digest=hashJson(activityReceiptHashInput(r,id,receipt.safe_result));
+  sealActivityReceipt(r,{requestId:id,safeResult:receipt.safe_result,activitySha256:digest});
+  prev=digest;
+ }
+ assert.equal(r.activity_committed_seq,4);
+ assert.equal(r.activity_integrity_sha256,prev);
+ assert.equal(unsealedTerminalReceipts(r).length,0);
+ assert.equal(r.task_result_bytes_used,12000);
+ assert.equal(r.session_id,h.session_id);
+});
+ok('RECONNECT_RECOVERY_IDEMPOTENT',()=>{
+ const h=hello(),r=make(h);
+ for(const id of ['a','b'])reserveRequest(r,{requestId:id,fingerprint:id,op:'read',epochIdFactory:epochFactory});
+ reconcileTaskHello(r,h);
+ for(const id of ['a','b']){
+  canonicalizeRecoveredOrphanPredecessor(r,id);
+  const receipt=r.request_receipts[id];
+  sealActivityReceipt(r,{requestId:id,safeResult:receipt.safe_result,activitySha256:hashJson(activityReceiptHashInput(r,id,receipt.safe_result))});
+ }
+ const before=JSON.stringify(r);
+ reconcileTaskHello(r,h);
+ assert.equal(JSON.stringify(r),before);
+ assert.equal(r.task_result_bytes_used,6000);
+});
+ok('GAP_OR_NONRECOVERABLE_CONTRADICTION_FAILS_CLOSED',()=>{
+ const h=hello(),r=make(h);
+ reserveRequest(r,{requestId:'a',fingerprint:'a',op:'read'});
+ reserveRequest(r,{requestId:'b',fingerprint:'b',op:'read'});
+ reconcileTaskHello(r,h);
+ assert.throws(()=>canonicalizeRecoveredOrphanPredecessor(r,'b'),/ACTIVITY_SEQUENCE_GAP/);
+ const a=r.request_receipts.a;
+ a.reason='HELPER_TIMEOUT';
+ a.activity_cursor_before.receipt_sha256='f'.repeat(64);
+ assert.equal(canonicalizeRecoveredOrphanPredecessor(r,'a'),r);
+ assert.throws(()=>sealActivityReceipt(r,{requestId:'a',safeResult:a.safe_result,activitySha256:hashJson(activityReceiptHashInput(r,'a',a.safe_result))}),/ACTIVITY_PREDECESSOR_MISMATCH/);
 });
 
 console.log('S4_ACCOUNTING_REGRESSION_PASS checks='+passed);

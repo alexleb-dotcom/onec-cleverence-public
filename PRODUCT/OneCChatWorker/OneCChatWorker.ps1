@@ -14,9 +14,18 @@ $PackageRoot=$PSScriptRoot
 $script:LauncherScriptPath=$PSCommandPath
 $InstalledCore=Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1'
 $PackageCore=Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1'
-$PackageCoreAvailable=Test-Path -LiteralPath $PackageCore -PathType Leaf
-$Core=if($Mode -eq 'INSTALL' -and $PackageCoreAvailable){$PackageCore}elseif(Test-Path -LiteralPath $InstalledCore -PathType Leaf){$InstalledCore}else{$PackageCore}
+$Core=if($Mode -in @('INSTALL','UPDATE')){$PackageCore}elseif(Test-Path -LiteralPath $InstalledCore -PathType Leaf){$InstalledCore}else{$PackageCore}
 if(-not(Test-Path -LiteralPath $Core -PathType Leaf)){throw "CORE_NOT_FOUND: $Core"}
+if($Core -eq $PackageCore){
+ # Bootstrap trust must not depend on code from either unverified core.
+ $bootstrapLockPath=Join-Path $PackageRoot 'runtime.lock.json'
+ if(-not(Test-Path -LiteralPath $bootstrapLockPath -PathType Leaf)){throw 'PACKAGE_RUNTIME_LOCK_MISSING'}
+ $bootstrapLock=Get-Content -LiteralPath $bootstrapLockPath -Raw -Encoding UTF8|ConvertFrom-Json
+ $expectedCoreSha=[string]$bootstrapLock.components.'core/OneCChatWorker.Core.psm1'
+ if($expectedCoreSha -notmatch '^[a-fA-F0-9]{64}$'){throw 'PACKAGE_CORE_LOCK_INVALID'}
+ $actualCoreSha=(Get-FileHash -LiteralPath $PackageCore -Algorithm SHA256).Hash.ToLowerInvariant()
+ if($actualCoreSha -ne $expectedCoreSha){throw 'PACKAGE_COMPONENT_HASH_MISMATCH: core/OneCChatWorker.Core.psm1'}
+}
 Import-Module $Core -Force -DisableNameChecking
 Set-WorkerReaderIdentity -ReaderName $ReaderName|Out-Null
 

@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 520,
+  "file_count": 546,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 9158,
-      "sha256": "cba0a2fab59d9fef40ea0cf68b341062843660b1700d27251c8c323005758c68"
+      "size": 10162,
+      "sha256": "595de93185f44bbb4f83846236c54aebbf0082c7df6678619530e90a86dd8f30"
     },
     {
       "path": ".gitignore",
@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 120810,
-      "sha256": "3fb28f96dcbb4fd9ca57d1569e211310b7c7320e60a5e1331ff424fa7d831958"
+      "size": 121473,
+      "sha256": "5e0fa2b8ace31052a6d1cb67ebad9f148ceccbd1080728b13547e0644b145709"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -485,13 +485,33 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 189948,
-      "sha256": "3ab091e93e1b571e1b87d2b67f06842e5037149cbe8f4a640805e2072a3df237"
+      "size": 201137,
+      "sha256": "af6074562932a9ff1a6342ed07bd124c15389bb28b401f19dbffcc8682f1fdf3"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
       "size": 840,
       "sha256": "9964bc44cdb351d5d4347685a70569561ae778c19b5e3070e691bcef1ddfaee5"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/HTTPS_PULL_ROLLOUT.md",
+      "size": 10999,
+      "sha256": "31b991a0056b17b1df577f6d36b0ca4c3454b38bc8328e0b89d5155fc6f9e369"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/TRANSPORT_RELIABILITY.md",
+      "size": 9444,
+      "sha256": "d522db76ccb2e847a9c013ff75dc3fdf5066a176284373f98a130ee4a05c0957"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/mailbox.mjs",
+      "size": 7020,
+      "sha256": "43a25a3ebb73fd37a66fe184c3839faec368d835e87a625a94093bb89185dc98"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/test.mjs",
+      "size": 5004,
+      "sha256": "0f4730ae93dbe11d4912af3329a572ee37df515bd92d160269a88a16a285cebe"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/package-lock.json",
@@ -504,14 +524,24 @@
       "sha256": "b92a1ae94ad860433531109868bfc4aa524cc2b86918e4b2084a9f95458a6f94"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/relay/src/https-pull.mjs",
+      "size": 14940,
+      "sha256": "700991f5cfc02e3c219c5ab20704a636b6b4014823505c17bb5775c2d4e91127"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
-      "size": 33328,
-      "sha256": "831bb9b590438a896a5541c0a4035ca9d090d247d6f4b25d8ff4f7b09e48102b"
+      "size": 46135,
+      "sha256": "734c0252988c83b649014560062b356b957c6741f87f606d5cbc8485e142156c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
-      "size": 20077,
-      "sha256": "b36eb841bd8b905e7c29275078a009163f212a061b288c58d15f06ab8eaf0802"
+      "size": 21874,
+      "sha256": "09290230166826db3ebdc48880e43e8fe9c5414a1455d5646c32ad822f1fa952"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/src/ws-response-retry.mjs",
+      "size": 953,
+      "sha256": "fde04dd12f3b1e84ece10f4e4bccd92903bf6f840bc3b8c87d9c2bddf32b1cdc"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/wrangler.jsonc",
@@ -520,13 +550,28 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 7271,
-      "sha256": "d12c9ed4dcbdf6ec4828e2dbf333e43de0effb1f180f3e68364f89d9b4d136e8"
+      "size": 7925,
+      "sha256": "91e83cd21fac10d273c19764b9fa021e10a857cf85044ab190b998539c46d24a"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
+      "size": 4596,
+      "sha256": "b92ec6cda970752419fbc28ccc5fcd8f3b694ba0754de4aba5dc58a447a9255d"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/helper-state-coordinator.mjs",
+      "size": 1738,
+      "sha256": "6e1e38808b61f58f1e52ebf70ffc3aa37ab77f0947d7e39334cd6bd3226e9cef"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/hosted-helper.mjs",
-      "size": 27783,
-      "sha256": "2000441082535f1b0860fe9d6685d8b3723737a841fca188bcd82a7ebd2c429d"
+      "size": 32243,
+      "sha256": "0dd6b424a5c5844f04d111ca59caffb65e2bb6e9adcd1c06b1da7a053d4d7887"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/runtime/https-pull-auth.mjs",
+      "size": 3776,
+      "sha256": "951d0593afbf0833c979b6f4428e4b56149683bec5b362706d812f8e1d91431f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/local-quality-adapter.mjs",
@@ -569,9 +614,54 @@
       "sha256": "845d90384d31341057d9f01ba2a79ddd7ba844a83d9b34e041dfeda316c35807"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/helper-import-link.mjs",
+      "size": 1716,
+      "sha256": "2593061e86ca0aef1a46949e262fae1a262df39e826453bb80f48ec670e824d9"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/helper-state-race-regression.mjs",
+      "size": 5835,
+      "sha256": "38ad7ff241445bb1c4fcbdaaa8aa478969beb71f275c56b2deeec8418d7a2cdc"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/https-pull-security-regression.mjs",
+      "size": 5073,
+      "sha256": "71e08eff0fc6eeed31bd7c09d81d8c5f327352581b42063c2606f7146a42219f"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/local-quality-adapter-regression.mjs",
       "size": 9869,
       "sha256": "52d93ffdeb2370c36dc856c50f1f3eaa1bdf79e9dad88861f9c2d33a24feba0c"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/native/package-lock.json",
+      "size": 45162,
+      "sha256": "1cf7979fe20c4b576935ea014bab539aeb4a4cbed790108dcb24f822dce799e5"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/native/package.json",
+      "size": 322,
+      "sha256": "a56a35671fb90659d63e4c6a469bb8b642f7ab2b67ed7b70888d89852b628f50"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/native/regression.mjs",
+      "size": 27431,
+      "sha256": "1c4905049671ec4a25bbb5fe4bdda9f73d0e745072c4486d32275e630a4bedaa"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/relay-helper-lifecycle-regression.mjs",
+      "size": 25662,
+      "sha256": "766d60aa9ba873597ca11148ff17fe1fee76acb6965828e269f05d51542d0118"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/relay-ws-response-retry-regression.mjs",
+      "size": 5721,
+      "sha256": "cd2347815a469e31e0b95422d94ba1b6e95242a29e60046c9d8f3b332bb05f18"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/relay-ws-telemetry-regression.mjs",
+      "size": 3830,
+      "sha256": "0d62c2686ef64d212b91dadcb75487730749226e04bb6c2141d423cec5e5d803"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_apply_failure_regression.ps1",
@@ -614,6 +704,16 @@
       "sha256": "2fadba7f723ed7355bfb4d3b0c79a3f0a5b3d4b0e2d5f7d1433e849231502803"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/run_helper_installer_regression.ps1",
+      "size": 8975,
+      "sha256": "39c49a95b954e2ab8820b8dea915d519089e4dcaada4351d8bba395c45ae6772"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_helper_state_race_regression.ps1",
+      "size": 1368,
+      "sha256": "bfc43698edebc04ad8fb8f2ae0f63316f318d252cafa5211e232f6bfa58a538b"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/run_local_quality_adapter_regression.ps1",
       "size": 3765,
       "sha256": "ff10aded307168572eca783364b33647b7be84a21c1645152db2dcac4cb65012"
@@ -629,9 +729,19 @@
       "sha256": "ddbd1890363c4bd0e22428707ee24504f69afd6a981690e85237d95f234733bb"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/run_package_core_bootstrap_regression.ps1",
+      "size": 5069,
+      "sha256": "1f278bc5ce19c98838d1c354037b8ec6cbdf60b16ee7776f7441fff855110594"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/run_s4_admission_regression.ps1",
-      "size": 12427,
-      "sha256": "bd68dbe27807c40fba5c948d12afc651661d42ae9f35b21eeea08a1559531edb"
+      "size": 14274,
+      "sha256": "18f8f62c26c79d9d341d806317cc57295edee9e5f962f3abc4623e02c623a440"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_selected_catalog_update_regression.ps1",
+      "size": 9369,
+      "sha256": "9179787c5674265978182d8a442f69505eab0865998c03c691e4119be27e12d4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
@@ -670,8 +780,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/s4-accounting-regression.mjs",
-      "size": 18547,
-      "sha256": "c7f704f75a7be702d71870082b7f01efa1f87d18b1585e296c6e9079d77d4486"
+      "size": 24230,
+      "sha256": "f1835211b6279e7ba69955f0b2e102b1d76e9593f482c58bc288b1f8f00f32d2"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/source-acquisition-regression.mjs",
@@ -2129,6 +2239,16 @@
       "sha256": "3f2a05a78ff90088d768cee9724bd56f08c59491467228f37edf2e1d4e1dd0a9"
     },
     {
+      "path": "TESTS/run_helper_installer_regression.py",
+      "size": 5088,
+      "sha256": "4c2de1b4ffdadffb1f4c8d6b934efef58245ebbcafa39f093e57658fbd2385d1"
+    },
+    {
+      "path": "TESTS/run_https_pull_native_regression.py",
+      "size": 1456,
+      "sha256": "6178568e2fa41c6bdfe1e788577c50a7d7a06caf0d741927cfb490b658d29722"
+    },
+    {
       "path": "TESTS/run_llm_bypass_regression.py",
       "size": 20420,
       "sha256": "5d6a66a45e09ba674bdf84a1950eec3eb4a7cdef5d5f423111c6d1d16208b1ed"
@@ -2155,8 +2275,8 @@
     },
     {
       "path": "TESTS/run_onecchatworker_product_regression.py",
-      "size": 48349,
-      "sha256": "ef4417a6458b20d38995fc9ff1b42795b5ecddbb82758d434c2fa1b92bd2d4fc"
+      "size": 50601,
+      "sha256": "081d06010e3457caef8783a758efa4b6f25bdd621f5214a6a9cd5834bde213c5"
     },
     {
       "path": "TESTS/run_pattern_regression.py",
@@ -2239,6 +2359,16 @@
       "sha256": "4813c7ac40b671f505b4937f6faedb3449d482d9789fcf1ef2b352f8540d5aaf"
     },
     {
+      "path": "TESTS/run_relay_helper_transport_regression.py",
+      "size": 1640,
+      "sha256": "3aba05f33210c25a4bcec9882741d5cf3c6a8d9d0479d19621e9f1c516f3b4bd"
+    },
+    {
+      "path": "TESTS/run_relay_helper_workerd_regression.mjs",
+      "size": 8914,
+      "sha256": "7ab29e8ff8d8c00c9b0ccf8b20ce3ee3009ba0afa126412c4c35a897e94f088a"
+    },
+    {
       "path": "TESTS/run_release_trust_boundary_phase2.py",
       "size": 4527,
       "sha256": "aa87032fb48ec196920f4432ea1dd26438db63d94785a19f5a9ceb72581ae149"
@@ -2290,8 +2420,8 @@
     },
     {
       "path": "TOOLS/PUBLIC_CI_INVENTORY.json",
-      "size": 9836,
-      "sha256": "b3d2a6162f08d47ee883a739ee251616862651de72cc0e02044419d6e7679dc9"
+      "size": 10551,
+      "sha256": "c184c3700c01677817b24b35e40cb92d3cb7ca2a0e579a5b8755d238d326b560"
     },
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
@@ -2610,5 +2740,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "7f21ef1e1378b304745a9b1448b21337d2728b0ed8e19551232b2eff2407a4fc"
+  "snapshot_digest": "baa5be322107f76024359eea54baa5b6d6105a8f99e468c3984790616de902ab"
 }

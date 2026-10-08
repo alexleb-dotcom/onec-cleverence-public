@@ -288,6 +288,10 @@ function Test-InstalledProductIntegrity {
     $map=[ordered]@{
         'runtime/source-reader-integration.mjs'=(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs')
         'runtime/hosted-helper.mjs'=(Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs')
+        'runtime/helper-https-pull.mjs'=(Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs')
+        'runtime/https-pull-auth.mjs'=(Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs')
+        'runtime/helper-state-coordinator.mjs'=(Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs')
+        'runtime/task-checkpoint-store.mjs'=(Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs')
         'runtime/source-acquisition.mjs'=(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs')
         'runtime/local-quality-adapter.mjs'=(Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs')
         'runtime/quality/cc-1c-skills/meta-info.ps1'=(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills\meta-info.ps1')
@@ -694,6 +698,10 @@ function Set-ManifestAcceptedSnapshot {
 }
 function Get-FastProjectState {
     param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    Get-ProjectSnapshotState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -CatalogSha256 (Get-CatalogHash $WorkerRoot)
+}
+function Get-ProjectSnapshotState {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[Parameter(Mandatory)][string]$CatalogSha256)
     $catalog=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $catalog $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'}
     if($p.active -eq $false){return [pscustomobject]@{project_id=$ProjectId;state='APPLY_REQUIRED';status='APPLY_REQUIRED';reason='PROJECT_INACTIVE'}}
     $updatePaths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
@@ -709,7 +717,7 @@ function Get-FastProjectState {
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){return [pscustomobject]@{project_id=$ProjectId;state='APPLY_REQUIRED';status='APPLY_REQUIRED';reason='MANIFEST_MISSING'}}
     try{$m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{return [pscustomobject]@{project_id=$ProjectId;state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason='MANIFEST_PARSE_FAILED'}}
-    $catalogHash=Get-CatalogHash $WorkerRoot
+    $catalogHash=$CatalogSha256
     if([string]$m.catalog_sha256 -ne $catalogHash){return [pscustomobject]@{project_id=$ProjectId;state='CATALOG_DRIFT';status='CATALOG_DRIFT';reason='CATALOG_HASH_MISMATCH';catalog_sha256=$catalogHash;manifest_catalog_sha256=[string]$m.catalog_sha256}}
     if([int]$m.schema_version -eq 1){return [pscustomobject]@{project_id=$ProjectId;state='DEEP_VERIFY_REQUIRED';status='DEEP_VERIFY_REQUIRED';reason='LEGACY_MANIFEST_REQUIRES_ADOPTION';catalog_sha256=$catalogHash}}
     if([int]$m.schema_version -ne 2 -or -not $m.accepted_snapshot){return [pscustomobject]@{project_id=$ProjectId;state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason='MANIFEST_SCHEMA_UNSUPPORTED'}}
@@ -1102,6 +1110,57 @@ function Test-ProjectActiveAdmission {
     [string]$a.project_id -eq $ProjectId
 }
 
+function Get-SourceUpdateBaseState {
+    param([Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string[]]$Selections,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'CATALOG_DRIFT'){return $fast}
+    $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $selected=@(Get-SourceUpdateSelectionRows -Manifest $m -Selections $Selections)
+    # Drift is not adoption: validate the old snapshot with its ORIGINAL catalog identity.
+    $old=Get-ProjectSnapshotState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -CatalogSha256 ([string]$m.catalog_sha256)
+    if($old.state -ne 'ACCEPTED'){throw ('SOURCE_UPDATE_BASE_PROOF_INVALID: '+$old.reason)}
+    $p=Find-Project (Read-WorkerCatalog $WorkerRoot) $ProjectId
+    if([string]$m.project_root -cne [string](Join-Path $WorkerRoot $ProjectId) -or [string]$m.output_relative -cne 'Output'){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+    $current=@($p.participants|Where-Object {$_.active -ne $false})
+    $prior=@($m.participants|Where-Object {$_.active -ne $false})
+    if($current.Count -ne $prior.Count){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+    foreach($part in $current){
+        $matches=@($prior|Where-Object {$_.participant_id -ceq $part.participant_id})
+        if($matches.Count -ne 1){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+        $mp=$matches[0]
+        if([string]$mp.platform -cne [string]$part.platform){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+        $desired=@();$accepted=@()
+        if($part.target.main -and $part.target.main.active -ne $false){$desired+=,[pscustomobject]@{key=($part.participant_id+'|MAIN|main');path=$part.target.main.source_path;canonical=('Participants/'+$part.participant_id+'/Target/Main')}}
+        foreach($a in @($part.target.extensions|Where-Object {$_.active -ne $false})){$desired+=,[pscustomobject]@{key=($part.participant_id+'|EXTENSION|'+$a.extension_id);path=$a.source_path;canonical=('Participants/'+$part.participant_id+'/Target/Extensions/'+$a.extension_id)}}
+        if($mp.target.main -and $mp.target.main.active -ne $false){$accepted+=,[pscustomobject]@{key=($mp.participant_id+'|MAIN|main');path=$mp.target.main.source_path;canonical=$mp.target.main.canonical_path}}
+        foreach($a in @($mp.target.extensions|Where-Object {$_.active -ne $false})){$accepted+=,[pscustomobject]@{key=($mp.participant_id+'|EXTENSION|'+$a.extension_id);path=$a.source_path;canonical=$a.canonical_path}}
+        if($desired.Count -ne $accepted.Count){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+        foreach($a in $desired){
+            $match=@($accepted|Where-Object {$_.key -ceq $a.key})
+            if($match.Count -ne 1 -or [string]$match[0].canonical -cne [string]$a.canonical){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+            if($a.key -notin @($selected|ForEach-Object {Get-SnapshotArtifactKey $_}) -and ([string]::IsNullOrWhiteSpace([string]$match[0].path) -or [string]$match[0].path -cne [string]$a.path)){throw 'SOURCE_UPDATE_CATALOG_MAIN_OR_UNSELECTED_IDENTITY_CHANGED'}
+        }
+    }
+    # Inventory bytes are metadata, never Main payload. Legacy/changed proof cannot authorize reuse.
+    foreach($a in @($m.accepted_snapshot.artifacts)){
+        $ancestor=Join-Path ([string]$m.project_root) ([string]$a.canonical_path).Replace('/','\')
+        while($ancestor -and $ancestor -cne [string]$m.project_root){
+            if((Get-Item -LiteralPath $ancestor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'SOURCE_UPDATE_BASE_ROOT_ALIAS'}
+            $ancestor=Split-Path -Parent $ancestor
+        }
+        if([string]$a.fingerprint_inventory_state -ne 'PRESENT'){throw 'SOURCE_UPDATE_BASE_FINGERPRINT_REQUIRED'}
+        $rel=[string]$a.fingerprint_inventory_path
+        if($rel -notmatch '^Fingerprints/[A-Za-z0-9._-]+\.jsonl$'){throw 'SOURCE_UPDATE_BASE_FINGERPRINT_INVALID'}
+        $fp=Join-Path (Split-Path -Parent $manifestPath) $rel.Replace('/','\')
+        if(((Get-Item -LiteralPath $fp -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -or ((Get-Item -LiteralPath (Split-Path -Parent $fp) -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'SOURCE_UPDATE_BASE_FINGERPRINT_INVALID'}
+        if((Get-Sha256File $fp) -ne [string]$a.fingerprint_inventory_sha256){throw 'SOURCE_UPDATE_BASE_FINGERPRINT_INVALID'}
+    }
+    $old|Add-Member -NotePropertyName catalog_rebind -NotePropertyValue $true
+    $old.catalog_sha256=Get-CatalogHash $WorkerRoot
+    $old
+}
+
 function Prepare-SourceUpdate {
     param(
         [Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string[]]$Selections,
@@ -1111,7 +1170,7 @@ function Prepare-SourceUpdate {
     $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(Test-Path -LiteralPath $paths.active_path -PathType Leaf){throw 'INTAKE_ALREADY_ACTIVE'}
     if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
-    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $fast=Get-SourceUpdateBaseState -ProjectId $ProjectId -Selections $Selections -WorkerRoot $WorkerRoot
     if($fast.state -ne 'ACCEPTED'){throw ('PROJECT_NOT_READY: '+$fast.state)}
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
@@ -1261,6 +1320,9 @@ function Accept-SourceUpdate {
     $currentManifestSha=Get-Sha256File $manifestPath
     if($currentManifestSha -ne [string]$state.base_manifest_sha256){throw 'SOURCE_UPDATE_STALE_BASE'}
     if((Get-CatalogHash -WorkerRoot $WorkerRoot) -ne [string]$state.catalog_sha256){throw 'SOURCE_UPDATE_STALE_CATALOG'}
+    if((Get-Sha256File ([string]$state.base_manifest_path)) -ne $currentManifestSha){throw 'SOURCE_UPDATE_BASE_COPY_INVALID'}
+    $baseCheck=Get-SourceUpdateBaseState -ProjectId $ProjectId -Selections @($state.selected|ForEach-Object {[string]$_.key}) -WorkerRoot $WorkerRoot
+    if($baseCheck.state -ne 'ACCEPTED' -or [string]$baseCheck.source_snapshot_id -ne [string]$state.base_source_snapshot_id){throw 'SOURCE_UPDATE_BASE_PROOF_INVALID'}
     $baseManifest=Get-Content -LiteralPath ([string]$state.base_manifest_path) -Raw -Encoding UTF8|ConvertFrom-Json
     $oldFingerprintMap=Get-ManifestFingerprintMap -Manifest $baseManifest
     if([string]$state.state -eq 'PREPARED_WRITABLE'){
@@ -1286,6 +1348,7 @@ function Accept-SourceUpdate {
     $changed=@($state.selected|Where-Object {$_.change_state -eq 'CHANGED'})
     if(-not $changed.Count){
         $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($fast.state -ne 'ACCEPTED'){throw 'SOURCE_UPDATE_CATALOG_REBIND_REQUIRES_CHANGE'}
         $result=[pscustomobject]@{project_id=$ProjectId;status='NO_CHANGE';generation_id=$state.generation_id;source_snapshot_id=$fast.source_snapshot_id;manifest_sha256=$fast.manifest_sha256;publication_generation=$fast.publication_generation;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
         Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
         return $result
@@ -1308,7 +1371,9 @@ function Accept-SourceUpdate {
         $fingerprintMap[[string]$item.key]=$fp
         Set-ManifestArtifactFromValidation -Manifest $candidate -Item $item -Validation $item.validation
     }
+    $candidate.catalog_sha256=[string]$State.catalog_sha256
     $candidate.applied_utc=(Get-Date).ToUniversalTime().ToString('o')
+    $candidate.catalog_sha256=[string]$state.catalog_sha256
     $candidate.accepted_snapshot=New-AcceptedSnapshot -ManifestParticipants @($candidate.participants) -CatalogSha256 ([string]$state.catalog_sha256) -ProofBasis 'ARTIFACT_SCOPED_ZERO_COPY_PROMOTION_V1' -PublicationGeneration ([int]$state.base_publication_generation+1) -FingerprintMap $fingerprintMap
     $candidatePath=Join-Path ([string]$state.generation_root) 'candidate-manifest.json';Write-JsonAtomic $candidate $candidatePath
     $candidateSha=Get-Sha256File $candidatePath
@@ -1406,6 +1471,12 @@ function Recover-SourceUpdatePromotion {
     Remove-Item -LiteralPath $paths.promotion_path -Force -ErrorAction Stop
     Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
     $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($fast.state -eq 'CATALOG_DRIFT'){
+        # Recovery restores the exact old manifest, never manufactures current ACCEPTED.
+        $old=Get-ProjectSnapshotState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -CatalogSha256 ([string](Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json).catalog_sha256)
+        if($old.state -ne 'ACCEPTED' -or $old.source_snapshot_id -ne [string]$state.base_source_snapshot_id){throw 'SOURCE_UPDATE_ROLLBACK_NOT_ACCEPTED'}
+        return [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;state='CATALOG_DRIFT';recovery_action='ROLLED_BACK_TO_BASE_SNAPSHOT';source_snapshot_id=$old.source_snapshot_id}
+    }
     if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$state.base_source_snapshot_id){throw 'SOURCE_UPDATE_ROLLBACK_NOT_ACCEPTED'}
     [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;recovery_action='ROLLED_BACK_TO_BASE_SNAPSHOT';source_snapshot_id=$fast.source_snapshot_id}
 }
@@ -2098,6 +2169,9 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
@@ -2178,6 +2252,9 @@ function Install-OneCChatWorker {
     $componentResults=@()
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-https-pull.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-https-pull.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\https-pull-auth.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/https-pull-auth.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-state-coordinator.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-state-coordinator.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-acquisition.mjs') -Destination (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-acquisition.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
@@ -2286,6 +2363,40 @@ function Test-HelperStateMatchesAdmission {
     ([string]$State.expires_utc -eq [string]$Admission.task_expires_utc)
 }
 
+function Get-HelperStateProcessedMap {
+    param([Parameter(Mandatory)]$State)
+    $map=@{}
+    if($null -eq $State.processed){return $map}
+    foreach($prop in @($State.processed.PSObject.Properties)){
+        $key=[string]$prop.Name
+        $entry=$prop.Value
+        if([string]::IsNullOrWhiteSpace($key) -or $key.Length -gt 128){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry -or [string]$entry.type -ne 'result' -or [string]$entry.request_id -ne $key -or [string]$entry.status -notin @('OK','ERROR')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry.metadata -or -not($entry.PSObject.Properties.Name -contains 'payload')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        $map[$key]=($entry|ConvertTo-Json -Depth 30 -Compress)
+    }
+    $map
+}
+
+function Test-HelperStateStrictMonotonicProcessedSuperset {
+    param([Parameter(Mandatory)]$FinalState,[Parameter(Mandatory)]$TmpState)
+    try{
+        if([int]$FinalState.schema_version -ne 2 -or [int]$TmpState.schema_version -ne 2){return $false}
+        if([string]$FinalState.started_utc -ne [string]$TmpState.started_utc){return $false}
+        $finalIdem=$(if($null -eq $FinalState.idempotency){'{}'}else{$FinalState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        $tmpIdem=$(if($null -eq $TmpState.idempotency){'{}'}else{$TmpState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        if($finalIdem -ne $tmpIdem){return $false}
+        if(@($FinalState.quality_targets).Count -gt 2 -or @($TmpState.quality_targets).Count -gt 2){return $false}
+        $finalMap=Get-HelperStateProcessedMap -State $FinalState
+        $tmpMap=Get-HelperStateProcessedMap -State $TmpState
+        if($tmpMap.Count -le $finalMap.Count){return $false}
+        foreach($key in $finalMap.Keys){
+            if(-not $tmpMap.ContainsKey($key) -or [string]$tmpMap[$key] -ne [string]$finalMap[$key]){return $false}
+        }
+        return $true
+    }catch{return $false}
+}
+
 function Save-HelperStateRecoveryEvidence {
     param(
         [Parameter(Mandatory)]$Entry,
@@ -2325,9 +2436,20 @@ function Repair-HelperStateForActiveAdmission {
     if($finalMatches){
         if($tmp){
             if($tmpMatches){
-                if([string]$tmp.sha256 -ne [string]$final.sha256){throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'}
-                Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
-                return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+                if([string]$tmp.sha256 -eq [string]$final.sha256){
+                    Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+                    return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+                }
+                if(Test-HelperStateStrictMonotonicProcessedSuperset -FinalState $final.doc -TmpState $tmp.doc){
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+                    Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop
+                    Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+                    $published=Read-HelperStateRecoveryFile -Path $statePath
+                    if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission) -or [string]$published.sha256 -ne [string]$tmp.sha256){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+                    return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_MONOTONIC_SUPERSET_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+                }
+                throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'
             }
             $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
             Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
@@ -2440,6 +2562,7 @@ function Repair-WorkerProject {
     if((Test-Path -LiteralPath $updatePaths.promotion_path -PathType Leaf) -or ($updateState -and [string]$updateState.state -eq 'MANIFEST_COMMITTED')){
         $recovered=Recover-SourceUpdatePromotion -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
         $f=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($f.state -eq 'CATALOG_DRIFT' -and $recovered.state -eq 'CATALOG_DRIFT'){return [pscustomobject]@{project_id=$ProjectId;status='CATALOG_DRIFT';state='CATALOG_DRIFT';repair_action=$recovered.recovery_action;source_update_recovery=$recovered;full_apply_performed=$false}}
         if($f.state -ne 'ACCEPTED'){throw 'SOURCE_UPDATE_RECOVERY_DID_NOT_RESTORE_ACCEPTED'}
         return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action=$recovered.recovery_action;source_update_recovery=$recovered}
     }

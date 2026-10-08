@@ -1,9 +1,11 @@
+import { HttpsPullHelper } from './helper-https-pull.mjs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { SourceReaderIntegration, PROVIDER_VERSION } from '../provider/source-reader-integration.mjs';
 import { LocalQualityAdapter, boundedTargetHints, reportBindingMatches } from './local-quality-adapter.mjs';
 import { createTaskCheckpointStore } from './task-checkpoint-store.mjs';
+import { createSerializedMessagePump, persistAndSendProcessed, saveStateAtomic } from './helper-state-coordinator.mjs';
 
 const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneCChatWorker';
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
@@ -30,7 +32,7 @@ const RUNTIME_DIR = admission.runtime_dir || path.join(PROGRAM_DATA,'runtime');
 const STATE_PATH = path.join(RUNTIME_DIR,'hosted-helper-state.json');
 const LOG_PATH = path.join(RUNTIME_DIR,'hosted-helper-log.jsonl');
 const UI_PROJECTION_PATH = path.join(RUNTIME_DIR,'s4-ui-projection.json');
-const VERSION = 'onecchat-hosted-helper/1.2.0';
+const VERSION = 'onecchat-hosted-helper/1.2.1';
 
 if (typeof RELAY !== 'string' || !/^wss:\/\//.test(RELAY)) throw new Error('ADMISSION_RELAY_INVALID');
 if (typeof MANIFEST_PATH !== 'string' || !MANIFEST_PATH) throw new Error('ADMISSION_MANIFEST_MISSING');
@@ -119,7 +121,7 @@ async function saveUiProjection(projection){
 }
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function log(x){await fsp.appendFile(LOG_PATH,JSON.stringify({at_utc:new Date().toISOString(),...x})+'\n','utf8').catch(()=>{});}
-async function saveState(s){const t=STATE_PATH+'.tmp';await fsp.writeFile(t,JSON.stringify(s,null,2),'utf8');await fsp.rename(t,STATE_PATH);}
+async function saveState(s){await saveStateAtomic(STATE_PATH,s);}
 const SNAPSHOT = admission.schema_version >= 2
   ? String(admission.source_snapshot_id)
   : (admission.source_snapshot_id || sha256(Buffer.from('OneCChatWorker-snapshot-v1\n'+manifestHash,'utf8')));
@@ -322,8 +324,78 @@ async function exec(op,args){
     fail('UNKNOWN_OP');
   }catch(e){return {status:'ERROR',metadata:{op,elapsed_ms:+(performance.now()-t).toFixed(3),error_class:String(e?.code||e?.name||'ERROR')},payload:{error:String(e?.message||e).slice(0,400)}};}
 }
+// Advisory disk I/O must not hold the execution/readiness lane after a result
+// has been persisted and sent. Keep projections/logs ordered across reconnects;
+// this lane never reads or mutates the processed cache or Source.
+const advisoryPump=createSerializedMessagePump({handle:async message=>{
+  if(message.type==='ui_projection_slot'){
+    try{
+      while(pendingUiProjection){
+        const projection=pendingUiProjection;pendingUiProjection=null;
+        try{await saveUiProjection(projection);}catch(e){
+          await log({event:'UI_PROJECTION_REJECTED',error:String(e?.message||e).slice(0,120)}).catch(()=>{});
+        }
+      }
+    }finally{uiProjectionQueued=false;}
+    return;
+  }
+  try{
+    await log(message.entry);
+  }catch{}
+}});
+let advisoryLogsQueued=0,pendingUiProjection=null,uiProjectionQueued=false;
+const queueAdvisory=message=>{
+  if(message.type==='ui_projection'){
+    // Keep the newest projection when disk is delayed; never accumulate full
+    // historical projections or replay an older UI state after reconnect.
+    pendingUiProjection=message.projection;
+    if(!uiProjectionQueued){uiProjectionQueued=true;void advisoryPump.dispatch({type:'ui_projection_slot'});}
+    return;
+  }
+  // Logging is best effort. A stuck disk must not create an unbounded queue
+  // as the authoritative request lane continues to make progress.
+  if(advisoryLogsQueued>=64)return;
+  message={...message,entry:{at_utc:new Date().toISOString(),...message.entry}};
+  advisoryLogsQueued++;
+  void advisoryPump.dispatch(message).finally(()=>{advisoryLogsQueued--;});
+};
+async function handleRelayMessage(ws,ev){
+  let m;try{m=JSON.parse(ev.data);}catch{return;}
+  // Transport-only challenge; no Source execution, processed cache or S4 usage.
+  if(m.type==='transport_ping'){
+    if(typeof m.nonce==='string'&&/^[0-9a-f-]{36}$/i.test(m.nonce))ws.send(JSON.stringify({type:'transport_pong',nonce:m.nonce}));
+    return;
+  }
+  if(m.type==='hello_ack'){queueAdvisory({entry:{event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used}});return;}
+  if(m.type==='ui_projection'){queueAdvisory(m);return;}
+  if(m.type==='hello_error'){queueAdvisory({entry:{event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')}});return;}
+  if(m.type!=='request'||!m.request_id)return;
+  if(state.processed[m.request_id]){ws.send(JSON.stringify(state.processed[m.request_id]));return;}
+  const res=await exec(m.op,m.args);
+  const attemptedPayloadBytes=Buffer.byteLength(JSON.stringify(res.payload??null),'utf8');
+  if(attemptedPayloadBytes>caps.max_result_bytes){
+    res.status='ERROR';res.metadata={...res.metadata,error_class:'RESULT_CAP',attempted_payload_bytes:attemptedPayloadBytes,max_result_bytes:caps.max_result_bytes};res.payload={error:'RESULT_CAP'};
+  }else res.metadata={...res.metadata,attempted_payload_bytes:attemptedPayloadBytes,max_result_bytes:caps.max_result_bytes};
+  const out={type:'result',request_id:m.request_id,status:res.status,metadata:res.metadata,payload:res.payload};
+  await persistAndSendProcessed({
+    state,requestId:m.request_id,result:out,
+    persist:saveState,
+    send:async stored=>ws.send(JSON.stringify(stored))
+  });
+  queueAdvisory({entry:{event:'RESULT',request_id:m.request_id,op:m.op,status:res.status,attempted_payload_bytes:attemptedPayloadBytes,elapsed_ms:res.metadata.elapsed_ms}});
+}
 async function connectLoop(){
   const secret=(await fsp.readFile(SECRET_PATH,'utf8')).trim(); if(secret.length<20)throw new Error('HELPER_SECRET_INVALID');
+  if(IS_S4){
+    const hello={
+        type:'hello',admission_schema_version:3,task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,project_id:PROJECT,task_id:TASK,task_goal_sha256:admission.task_goal_sha256??null,
+        manifest_sha256:manifestHash,snapshot_id:SNAPSHOT,output_task_root:OUTPUT_TASK_ROOT,helper_version:VERSION,task_created_utc:TASK_CREATED_UTC,task_expires_utc:TASK_EXPIRES_UTC,
+        predecessor:admission.predecessor??null,
+        controlled_restart_done:false,caps:{task_request_limit:caps.task_request_limit,task_result_byte_limit:caps.task_result_byte_limit,epoch_soft_request_limit:caps.epoch_soft_request_limit,epoch_soft_result_byte_limit:caps.epoch_soft_result_byte_limit,max_result_bytes:caps.max_result_bytes}
+      };
+    await new HttpsPullHelper({relayUrl:RELAY,secret,hello,state,persist:saveState,handle:handleRelayMessage,onProjection:projection=>queueAdvisory({type:'ui_projection',projection})}).run();
+    return;
+  }
   while(Date.now()<Date.parse(state.expires_utc)){
     try{
       const ws=new WebSocket(RELAY+'?token='+encodeURIComponent(secret));
@@ -334,29 +406,44 @@ async function connectLoop(){
         predecessor:admission.predecessor??null,
         controlled_restart_done:false,caps:{task_request_limit:caps.task_request_limit,task_result_byte_limit:caps.task_result_byte_limit,epoch_soft_request_limit:caps.epoch_soft_request_limit,epoch_soft_result_byte_limit:caps.epoch_soft_result_byte_limit,max_result_bytes:caps.max_result_bytes}
       }:{type:'hello',session_id:state.session_id,snapshot_id:SNAPSHOT,helper_version:VERSION,started_utc:state.started_utc,expires_utc:state.expires_utc,task_id:TASK,caps:{max_requests:caps.max_requests,max_cumulative_result_bytes:caps.max_cumulative_result_bytes,max_result_bytes:caps.max_result_bytes}};
-      ws.send(JSON.stringify(hello));
-      await log({event:'CONNECTED',session_id:state.session_id,snapshot_id:SNAPSHOT,project_id:PROJECT,task_id:TASK});
+      let fatalPersistenceError=null;
       await new Promise(resolve=>{
-        ws.addEventListener('message',async ev=>{
-          let m;try{m=JSON.parse(ev.data);}catch{return;}
-          if(m.type==='hello_ack'){await log({event:'S4_HELLO_ACK',task_admission_id:TASK_ADMISSION_ID,session_id:state.session_id,epoch_id:m.lifecycle?.epoch_id,epoch_seq:m.lifecycle?.epoch_seq,task_requests_used:m.lifecycle?.accounting?.task_requests_used,task_result_bytes_used:m.lifecycle?.accounting?.task_result_bytes_used});return;}
-          if(m.type==='ui_projection'){await saveUiProjection(m.projection).catch(async e=>log({event:'UI_PROJECTION_REJECTED',error:String(e?.message||e).slice(0,120)}));return;}
-          if(m.type==='hello_error'){await log({event:'S4_HELLO_REJECTED',error:String(m.error||'TASK_ADMISSION_REJECTED')});return;}
-          if(m.type!=='request'||!m.request_id)return;
-          if(state.processed[m.request_id]){ws.send(JSON.stringify(state.processed[m.request_id]));return;}
-          const res=await exec(m.op,m.args);
-          const attemptedPayloadBytes=Buffer.byteLength(JSON.stringify(res.payload??null),'utf8');
-          if(attemptedPayloadBytes>caps.max_result_bytes){
-            res.status='ERROR';res.metadata={...res.metadata,error_class:'RESULT_CAP',attempted_payload_bytes:attemptedPayloadBytes,max_result_bytes:caps.max_result_bytes};res.payload={error:'RESULT_CAP'};
-          }else res.metadata={...res.metadata,attempted_payload_bytes:attemptedPayloadBytes,max_result_bytes:caps.max_result_bytes};
-          const out={type:'result',request_id:m.request_id,status:res.status,metadata:res.metadata,payload:res.payload};
-          state.processed[m.request_id]=out;await saveState(state);ws.send(JSON.stringify(out));
-          await log({event:'RESULT',request_id:m.request_id,op:m.op,status:res.status,attempted_payload_bytes:attemptedPayloadBytes,elapsed_ms:res.metadata.elapsed_ms});
+        const pump=createSerializedMessagePump({
+          handle:ev=>handleRelayMessage(ws,ev),
+          onFailure:async(error,ev)=>{
+            let failedMessage=null;try{failedMessage=JSON.parse(ev?.data);}catch{}
+            const errorClass=String(error?.code||error?.name||'MESSAGE_HANDLER_ERROR');
+            await log({event:'MESSAGE_HANDLER_ERROR',request_id:failedMessage?.request_id??null,op:failedMessage?.op??null,error_class:errorClass,error:String(error?.message||error).slice(0,240)});
+            if(errorClass==='HELPER_STATE_PERSIST_FAILED')fatalPersistenceError=error;
+            try{ws.close(1011,'message handler failure');}catch{}
+          }
         });
-        ws.addEventListener('close',resolve,{once:true});ws.addEventListener('error',resolve,{once:true});
+        ws.addEventListener('message',ev=>{void pump.dispatch(ev);});
+        const settle=()=>{void pump.drain().finally(resolve);};
+        ws.addEventListener('close',settle,{once:true});
+        ws.addEventListener('error',settle,{once:true});
+        // Install listeners before hello: an immediate ACK/probe/close must
+        // not be lost while CONNECTED logging waits for Windows disk I/O.
+        ws.send(JSON.stringify(hello));
+        queueAdvisory({entry:{event:'CONNECTED',session_id:state.session_id,snapshot_id:SNAPSHOT,project_id:PROJECT,task_id:TASK}});
       });
-    }catch(e){await log({event:'CONNECT_ERROR',error:String(e?.message||e).slice(0,300)});}
+      if(fatalPersistenceError)throw fatalPersistenceError;
+    }catch(e){
+      const errorClass=String(e?.code||e?.name||'ERROR');
+      if(errorClass==='HELPER_STATE_PERSIST_FAILED'){
+        await log({event:'HELPER_STATE_PERSISTENCE_FATAL',error_class:errorClass,cause_code:String(e?.cause_code||''),error:String(e?.message||e).slice(0,240)});
+        throw e;
+      }
+      await log({event:'CONNECT_ERROR',error_class:errorClass,error:String(e?.message||e).slice(0,300)});
+    }
     await sleep(1000);
   }
 }
-try{await connectLoop();}finally{await provider.shutdown().catch(()=>{});}
+let fatalHelperError=null;
+try{await connectLoop();}
+catch(e){
+  fatalHelperError=e;
+  await log({event:'HELPER_FATAL',error_class:String(e?.code||e?.name||'ERROR'),error:String(e?.message||e).slice(0,240)});
+}
+finally{await advisoryPump.drain();await provider.shutdown().catch(()=>{});}
+if(fatalHelperError)process.exitCode=1;
