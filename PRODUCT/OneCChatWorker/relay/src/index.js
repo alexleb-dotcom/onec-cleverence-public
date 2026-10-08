@@ -1,4 +1,5 @@
 import OAuthProvider, { AuthorizationError, CimdFetchError } from '@cloudflare/workers-oauth-provider';
+import { startBoundedResponseRetries } from './ws-response-retry.mjs';
 import { createTaskRecord, reconcileTaskHello, reserveRequest, commitRequest, chargeAmbiguousRequest, lifecycleProjection, minimalControlPayload, projectCommittedRecord, activityReceiptHashInput, sealActivityReceipt, canonicalizeRecoveredOrphanPredecessor, unsealedTerminalReceipts, activityDelta, latestCheckpointRequestCursor, S4_ACTIVITY_CURSOR_SCHEMA } from './s4-accounting.js';
 
 const ORIGIN='https://onec-g1q1-relay.alex-lebad1.workers.dev';
@@ -263,17 +264,30 @@ export class RelaySession {
     }
     const request_id=clientId;this.busy=true;
     const startedAt=Date.now(),generation=this.socketGeneration;
+    const dispatchedSocket=this.helper;
+    const requestFrame=JSON.stringify({type:'request',request_id,op:body.op,args:helperArgs});
+    let cancelResends=()=>{};
     const resultP=new Promise((resolve,reject)=>{
       const timer=setTimeout(()=>{
         if(this.pending.delete(request_id)){
+          cancelResends();
           traceWs('rpc_deadline',{request_id,generation,op:body.op,age_ms:Date.now()-startedAt,pending_count:this.pending.size,socket_state:this.helper?.readyState??null});
           this.busy=false;reject(new Error('HELPER_TIMEOUT'));
         }
       },15000);
-      this.pending.set(request_id,{startedAt,generation,resolve:v=>{clearTimeout(timer);resolve(v);}});
+      this.pending.set(request_id,{startedAt,generation,resolve:v=>{clearTimeout(timer);cancelResends();resolve(v);}});
+    });
+    cancelResends=startBoundedResponseRetries({
+      requestId:request_id,frame:requestFrame,dispatchedSocket,generation,
+      isPending:id=>this.pending.has(id),
+      currentSocket:()=>this.helper,currentGeneration:()=>this.socketGeneration,
+      onResend:(socket,frame)=>socket.send(frame),
+      onRetry:(delay,status)=>traceWs(status==='RESENT'?'rpc_retry':'rpc_retry_send_failed',{
+        request_id,generation,op:body.op,age_ms:delay,pending_count:this.pending.size,socket_state:this.helper?.readyState??null
+      })
     });
     traceWs('rpc_dispatch',{request_id,generation,op:body.op,age_ms:startedAt-rpcReceivedAt,pending_count:this.pending.size,socket_state:this.helper?.readyState??null});
-    this.helper.send(JSON.stringify({type:'request',request_id,op:body.op,args:helperArgs}));
+    dispatchedSocket.send(requestFrame);
     let result;
     try{result=await resultP;}
     catch(e){
