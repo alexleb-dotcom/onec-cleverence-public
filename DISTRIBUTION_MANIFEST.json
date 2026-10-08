@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 522,
+  "file_count": 523,
   "files": [
     {
       "path": ".gitattributes",
@@ -505,8 +505,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/index.js",
-      "size": 34707,
-      "sha256": "7b089be7e2a09bdaed724993c38b7c21361661f5bb0afbec7eaaa4b27b088584"
+      "size": 37331,
+      "sha256": "692722d3e93fffc1a479dc6e89c6bee989628f2fcc13afdc7dbe07d8e062855a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/src/s4-accounting.js",
@@ -520,8 +520,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
-      "size": 7383,
-      "sha256": "e829566869a52baefa24c02635eded1830fc3a9a9d5795da35c545a1d5632c50"
+      "size": 7553,
+      "sha256": "16e76de373f88750a56cbbad11499cc436df2a45ec4108e21d56f24cfbca55e4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-state-coordinator.mjs",
@@ -582,6 +582,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/local-quality-adapter-regression.mjs",
       "size": 9869,
       "sha256": "52d93ffdeb2370c36dc856c50f1f3eaa1bdf79e9dad88861f9c2d33a24feba0c"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/relay-ws-telemetry-regression.mjs",
+      "size": 3612,
+      "sha256": "5c9c293b0c769b16b39029fa25ee0e35405f4b7d300181ebcdca5b0f745b36ef"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_apply_failure_regression.ps1",
@@ -2620,5 +2625,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "8723a9ca0f4ab4f3db2f10c5e72e7832c115248e766e99c23fa2116b02b53304"
+  "snapshot_digest": "2d962e062e788654d7c4a58b083d6fce686535835d2248fde19e4eee430e7202"
 }
