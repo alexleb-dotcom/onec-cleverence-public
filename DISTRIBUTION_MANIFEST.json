@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 529,
+  "file_count": 531,
   "files": [
     {
       "path": ".gitattributes",
@@ -497,6 +497,16 @@
       "path": "PRODUCT/OneCChatWorker/relay/TRANSPORT_RELIABILITY.md",
       "size": 9444,
       "sha256": "d522db76ccb2e847a9c013ff75dc3fdf5066a176284373f98a130ee4a05c0957"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/mailbox.mjs",
+      "size": 5912,
+      "sha256": "7ea2b8d9ecf6766599425881ed639f90b90cf2932c84a936841f171247a91571"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/relay/experiments/https-pull/test.mjs",
+      "size": 4993,
+      "sha256": "774f83a85e0f1477828f27db69d2a6e5e1783c77eae7588acfa52e42836fb9a9"
     },
     {
       "path": "PRODUCT/OneCChatWorker/relay/package-lock.json",
@@ -2655,5 +2665,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "a6e5cb6f6cddc6b951ac10ba52501ba576ba25fc7ae6c8e269c63db3d7b45aa5"
+  "snapshot_digest": "78b3269e9aab7343ce367c3951003008fee3da852ef7004a768e8bb5771686fc"
 }
