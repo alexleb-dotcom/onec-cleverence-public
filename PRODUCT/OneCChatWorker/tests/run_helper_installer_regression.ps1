@@ -82,6 +82,8 @@ try {
    # never invoke launcher UPDATE or a task lifecycle operation.
    Remove-Item -LiteralPath (Join-Path $data 'helper\helper-https-pull.mjs')
    [IO.File]::WriteAllText((Join-Path $data 'helper\https-pull-auth.mjs'),'previous module bytes')
+   & (Join-Path $PackageRoot 'tests\run_package_core_bootstrap_regression.ps1') -PackageRoot $PackageRoot -FixtureRoot $FixtureRoot -ProgramDataRoot $data
+   Check ((Get-Sha256File ((Get-Command Install-OneCChatWorker).Module.Path)) -eq $lock.components.'core/OneCChatWorker.Core.psm1') 'single-pass updater executes the same verified package core bytes'
   }
   $badSource=Join-Path $FixtureRoot 'tampered-module.mjs';[IO.File]::WriteAllText($badSource,'tampered package bytes')
   $badDestination=Join-Path $FixtureRoot 'must-not-copy.mjs';$rejected=$false
