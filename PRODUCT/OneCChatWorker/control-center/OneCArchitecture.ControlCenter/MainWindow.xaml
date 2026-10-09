@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
-        Title="OneC Architecture" Width="1180" Height="760" MinWidth="920" MinHeight="620"
+        Style="{StaticResource {x:Type Window}}" Title="OneC Architecture" Width="1180" Height="760" MinWidth="920" MinHeight="620"
         WindowStartupLocation="CenterScreen" UseLayoutRounding="True" SnapsToDevicePixels="True"
         KeyboardNavigation.TabNavigation="Cycle" Closing="Window_Closing">
   <Grid Background="{DynamicResource WindowBrush}">
@@ -33,12 +33,13 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel>
           <TextBlock x:Name="PageTitle" Text="Home" FontSize="26" FontWeight="SemiBold"/>
+          <TextBlock x:Name="SelectedProjectText" TextWrapping="Wrap" Margin="0,4,0,0"/>
           <TextBlock x:Name="LastUpdatedText" Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0"/>
         </StackPanel>
-        <Border Grid.Column="1" CornerRadius="14" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12,7" Margin="0,0,10,0">
+        <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="14" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12,7" Margin="0,0,10,0">
           <TextBlock x:Name="HelperBadge" Text="Helper —" FontWeight="SemiBold"/>
         </Border>
-        <Button Grid.Column="2" x:Name="RefreshButton" Content="Refresh" Click="Refresh_Click" AutomationProperties.Name="Refresh current state"/>
+        <Button Grid.Column="2" VerticalAlignment="Center" x:Name="RefreshButton" Content="Refresh" Click="Refresh_Click" AutomationProperties.Name="Refresh current state"/>
       </Grid>
 
       <Grid Grid.Row="1">
@@ -96,10 +97,11 @@
         <!-- PROJECTS -->
         <Grid x:Name="ProjectsPage" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <ListView x:Name="ProjectsList" AutomationProperties.Name="Projects list">
+          <StackPanel Grid.Row="0" VerticalAlignment="Top"><TextBlock x:Name="ProjectsHintText" TextWrapping="Wrap" Margin="0,0,0,10"/></StackPanel>
+          <ListView Margin="0,68,0,0" SelectionMode="Single" SelectionChanged="ProjectsList_SelectionChanged" x:Name="ProjectsList" AutomationProperties.Name="Projects list">
             <ListView.View><GridView>
               <GridViewColumn Header="Project" DisplayMemberBinding="{Binding DisplayName}" Width="250"/>
-              <GridViewColumn Header="State" DisplayMemberBinding="{Binding State}" Width="180"/>
+              <GridViewColumn Header="State" DisplayMemberBinding="{Binding State}" Width="260"/>
               <GridViewColumn Header="Participants" DisplayMemberBinding="{Binding Participants}" Width="110"/>
             </GridView></ListView.View>
           </ListView>
@@ -117,8 +119,9 @@
               <StackPanel>
                 <TextBlock x:Name="WorkStatusText" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock x:Name="WorkDetailText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,6,0,18"/>
+                <TextBlock x:Name="SessionHelpText" TextWrapping="Wrap" Margin="0,0,0,14"/>
                 <TextBlock x:Name="WorkPromptLabel" Text="What needs to be done?" FontWeight="SemiBold"/>
-                <TextBox x:Name="TaskGoalTextBox" AcceptsReturn="True" TextWrapping="Wrap" Height="92" Margin="0,7,0,10" AutomationProperties.Name="Task description"/>
+                <TextBox x:Name="TaskGoalTextBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="54" Margin="0,7,0,10" AutomationProperties.Name="Task description"/>
                 <WrapPanel>
                   <Button x:Name="StartButton" Style="{StaticResource PrimaryButton}" Content="Start work" Click="Start_Click" IsEnabled="False"/>
                   <Button x:Name="ContinueButton" Content="Continue previous task" Click="Continue_Click" IsEnabled="False" Margin="8,4,0,4"/>
@@ -127,7 +130,7 @@
               </StackPanel>
             </Border>
             <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
-              <StackPanel><TextBlock x:Name="WorkRecoveryLabel" Text="Recovery / checkpoint" FontWeight="SemiBold"/><TextBlock x:Name="WorkCheckpointText" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel>
+              <StackPanel><TextBlock x:Name="ActionAvailabilityText" TextWrapping="Wrap" Margin="0,0,0,12"/><TextBlock x:Name="WorkRecoveryLabel" Text="Recovery / checkpoint" FontWeight="SemiBold"/><TextBlock x:Name="WorkCheckpointText" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel>
             </Border>
           </StackPanel>
         </ScrollViewer>
@@ -154,6 +157,8 @@
           <StackPanel MaxWidth="820" HorizontalAlignment="Left">
             <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
               <StackPanel>
+                <TextBlock x:Name="GlobalWarningText" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,12"/>
+                <TextBlock x:Name="MaintenanceAvailabilityText" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock x:Name="CurrentOperationLabel" Text="Current operation" FontWeight="SemiBold"/>
                 <TextBlock x:Name="OperationText" TextWrapping="Wrap" Margin="0,8,0,12"/>
                 <WrapPanel>

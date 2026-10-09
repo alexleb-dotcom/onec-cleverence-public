@@ -173,7 +173,19 @@ def main() -> int:
     missing = [fragment for fragment in required_fragments if fragment not in workflow]
     if missing:
         raise AssertionError(f"workflow receipt integration missing: {missing!r}")
-    if "actions/upload-artifact" in workflow:
+    # Public receipts remain in job output. UX5 permits exactly this isolated
+    # screenshot evidence step, with no receipt files or broader upload scope.
+    screenshot_step = """      - name: Preserve exact-head WPF fixture screenshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: control-center-ux5-fixtures
+          path: ${{ runner.temp }}/ux5-evidence/screenshots
+          if-no-files-found: error
+          retention-days: 14
+"""
+    if workflow.count(screenshot_step) > 1:
+        raise AssertionError("isolated UX screenshot upload must not be duplicated")
+    if "actions/upload-artifact" in workflow.replace(screenshot_step, ""):
         raise AssertionError("public receipt must remain in job output; artifact upload is not required")
     if "secrets." in workflow:
         raise AssertionError("public receipt workflow must not depend on secrets")

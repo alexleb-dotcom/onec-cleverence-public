@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 549,
+  "file_count": 555,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 10904,
-      "sha256": "11b22ae36bf1d04929b5e155dc4645b3e2e6b3b9a57aa8ed4d6b80edaefc24ba"
+      "size": 11569,
+      "sha256": "38ee654c70440223d610f4a02bb76d783794e851af63cc44951716069559a1d7"
     },
     {
       "path": ".gitignore",
@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 122242,
-      "sha256": "be4ce9876223f3960e4eb57785fad7f87cb9e2f8dadb536871f3078e00a89ab5"
+      "size": 124710,
+      "sha256": "37241fd1f7d46d54fde39b9dfb1d6cbec101eca6e2d4fd4cbe5239a7f26ffa36"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -395,8 +395,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/App.xaml",
-      "size": 10956,
-      "sha256": "16086ad3938369090532444e5abc80559da78c1831dae117dff607b88fa30ebb"
+      "size": 13677,
+      "sha256": "818bdf20e44fcaf42bc551f3a6c8fdc92a51f31906a321ca2dcff9a0728a3e30"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/App.xaml.cs",
@@ -405,8 +405,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/AssemblyInfo.cs",
-      "size": 633,
-      "sha256": "d41e48d2bce7f9eda84eef27c4008920a5639dd3f56baeff39273d58381575fe"
+      "size": 747,
+      "sha256": "2e296a8b7e3cedc15e848c62fce3626f493281ed5afd6142ebd266c2f36024a2"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Localization.cs",
@@ -415,13 +415,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml",
-      "size": 18103,
-      "sha256": "4691c84d12f9ad95f4f901cd284b8aa8bdabbb5433e111b5e808d451ba4fdc0f"
+      "size": 18945,
+      "sha256": "cd332713d8d7d42b5d7e3ecedcaa1e1a958cb0cb7578ee0b341179648666e004"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 32076,
-      "sha256": "88e67d15630a5b39c0f53a2724009b9bf0cc495ac512cd39deae76ac1262b249"
+      "size": 37644,
+      "sha256": "7896f6f5d66e2b43b319d0a5e411e3e3e3cc18ea7a0bb4a261188c05db3e3c46"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -430,28 +430,33 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/PreferencesStore.cs",
-      "size": 1113,
-      "sha256": "0d7bfa62145f59f7e7686a9f75a4290a7cdb05abc2f55de9a4b607d874e82f8d"
+      "size": 1365,
+      "sha256": "8bbe6f0564cf630db8181218957970b79d2ae4663d92cea883415ded481806e9"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Presentation.cs",
+      "size": 4525,
+      "sha256": "05456ab62e5281b5826bfcfba2636d09c65b767e22ad475dde8df71a10344442"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/ProjectWizardWindow.xaml",
-      "size": 3073,
-      "sha256": "df28c3529066d66bc22942b8600fb25e6d3c3bbc1475d4a4c4b1f68668f46f5e"
+      "size": 3446,
+      "sha256": "7dcbe4db130af0d16781e953e0201d898e6ebabd48790b2dd392e6d5f07fc30b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/ProjectWizardWindow.xaml.cs",
-      "size": 3681,
-      "sha256": "7c9f607baf90b3b521bcf7c94e808c8802a39960e650f100470acb75836f9b7b"
+      "size": 4551,
+      "sha256": "157770172e5858d5617503559796276ec502e847dab25edab8d1cecb5751205f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 8096,
-      "sha256": "71ad51e2839ea9e089506953bd8c7f01f8a44ccc618245eca1f4bc14e26bf348"
+      "size": 18662,
+      "sha256": "ddccb4f75fd089bd8aa9374863258d31980489515c2ae68c7cfed52f3e71f164"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 9870,
-      "sha256": "3603756f487714f56b31509b81f3cb836db1ea53e143769e077cf7107a11450d"
+      "size": 24777,
+      "sha256": "f7ec9e1b327c4d093f27bfe087b68212cdaf70ccbe1cc0e8f63a69fbd24d006e"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -465,8 +470,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/WorkerClient.cs",
-      "size": 6310,
-      "sha256": "d9d545fb843190296515af2c563f2f9c9a353aa182b74ec800a9be375cb2c1df"
+      "size": 6640,
+      "sha256": "b9f8763b0b11b4f30512e047e3e7ac0676d6bc44a376c21d7a042d6e3fc40139"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/app.manifest",
@@ -474,9 +479,14 @@
       "sha256": "7ee3583aacdd00b86e9721f2e22a5e207b1d67fc614e74d6d35da584ec07608e"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/control-center/UX5_A_ACCEPTANCE.md",
+      "size": 4953,
+      "sha256": "55d2eb1769ed75d38d7cc548fc422ecbaaca6eabe46ca277fce0d4b148d2c039"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "size": 75438153,
-      "sha256": "b875904a4e74dc257f06f9888d267f3c2db1df3daadd26b2c444cfc264972cc5"
+      "size": 75466349,
+      "sha256": "4555f69ccf338dea6823f9cd2191e3a181b971570fdc1f8a5ef5fb937f3d2913"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish_control_center.ps1",
@@ -551,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "d219e58e6c19aa6c8862fb618ce6c773b50b5a6f2e099e2fb3613128a7d25de9"
+      "sha256": "96d244c4d51e27a4f9b7489acf5089c87265438c89ec309fcfaec1d4995e250b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -607,6 +617,21 @@
       "path": "PRODUCT/OneCChatWorker/runtime/task-checkpoint-store.mjs",
       "size": 24229,
       "sha256": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/ControlCenter.UiFixture.csproj",
+      "size": 640,
+      "sha256": "22614dca0363c5b155b322dfcdccdbce8320854ccb6205cbc9efffa30bec1675"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/PackagedProbe.cs",
+      "size": 12168,
+      "sha256": "eaf1db6686d5388cc9f958dae4790aa2c84c4c67690fac9c7757ff1af3e63b7d"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
+      "size": 16271,
+      "sha256": "c2bfceef5189c939b42dacfd501dc792c23a4c8f61cfe5fbc3a2b8302f921967"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/TestScratch.psm1",
@@ -685,8 +710,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_control_center_checkpoint_ux_regression.ps1",
-      "size": 2311,
-      "sha256": "160173cbdba1c5876c96e8178a4245dea567c6507b0f28dbd12c949ce3c6d3c3"
+      "size": 2445,
+      "sha256": "33fc0cdb811edb64643e33458a18bf9158dd81529ca960afbc09a2b0b861e30d"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_control_center_lifecycle_regression.ps1",
@@ -702,6 +727,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_control_center_ui_regression.ps1",
       "size": 8971,
       "sha256": "770d0769615559f356380d3b7c318047a76eb8ec01c5faee9af934b9a562b7d9"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_control_center_wpf_fixture.ps1",
+      "size": 956,
+      "sha256": "cadb9f867437ed94120dd7010ad900b0b29b0a491cfb46cf91a4f1e57f14760a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_guided_progress_regression.ps1",
@@ -785,8 +815,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_ui_context_regression.ps1",
-      "size": 7698,
-      "sha256": "6c35f0d27fbca4eef639c136e214756fbc4d604c8131e37d5377415ef39a5585"
+      "size": 12385,
+      "sha256": "7ee0171cdd8e2468c6222c11727a225fd49f430fc0a0f4f28405bea59b45f2ff"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_update_bootstrap_regression.ps1",
@@ -2200,8 +2230,8 @@
     },
     {
       "path": "TESTS/run_control_center_ui_static_regression.py",
-      "size": 11351,
-      "sha256": "5e69372c309a23c2192983dec596ffc920c4c032fb575324c2efa4cce7756464"
+      "size": 12031,
+      "sha256": "bae08d4e1c935619648073951b611e32e2de7097c2fd4e1b3e57d62d9ea04a42"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -2355,8 +2385,8 @@
     },
     {
       "path": "TESTS/run_public_execution_receipt_regression.py",
-      "size": 6576,
-      "sha256": "77641b44aecb5d7559d8a263a546f253cd361bdd2b3b6fd6bf3f22c4b52ba0d0"
+      "size": 7244,
+      "sha256": "720ba82e71cbe88864ea063102ffed8c46997713429128a541e92a39ee74850b"
     },
     {
       "path": "TESTS/run_real_reference_acceptance.py",
@@ -2441,7 +2471,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 2433,
-      "sha256": "7919fbf946d14453744b0c8fd174b62bbee79101912966773dc497422d75aada"
+      "sha256": "410ed14171dae6701ce3721c9fc4faf8781c6a53f30e1f808a58054cf0818fb2"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2755,5 +2785,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "10e2a9ac6190d3a5f78ab01f84429aac8dc4f2ea5b459d2f36c0aa1eca4fbc27"
+  "snapshot_digest": "4df8eed6cd756ab5660ef2ec2d1022dcfce5b43d71ff5cd27ae62d14b7735488"
 }

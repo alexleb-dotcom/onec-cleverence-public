@@ -27,7 +27,13 @@ internal sealed record WorkerActionArgs(
 
 internal sealed record WorkerCallResult(int ExitCode, JsonObject? Json, string StandardOutput, string StandardError);
 
-internal sealed class WorkerClient
+internal interface IWorkerClient
+{
+    Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default);
+    Task<WorkerCallResult> RunAsync(WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default);
+}
+
+internal sealed class WorkerClient : IWorkerClient
 {
     private static readonly IReadOnlyDictionary<WorkerAction, string> Modes =
         new Dictionary<WorkerAction, string>
@@ -63,8 +69,8 @@ internal sealed class WorkerClient
             ?? @"C:\ProgramData\OneCChatWorker";
     }
 
-    public Task<WorkerCallResult> GetContextAsync(CancellationToken token = default) =>
-        RunAsync(WorkerAction.UiContext, new(), false, token);
+    public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default) =>
+        RunAsync(WorkerAction.UiContext, new(ProjectId: projectId), false, token);
 
     public async Task<WorkerCallResult> RunAsync(
         WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)

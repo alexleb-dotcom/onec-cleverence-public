@@ -23,10 +23,10 @@
     "runtime/quality/cc-1c-skills/form-info.ps1": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727",
     "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
     "core/OneCChatWorker.Core.psm1": "9337988bd7add8876aac2f5c3f06ca77bad03aa44399045c1532ffb77cfe17ab",
-    "OneCChatWorker.ps1": "be4ce9876223f3960e4eb57785fad7f87cb9e2f8dadb536871f3078e00a89ab5",
+    "OneCChatWorker.ps1": "37241fd1f7d46d54fde39b9dfb1d6cbec101eca6e2d4fd4cbe5239a7f26ffa36",
     "README.md": "2d974258fc191dcad08ffa23bb485ed34c09964d5d32bcacc67cfc0c186ec857",
     "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",
-    "control-center/publish/OneCArchitecture.ControlCenter.exe": "b875904a4e74dc257f06f9888d267f3c2db1df3daadd26b2c444cfc264972cc5",
+    "control-center/publish/OneCArchitecture.ControlCenter.exe": "4555f69ccf338dea6823f9cd2191e3a181b971570fdc1f8a5ef5fb937f3d2913",
     "runtime/helper-https-pull.mjs": "b92ec6cda970752419fbc28ccc5fcd8f3b694ba0754de4aba5dc58a447a9255d",
     "runtime/https-pull-auth.mjs": "951d0593afbf0833c979b6f4428e4b56149683bec5b362706d812f8e1d91431f"
   },
