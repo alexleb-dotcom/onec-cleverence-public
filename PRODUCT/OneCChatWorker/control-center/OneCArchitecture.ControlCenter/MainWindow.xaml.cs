@@ -460,22 +460,36 @@ public partial class MainWindow : Window
         await ShowActionResultAndRefresh("PREPARE_SOURCE_UPDATE", result);
     }
 
+    private WorkerActionArgs? ObservedSourceUpdateArgs()
+    {
+        if (_context is null) return null;
+        var projectId = Text(_context, "selected_project", "project_id");
+        var update = _context["source"]?["source_update"] as JsonObject;
+        var generation = update?["generation_id"]?.GetValue<string>();
+        var slots = update?["slots"] as JsonArray;
+        if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(generation) ||
+            slots is null || slots.Count != 1) return null;
+        var key = slots[0]?["key"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(key)) return null;
+        return new(ProjectId: projectId, ExpectedGenerationId: generation, ExpectedArtifactKey: key);
+    }
+
     private async void AcceptSourceUpdate_Click(object sender, RoutedEventArgs e)
     {
         if (!_mutationsEnabled || _context is null) return;
-        var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
-        var result = await _worker.RunAsync(WorkerAction.AcceptSourceUpdate, new(ProjectId: projectId), elevated: true);
+        var expected = ObservedSourceUpdateArgs();
+        if (expected is null) return;
+        var result = await _worker.RunAsync(WorkerAction.AcceptSourceUpdate, expected, elevated: true);
         await ShowActionResultAndRefresh("ACCEPT_SOURCE_UPDATE", result);
     }
 
     private async void CancelSourceUpdate_Click(object sender, RoutedEventArgs e)
     {
         if (!_mutationsEnabled || _context is null) return;
-        var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        var expected = ObservedSourceUpdateArgs();
+        if (expected is null) return;
         if (System.Windows.MessageBox.Show(Localization.Get("CancelSourceUpdate") + "?", Localization.Get("AppTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        var result = await _worker.RunAsync(WorkerAction.CancelSourceUpdate, new(ProjectId: projectId), elevated: true);
+        var result = await _worker.RunAsync(WorkerAction.CancelSourceUpdate, expected, elevated: true);
         await ShowActionResultAndRefresh("CANCEL_SOURCE_UPDATE", result);
     }
 

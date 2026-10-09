@@ -23,7 +23,9 @@ internal sealed record WorkerActionArgs(
     string? TaskGoal = null,
     string? ArtifactSelection = null,
     bool ReplaceExisting = false,
-    bool SelectedArtifactFullSafeImport = false);
+    bool SelectedArtifactFullSafeImport = false,
+    string? ExpectedGenerationId = null,
+    string? ExpectedArtifactKey = null);
 
 internal sealed record WorkerCallResult(int ExitCode, JsonObject? Json, string StandardOutput, string StandardError);
 
@@ -72,13 +74,13 @@ internal sealed class WorkerClient : IWorkerClient
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default) =>
         RunAsync(WorkerAction.UiContext, new(ProjectId: projectId), false, token);
 
-    public async Task<WorkerCallResult> RunAsync(
-        WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)
+    internal ProcessStartInfo CreateStartInfo(WorkerAction action, WorkerActionArgs args, bool elevated)
     {
+        if ((action is WorkerAction.AcceptSourceUpdate or WorkerAction.CancelSourceUpdate) &&
+            (string.IsNullOrWhiteSpace(args.ExpectedGenerationId) || string.IsNullOrWhiteSpace(args.ExpectedArtifactKey)))
+            throw new InvalidOperationException("SOURCE_UPDATE_EXPECTED_IDENTITY_REQUIRED");
         if (!Modes.TryGetValue(action, out var mode))
             throw new InvalidOperationException("WORKER_ACTION_NOT_ALLOWLISTED");
-        if (!File.Exists(LauncherPath))
-            return new(2, null, "", "WORKER_LAUNCHER_NOT_FOUND");
 
         var psi = new ProcessStartInfo("powershell.exe")
         {
@@ -111,8 +113,20 @@ internal sealed class WorkerClient : IWorkerClient
         AddIf(psi, "-TaskId", args.TaskId);
         AddIf(psi, "-TaskGoal", args.TaskGoal);
         AddIf(psi, "-ArtifactSelection", args.ArtifactSelection);
+        AddIf(psi, "-ExpectedGenerationId", args.ExpectedGenerationId);
+        AddIf(psi, "-ExpectedArtifactKey", args.ExpectedArtifactKey);
         if (args.ReplaceExisting) Add(psi, "-ReplaceExisting");
         if (args.SelectedArtifactFullSafeImport) Add(psi, "-SelectedArtifactFullSafeImport");
+
+        return psi;
+    }
+
+    public async Task<WorkerCallResult> RunAsync(
+        WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)
+    {
+        if (!File.Exists(LauncherPath))
+            return new(2, null, "", "WORKER_LAUNCHER_NOT_FOUND");
+        var psi = CreateStartInfo(action, args, elevated);
 
         try
         {
