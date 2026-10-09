@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 554,
+  "file_count": 555,
   "files": [
     {
       "path": ".gitattributes",
@@ -420,8 +420,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 37308,
-      "sha256": "3bd7affe42b37bb40d755e3a80c2852c812bb8be223a77bf0e689985fa746284"
+      "size": 37644,
+      "sha256": "7896f6f5d66e2b43b319d0a5e411e3e3e3cc18ea7a0bb4a261188c05db3e3c46"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -430,8 +430,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/PreferencesStore.cs",
-      "size": 1113,
-      "sha256": "0d7bfa62145f59f7e7686a9f75a4290a7cdb05abc2f55de9a4b607d874e82f8d"
+      "size": 1365,
+      "sha256": "8bbe6f0564cf630db8181218957970b79d2ae4663d92cea883415ded481806e9"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Presentation.cs",
@@ -440,8 +440,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/ProjectWizardWindow.xaml",
-      "size": 3425,
-      "sha256": "3174975aa83ff26c44c301f02056e7eaf8ec4090224f8c851595a486f988916f"
+      "size": 3446,
+      "sha256": "7dcbe4db130af0d16781e953e0201d898e6ebabd48790b2dd392e6d5f07fc30b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/ProjectWizardWindow.xaml.cs",
@@ -480,13 +480,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/UX5_A_ACCEPTANCE.md",
-      "size": 3482,
-      "sha256": "a53b9ca53d147a142726b456426de1d27ef41f8c474bc5e314ddef9d9cb4fbab"
+      "size": 4953,
+      "sha256": "55d2eb1769ed75d38d7cc548fc422ecbaaca6eabe46ca277fce0d4b148d2c039"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "size": 75466174,
-      "sha256": "814a22c2ebbad8613193a04becd57c787d95201caa7373a7f19e4a791e4cb2ba"
+      "size": 75466349,
+      "sha256": "4555f69ccf338dea6823f9cd2191e3a181b971570fdc1f8a5ef5fb937f3d2913"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish_control_center.ps1",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "d75482fe83a0af567f2caae92d6cf25f97671a5372d41f77de0fe56983edf47c"
+      "sha256": "96d244c4d51e27a4f9b7489acf5089c87265438c89ec309fcfaec1d4995e250b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -624,9 +624,14 @@
       "sha256": "22614dca0363c5b155b322dfcdccdbce8320854ccb6205cbc9efffa30bec1675"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/PackagedProbe.cs",
+      "size": 12168,
+      "sha256": "eaf1db6686d5388cc9f958dae4790aa2c84c4c67690fac9c7757ff1af3e63b7d"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 14957,
-      "sha256": "25c756f6e35e39c2f35b4bcee898f017170b80ca80bc6d3d648847c87f10a501"
+      "size": 16271,
+      "sha256": "c2bfceef5189c939b42dacfd501dc792c23a4c8f61cfe5fbc3a2b8302f921967"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/TestScratch.psm1",
@@ -725,8 +730,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_control_center_wpf_fixture.ps1",
-      "size": 772,
-      "sha256": "6a487177b77b9179f1766392b93e9748e9739211f195da68a165aad1ba880384"
+      "size": 956,
+      "sha256": "cadb9f867437ed94120dd7010ad900b0b29b0a491cfb46cf91a4f1e57f14760a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_guided_progress_regression.ps1",
@@ -2466,7 +2471,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 2433,
-      "sha256": "6ef73ce4dd3372884f5d4430ebc604b7fc6678b0cbbf8e61d1e58c350f898f45"
+      "sha256": "410ed14171dae6701ce3721c9fc4faf8781c6a53f30e1f808a58054cf0818fb2"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2780,5 +2785,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6eef903527c0a1d56bcc2d2fb66da9e31352bb77404d677dcb8ac79231f76d44"
+  "snapshot_digest": "4df8eed6cd756ab5660ef2ec2d1022dcfce5b43d71ff5cd27ae62d14b7735488"
 }

@@ -41,6 +41,7 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 3 && args[0] == "--packaged") return PackagedProbe.Run(args[1], args[2]);
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
             var app = new App(); app.InitializeComponent(); // No OnStartup, tray, worker or settings writes.
             var output = args.Length == 1 ? args[0] : Path.Combine(Path.GetTempPath(), "onec-ui-fixture");
@@ -107,6 +108,13 @@ internal static class Program
             Check(Control<TextBox>(w, "AdvancedText").Text.Contains("fixture diagnostic") &&
                 !Control<TextBlock>(w, "RecommendationReasonText").Text.Contains("fixture diagnostic"), "raw failure only Advanced");
             fake.Fail = false; fake.State = null;
+            fake.UpdatePassed = true;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Call(w, "ShowPage", "Maintenance");
+            Check(Control<TextBlock>(w, "OperationText").Text.Contains(Localization.Get("Verified")) &&
+                Control<TextBlock>(w, "HelperBadge").Text.Contains(Localization.Get("Offline")), "F-G UPDATE PASS and Helper OFFLINE remain distinct");
+            Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-update-pass-helper-offline-Maintenance.png"), 1);
+            fake.UpdatePassed = false;
             fake.Empty = true;
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Call(w, "ShowPage", "Projects");
@@ -128,10 +136,13 @@ internal static class Program
                     foreach (var page in new[] { "Home", "Projects", "Work", "Maintenance" })
                     {
                         Call(w, "ShowPage", page);
-                        Render((FrameworkElement)w.Content, Path.Combine(output, $"{language}-{theme}-{dpi:0.00}-{page}.png"), dpi);
+                        Render((FrameworkElement)w.Content, Path.Combine(output, $"{language}-{theme}-{dpi.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}-{page}.png"), dpi);
                     }
                     var wizard = new ProjectWizardWindow();
-                    Render((FrameworkElement)wizard.Content, Path.Combine(output, $"{language}-{theme}-{dpi:0.00}-Wizard.png"), dpi, 640, 620);
+                    Render((FrameworkElement)wizard.Content, Path.Combine(output, $"{language}-{theme}-{dpi.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}-Wizard.png"), dpi, 640, 620);
+                    var label = (TextBlock)wizard.FindName("WizardExtensionFolderLabel");
+                    Check(label.TextWrapping == TextWrapping.Wrap && (language != "ru" || label.ActualHeight >= label.FontSize * 2),
+                        "full extension folder label wraps without overlap " + language + " " + theme + " " + dpi);
                     Check(wizard.Title == Localization.Get("AddProject"), "wizard title localized " + language);
                 }
                 Call(w, "ShowPage", "Projects");
@@ -174,12 +185,14 @@ internal sealed class FixtureWorker : IWorkerClient
     public string? State;
     public bool Fail;
     public bool Empty;
+    public bool UpdatePassed;
     public TaskCompletionSource<WorkerCallResult>? Pending;
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default)
     {
         ContextRequests.Add(projectId);
         if (Pending is { } pending) { Pending = null; return pending.Task; }
         var ctx = Context(projectId, State);
+        if (UpdatePassed) ctx["operation"] = new JsonObject { ["current"] = new JsonObject { ["operation_type"] = "UPDATE", ["state"] = "PASS" } };
         if (Empty) { ctx["projects"] = new JsonArray(); ctx["selected_project"] = null; ctx["recommendation"]!["state"] = "NO_PROJECTS"; foreach (var action in ctx["actions"]!.AsObject()) action.Value!["enabled"] = false; }
         return Task.FromResult(Fail ? new WorkerCallResult(2, null, "", "fixture diagnostic") : new(0, ctx, "", ""));
     }

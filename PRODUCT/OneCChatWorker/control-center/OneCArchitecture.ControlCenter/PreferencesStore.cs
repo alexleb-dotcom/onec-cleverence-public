@@ -7,7 +7,9 @@ internal sealed record UiPreferences(string Language = "system", string Theme = 
 
 internal static class PreferencesStore
 {
-    private static readonly string Root = Path.Combine(
+    // Process-scoped UI preferences location also allows isolated packaged-UI tests.
+    // This never changes the worker's state roots or its authentication/authorization.
+    private static readonly string Root = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_PREFERENCES_ROOT") ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "OneCArchitecture", "ControlCenter");
     private static readonly string FilePath = Path.Combine(Root, "preferences.json");

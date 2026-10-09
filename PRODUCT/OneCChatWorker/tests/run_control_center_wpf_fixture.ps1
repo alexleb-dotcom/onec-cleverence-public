@@ -12,4 +12,6 @@ if($LASTEXITCODE -ne 0){throw 'WPF_FIXTURE_BUILD_FAILED'}
 $fixture=Join-Path $build 'bin\ControlCenter.UiFixture\release_win-x64\OneCArchitecture.ControlCenter.UiFixture.dll'
 & $DotnetPath $fixture $screens
 if($LASTEXITCODE -ne 0){throw 'WPF_FIXTURE_FAILED'}
+& $DotnetPath $fixture --packaged (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path (Join-Path $screens 'packaged')
+if($LASTEXITCODE -ne 0){throw 'PACKAGED_EXE_FIXTURE_FAILED'}
 Write-Host ('WPF_FIXTURE_EVIDENCE='+$screens)

@@ -37,9 +37,27 @@ slice is not implemented here.
   offline/connected admission, expiry, max20 input errors, empty state and
   disabled reasons. Renders RU/EN Home/Projects/Work/Maintenance/wizard at
   100/125/150 percent in both themes plus error/loading/empty/offline fixtures.
+  The extension-folder label wraps in its own auto-sized row; the RU 150-percent
+  dark/light wizard captures include the complete label without overlapping inputs.
+- The same runner then launches an isolated byte-identical copy of the distributed
+  single-file EXE, after checking its exact path/size/SHA against the manifest and
+  runtime lock. All three supported WorkerClient overrides point to a TEMP-only
+  mock owner. Process-scoped `ONEC_CONTROL_CENTER_PREFERENCES_ROOT` isolates UI
+  preferences too; the normal preferences location remains the default.
+  Native keyboard events navigate Tab/Enter to Projects, arrows to RetailGroup,
+  Tab/Enter to Work and Space to START. Only the mock owner captures that request;
+  it imports no runtime and refuses all other mutations. Focus survives the
+  periodic context refresh because identical catalog rows retain their containers.
+  HWND screenshots belong to the launched packaged PID: Home, Projects with row
+  focus, Work with START focus, and Maintenance. `packaged/packaged-result.json`
+  records executable identity, keyboard trace and the single fake START ProjectId.
+- F-G supplies canonical product integrity PASS, operation UPDATE/PASS, and helper
+  OFFLINE simultaneously. Both the WPF fixture and actual packaged process assert
+  distinct visible statuses; package verification does not claim connectivity.
 - Windows CI publishes `control-center-ux5-fixtures` from the exact PR commit.
-  These are offscreen WPF renders and keyboard/style contract checks, not an
-  interactive multi-monitor or production smoke certificate.
+  Root PNGs are offscreen WPF renders at the named rendering scale. `packaged/`
+  PNGs are native captures of the actual distributed EXE's own window. Neither
+  is a physical multi-monitor DPI-migration or production smoke certificate.
 - Packaging regression installs only the distributed UI artifact and shortcut
   under its isolated scratch roots and verifies the runtime-lock hash.
 

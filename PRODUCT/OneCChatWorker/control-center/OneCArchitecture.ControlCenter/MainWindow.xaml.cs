@@ -272,8 +272,11 @@ public partial class MainWindow : Window
                     (int)Long(n, "participant_count")));
         }
         _applyingContext = true;
-        ProjectsList.ItemsSource = projects;
-        ProjectsList.SelectedItem = projects.FirstOrDefault(p => p.ProjectId == _selectedProjectId);
+        // Retain the item containers (and keyboard focus) when polling returns
+        // the same catalog. Replacing identical rows breaks arrow/Tab navigation.
+        if (ProjectsList.ItemsSource is not ObservableCollection<ProjectRow> currentProjects ||
+            !currentProjects.SequenceEqual(projects)) ProjectsList.ItemsSource = projects;
+        ProjectsList.SelectedItem = ProjectsList.Items.OfType<ProjectRow>().FirstOrDefault(p => p.ProjectId == _selectedProjectId);
         _applyingContext = false;
         ProjectsHintText.Text = projects.Count == 0 ? Localization.Get("NoProjects") : Localization.Get("ProjectSelectionHelp");
         var otherWarnings = (Node(ctx, "projects") as JsonArray)?.OfType<JsonObject>()
