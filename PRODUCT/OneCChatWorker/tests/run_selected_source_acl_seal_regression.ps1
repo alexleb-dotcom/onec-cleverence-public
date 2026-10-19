@@ -16,11 +16,11 @@ function New-FixtureUser([string]$Name,[string]$Password){
 }
 try {
     if(-not (Test-Path -LiteralPath $env:RUNNER_TEMP -PathType Container)){throw 'Q113_WINDOWS_RUNNER_TEMP_REQUIRED'}
-    $password=('Q113!'+[guid]::NewGuid().ToString('N')+'z')
-    New-FixtureUser $operator $password;$createdOperator=$true
-    New-FixtureUser $reader $password;$createdReader=$true
-    $credOperator=New-Object System.Management.Automation.PSCredential ("$env:COMPUTERNAME\$operator",(ConvertTo-SecureString $password -AsPlainText -Force))
-    $credReader=New-Object System.Management.Automation.PSCredential ("$env:COMPUTERNAME\$reader",(ConvertTo-SecureString $password -AsPlainText -Force))
+    $oneTimeFixtureKey=('Q113!'+[guid]::NewGuid().ToString('N')+'z')
+    New-FixtureUser $operator $oneTimeFixtureKey;$createdOperator=$true
+    New-FixtureUser $reader $oneTimeFixtureKey;$createdReader=$true
+    $credOperator=New-Object System.Management.Automation.PSCredential ("$env:COMPUTERNAME\$operator",(ConvertTo-SecureString $oneTimeFixtureKey -AsPlainText -Force))
+    $credReader=New-Object System.Management.Automation.PSCredential ("$env:COMPUTERNAME\$reader",(ConvertTo-SecureString $oneTimeFixtureKey -AsPlainText -Force))
     $nested=Join-Path $root 'Catalogs\Document\Ext'
     New-Item -Path $nested -ItemType Directory -Force | Out-Null
     $file=Join-Path $nested 'Module.bsl'
