@@ -5,7 +5,8 @@
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
  [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCChatWorker',[string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker',
  [string]$ReaderName='OneCSourceReader',[string]$OperatorIdentity,[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
- [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath,[string]$ArtifactSelection,[switch]$SelectedArtifactFullSafeImport
+ [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath,[string]$ArtifactSelection,[switch]$SelectedArtifactFullSafeImport,
+ [Alias('expected_generation_id')][string]$ExpectedGenerationId,[Alias('expected_artifact_key')][string]$ExpectedArtifactKey
 )
 $ErrorActionPreference='Stop'
 if($Json){$utf8=New-Object Text.UTF8Encoding($false);[Console]::OutputEncoding=$utf8;$OutputEncoding=$utf8}
@@ -41,6 +42,8 @@ function Require-AdminOrRelaunch {
  if(-not [string]::IsNullOrWhiteSpace($TaskId)){$argsList+=@('-TaskId',$TaskId)}
  if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){$argsList+=@('-TaskGoal',$TaskGoal)}
  if(-not [string]::IsNullOrWhiteSpace($ArtifactSelection)){$argsList+=@('-ArtifactSelection',$ArtifactSelection)}
+ if(-not [string]::IsNullOrWhiteSpace($ExpectedGenerationId)){$argsList+=@('-ExpectedGenerationId',$ExpectedGenerationId)}
+ if(-not [string]::IsNullOrWhiteSpace($ExpectedArtifactKey)){$argsList+=@('-ExpectedArtifactKey',$ExpectedArtifactKey)}
  if($SelectedArtifactFullSafeImport){$argsList+='-SelectedArtifactFullSafeImport'}
  if($SkipDependencies){$argsList+='-SkipDependencies'}
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
@@ -368,11 +371,13 @@ function Run-PrepareSourceUpdate {
 }
 function Run-AcceptSourceUpdate {
  $projectKey=Need $ProjectId ProjectId
+ $null=Need $ExpectedGenerationId ExpectedGenerationId
+ $expectedKeys=@((Need $ExpectedArtifactKey ExpectedArtifactKey) -split '[,;]')
  if(Require-AdminOrRelaunch 'ACCEPT_SOURCE_UPDATE'){return}
  $r=Invoke-ObservedAction -OperationType SOURCE_UPDATE_ACCEPT -RequestedAction 'Seal, validate and publish selected Source artifacts through existing snapshot owner' -TotalSteps 4 -Project $projectKey -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Seal prepared Incoming slots and run selected-artifact validation/hash' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
-  $x=Accept-SourceUpdate -ProjectId $projectKey -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity -UseFullSafeImportFallback:$SelectedArtifactFullSafeImport
+  $x=Accept-SourceUpdate -ProjectId $projectKey -ExpectedGenerationId $ExpectedGenerationId -ExpectedArtifactKey $expectedKeys -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity -UseFullSafeImportFallback:$SelectedArtifactFullSafeImport
   if($x.status -eq 'SEALED_VALIDATED'){
    $null=Update-WorkerOperation -Operation $op -Message ('Selected intake validated but publication is blocked: '+[string]$x.reason) -Step 2 -Total 4 -State WAITING_FOR_USER -SafeDetails @{reason=$x.reason;fallback=$x.fallback;generation_id=$x.generation_id} -ProgramDataRoot $ProgramDataRoot
    return $x
@@ -393,10 +398,12 @@ function Run-AcceptSourceUpdate {
 }
 function Run-CancelSourceUpdate {
  $projectKey=Need $ProjectId ProjectId
+ $null=Need $ExpectedGenerationId ExpectedGenerationId
+ $expectedKeys=@((Need $ExpectedArtifactKey ExpectedArtifactKey) -split '[,;]')
  if(Require-AdminOrRelaunch 'CANCEL_SOURCE_UPDATE'){return}
  $r=Invoke-ObservedAction -OperationType SOURCE_UPDATE_CANCEL -RequestedAction 'Discard exact unaccepted Incoming generation only' -TotalSteps 1 -Project $projectKey -Body {
   param($op)
-  $x=Cancel-SourceUpdate -ProjectId $projectKey -WorkerRoot $WorkerRoot -OperatorIdentity $OperatorIdentity
+  $x=Cancel-SourceUpdate -ProjectId $projectKey -ExpectedGenerationId $ExpectedGenerationId -ExpectedArtifactKey $expectedKeys -WorkerRoot $WorkerRoot -OperatorIdentity $OperatorIdentity
   $null=Update-WorkerOperation -Operation $op -Message 'Unaccepted Incoming generation removed; accepted Source unchanged' -Step 1 -Total 1 -State PASS -SafeDetails @{generation_id=$x.generation_id} -ProgramDataRoot $ProgramDataRoot
   $x
  } -FinalStateResolver {param($x);[pscustomobject]@{state='PASS';message='Unaccepted Incoming generation cancelled'}}

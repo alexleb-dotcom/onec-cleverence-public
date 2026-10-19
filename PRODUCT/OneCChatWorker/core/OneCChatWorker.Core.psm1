@@ -1161,12 +1161,42 @@ function Get-SourceUpdateBaseState {
     $old
 }
 
+function Enter-SourceUpdateMutation {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $root=[IO.Path]::GetFullPath((Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot).project_root).TrimEnd('\').ToUpperInvariant()
+    $sha=[Security.Cryptography.SHA256]::Create()
+    try{$key=([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root)))).Replace('-','')}finally{$sha.Dispose()}
+    $mutex=New-Object Threading.Mutex($false,('Global\OneCSourceUpdate-'+$key))
+    try{
+        try{$acquired=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$acquired=$true}
+        if(-not $acquired){throw 'SOURCE_UPDATE_BUSY'}
+        $mutex
+    }catch{$mutex.Dispose();throw}
+}
+
+function Assert-SourceUpdateExpectedIdentity {
+    param([Parameter(Mandatory)]$State,[string]$ExpectedGenerationId,[string[]]$ExpectedArtifactKey)
+    # Request identity is mandatory at execution, including legacy direct Core calls.
+    if([string]::IsNullOrWhiteSpace($ExpectedGenerationId) -or -not $ExpectedArtifactKey -or @($ExpectedArtifactKey).Count -eq 0){throw 'SOURCE_UPDATE_EXPECTED_IDENTITY_REQUIRED'}
+    if($ExpectedGenerationId -cnotmatch '^update-[a-f0-9]{16}$'){throw 'SOURCE_UPDATE_EXPECTED_IDENTITY_INVALID'}
+    $keys=@($ExpectedArtifactKey);$seen=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach($key in $keys){
+        if($key -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\|(MAIN\|main|EXTENSION\|[A-Za-z0-9][A-Za-z0-9._-]*)$' -or -not $seen.Add($key)){throw 'SOURCE_UPDATE_EXPECTED_IDENTITY_INVALID'}
+    }
+    if([string]$State.generation_id -cne $ExpectedGenerationId){throw 'SOURCE_UPDATE_GENERATION_MISMATCH'}
+    $selected=@($State.selected)
+    if($selected.Count -ne $keys.Count){throw 'SOURCE_UPDATE_ARTIFACT_MISMATCH'}
+    foreach($item in $selected){if(-not $seen.Remove([string]$item.key)){throw 'SOURCE_UPDATE_ARTIFACT_MISMATCH'}}
+}
+
 function Prepare-SourceUpdate {
     param(
         [Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string[]]$Selections,
         [string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity
     )
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $mutationMutex=Enter-SourceUpdateMutation -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    try{
     $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(Test-Path -LiteralPath $paths.active_path -PathType Leaf){throw 'INTAKE_ALREADY_ACTIVE'}
     if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
@@ -1203,6 +1233,7 @@ function Prepare-SourceUpdate {
     Protect-SourceUpdateMetadata -Path $statePath -OperatorIdentity $OperatorIdentity
     Protect-SourceUpdateMetadata -Path $paths.active_path -OperatorIdentity $OperatorIdentity
     [pscustomobject]@{project_id=$ProjectId;status='PREPARED_WRITABLE';generation_id=$generation;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;slots=@($state.selected|Select-Object key,participant_id,artifact_type,artifact_id,slot_path);active_admission=(Test-ProjectActiveAdmission -ProjectId $ProjectId -ProgramDataRoot $ProgramDataRoot)}
+    }finally{$mutationMutex.ReleaseMutex();$mutationMutex.Dispose()}
 }
 
 function Remove-SourceUpdateGeneration {
@@ -1213,13 +1244,18 @@ function Remove-SourceUpdateGeneration {
 }
 
 function Cancel-SourceUpdate {
-    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$OperatorIdentity)
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$OperatorIdentity,
+        [Alias('expected_generation_id')][string]$ExpectedGenerationId,[Alias('expected_artifact_key')][string[]]$ExpectedArtifactKey)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $mutationMutex=Enter-SourceUpdateMutation -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    try{
     $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
     $state=Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    Assert-SourceUpdateExpectedIdentity -State $state -ExpectedGenerationId $ExpectedGenerationId -ExpectedArtifactKey $ExpectedArtifactKey
     Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
     [pscustomobject]@{project_id=$ProjectId;status='CANCELLED';generation_id=$state.generation_id;accepted_source_mutated=$false}
+    }finally{$mutationMutex.ReleaseMutex();$mutationMutex.Dispose()}
 }
 
 function Set-ManifestArtifactFromValidation {
@@ -1309,12 +1345,16 @@ function Accept-SourceUpdate {
     param(
         [Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
         [string]$OperatorIdentity,[switch]$UseFullSafeImportFallback,
+        [Alias('expected_generation_id')][string]$ExpectedGenerationId,[Alias('expected_artifact_key')][string[]]$ExpectedArtifactKey,
         [ValidateSet('','AFTER_VALIDATION','AFTER_MARKER','AFTER_FIRST_DETACH','AFTER_FIRST_PROMOTE','AFTER_ALL_PROMOTED','AFTER_MANIFEST_COMMIT','AFTER_MARKER_REMOVAL')][string]$FaultInjection=''
     )
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $mutationMutex=Enter-SourceUpdateMutation -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    try{
     $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
     $state=Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    Assert-SourceUpdateExpectedIdentity -State $state -ExpectedGenerationId $ExpectedGenerationId -ExpectedArtifactKey $ExpectedArtifactKey
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'SOURCE_UPDATE_BASE_MANIFEST_MISSING'}
     $currentManifestSha=Get-Sha256File $manifestPath
@@ -1423,11 +1463,14 @@ function Accept-SourceUpdate {
     $mainSelected=@($state.selected|Where-Object {$_.artifact_type -eq 'MAIN'}).Count -gt 0;$result=[pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';generation_id=$state.generation_id;source_snapshot_id=$fast.source_snapshot_id;manifest_sha256=$fast.manifest_sha256;publication_generation=$fast.publication_generation;selected=@($state.selected|Select-Object key,change_state,validation);zero_copy=$true;copied_content_bytes=0;stage_content_rehash=0;main_selected=$mainSelected;main_content_bytes_read=$(if($mainSelected){$null}else{[int64]0});main_hashed_bytes=$(if($mainSelected){$null}else{[int64]0});main_copied_bytes=$(if($mainSelected){$null}else{[int64]0})}
     Remove-SourceUpdateGeneration -State $state -WorkerRoot $WorkerRoot
     $result
+    }finally{$mutationMutex.ReleaseMutex();$mutationMutex.Dispose()}
 }
 
 function Recover-SourceUpdatePromotion {
     param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $mutationMutex=Enter-SourceUpdateMutation -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    try{
     $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     if(-not(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf)){
         $state=try{Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -AllowMissing}catch{$null}
@@ -1479,6 +1522,7 @@ function Recover-SourceUpdatePromotion {
     }
     if($fast.state -ne 'ACCEPTED' -or $fast.source_snapshot_id -ne [string]$state.base_source_snapshot_id){throw 'SOURCE_UPDATE_ROLLBACK_NOT_ACCEPTED'}
     [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;recovery_action='ROLLED_BACK_TO_BASE_SNAPSHOT';source_snapshot_id=$fast.source_snapshot_id}
+    }finally{$mutationMutex.ReleaseMutex();$mutationMutex.Dispose()}
 }
 
 function Write-FingerprintInventory {

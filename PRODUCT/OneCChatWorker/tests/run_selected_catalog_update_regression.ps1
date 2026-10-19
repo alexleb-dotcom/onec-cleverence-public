@@ -1,4 +1,4 @@
-param([string]$PackageRoot=(Split-Path -Parent $PSScriptRoot))
+﻿param([string]$PackageRoot=(Split-Path -Parent $PSScriptRoot))
 $ErrorActionPreference='Stop'
 $root=Join-Path ([IO.Path]::GetTempPath()) ('onec-selected-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root|Out-Null
@@ -47,7 +47,7 @@ try {
    }
    $prep=Prepare $f;Fill $prep
    Check ((Get-FastProjectState RetailGroup $f.worker).state -eq 'CATALOG_DRIFT') 'prepare does not fake ACCEPTED'
-   $result=Accept-SourceUpdate -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture
+   $result=Accept-SourceUpdate -ExpectedGenerationId $prep.generation_id -ExpectedArtifactKey 'un|EXTENSION|bit' -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture
    Check ($result.status -eq 'READY' -and $result.main_content_bytes_read -eq 0 -and $result.main_hashed_bytes -eq 0 -and $result.main_copied_bytes -eq 0) 'two locked Main trees read/hash/copy zero'
    Check ($result.copied_content_bytes -eq 0 -and $result.stage_content_rehash -eq 0) 'selected same-volume rename no copy or rehash'
    $after=Manifest $f.worker
@@ -63,7 +63,7 @@ try {
    Check ($oldBits.Count -eq 1 -and (Get-Sha256File $oldBits[0].FullName) -eq $before.participants[1].target.extensions[0].configuration_xml_sha256) 'old bit preserved in Detached'
    $sha=Get-Sha256File (Get-ProjectManifestPath RetailGroup $f.worker);$prep=Prepare $f
    Get-ChildItem $target -Force|ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination $prep.slots[0].slot_path -Recurse}
-   $no=Accept-SourceUpdate -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture
+   $no=Accept-SourceUpdate -ExpectedGenerationId $prep.generation_id -ExpectedArtifactKey 'un|EXTENSION|bit' -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture
    Check ($no.status -eq 'NO_CHANGE' -and $no.source_snapshot_id -eq $after.accepted_snapshot.source_snapshot_id -and (Get-Sha256File (Get-ProjectManifestPath RetailGroup $f.worker)) -eq $sha) 'repeat NO_CHANGE exact manifest/snapshot'
   } finally {foreach($handle in $handles){$handle.Dispose()}}
   foreach($damage in @('main-path','participant','inventory','snapshot','no-change')){
@@ -77,14 +77,14 @@ try {
     $prep=Prepare $f
     if($damage -eq 'no-change'){
      $target=Join-Path $f.worker 'RetailGroup/Participants/un/Target/Extensions/bit';Get-ChildItem $target -Force|ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination $prep.slots[0].slot_path -Recurse}
-     Accept-SourceUpdate -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture|Out-Null
+     Accept-SourceUpdate -ExpectedGenerationId $prep.generation_id -ExpectedArtifactKey 'un|EXTENSION|bit' -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture|Out-Null
     }
    } catch {$failed=$_.Exception.Message -like 'SOURCE_UPDATE_*'}
    Check ($failed -and (Get-Sha256File (Get-ProjectManifestPath RetailGroup $f.worker)) -eq $manifestSha -and (Get-FastProjectState RetailGroup $f.worker).state -ne 'ACCEPTED') ($damage+' fails closed without publication')
   }
   foreach($fault in @('AFTER_MARKER','AFTER_FIRST_DETACH','AFTER_FIRST_PROMOTE','AFTER_ALL_PROMOTED','AFTER_MANIFEST_COMMIT','AFTER_MARKER_REMOVAL')){
    $f=Fixture $fault;$prep=Prepare $f;Fill $prep;$failed=$false
-   try{Accept-SourceUpdate -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture -FaultInjection $fault|Out-Null}catch{$failed=$_.Exception.Message -like 'SOURCE_UPDATE_TEST_FAULT_*'}
+   try{Accept-SourceUpdate -ExpectedGenerationId $prep.generation_id -ExpectedArtifactKey 'un|EXTENSION|bit' -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture -FaultInjection $fault|Out-Null}catch{$failed=$_.Exception.Message -like 'SOURCE_UPDATE_TEST_FAULT_*'}
    Check $failed ($fault+' injected')
    $recovery=Recover-SourceUpdatePromotion -ProjectId RetailGroup -WorkerRoot $f.worker -ProgramDataRoot $f.data -OperatorIdentity fixture
    $fast=Get-FastProjectState RetailGroup $f.worker
