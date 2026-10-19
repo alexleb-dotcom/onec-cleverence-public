@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 561,
+  "file_count": 562,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 11569,
-      "sha256": "38ee654c70440223d610f4a02bb76d783794e851af63cc44951716069559a1d7"
+      "size": 12263,
+      "sha256": "79896d35c000cea8eb4cae4a4ef1c2e9a4800f60affa66161a143879fc2ebdee"
     },
     {
       "path": ".gitignore",
@@ -495,8 +495,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 216005,
-      "sha256": "d0bb05f7b2cca8eed6006f1dcb98918db2de189bb74584bb77834d98cb7453e7"
+      "size": 220948,
+      "sha256": "e91dc780f9c69fe5625f45f571ff7f49aca64463536a33710ca953c86d76a1fc"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "d30521677d252b42f706ab916babfc829a4cab89c8145ddc9313736858fa6f64"
+      "sha256": "27ebc1ad197d6950f679c72f62f68208bee2511be8653887f6a649c830d283e4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -807,6 +807,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_selected_extension_add_regression.ps1",
       "size": 17765,
       "sha256": "851327b5ee9e3f31755f4cb8fb08bb4205ee9e15d9c1183c2db16dbdaf7ffe46"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_selected_source_acl_seal_regression.ps1",
+      "size": 5937,
+      "sha256": "9babb114dfa710c12e5aea9db4545bb194260842096a96be7afbbec771973267"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
@@ -2815,5 +2820,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "484d759a6afa2a93c2b0f9e61da78179eba5fc1a09503378a25f5ae7652941ea"
+  "snapshot_digest": "b8b16319e8ca1090f109213f0b35f942ece42243a02a09a1d6f75bf3b6586797"
 }
