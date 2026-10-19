@@ -150,6 +150,18 @@ jobs:
           $ErrorActionPreference='Stop'
           powershell.exe -NoProfile -File PRODUCT\OneCChatWorker\tests\run_selected_catalog_update_regression.ps1
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Verify real Windows Source ACL sealing with unprivileged accounts
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_selected_source_acl_seal_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run isolated selected first-time extension ADD regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_selected_extension_add_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Run isolated Node launch path regression
         shell: powershell
         run: |
