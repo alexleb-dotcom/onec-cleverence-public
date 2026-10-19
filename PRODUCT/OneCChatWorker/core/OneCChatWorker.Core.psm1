@@ -1056,18 +1056,67 @@ function Protect-SourceUpdateMetadata {
     }else{throw 'SOURCE_UPDATE_METADATA_PATH_MISSING'}
 }
 
+function Get-SourceUpdateCatalogRows {
+    param([Parameter(Mandatory)]$Project)
+    $rows=@();$participants=@{};$keys=@{}
+    foreach($part in @($Project.participants)){
+        $ids=@{}
+        foreach($extension in @($part.target.extensions)){
+            $id=[string]$extension.extension_id
+            if($ids.ContainsKey($id)){throw 'SOURCE_UPDATE_CATALOG_DUPLICATE'};$ids[$id]=$true
+        }
+        $participantKey=Assert-SafeId $part.participant_id 'participant_id'
+        if($participants.ContainsKey($participantKey)){throw 'SOURCE_UPDATE_CATALOG_DUPLICATE'};$participants[$participantKey]=$true
+        if($part.active -eq $false){continue}
+        $artifacts=@()
+        if($part.target.main -and $part.target.main.active -ne $false){$artifacts+=,[pscustomobject]@{type='MAIN';id='main';path=$part.target.main.source_path;canonical=('Participants/'+$participantKey+'/Target/Main')}}
+        foreach($a in @($part.target.extensions|Where-Object {$_.active -ne $false})){
+            $aid=Assert-SafeId $a.extension_id 'extension_id'
+            if($aid.EndsWith('.') -or $aid -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])($|\.)'){throw 'SOURCE_UPDATE_CATALOG_PATH_INVALID'}
+            $artifacts+=,[pscustomobject]@{type='EXTENSION';id=$aid;path=$a.source_path;canonical=('Participants/'+$participantKey+'/Target/Extensions/'+$aid)}
+        }
+        foreach($a in $artifacts){
+            $key=$participantKey+'|'+$a.type+'|'+$a.id
+            if($keys.ContainsKey($key)){throw 'SOURCE_UPDATE_CATALOG_DUPLICATE'};$keys[$key]=$true
+            $rows+=,[pscustomobject]@{participant_id=$participantKey;platform=$part.platform;artifact_type=$a.type;artifact_id=$a.id;canonical_path=$a.canonical;source_path=[string]$a.path}
+        }
+    }
+    @($rows)
+}
+
+function Assert-SourceUpdateNewTarget {
+    param([Parameter(Mandatory)][string]$ProjectRoot,[Parameter(Mandatory)]$Row)
+    $target=Join-Path $ProjectRoot ([string]$Row.canonical_path).Replace('/','\')
+    if(Test-Path -LiteralPath $target){throw 'SOURCE_UPDATE_NEW_TARGET_EXISTS'}
+    # Inspect metadata only, including every existing ancestor. Never traverse an alias.
+    $ancestor=$target
+    while($ancestor){
+        $entry=Get-Item -LiteralPath $ancestor -Force -ErrorAction SilentlyContinue
+        if($entry -and ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'SOURCE_UPDATE_NEW_TARGET_ALIAS'}
+        $parent=Split-Path -Parent $ancestor
+        if($parent -eq $ancestor){break};$ancestor=$parent
+    }
+}
+
 function Get-SourceUpdateSelectionRows {
-    param([Parameter(Mandatory)]$Manifest,[Parameter(Mandatory)][string[]]$Selections)
+    param([Parameter(Mandatory)]$Manifest,[Parameter(Mandatory)][string[]]$Selections,$CatalogProject)
     if(-not $Selections -or $Selections.Count -lt 1){throw 'SOURCE_UPDATE_SELECTION_REQUIRED'}
     $rows=@(Get-ManifestArtifactRows $Manifest);$result=@();$seen=@{}
+    $catalogRows=@();if($CatalogProject){$catalogRows=@(Get-SourceUpdateCatalogRows $CatalogProject)}
     foreach($token in $Selections){
         $parts=@([string]$token -split '\|')
         if($parts.Count -ne 3){throw 'SOURCE_UPDATE_SELECTION_INVALID'}
-        $participantKey=Assert-SafeId $parts[0] 'participant_id';$type=[string]$parts[1].ToUpperInvariant();$aid=Assert-SafeId $parts[2] 'artifact_id'
-        if($type -notin @('MAIN','EXTENSION')){throw 'SOURCE_UPDATE_ARTIFACT_TYPE_INVALID'}
+        $participantKey=Assert-SafeId $parts[0] 'participant_id';$type=[string]$parts[1];$aid=Assert-SafeId $parts[2] 'artifact_id'
+        if($type -cnotin @('MAIN','EXTENSION')){throw 'SOURCE_UPDATE_ARTIFACT_TYPE_INVALID'}
         if($type -eq 'MAIN' -and $aid -ne 'main'){throw 'SOURCE_UPDATE_MAIN_ID_INVALID'}
         $key="$participantKey|$type|$aid";if($seen.ContainsKey($key)){throw 'SOURCE_UPDATE_SELECTION_DUPLICATE'};$seen[$key]=$true
-        $match=@($rows|Where-Object {$_.participant_id -eq $participantKey -and $_.artifact_type -eq $type -and $_.artifact_id -eq $aid})
+        $match=@($rows|Where-Object {$_.participant_id -ceq $participantKey -and $_.artifact_type -ceq $type -and $_.artifact_id -ceq $aid})
+        if($match.Count -eq 0 -and $type -ceq 'EXTENSION' -and $CatalogProject){
+            # Case variants and inactive prior identities are not first-time ADDs.
+            $priorPart=@($Manifest.participants|Where-Object {$_.participant_id -ceq $participantKey -and $_.active -ne $false})
+            if($priorPart.Count -ne 1 -or @($priorPart[0].target.extensions|Where-Object {$_.extension_id -eq $aid -or $_.artifact_id -eq $aid}).Count){throw 'SOURCE_UPDATE_NEW_IDENTITY_INVALID'}
+            $match=@($catalogRows|Where-Object {(Get-SnapshotArtifactKey $_) -ceq $key})
+        }
         if($match.Count -ne 1){throw ('SOURCE_UPDATE_ARTIFACT_NOT_FOUND: '+$key)}
         $result+=,$match[0]
     }
@@ -1116,7 +1165,9 @@ function Get-SourceUpdateBaseState {
     if($fast.state -ne 'CATALOG_DRIFT'){return $fast}
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     $m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
-    $selected=@(Get-SourceUpdateSelectionRows -Manifest $m -Selections $Selections)
+    $p=Find-Project (Read-WorkerCatalog $WorkerRoot) $ProjectId
+    $catalogRows=@(Get-SourceUpdateCatalogRows $p)
+    $selected=@(Get-SourceUpdateSelectionRows -Manifest $m -Selections $Selections -CatalogProject $p)
     # Drift is not adoption: validate the old snapshot with its ORIGINAL catalog identity.
     $old=Get-ProjectSnapshotState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -CatalogSha256 ([string]$m.catalog_sha256)
     if($old.state -ne 'ACCEPTED'){throw ('SOURCE_UPDATE_BASE_PROOF_INVALID: '+$old.reason)}
@@ -1135,9 +1186,32 @@ function Get-SourceUpdateBaseState {
         foreach($a in @($part.target.extensions|Where-Object {$_.active -ne $false})){$desired+=,[pscustomobject]@{key=($part.participant_id+'|EXTENSION|'+$a.extension_id);path=$a.source_path;canonical=('Participants/'+$part.participant_id+'/Target/Extensions/'+$a.extension_id)}}
         if($mp.target.main -and $mp.target.main.active -ne $false){$accepted+=,[pscustomobject]@{key=($mp.participant_id+'|MAIN|main');path=$mp.target.main.source_path;canonical=$mp.target.main.canonical_path}}
         foreach($a in @($mp.target.extensions|Where-Object {$_.active -ne $false})){$accepted+=,[pscustomobject]@{key=($mp.participant_id+'|EXTENSION|'+$a.extension_id);path=$a.source_path;canonical=$a.canonical_path}}
-        if($desired.Count -ne $accepted.Count){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+        $acceptedKeys=@{}
+        foreach($a in $accepted){if($acceptedKeys.ContainsKey($a.key)){throw 'SOURCE_UPDATE_CATALOG_DUPLICATE'};$acceptedKeys[$a.key]=$true}
+        foreach($a in $accepted){if(@($desired|Where-Object {$_.key -ceq $a.key}).Count -ne 1){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}}
         foreach($a in $desired){
             $match=@($accepted|Where-Object {$_.key -ceq $a.key})
+            if($match.Count -eq 0){
+                if($acceptedKeys.ContainsKey($a.key) -or $a.key -cnotlike '*|EXTENSION|*' -or $a.key -cnotin @($selected|ForEach-Object {Get-SnapshotArtifactKey $_})){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
+                $row=@($catalogRows|Where-Object {(Get-SnapshotArtifactKey $_) -ceq $a.key})[0]
+                if(-not [IO.Path]::IsPathRooted([string]$row.source_path)){throw 'SOURCE_UPDATE_NEW_SOURCE_INVALID'}
+                $source=[IO.Path]::GetFullPath([string]$row.source_path).TrimEnd('\')
+                $managedRoot=[IO.Path]::GetFullPath([string]$m.project_root).TrimEnd('\')
+                if($source.Equals($managedRoot,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($managedRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'SOURCE_UPDATE_NEW_SOURCE_COLLISION'}
+                foreach($other in $catalogRows){
+                    if((Get-SnapshotArtifactKey $other) -ceq $a.key){continue}
+                    $otherSource=[IO.Path]::GetFullPath([string]$other.source_path).TrimEnd('\')
+                    if($source.Equals($otherSource,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($otherSource+'\',[StringComparison]::OrdinalIgnoreCase) -or $otherSource.StartsWith($source+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'SOURCE_UPDATE_NEW_SOURCE_COLLISION'}
+                }
+                $ancestor=$source
+                while($ancestor){
+                    $entry=Get-Item -LiteralPath $ancestor -Force -ErrorAction SilentlyContinue
+                    if($entry -and ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'SOURCE_UPDATE_NEW_SOURCE_ALIAS'}
+                    $parent=Split-Path -Parent $ancestor;if($parent -eq $ancestor){break};$ancestor=$parent
+                }
+                Assert-SourceUpdateNewTarget -ProjectRoot ([string]$m.project_root) -Row $row
+                continue
+            }
             if($match.Count -ne 1 -or [string]$match[0].canonical -cne [string]$a.canonical){throw 'SOURCE_UPDATE_CATALOG_INCOMPATIBLE'}
             if($a.key -notin @($selected|ForEach-Object {Get-SnapshotArtifactKey $_}) -and ([string]::IsNullOrWhiteSpace([string]$match[0].path) -or [string]$match[0].path -cne [string]$a.path)){throw 'SOURCE_UPDATE_CATALOG_MAIN_OR_UNSELECTED_IDENTITY_CHANGED'}
         }
@@ -1198,13 +1272,14 @@ function Prepare-SourceUpdate {
     $mutationMutex=Enter-SourceUpdateMutation -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     try{
     $paths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
-    if(Test-Path -LiteralPath $paths.active_path -PathType Leaf){throw 'INTAKE_ALREADY_ACTIVE'}
     if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'SOURCE_UPDATE_RECOVERY_REQUIRED'}
+    if(Test-Path -LiteralPath $paths.active_path -PathType Leaf){throw 'INTAKE_ALREADY_ACTIVE'}
     $fast=Get-SourceUpdateBaseState -ProjectId $ProjectId -Selections $Selections -WorkerRoot $WorkerRoot
     if($fast.state -ne 'ACCEPTED'){throw ('PROJECT_NOT_READY: '+$fast.state)}
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
-    $selected=@(Get-SourceUpdateSelectionRows -Manifest $manifest -Selections $Selections)
+    $project=Find-Project (Read-WorkerCatalog $WorkerRoot) $ProjectId
+    $selected=@(Get-SourceUpdateSelectionRows -Manifest $manifest -Selections $Selections -CatalogProject $project)
     $generation='update-'+[Guid]::NewGuid().ToString('N').Substring(0,16)
     $generationRoot=Join-Path $paths.incoming_root $generation;$slotsRoot=Join-Path $generationRoot 'slots';$receiptRoot=Join-Path $generationRoot 'receipts'
     New-Item -ItemType Directory -Force -Path $slotsRoot,$receiptRoot|Out-Null
@@ -1259,10 +1334,16 @@ function Cancel-SourceUpdate {
 }
 
 function Set-ManifestArtifactFromValidation {
-    param([Parameter(Mandatory)]$Manifest,[Parameter(Mandatory)]$Item,[Parameter(Mandatory)]$Validation)
+    param([Parameter(Mandatory)]$Manifest,[Parameter(Mandatory)]$Item,[Parameter(Mandatory)]$Validation,$CatalogProject)
     $part=$Manifest.participants|Where-Object {$_.participant_id -eq [string]$Item.participant_id}|Select-Object -First 1
     if(-not $part){throw 'SOURCE_UPDATE_MANIFEST_PARTICIPANT_MISSING'}
     if([string]$Item.artifact_type -eq 'MAIN'){$art=$part.target.main}else{$art=$part.target.extensions|Where-Object {$_.extension_id -eq [string]$Item.artifact_id}|Select-Object -First 1}
+    if(-not $art -and [string]$Item.artifact_type -ceq 'EXTENSION' -and $CatalogProject){
+        $row=@(Get-SourceUpdateCatalogRows $CatalogProject|Where-Object {(Get-SnapshotArtifactKey $_) -ceq [string]$Item.key})
+        if($row.Count -ne 1 -or [string]$row[0].canonical_path -cne [string]$Item.canonical_path){throw 'SOURCE_UPDATE_NEW_IDENTITY_INVALID'}
+        $art=[pscustomobject][ordered]@{extension_id=[string]$Item.artifact_id;artifact_id=[string]$Item.artifact_id;active=$true;canonical_path=[string]$row[0].canonical_path;source_path=[string]$row[0].source_path;tree_sha256='';files=0;bytes=0;configuration_xml_sha256=''}
+        $part.target.extensions=@($part.target.extensions)+@($art)
+    }
     if(-not $art){throw 'SOURCE_UPDATE_MANIFEST_ARTIFACT_MISSING'}
     $art.tree_sha256=[string]$Validation.digest.sha256;$art.files=[int64]$Validation.digest.files;$art.bytes=[int64]$Validation.digest.bytes;$art.configuration_xml_sha256=[string]$Validation.configuration_xml_sha256
 }
@@ -1276,6 +1357,9 @@ function Invoke-SelectedArtifactFullSafeImportFallback {
     $manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
     $manifestDir=Split-Path -Parent $manifestPath;$projectRoot=[string]$paths.project_root
     $candidate=Get-Content -LiteralPath ([string]$State.base_manifest_path) -Raw -Encoding UTF8|ConvertFrom-Json
+    foreach($item in @($Changed)){
+        if(@(Get-ManifestArtifactRows $BaseManifest|Where-Object {(Get-SnapshotArtifactKey $_) -ceq [string]$item.key}).Count -ne 1){throw 'SOURCE_UPDATE_ADD_REQUIRES_ZERO_COPY'}
+    }
     $fingerprintMap=Get-ManifestFingerprintMap -Manifest $BaseManifest
     $markerItems=@()
     foreach($item in @($Changed)){
@@ -1364,6 +1448,12 @@ function Accept-SourceUpdate {
     $baseCheck=Get-SourceUpdateBaseState -ProjectId $ProjectId -Selections @($state.selected|ForEach-Object {[string]$_.key}) -WorkerRoot $WorkerRoot
     if($baseCheck.state -ne 'ACCEPTED' -or [string]$baseCheck.source_snapshot_id -ne [string]$state.base_source_snapshot_id){throw 'SOURCE_UPDATE_BASE_PROOF_INVALID'}
     $baseManifest=Get-Content -LiteralPath ([string]$state.base_manifest_path) -Raw -Encoding UTF8|ConvertFrom-Json
+    $catalogProject=Find-Project (Read-WorkerCatalog $WorkerRoot) $ProjectId
+    $resolved=@(Get-SourceUpdateSelectionRows -Manifest $baseManifest -Selections @($state.selected|ForEach-Object {[string]$_.key}) -CatalogProject $catalogProject)
+    foreach($item in @($state.selected)){
+        $row=@($resolved|Where-Object {(Get-SnapshotArtifactKey $_) -ceq [string]$item.key})
+        if($row.Count -ne 1 -or [string]$item.participant_id -cne [string]$row[0].participant_id -or [string]$item.artifact_type -cne [string]$row[0].artifact_type -or [string]$item.artifact_id -cne [string]$row[0].artifact_id -or [string]$item.canonical_path -cne [string]$row[0].canonical_path){throw 'SOURCE_UPDATE_ARTIFACT_MISMATCH'}
+    }
     $oldFingerprintMap=Get-ManifestFingerprintMap -Manifest $baseManifest
     if([string]$state.state -eq 'PREPARED_WRITABLE'){
         foreach($item in @($state.selected)){Set-SourceUpdateTreeAcl -Path ([string]$item.slot_path) -OperatorIdentity $OperatorIdentity}
@@ -1373,7 +1463,11 @@ function Accept-SourceUpdate {
             $validation=Invoke-SourceIntakeValidateHash -SourceRoot ([string]$item.slot_path) -ReceiptRoot ([string]$state.receipt_root) -ReceiptName $receiptName
             $item.validation=$validation
             $oldRow=@(Get-ManifestArtifactRows $baseManifest|Where-Object {(Get-SnapshotArtifactKey $_) -eq [string]$item.key}|Select-Object -First 1)
-            if(-not $oldRow){throw 'SOURCE_UPDATE_OLD_ROW_MISSING'}
+            if(-not $oldRow){
+                # A first-time extension has no old payload or fingerprint inventory.
+                $item.change_state='CHANGED'
+                continue
+            }
             $oldFp=$oldFingerprintMap[[string]$item.key]
             $sameContent=([string]$oldRow[0].tree_sha256 -eq [string]$validation.digest.sha256 -and [int64]$oldRow[0].files -eq [int64]$validation.digest.files -and [int64]$oldRow[0].bytes -eq [int64]$validation.digest.bytes -and [string]$oldRow[0].configuration_xml_sha256 -eq [string]$validation.configuration_xml_sha256)
             $sameFp=($oldFp -and [string]$oldFp.state -eq 'PRESENT' -and [string]$oldFp.sha256 -eq [string]$validation.fingerprint_file.sha256)
@@ -1394,6 +1488,8 @@ function Accept-SourceUpdate {
         return $result
     }
     $eligibility=Test-SourceUpdateZeroCopyEligibility -ProjectId $ProjectId -State $state -WorkerRoot $WorkerRoot
+    $newKeys=@($state.selected|Where-Object {$key=[string]$_.key;@((Get-ManifestArtifactRows $baseManifest)|Where-Object {(Get-SnapshotArtifactKey $_) -ceq $key}).Count -eq 0}|ForEach-Object {[string]$_.key})
+    if($newKeys.Count -and -not $eligibility.eligible){throw 'SOURCE_UPDATE_ADD_REQUIRES_ZERO_COPY'}
     if(-not $eligibility.eligible -and -not $UseFullSafeImportFallback){
         return [pscustomobject]@{project_id=$ProjectId;status='SEALED_VALIDATED';reason='ZERO_COPY_NOT_ELIGIBLE';zero_copy_reason=$eligibility.reason;fallback='SELECTED_ARTIFACT_FULL_SAFE_IMPORT';generation_id=$state.generation_id;publication_performed=$false}
     }
@@ -1409,7 +1505,7 @@ function Accept-SourceUpdate {
     foreach($item in $changed){
         $fp=Write-VersionedFingerprintInventory -ManifestDir $manifestDir -ParticipantId ([string]$item.participant_id) -ArtifactType ([string]$item.artifact_type) -ArtifactId ([string]$item.artifact_id) -PreparedFile ([string]$item.validation.fingerprint_file.path) -ExpectedSha256 ([string]$item.validation.fingerprint_file.sha256)
         $fingerprintMap[[string]$item.key]=$fp
-        Set-ManifestArtifactFromValidation -Manifest $candidate -Item $item -Validation $item.validation
+        Set-ManifestArtifactFromValidation -Manifest $candidate -Item $item -Validation $item.validation -CatalogProject $catalogProject
     }
     $candidate.catalog_sha256=[string]$State.catalog_sha256
     $candidate.applied_utc=(Get-Date).ToUniversalTime().ToString('o')
@@ -1424,7 +1520,9 @@ function Accept-SourceUpdate {
         $detachedParent=Join-Path $projectRoot ("Detached\SourceUpdate\"+[string]$state.generation_id+"\"+[string]$item.participant_id+"\"+[string]$item.artifact_type.ToLowerInvariant())
         New-Item -ItemType Directory -Force -Path $detachedParent|Out-Null
         $detached=Join-Path $detachedParent ([string]$item.artifact_id)
-        $markerItems+=,[pscustomobject][ordered]@{key=$item.key;slot_path=$item.slot_path;target_path=$target;detached_path=$detached;phase='PENDING'}
+        $isNew=([string]$item.key -cin $newKeys)
+        if($isNew){Assert-SourceUpdateNewTarget -ProjectRoot $projectRoot -Row $item}
+        $markerItems+=,[pscustomobject][ordered]@{key=$item.key;slot_path=$item.slot_path;target_path=$target;detached_path=$detached;phase='PENDING';action=$(if($isNew){'ADD'}else{'UPDATE'})}
     }
     $marker=[pscustomobject][ordered]@{schema='SOURCE_UPDATE_PROMOTION_V1';project_id=$ProjectId;generation_id=$state.generation_id;state='PROMOTING';base_manifest_sha256=$state.base_manifest_sha256;candidate_manifest_path=$candidatePath;candidate_manifest_sha256=$candidateSha;expected_source_snapshot_id=$candidate.accepted_snapshot.source_snapshot_id;expected_publication_generation=$candidate.accepted_snapshot.publication_generation;items=$markerItems;created_utc=(Get-Date).ToUniversalTime().ToString('o')}
     Write-JsonAtomic $marker $paths.promotion_path;Protect-SourceUpdateMetadata -Path $paths.promotion_path -OperatorIdentity $OperatorIdentity
@@ -1435,7 +1533,12 @@ function Accept-SourceUpdate {
         foreach($mi in @($marker.items)){
             $promotionIndex++
             $targetParent=Split-Path -Parent ([string]$mi.target_path);$detachedParent=Split-Path -Parent ([string]$mi.detached_path)
-            if(Test-Path -LiteralPath ([string]$mi.target_path) -PathType Container){
+            if($mi.action -eq 'ADD'){
+                $row=@($state.selected|Where-Object {$_.key -ceq [string]$mi.key})[0]
+                Assert-SourceUpdateNewTarget -ProjectRoot $projectRoot -Row $row
+                New-Item -ItemType Directory -Force -Path $targetParent|Out-Null
+            }
+            if($mi.action -ne 'ADD' -and (Test-Path -LiteralPath ([string]$mi.target_path) -PathType Container)){
                 $null=Invoke-ZeroCopyArtifactMove -SourceParent $targetParent -SourceRoot ([string]$mi.target_path) -DestinationParent $detachedParent -DestinationRoot ([string]$mi.detached_path) -ReceiptRoot ([string]$state.receipt_root)
                 $mi.phase='OLD_DETACHED';Write-JsonAtomic $marker $paths.promotion_path
                 if($promotionIndex -eq 1 -and $FaultInjection -eq 'AFTER_FIRST_DETACH'){throw 'SOURCE_UPDATE_TEST_FAULT_AFTER_FIRST_DETACH'}
@@ -1497,9 +1600,18 @@ function Recover-SourceUpdatePromotion {
         return [pscustomobject]@{status='RECOVERED';project_id=$ProjectId;recovery_action='FINALIZED_COMMITTED_PROMOTION';source_snapshot_id=$fast.source_snapshot_id}
     }
     if($manifestSha -ne [string]$marker.base_manifest_sha256){throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'}
+    if(Test-ProjectActiveAdmission -ProjectId $ProjectId -ProgramDataRoot $ProgramDataRoot){throw 'SOURCE_UPDATE_RECOVERY_ADMISSION_ACTIVE'}
     $rollbackItems=@($marker.items);[array]::Reverse($rollbackItems)
     foreach($mi in $rollbackItems){
         $target=[string]$mi.target_path;$detached=[string]$mi.detached_path;$slot=[string]$mi.slot_path
+        if($mi.PSObject.Properties.Name -contains 'action' -and [string]$mi.action -eq 'ADD'){
+            $hasTarget=Test-Path -LiteralPath $target -PathType Container;$hasSlot=Test-Path -LiteralPath $slot -PathType Container
+            if($hasTarget -eq $hasSlot){throw 'SOURCE_UPDATE_RECOVERY_CONTRADICTORY_STATE'}
+            if($hasTarget){
+                $null=Invoke-ZeroCopyArtifactMove -SourceParent (Split-Path -Parent $target) -SourceRoot $target -DestinationParent (Split-Path -Parent $slot) -DestinationRoot $slot -ReceiptRoot ([string]$state.receipt_root)
+            }
+            continue
+        }
         if(Test-Path -LiteralPath $detached -PathType Container){
             if(Test-Path -LiteralPath $target -PathType Container){
                 $recoveryParent=Join-Path ([string]$state.generation_root) 'Recovery';New-Item -ItemType Directory -Force -Path $recoveryParent|Out-Null

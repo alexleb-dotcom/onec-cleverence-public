@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 559,
+  "file_count": 561,
   "files": [
     {
       "path": ".gitattributes",
@@ -495,8 +495,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 207020,
-      "sha256": "0a1966f49ec3701651bbc8cbe3dd02bc3fc36c53f3a0cd77d1d2e345b0346eb9"
+      "size": 216005,
+      "sha256": "d0bb05f7b2cca8eed6006f1dcb98918db2de189bb74584bb77834d98cb7453e7"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "850f948dc21864b21f0710aa702aea1488837bbdf6cc096b4d8d5972b9edb640"
+      "sha256": "d30521677d252b42f706ab916babfc829a4cab89c8145ddc9313736858fa6f64"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -642,6 +642,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
       "size": 16271,
       "sha256": "c2bfceef5189c939b42dacfd501dc792c23a4c8f61cfe5fbc3a2b8302f921967"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/Q113_SELECTED_EXTENSION_ADD.md",
+      "size": 7003,
+      "sha256": "c27963e2e0496e9947b39f93a53ba7bb47a2156b5c48676ec806b6bce3c62a26"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/TestScratch.psm1",
@@ -797,6 +802,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_selected_catalog_update_regression.ps1",
       "size": 9700,
       "sha256": "f2b752a61db83cb196623b215dfcb1877cb772f333735304591e97bc38cd5425"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_selected_extension_add_regression.ps1",
+      "size": 17765,
+      "sha256": "851327b5ee9e3f31755f4cb8fb08bb4205ee9e15d9c1183c2db16dbdaf7ffe46"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_snapshot_fast_path_regression.ps1",
@@ -2805,5 +2815,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "686851a714682490d43d9a82383f20be38aca35260dfc9ff6b6485c650b78c40"
+  "snapshot_digest": "484d759a6afa2a93c2b0f9e61da78179eba5fc1a09503378a25f5ae7652941ea"
 }
