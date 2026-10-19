@@ -1060,13 +1060,13 @@ function Set-SourceUpdateSealedEntryAcl {
     $security.SetOwner($adminSid)
     $inherit=if($isDirectory){[Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit}else{[Security.AccessControl.InheritanceFlags]::None}
     foreach($grant in @(
-        @('S-1-5-18',[Security.AccessControl.FileSystemRights]::FullControl),
-        @('S-1-5-32-544',[Security.AccessControl.FileSystemRights]::FullControl),
-        @([string]$Identity.sid,[Security.AccessControl.FileSystemRights]::ReadAndExecute),
-        @([string]$Identity.reader_sid,[Security.AccessControl.FileSystemRights]::ReadAndExecute)
+        [pscustomobject]@{sid='S-1-5-18';rights=[Security.AccessControl.FileSystemRights]::FullControl}
+        [pscustomobject]@{sid='S-1-5-32-544';rights=[Security.AccessControl.FileSystemRights]::FullControl}
+        [pscustomobject]@{sid=[string]$Identity.sid;rights=[Security.AccessControl.FileSystemRights]::ReadAndExecute}
+        [pscustomobject]@{sid=[string]$Identity.reader_sid;rights=[Security.AccessControl.FileSystemRights]::ReadAndExecute}
     )){
-        $sid=New-Object Security.Principal.SecurityIdentifier ([string]$grant[0])
-        $rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,([Security.AccessControl.FileSystemRights]$grant[1]),$inherit,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
+        $sid=New-Object Security.Principal.SecurityIdentifier ([string]$grant.sid)
+        $rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,([Security.AccessControl.FileSystemRights]$grant.rights),$inherit,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
         $null=$security.AddAccessRule($rule)
     }
     $Entry.SetAccessControl($security)
