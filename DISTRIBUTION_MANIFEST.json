@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 562,
+  "file_count": 564,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 12263,
-      "sha256": "79896d35c000cea8eb4cae4a4ef1c2e9a4800f60affa66161a143879fc2ebdee"
+      "size": 12598,
+      "sha256": "4c45041653507c76e117d6fcd2543c42a3c6fdc4d89d0b737b677dcef33a23ac"
     },
     {
       "path": ".gitignore",
@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 125507,
-      "sha256": "aa8f8ddf111e48c8b1ed0d4843158e92e06510c3d42fe230dc0a1596f76e6585"
+      "size": 127397,
+      "sha256": "115a9f6e90ccecae6df628f480e287d3b4237880f1990217cf6c083c932278f2"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -495,8 +495,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 221303,
-      "sha256": "7ec79172d0c0bf65c655033a5c0f5a7bf0b5bb4fe379b6cd8dc725ac5701f882"
+      "size": 231704,
+      "sha256": "0bc1a1a704e2f4a84fd37e023a732a8fc8cbe18877d8c83452cef779cca021a1"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "43f31cde45ca6aa83395cec11df633f159dc00f395120ded539f226f3b30c820"
+      "sha256": "4e9c7adb744accb3dc489ca22e6fc5c7edb71aad290e784dc00d84f538c20bc6"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -642,6 +642,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
       "size": 16271,
       "sha256": "c2bfceef5189c939b42dacfd501dc792c23a4c8f61cfe5fbc3a2b8302f921967"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/Q113_EXISTING_EXTENSION_QUICK_SYNC.md",
+      "size": 3871,
+      "sha256": "e25b0670b02ced853a9dc1d9f8153d0d900d0903582d3e2b1ed53762334317ab"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Q113_SELECTED_EXTENSION_ADD.md",
@@ -747,6 +752,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_control_center_wpf_fixture.ps1",
       "size": 956,
       "sha256": "cadb9f867437ed94120dd7010ad900b0b29b0a491cfb46cf91a4f1e57f14760a"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_extension_quicksync_regression.ps1",
+      "size": 8392,
+      "sha256": "b8d53ed38708399717754c4a21305ef3b229b76176da9a54640c9323be0c3ef5"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_guided_progress_regression.ps1",
@@ -2820,5 +2830,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "d7fa2687ffcba0e0fd385fd6182388719aefcab1ed1ff33e533e32c66014d361"
+  "snapshot_digest": "b8fb078f9789d4a03469c30c475831370286fcf4c02409cec3bb75d23e9befab"
 }
