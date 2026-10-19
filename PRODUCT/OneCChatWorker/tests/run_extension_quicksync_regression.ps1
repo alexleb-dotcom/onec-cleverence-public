@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([string]$PackageRoot=(Split-Path -Parent $PSScriptRoot))
 $ErrorActionPreference='Stop'
 if($PSVersionTable.PSVersion.Major -ne 5){throw 'Q113_QUICK_SYNC_PS51_REQUIRED'}
