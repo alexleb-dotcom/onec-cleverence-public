@@ -755,8 +755,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_extension_quicksync_regression.ps1",
-      "size": 8392,
-      "sha256": "b8d53ed38708399717754c4a21305ef3b229b76176da9a54640c9323be0c3ef5"
+      "size": 8395,
+      "sha256": "7c3e422ae70f49981b75380c1fb8c9b23d42d58226ba7ad81549bd9de7140f43"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_guided_progress_regression.ps1",
@@ -2830,5 +2830,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "ad7431b69aa440f3670d046a5093aa8578db6391bd8e22a449f2ca4fa2472302"
+  "snapshot_digest": "59fb09061196aa2c26425827dcd74685dcd99c033712261e35dbd72536dbfccf"
 }
