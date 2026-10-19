@@ -1070,39 +1070,49 @@ function Set-SourceUpdateSealedEntryAcl {
         $null=$security.AddAccessRule($rule)
     }
     $Entry.SetAccessControl($security)
-    Assert-SourceUpdateSealedEntryAcl -Entry (Get-Item -LiteralPath $Entry.FullName -Force -ErrorAction Stop) -Identity $Identity
+    Assert-SourceUpdateSealedEntryAcl -Entry (Get-SourceUpdateAclEntry -Path $Entry.FullName) -Identity $Identity
+}
+
+function Get-SourceUpdateAclEntry {
+    param([Parameter(Mandatory)][string]$Path)
+    # Windows PowerShell 5.1 FileSystem provider cannot resolve ordinary paths
+    # beyond MAX_PATH. Preserve the namespace for *all* .NET filesystem calls.
+    $extended=if($Path.StartsWith('\\?\',[StringComparison]::OrdinalIgnoreCase)){$Path}else{ConvertTo-ExtendedWindowsPath $Path}
+    $directory=New-Object IO.DirectoryInfo ($extended)
+    if($directory.Exists){return $directory}
+    $file=New-Object IO.FileInfo ($extended)
+    if($file.Exists){return $file}
+    throw ('SOURCE_UPDATE_ACL_ENTRY_MISSING: '+$Path)
 }
 
 function Invoke-SourceUpdateSealedTreeAcl {
     param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)]$Identity)
-    if(-not(Test-Path -LiteralPath $Path)){throw 'SOURCE_UPDATE_ACL_ROOT_MISSING'}
     if(@('S-1-5-18','S-1-5-32-544') -contains [string]$Identity.sid -or [string]$Identity.sid -eq [string]$Identity.reader_sid){throw 'SOURCE_UPDATE_ACL_IDENTITY_INVALID'}
-    # Secure each directory BEFORE enumerating children; never follow junctions/symlinks.
+    # Secure each directory BEFORE enumerating children; never follow a junction.
+    $root=(Get-SourceUpdateAclEntry -Path $Path).FullName
     $pending=New-Object 'System.Collections.Generic.Stack[string]'
-    $pending.Push([IO.Path]::GetFullPath($Path))
+    $pending.Push([string]$root)
     $sealed=@()
     while($pending.Count -gt 0){
-        $current=$pending.Pop()
-        $entry=Get-Item -LiteralPath $current -Force -ErrorAction Stop
+        $entry=Get-SourceUpdateAclEntry -Path $pending.Pop()
         Set-SourceUpdateSealedEntryAcl -Entry $entry -Identity $Identity
         $sealed+=,[string]$entry.FullName
         if($entry -is [IO.DirectoryInfo]){
-            $children=@(Get-ChildItem -LiteralPath $entry.FullName -Force -ErrorAction Stop)
-            foreach($child in $children){
+            foreach($child in @($entry.GetFileSystemInfos())){
                 if(($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'SOURCE_UPDATE_ACL_REPARSE_POINT'}
                 $pending.Push([string]$child.FullName)
             }
         }
     }
-    # A second exact tree walk detects descendants introduced during sealing.
+    # A second exact namespaced walk detects entries created during sealing.
     $verified=@()
-    $pending.Push([IO.Path]::GetFullPath($Path))
+    $pending.Push([string]$root)
     while($pending.Count -gt 0){
-        $entry=Get-Item -LiteralPath $pending.Pop() -Force -ErrorAction Stop
+        $entry=Get-SourceUpdateAclEntry -Path $pending.Pop()
         Assert-SourceUpdateSealedEntryAcl -Entry $entry -Identity $Identity
         $verified+=,[string]$entry.FullName
         if($entry -is [IO.DirectoryInfo]){
-            foreach($child in @(Get-ChildItem -LiteralPath $entry.FullName -Force -ErrorAction Stop)){
+            foreach($child in @($entry.GetFileSystemInfos())){
                 if(($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'SOURCE_UPDATE_ACL_REPARSE_POINT'}
                 $pending.Push([string]$child.FullName)
             }
