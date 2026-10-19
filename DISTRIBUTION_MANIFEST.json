@@ -2491,7 +2491,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 2433,
-      "sha256": "410ed14171dae6701ce3721c9fc4faf8781c6a53f30e1f808a58054cf0818fb2"
+      "sha256": "652d3c31719688001bed1730096a12240fb5b83ed9aaab527729fbabebd95dd6"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2805,5 +2805,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "166d9ec4bbd592a695e1343398be99c658477952a0de7018a95c97c93de8d474"
+  "snapshot_digest": "686851a714682490d43d9a82383f20be38aca35260dfc9ff6b6485c650b78c40"
 }
