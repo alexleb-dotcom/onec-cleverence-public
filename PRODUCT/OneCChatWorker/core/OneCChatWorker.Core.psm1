@@ -1023,37 +1023,114 @@ function Write-SourceUpdateState {
     $State
 }
 
+function Assert-SourceUpdateSealedEntryAcl {
+    param([Parameter(Mandatory)]$Entry,[Parameter(Mandatory)]$Identity)
+    if(($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'SOURCE_UPDATE_ACL_REPARSE_POINT'}
+    $security=$Entry.GetAccessControl()
+    $adminSid=New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544'
+    if(-not $security.AreAccessRulesProtected){throw 'SOURCE_UPDATE_ACL_INHERITANCE_REMAINED'}
+    if($security.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $adminSid.Value){throw 'SOURCE_UPDATE_ACL_OWNER_MISMATCH'}
+    $operatorSid=[string]$Identity.sid;$readerSid=[string]$Identity.reader_sid
+    $expected=@{
+        'S-1-5-18'=[int][Security.AccessControl.FileSystemRights]::FullControl
+        'S-1-5-32-544'=[int][Security.AccessControl.FileSystemRights]::FullControl
+    }
+    $rx=[int][Security.AccessControl.FileSystemRights]::ReadAndExecute
+    $expected[$operatorSid]=$rx;$expected[$readerSid]=$rx
+    $rules=@($security.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
+    if($rules.Count -ne 4){throw 'SOURCE_UPDATE_ACL_UNEXPECTED_RULES'}
+    foreach($rule in $rules){
+        $sid=[string]$rule.IdentityReference.Value
+        if(-not $expected.ContainsKey($sid) -or $rule.IsInherited -or $rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow){throw 'SOURCE_UPDATE_ACL_UNEXPECTED_RULES'}
+        $rights=[int]$rule.FileSystemRights
+        # FileSystemAccessRule automatically adds Synchronize to allow rules.
+        $normalized=$rights -band (-bnot [int][Security.AccessControl.FileSystemRights]::Synchronize)
+        $required=$expected[$sid] -band (-bnot [int][Security.AccessControl.FileSystemRights]::Synchronize)
+        if($normalized -ne $required){throw 'SOURCE_UPDATE_ACL_RIGHTS_MISMATCH'}
+    }
+}
+
+function Set-SourceUpdateSealedEntryAcl {
+    param([Parameter(Mandatory)]$Entry,[Parameter(Mandatory)]$Identity)
+    if(($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'SOURCE_UPDATE_ACL_REPARSE_POINT'}
+    $isDirectory=$Entry -is [IO.DirectoryInfo]
+    $security=if($isDirectory){New-Object Security.AccessControl.DirectorySecurity}else{New-Object Security.AccessControl.FileSecurity}
+    $security.SetAccessRuleProtection($true,$false)
+    $adminSid=New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544'
+    $security.SetOwner($adminSid)
+    $inherit=if($isDirectory){[Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit}else{[Security.AccessControl.InheritanceFlags]::None}
+    foreach($grant in @(
+        @('S-1-5-18',[Security.AccessControl.FileSystemRights]::FullControl),
+        @('S-1-5-32-544',[Security.AccessControl.FileSystemRights]::FullControl),
+        @([string]$Identity.sid,[Security.AccessControl.FileSystemRights]::ReadAndExecute),
+        @([string]$Identity.reader_sid,[Security.AccessControl.FileSystemRights]::ReadAndExecute)
+    )){
+        $sid=New-Object Security.Principal.SecurityIdentifier ([string]$grant[0])
+        $rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,([Security.AccessControl.FileSystemRights]$grant[1]),$inherit,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
+        $null=$security.AddAccessRule($rule)
+    }
+    $Entry.SetAccessControl($security)
+    Assert-SourceUpdateSealedEntryAcl -Entry (Get-Item -LiteralPath $Entry.FullName -Force -ErrorAction Stop) -Identity $Identity
+}
+
+function Invoke-SourceUpdateSealedTreeAcl {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)]$Identity)
+    if(-not(Test-Path -LiteralPath $Path)){throw 'SOURCE_UPDATE_ACL_ROOT_MISSING'}
+    if(@('S-1-5-18','S-1-5-32-544') -contains [string]$Identity.sid -or [string]$Identity.sid -eq [string]$Identity.reader_sid){throw 'SOURCE_UPDATE_ACL_IDENTITY_INVALID'}
+    # Secure each directory BEFORE enumerating children; never follow junctions/symlinks.
+    $pending=New-Object 'System.Collections.Generic.Stack[string]'
+    $pending.Push([IO.Path]::GetFullPath($Path))
+    $sealed=@()
+    while($pending.Count -gt 0){
+        $current=$pending.Pop()
+        $entry=Get-Item -LiteralPath $current -Force -ErrorAction Stop
+        Set-SourceUpdateSealedEntryAcl -Entry $entry -Identity $Identity
+        $sealed+=,[string]$entry.FullName
+        if($entry -is [IO.DirectoryInfo]){
+            $children=@(Get-ChildItem -LiteralPath $entry.FullName -Force -ErrorAction Stop)
+            foreach($child in $children){
+                if(($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'SOURCE_UPDATE_ACL_REPARSE_POINT'}
+                $pending.Push([string]$child.FullName)
+            }
+        }
+    }
+    # A second exact tree walk detects descendants introduced during sealing.
+    $verified=@()
+    $pending.Push([IO.Path]::GetFullPath($Path))
+    while($pending.Count -gt 0){
+        $entry=Get-Item -LiteralPath $pending.Pop() -Force -ErrorAction Stop
+        Assert-SourceUpdateSealedEntryAcl -Entry $entry -Identity $Identity
+        $verified+=,[string]$entry.FullName
+        if($entry -is [IO.DirectoryInfo]){
+            foreach($child in @(Get-ChildItem -LiteralPath $entry.FullName -Force -ErrorAction Stop)){
+                if(($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'SOURCE_UPDATE_ACL_REPARSE_POINT'}
+                $pending.Push([string]$child.FullName)
+            }
+        }
+    }
+    if($sealed.Count -ne $verified.Count){throw 'SOURCE_UPDATE_ACL_TREE_CHANGED'}
+    foreach($pathItem in $sealed){if($pathItem -cnotin $verified){throw 'SOURCE_UPDATE_ACL_TREE_CHANGED'}}
+}
+
 function Set-SourceUpdateTreeAcl {
     param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string]$OperatorIdentity,[switch]$Writable)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
-    $aclPath=ConvertTo-ExtendedWindowsPath $Path
     if($Writable){
+        $aclPath=ConvertTo-ExtendedWindowsPath $Path
         $system='*S-1-5-18:(OI)(CI)F';$admins='*S-1-5-32-544:(OI)(CI)F'
         $operator=$identity.icacls_identity+':(OI)(CI)M';$reader=$identity.reader_icacls_identity+':(OI)(CI)RX'
         Invoke-IcaclsChecked -Path $aclPath -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operator,$reader)
         return
     }
-    $system='*S-1-5-18:F';$admins='*S-1-5-32-544:F'
-    $operator=$identity.icacls_identity+':RX';$reader=$identity.reader_icacls_identity+':RX'
-    Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/inheritance:r')
-    Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/remove:g',$identity.icacls_identity,$identity.reader_icacls_identity)
-    Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/grant:r',$system,$admins,$operator,$reader)
+    Invoke-SourceUpdateSealedTreeAcl -Path $Path -Identity $identity
 }
 
 function Protect-SourceUpdateMetadata {
     param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string]$OperatorIdentity)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
-    $aclPath=ConvertTo-ExtendedWindowsPath $Path
-    if(Test-Path -LiteralPath $Path -PathType Container){
-        $system='*S-1-5-18:(OI)(CI)F';$admins='*S-1-5-32-544:(OI)(CI)F'
-        $operator=$identity.icacls_identity+':(OI)(CI)RX';$reader=$identity.reader_icacls_identity+':(OI)(CI)RX'
-        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operator,$reader)
-        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/T','/C','/inheritance:r','/grant:r',$system,$admins,$operator,$reader)
-    }elseif(Test-Path -LiteralPath $Path -PathType Leaf){
-        Invoke-IcaclsChecked -Path $aclPath -Arguments @('/inheritance:r','/grant:r','*S-1-5-18:F','*S-1-5-32-544:F',($identity.icacls_identity+':RX'),($identity.reader_icacls_identity+':RX'))
-    }else{throw 'SOURCE_UPDATE_METADATA_PATH_MISSING'}
+    Invoke-SourceUpdateSealedTreeAcl -Path $Path -Identity $identity
 }
 
 function Get-SourceUpdateCatalogRows {
@@ -2281,8 +2358,11 @@ function Resolve-WorkerOperatorIdentity {
 
 function Invoke-IcaclsChecked {
     param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string[]]$Arguments)
-    & icacls.exe $Path @Arguments | Out-Null
-    if($LASTEXITCODE -ne 0){throw "ACL_REPAIR_FAILED: $Path"}
+    # Never allow icacls /C to conceal a failed descendant with an exit code of zero.
+    if(@($Arguments|Where-Object {$_ -ieq '/C'}).Count){throw "ACL_REPAIR_CONTINUE_ON_ERROR_FORBIDDEN: $Path"}
+    $output=@(& icacls.exe $Path @Arguments 2>&1)
+    $exitCode=$LASTEXITCODE
+    if($exitCode -ne 0 -or @($output|Where-Object {$_ -is [Management.Automation.ErrorRecord]}).Count){throw "ACL_REPAIR_FAILED: $Path"}
 }
 
 function Protect-WorkerRuntimeFile {
