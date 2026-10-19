@@ -1389,7 +1389,7 @@ function Get-QuickSyncExtensionTree {
                 $hash=[Security.Cryptography.SHA256]::Create()
                 $stream=$null
                 try{
-                    $stream=New-Object IO.FileStream($f.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+                    $stream=[IO.File]::Open($f.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
                     $digest=([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-','').ToLowerInvariant()
                 }finally{if($stream){$stream.Dispose()};$hash.Dispose()}
                 $files.Add([pscustomobject]@{relative=$relative;absolute=[string]$f.FullName;bytes=[int64]$f.Length;sha256=$digest})
@@ -1454,7 +1454,9 @@ function Sync-ExistingWorkerExtension {
     $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
     $old=@(Get-ManifestArtifactRows $manifest|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
     if($old.Count -ne 1){throw 'QUICK_SYNC_NEW_EXTENSION_USE_SELECTED_ADD'}
-    if([string]$old[0].canonical_path -cne [string]$row.canonical_path -or [string]$old[0].source_path -cne [string]$row.source_path){throw 'QUICK_SYNC_SOURCE_IDENTITY_CHANGED'}
+    $priorPart=@($manifest.participants|Where-Object {$_.participant_id -ceq $participant -and $_.active -ne $false})
+    $priorExt=@();if($priorPart.Count -eq 1){$priorExt=@($priorPart[0].target.extensions|Where-Object {$_.extension_id -ceq $ext -and $_.active -ne $false})}
+    if($priorExt.Count -ne 1 -or [string]$old[0].canonical_path -cne [string]$row.canonical_path -or [string]$priorExt[0].source_path -cne [string]$row.source_path){throw 'QUICK_SYNC_SOURCE_IDENTITY_CHANGED'}
     $fast=Get-FastProjectState -ProjectId $pk -WorkerRoot $WorkerRoot
     if($fast.state -ne 'ACCEPTED'){throw ('QUICK_SYNC_BASE_NOT_ACCEPTED: '+[string]$fast.state)}
     $source=[IO.Path]::GetFullPath([string]$row.source_path).TrimEnd('\')
