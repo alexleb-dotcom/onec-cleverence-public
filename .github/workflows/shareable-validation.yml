@@ -162,6 +162,12 @@ jobs:
           $ErrorActionPreference='Stop'
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_selected_extension_add_regression.ps1
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run isolated existing-extension quick-sync regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_extension_quicksync_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Run isolated Node launch path regression
         shell: powershell
         run: |
