@@ -6,6 +6,7 @@ namespace OneCArchitecture.ControlCenter;
 public partial class App : System.Windows.Application
 {
     private Forms.NotifyIcon? _tray;
+    private System.Drawing.Icon? _trayIcon;
     internal static bool IsExplicitExit { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -26,10 +27,15 @@ public partial class App : System.Windows.Application
 
     private void CreateTray(MainWindow window)
     {
+        // Extract the real Win32 group icon embedded into our approved-brand EXE.
+        // System.Drawing.Icon(Stream) does not reliably decode PNG-based ICO frames.
+        _trayIcon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath
+            ?? throw new InvalidOperationException("ORBIT_APPROVED_ICON_EXE_PATH_MISSING"))
+            ?? throw new InvalidOperationException("ORBIT_APPROVED_ICON_EXE_MISSING");
         _tray = new Forms.NotifyIcon
         {
             Text = "OneC Orbit",
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = _trayIcon,
             Visible = true
         };
         _tray.DoubleClick += (_, _) => ShowWindow(window);
@@ -60,6 +66,7 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); }
+        _trayIcon?.Dispose();
         base.OnExit(e);
     }
 }
