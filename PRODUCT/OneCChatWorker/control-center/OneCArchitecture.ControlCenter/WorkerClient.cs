@@ -64,13 +64,23 @@ internal sealed class WorkerClient : IWorkerClient
 
     public WorkerClient()
     {
-        LauncherPath = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_LAUNCHER")
-            ?? @"C:\OneCChatWorker\OneCChatWorker.ps1";
         WorkerRoot = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_WORKER_ROOT")
-            ?? @"C:\OneCChatWorker";
+            ?? @"C:\OneCOrbit";
         ProgramDataRoot = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_PROGRAM_DATA")
-            ?? @"C:\ProgramData\OneCChatWorker";
+            ?? @"C:\ProgramData\OneCOrbit";
+        LauncherPath = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_LAUNCHER")
+            ?? Path.Combine(WorkerRoot, "OneCChatWorker.ps1");
     }
+
+    // Inject existence checks for isolated fixtures; never inspect Source contents.
+    internal static bool NeedsMigration(string workerRoot, string programDataRoot, string? launcherOverride,
+        Func<string, bool> fileExists, Func<string, bool> directoryExists) =>
+        workerRoot.TrimEnd((char)92).Equals(@"C:\OneCOrbit", StringComparison.OrdinalIgnoreCase) &&
+        programDataRoot.TrimEnd((char)92).Equals(@"C:\ProgramData\OneCOrbit", StringComparison.OrdinalIgnoreCase) &&
+        launcherOverride is null &&
+        !(fileExists(Path.Combine(workerRoot, "projects.json")) &&
+          fileExists(Path.Combine(programDataRoot, "installed-state.json"))) &&
+        (directoryExists(@"C:\OneCChatWorker") || directoryExists(@"C:\ProgramData\OneCChatWorker"));
 
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default) =>
         RunAsync(WorkerAction.UiContext, new(ProjectId: projectId), false, token);
@@ -128,6 +138,9 @@ internal sealed class WorkerClient : IWorkerClient
     public async Task<WorkerCallResult> RunAsync(
         WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)
     {
+        if (NeedsMigration(WorkerRoot, ProgramDataRoot,
+            Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_LAUNCHER"), File.Exists, Directory.Exists))
+            return new(2, null, "", "MIGRATION_REQUIRED");
         if (!File.Exists(LauncherPath))
             return new(2, null, "", "WORKER_LAUNCHER_NOT_FOUND");
         var psi = CreateStartInfo(action, args, elevated);

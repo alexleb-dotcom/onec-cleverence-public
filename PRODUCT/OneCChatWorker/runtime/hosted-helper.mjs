@@ -7,7 +7,7 @@ import { LocalQualityAdapter, boundedTargetHints, reportBindingMatches } from '.
 import { createTaskCheckpointStore } from './task-checkpoint-store.mjs';
 import { createSerializedMessagePump, persistAndSendProcessed, saveStateAtomic, loadPersistedState, safePersistenceCode } from './helper-state-coordinator.mjs';
 
-const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneCChatWorker';
+const PROGRAM_DATA = process.env.ONECCHAT_PROGRAM_DATA || 'C:\\ProgramData\\OneCOrbit';
 const ADMISSION_PATH = process.env.ONECCHAT_ADMISSION_PATH || path.join(PROGRAM_DATA,'runtime','active-admission.json');
 
 const admission = JSON.parse(await fsp.readFile(ADMISSION_PATH,'utf8'));

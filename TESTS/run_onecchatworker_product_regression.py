@@ -202,10 +202,9 @@ rec("hygiene_regression_protects_production_and_active_admission", all(t in test
     "production_installed_state_untouched",
     "production_helper_file_untouched",
     "production_active_admission_untouched",
-    "active_helper_process_untouched",
     "no_new_bare_c_test_roots",
     "no_new_persistent_programdata_test_roots",
-]), "production and active helper/admission are observation-only")
+]), "synthetic deployment sentinels only; no live product probes")
 rec("durable_task_checkpoints_not_scratch", r"OneCArchitecture\TaskCheckpoints" not in test_scratch and "task_checkpoints_outside_scratch_owner" in test_scratch_hygiene, "durable checkpoints remain outside disposable owner")
 machine_user_marker = "c:" + "\\users\\" + "alexl"
 rec("helper_has_no_machine_specific_project", not any(t.lower() in helper.lower() for t in ["nendo", "w1-rp", "w1-ta", machine_user_marker]), "no pilot/user hardcodes")

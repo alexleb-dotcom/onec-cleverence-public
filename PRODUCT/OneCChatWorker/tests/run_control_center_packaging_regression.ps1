@@ -41,17 +41,81 @@ Rec 'lock_exact_six_model_tools' ((@($lock.control_center.model_surface) -join '
 Rec 'install_owner_wires_control_center' ($core -match 'function Install-ControlCenterArtifact' -and $core -match '\$controlCenter=Install-ControlCenterArtifact' -and $core -match "control-center\\OneCArchitecture\.ControlCenter\.exe" -and $core -match 'Get-ControlCenterStartMenuShortcutPath') ''
 $update=$launcher.Substring($launcher.IndexOf('function Run-Update'),$launcher.IndexOf('function Run-AddProject')-$launcher.IndexOf('function Run-Update'))
 Rec 'update_reuses_existing_install_owner' ($update -match 'Install-OneCChatWorker' -and $update -match 'network_download_performed=\$false') ''
-Rec 'start_menu_shortcut_product_owned' ($core -match 'OneC Architecture Control Center\.lnk' -and $core -match 'WScript\.Shell' -and $core -match 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH') ''
+Rec 'start_menu_shortcut_product_owned' ($core -match 'OneC Orbit\.lnk' -and $core -match 'WScript\.Shell' -and $core -match 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH') ''
 Rec 'startup_explicit_operator_choice' ($xaml -match 'Start Control Center with Windows \(operator choice\)' -and $main -match 'StartupCheckBox_Changed' -and $startup -match 'Registry\.CurrentUser' -and $startup -match 'CurrentVersion\\Run' -and -not ($app -match 'StartupRegistration\.Apply')) ''
 Rec 'startup_default_disabled' ((Get-Content -LiteralPath (Join-Path $project 'PreferencesStore.cs') -Raw -Encoding UTF8) -match 'bool StartWithWindows = false') ''
 Rec 'no_password_capture_in_gui' (-not (($main+$startup+$app) -match 'PasswordBox|NetworkCredential|SecureString|savecred|CredentialManager')) ''
 $scratch=New-OneCTestScratch -Purpose 'ControlCenterPackaging'
+$previousLocalAppData=$env:LOCALAPPDATA
+$env:LOCALAPPDATA=Join-Path $scratch.path 'LocalAppData'
+New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA|Out-Null
 try{
+  $fallback=Get-WorkerOperationRoot -ProgramDataRoot (Join-Path $scratch.path 'AbsentData')
+  Rec 'orbit_local_operation_fallback' ($fallback -eq (Join-Path $env:LOCALAPPDATA 'OneCOrbit\operations')) $fallback
+  $module=Get-Module OneCChatWorker.Core
+  $identity=& $module { @($script:DefaultWorkerRoot,$script:DefaultProgramDataRoot) }
+  Rec 'orbit_core_default_identity' (($identity -join '|') -eq 'C:\OneCOrbit|C:\ProgramData\OneCOrbit') ($identity -join '|')
+  Rec 'orbit_native_defaults' ($launcher -match "WorkerRoot='C:\\OneCOrbit'" -and $launcher -match "ProgramDataRoot='C:\\ProgramData\\OneCOrbit'") ''
+  Rec 'orbit_preferences_default' ((Get-Content (Join-Path $project 'PreferencesStore.cs') -Raw -Encoding UTF8) -match '"OneCOrbit"') ''
+  Rec 'orbit_run_value_name' ($startup -match 'ValueName = "OneC Orbit"') ''
+  $proof=& $module {
+    param($base,$package,$launcherText)
+    $saved=@($script:DefaultWorkerRoot,$script:DefaultProgramDataRoot,$script:LegacyWorkerRoot,$script:LegacyProgramDataRoot)
+    try{
+      $script:DefaultWorkerRoot=Join-Path $base 'OneCOrbit'
+      $script:DefaultProgramDataRoot=Join-Path $base 'OrbitData'
+      $script:LegacyWorkerRoot=Join-Path $base 'OneCChatWorker'
+      $script:LegacyProgramDataRoot=Join-Path $base 'LegacyData'
+      $worker=$script:DefaultWorkerRoot;$pd=$script:DefaultProgramDataRoot
+      if((Get-InstallRootDisposition) -ne 'NEW_INSTALL'){throw 'DEFAULT_NEW_INSTALL_FAILED'}
+      New-Item -ItemType Directory -Path $script:LegacyWorkerRoot|Out-Null
+      $legacyCatalog=Join-Path $script:LegacyWorkerRoot 'projects.json'
+      [IO.File]::WriteAllText($legacyCatalog,'{"schema_version":1,"projects":[]}')
+      $legacyBefore=[IO.File]::ReadAllText($legacyCatalog)
+      if((Get-InstallRootDisposition) -ne 'MIGRATION_REQUIRED'){throw 'LEGACY_COLLISION_NOT_BLOCKED'}
+      # Fail-closed install must stop before admin/dependency/ACL/logging owners.
+      try{Install-OneCChatWorker -PackageRoot $package;throw 'INSTALL_NOT_BLOCKED'}catch{if($_.Exception.Message -notlike 'MIGRATION_REQUIRED:*'){throw}}
+      $status=Get-WorkerStatus
+      if($status.state -ne 'MIGRATION_REQUIRED' -or $status.source_scan_performed -ne $false){throw 'STATUS_HOLD_MISSING'}
+      # Execute the actual launcher projection/guided owners against synthetic defaults.
+      $tokens=$null;$errors=$null
+      $ast=[Management.Automation.Language.Parser]::ParseInput($launcherText,[ref]$tokens,[ref]$errors)
+      foreach($name in @('Get-LauncherRootDisposition','Get-UiContext','Get-GuidedContext','Show-StatusReadable')){
+        $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+        . ([scriptblock]::Create($fn.Extent.Text))
+      }
+      $WorkerRoot=$worker;$ProgramDataRoot=$pd;$ProjectId=$null
+      $Json=$false
+      $readable=Show-StatusReadable $status 6>&1|Out-String
+      if($readable -notlike '*MIGRATION_REQUIRED*' -or $readable -like '*Projects:*'){throw 'READABLE_STATUS_HOLD_MISSING'}
+      $context=Get-UiContext
+      if($context.recommendation.state -ne 'MIGRATION_REQUIRED' -or @($context.actions.PSObject.Properties|Where-Object{$_.Value.enabled}).Count){throw 'UI_HOLD_NOT_BLOCKED'}
+      if((Get-GuidedContext).state -ne 'MIGRATION_REQUIRED'){throw 'GUIDED_HOLD_MISSING'}
+      if((Test-Path -LiteralPath $worker) -or (Test-Path -LiteralPath $pd)){throw 'SURPRISE_NEW_ROOT_CREATED'}
+      if([IO.File]::ReadAllText($legacyCatalog) -ne $legacyBefore){throw 'LEGACY_MUTATED'}
+      # An explicit legacy pair is an operating deployment, not a migration request.
+      $explicit=Get-InstallRootDisposition -WorkerRoot $script:LegacyWorkerRoot -ProgramDataRoot $script:LegacyProgramDataRoot
+      if($explicit -ne 'EXPLICIT_ROOTS'){throw 'EXPLICIT_LEGACY_REJECTED'}
+      $legacyStatus=Get-WorkerStatus -WorkerRoot $script:LegacyWorkerRoot -ProgramDataRoot $script:LegacyProgramDataRoot
+      if($legacyStatus.root_disposition -ne 'EXPLICIT_ROOTS' -or $legacyStatus.catalog_path -ne $legacyCatalog){throw 'EXPLICIT_LEGACY_STATUS_FAILED'}
+      New-Item -ItemType Directory -Path $worker,$pd|Out-Null
+      [IO.File]::WriteAllText((Join-Path $worker 'projects.json'),'{}')
+      if((Get-InstallRootDisposition) -ne 'MIGRATION_REQUIRED'){throw 'PARTIAL_INSTALL_BYPASSED_HOLD'}
+      [IO.File]::WriteAllText((Join-Path $pd 'installed-state.json'),'{}')
+      if((Get-InstallRootDisposition) -ne 'ORBIT_INSTALLED'){throw 'COMPLETE_ORBIT_NOT_RECOGNIZED'}
+      'synthetic defaults/collision/install/STATUS/UI/guided/partial/explicit legacy preserved'
+    }finally{
+      $script:DefaultWorkerRoot=$saved[0];$script:DefaultProgramDataRoot=$saved[1]
+      $script:LegacyWorkerRoot=$saved[2];$script:LegacyProgramDataRoot=$saved[3]
+    }
+  } $scratch.path $PackageRoot $launcher
+  Rec 'orbit_synthetic_legacy_hold_and_explicit_compatibility' ($proof -like '*explicit legacy preserved*') ($proof -join ' ')
   $pd=Join-Path $scratch.path 'ProgramData'
   $sm=Join-Path $scratch.path 'StartMenu'
   $first=Install-ControlCenterArtifact -PackageRoot $PackageRoot -ProgramDataRoot $pd -RuntimeLock $lock -ShortcutRoot $sm
   Rec 'isolated_install_pass' ($first.status -eq 'PASS' -and $first.component.action -eq 'INSTALLED') ($first|ConvertTo-Json -Depth 5 -Compress)
   Rec 'isolated_install_hash_exact' ((Get-FileHash -LiteralPath $first.executable_path -Algorithm SHA256).Hash.ToLowerInvariant() -eq $exeHash) ''
+  Rec 'orbit_shortcut_display_name' ((Split-Path -Leaf $first.shortcut_path) -eq 'OneC Orbit.lnk') $first.shortcut_path
   Rec 'isolated_shortcut_created' (Test-Path -LiteralPath $first.shortcut_path -PathType Leaf) $first.shortcut_path
   $ws=New-Object -ComObject WScript.Shell
   $lnk=$ws.CreateShortcut($first.shortcut_path)
@@ -61,6 +125,7 @@ try{
   Rec 'isolated_install_no_service_listener' ($second.service_created -eq $false -and $second.loopback_listener_created -eq $false) ''
   Rec 'isolated_paths_only' ($first.executable_path.StartsWith($scratch.path,[StringComparison]::OrdinalIgnoreCase) -and $first.shortcut_path.StartsWith($scratch.path,[StringComparison]::OrdinalIgnoreCase)) ($first.executable_path+' | '+$first.shortcut_path)
 } finally {
+  $env:LOCALAPPDATA=$previousLocalAppData
   if($scratch){Remove-OneCTestScratch -Path $scratch.path -RunId $scratch.run_id -Base $scratch.base|Out-Null}
 }
 Write-Host ("CONTROL_CENTER_PACKAGING_PASS checks={0}" -f $results.Count)

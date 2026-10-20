@@ -202,8 +202,9 @@ public partial class MainWindow : Window
         UpdateHomeNavigation();
         SourceStateText.Text = McpStateText.Text = WorkStatusText.Text = Localization.Get("UnknownState");
         WorkDetailText.Text = Localization.Get("UiContextReason");
-        RecommendationText.Text = Localization.Get("UiContextUnavailable");
-        RecommendationReasonText.Text = Localization.Get("UiContextReason") +
+        var migrationRequired = raw.Contains("MIGRATION_REQUIRED", StringComparison.Ordinal);
+        RecommendationText.Text = Localization.Get(migrationRequired ? "MigrationRequired" : "UiContextUnavailable");
+        RecommendationReasonText.Text = Localization.Get(migrationRequired ? "MigrationRequiredHelp" : "UiContextReason") +
             (exitCode >= 0 ? $" {Localization.Get("WorkerExit")}: {exitCode}." : "");
         HelperBadge.Text = Localization.Get("HelperLabel") + " · —";
         DiagnosticsText.Text = Localization.Get("UiContextUnavailable");

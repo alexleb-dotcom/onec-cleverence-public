@@ -60,13 +60,13 @@ public partial class ProjectWizardWindow : Window
         if (string.IsNullOrWhiteSpace(projectName) || string.IsNullOrWhiteSpace(systemName) ||
             string.IsNullOrWhiteSpace(mainPath))
         {
-            System.Windows.MessageBox.Show(Localization.Get("WizardRequired"), "OneC Architecture");
+            System.Windows.MessageBox.Show(Localization.Get("WizardRequired"), "OneC Orbit");
             return;
         }
 
         if (!Directory.Exists(mainPath) || !File.Exists(Path.Combine(mainPath, "Configuration.xml")))
         {
-            System.Windows.MessageBox.Show(Localization.Get("WizardInvalidFolder"), "OneC Architecture");
+            System.Windows.MessageBox.Show(Localization.Get("WizardInvalidFolder"), "OneC Orbit");
             return;
         }
 
@@ -78,7 +78,7 @@ public partial class ProjectWizardWindow : Window
             if (string.IsNullOrWhiteSpace(extName) || string.IsNullOrWhiteSpace(extPath) ||
                 !Directory.Exists(extPath) || !File.Exists(Path.Combine(extPath, "Configuration.xml")))
             {
-                System.Windows.MessageBox.Show(Localization.Get("WizardExtensionRequired"), "OneC Architecture");
+                System.Windows.MessageBox.Show(Localization.Get("WizardExtensionRequired"), "OneC Orbit");
                 return;
             }
             extId = SafeId(extName, "ext");

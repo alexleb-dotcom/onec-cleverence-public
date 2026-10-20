@@ -26,28 +26,24 @@ function Cleanup-Tracked($Scratch){
     }
 }
 
-$prodWorker='C:\OneCChatWorker'
-$prodPd='C:\ProgramData\OneCChatWorker'
+# Synthetic protected deployment lies outside the scratch owner's deletion base.
+# Never probe live product files or enumerate machine process command lines.
+$protectedBase=Join-Path $env:LOCALAPPDATA ('Q117-Sentinels-'+[guid]::NewGuid().ToString('N'))
+$prodWorker=Join-Path $protectedBase 'OneCChatWorker'
+$prodPd=Join-Path $protectedBase 'LegacyProgramData'
 $helper=Join-Path $prodPd 'helper\hosted-helper.mjs'
 $admission=Join-Path $prodPd 'runtime\active-admission.json'
 $projects=Join-Path $prodWorker 'projects.json'
 $installedState=Join-Path $prodPd 'installed-state.json'
+New-Item -ItemType Directory -Force -Path $prodWorker,(Split-Path $helper),(Split-Path $admission)|Out-Null
+foreach($sentinel in @($helper,$admission,$projects,$installedState)){[IO.File]::WriteAllText($sentinel,'synthetic retained deployment sentinel')}
 $before=[ordered]@{
-    bare_c=Dir-Names 'C:\' 'OneCChatWorker-'
-    programdata=Dir-Names 'C:\ProgramData' 'OneCChatWorker-'
+    bare_c=Dir-Names $protectedBase 'OneCChatWorker-'
+    programdata=Dir-Names $protectedBase 'OneCOrbit-'
     helper_sha=Hash-OrNull $helper
     admission_sha=Hash-OrNull $admission
     projects_sha=Hash-OrNull $projects
     installed_state_sha=Hash-OrNull $installedState
-    helper_pid=$null
-    helper_start=$null
-}
-if(Test-Path -LiteralPath $helper -PathType Leaf){
-    $hp=@(Get-CimInstance Win32_Process|Where-Object{$_.Name-eq'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)}|Select-Object -First 1)
-    if($hp){
-        $before.helper_pid=[int]$hp.ProcessId
-        try{$before.helper_start=(Get-Process -Id $hp.ProcessId).StartTime.ToUniversalTime().ToString('o')}catch{$before.helper_start=$null}
-    }
 }
 
 try{
@@ -108,28 +104,20 @@ try{
     foreach($p in $foreign){if(Test-Path -LiteralPath $p){Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction Stop}}
     $foreign=@()
 
-    $afterBare=Dir-Names 'C:\' 'OneCChatWorker-'
-    $afterPd=Dir-Names 'C:\ProgramData' 'OneCChatWorker-'
+    $afterBare=Dir-Names $protectedBase 'OneCChatWorker-'
+    $afterPd=Dir-Names $protectedBase 'OneCOrbit-'
     Rec 'no_new_bare_c_test_roots' (($before.bare_c -join '|') -eq ($afterBare -join '|')) @{before=$before.bare_c;after=$afterBare}
     Rec 'no_new_persistent_programdata_test_roots' (($before.programdata -join '|') -eq ($afterPd -join '|')) @{before=$before.programdata;after=$afterPd}
     Rec 'production_projects_untouched' ($before.projects_sha -eq (Hash-OrNull $projects)) $projects
     Rec 'production_installed_state_untouched' ($before.installed_state_sha -eq (Hash-OrNull $installedState)) $installedState
     Rec 'production_helper_file_untouched' ($before.helper_sha -eq (Hash-OrNull $helper)) $helper
     Rec 'production_active_admission_untouched' ($before.admission_sha -eq (Hash-OrNull $admission)) $admission
-    if($null -ne $before.helper_pid){
-        $hp2=@(Get-CimInstance Win32_Process|Where-Object{$_.ProcessId-eq$before.helper_pid -and $_.Name-eq'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)}|Select-Object -First 1)
-        $same=$false
-        if($hp2){
-            try{$same=((Get-Process -Id $before.helper_pid).StartTime.ToUniversalTime().ToString('o') -eq $before.helper_start)}catch{$same=$false}
-        }
-        Rec 'active_helper_process_untouched' $same @{pid=$before.helper_pid;start=$before.helper_start}
-    }else{
-        Rec 'active_helper_process_untouched' $true 'production helper not present in this environment'
-    }
-
     foreach($s in $created){Rec ('created_scratch_removed_'+$s.run_id) (-not(Test-Path -LiteralPath $s.path)) $s.path}
     Write-Host ("TEST_SCRATCH_HYGIENE_REGRESSION_PASS checks={0}" -f $results.Count)
 }finally{
+    $expectedParent=[IO.Path]::GetFullPath($env:LOCALAPPDATA).TrimEnd('\')+'\'
+    if(-not ([IO.Path]::GetFullPath($protectedBase).StartsWith($expectedParent,[StringComparison]::OrdinalIgnoreCase))){throw 'SENTINEL_CLEANUP_OUTSIDE_BOUNDARY'}
+    Remove-Item -LiteralPath $protectedBase -Recurse -Force
     foreach($p in $foreign){if(Test-Path -LiteralPath $p){Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue}}
     foreach($s in $created){
         if(Test-Path -LiteralPath $s.path){

@@ -3,7 +3,7 @@
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
- [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCChatWorker',[string]$ProgramDataRoot='C:\ProgramData\OneCChatWorker',
+ [switch]$ReplaceExisting,[string]$WorkerRoot='C:\OneCOrbit',[string]$ProgramDataRoot='C:\ProgramData\OneCOrbit',
  [string]$ReaderName='OneCSourceReader',[string]$OperatorIdentity,[string]$RelayUrl='wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper',
  [switch]$SkipDependencies,[switch]$ConfirmUninstall,[switch]$Json,[string]$DiagnosticPath,[string]$UiInputPath,[string]$ArtifactSelection,[switch]$SelectedArtifactFullSafeImport,
  [Alias('expected_generation_id')][string]$ExpectedGenerationId,[Alias('expected_artifact_key')][string]$ExpectedArtifactKey
@@ -29,6 +29,23 @@ if($Core -eq $PackageCore){
 }
 Import-Module $Core -Force -DisableNameChecking
 Set-WorkerReaderIdentity -ReaderName $ReaderName|Out-Null
+function Get-LauncherRootDisposition {
+ if(Get-Command Get-InstallRootDisposition -ErrorAction SilentlyContinue){return Get-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot}
+ # Installed older cores remain usable through explicit legacy/custom roots.
+ if([IO.Path]::GetFullPath($WorkerRoot).TrimEnd('\') -ine 'C:\OneCOrbit' -or
+    [IO.Path]::GetFullPath($ProgramDataRoot).TrimEnd('\') -ine 'C:\ProgramData\OneCOrbit'){return 'EXPLICIT_ROOTS'}
+ if((Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf)){return 'ORBIT_INSTALLED'}
+ if((Test-Path -LiteralPath 'C:\OneCChatWorker') -or (Test-Path -LiteralPath 'C:\ProgramData\OneCChatWorker')){return 'MIGRATION_REQUIRED'}
+ return 'NEW_INSTALL'
+}
+function Assert-LauncherRootDisposition {
+ if((Get-LauncherRootDisposition) -eq 'MIGRATION_REQUIRED'){throw 'MIGRATION_REQUIRED: Legacy installation retained; separately authorized downtime and a validated migration procedure are required.'}
+}
+# Fail before elevation, operation/fallback logs, dependencies or catalog writes.
+if($Mode -notin @('STATUS','UI_CONTEXT','MENU')){
+ Assert-LauncherRootDisposition
+}
 
 function Is-Admin {
  $id=[Security.Principal.WindowsIdentity]::GetCurrent();$p=New-Object Security.Principal.WindowsPrincipal($id)
@@ -165,7 +182,8 @@ function Show-StatusReadable {
  param($Status)
  if($Json){Show-JsonValue $Status;return}
  Write-Host ''
- Write-Host 'OneCChatWorker STATUS'
+ Write-Host 'OneC Orbit STATUS'
+ if($Status.root_disposition -eq 'MIGRATION_REQUIRED'){Write-Host 'MIGRATION_REQUIRED: Legacy installation retained; migration is on hold. Use explicit legacy roots for the existing deployment.';return}
  Write-Host ('  Product version : {0}' -f $Status.product_version)
  Write-Host ('  Installed       : {0}' -f $Status.installed)
  Write-Host ('  Worker root     : {0}' -f $Status.worker_root)
@@ -243,8 +261,9 @@ function Run-Precheck {
  Show-Value $r
 }
 function Run-Install {
+ Assert-LauncherRootDisposition
  if(Require-AdminOrRelaunch 'INSTALL'){return}
- $r=Invoke-ObservedAction -OperationType INSTALL -RequestedAction 'Install or repair OneCChatWorker machine runtime' -TotalSteps 4 -Body {
+ $r=Invoke-ObservedAction -OperationType INSTALL -RequestedAction 'Install or repair OneC Orbit machine runtime' -TotalSteps 4 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Checking prerequisites' -Step 1 -Total 4 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $pre=Invoke-Precheck
@@ -265,7 +284,7 @@ function Run-Install {
 }
 function Run-Update {
  if(Require-AdminOrRelaunch 'UPDATE'){return}
- $r=Invoke-ObservedAction -OperationType UPDATE -RequestedAction 'Update or repair OneCChatWorker from this verified package' -TotalSteps 3 -Body {
+ $r=Invoke-ObservedAction -OperationType UPDATE -RequestedAction 'Update or repair OneC Orbit from this verified package' -TotalSteps 3 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Checking package/runtime lock before update' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $pre=Invoke-Precheck
@@ -587,7 +606,7 @@ function Run-Uninstall {
   return
  }
  if(Require-AdminOrRelaunch 'UNINSTALL'){return}
- $r=Invoke-ObservedAction -OperationType UNINSTALL -RequestedAction 'Remove OneCChatWorker-owned runtime while retaining project Source copies and Output evidence' -TotalSteps 3 -Body {
+ $r=Invoke-ObservedAction -OperationType UNINSTALL -RequestedAction 'Remove OneC Orbit runtime while retaining project Source copies and Output evidence' -TotalSteps 3 -Body {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Reviewing safe uninstall boundaries; project Source/Output/Detached and external Source will be retained' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $null=Update-WorkerOperation -Operation $op -Message 'Stopping admission and removing runtime/provider/helper/secrets/product files' -Step 2 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
@@ -600,6 +619,11 @@ function Run-Uninstall {
 
 function Get-UiContext {
  $status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+ if((Get-LauncherRootDisposition) -eq 'MIGRATION_REQUIRED'){
+  $blocked=[ordered]@{}
+  foreach($name in @('start','continue','stop','apply','verify','repair','update','add_project','sync_extension','prepare_source_update','accept_source_update','cancel_source_update')){$blocked[$name]=[pscustomobject]@{enabled=$false;reason='MIGRATION_REQUIRED'}}
+  return [pscustomobject]@{schema='UI_CONTEXT_V1';bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1';product=[pscustomobject]@{version=$status.product_version;installed=$false;integrity_status='MIGRATION_REQUIRED'};recommendation=[pscustomobject]@{state='MIGRATION_REQUIRED';action='Arrange authorized migration downtime';reason='Legacy installation retained; migration is on hold.'};projects=@();actions=[pscustomobject]$blocked;safety=[pscustomobject]@{mcp_side_effect=$false;source_request_issued=$false;acquisition_called=$false;secret_values_included=$false;model_tool_surface_count=6}}
+ }
  $guided=Get-GuidedContext -SelectedProjectId $ProjectId
  $active=$status.active_admission
  $checkpoint=$null
@@ -809,7 +833,7 @@ $script:GuidedRu=@{
  'Next: {0}'='Далее: {0}'
  'Details: operation {0}; Advanced > Diagnostics'='Детали: операция {0}; Дополнительно > Диагностика'
  'Details: {0}; Advanced > Diagnostics'='Детали: {0}; Дополнительно > Диагностика'
- 'Install OneCChatWorker'='Установить OneCChatWorker'
+ 'Install OneC Orbit'='Установить OneC Orbit'
  'Product runtime is not installed.'='Локальная среда OneCChatWorker не установлена.'
  'Recover safely'='Безопасно восстановить'
  'A previous operation was interrupted.'='Предыдущая операция была прервана.'
@@ -1141,8 +1165,11 @@ function Invoke-GuidedAction {
 }
 function Get-GuidedContext {
  param([string]$SelectedProjectId)
+ if((Get-LauncherRootDisposition) -eq 'MIGRATION_REQUIRED'){
+  return [pscustomobject]@{state='MIGRATION_REQUIRED';recommended='Arrange authorized migration downtime';project=$null;participant=$null;reason='Legacy installation retained. Migration is on hold; use explicit legacy roots for the existing installation.'}
+ }
  $installed=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
- if(-not $installed){return [pscustomobject]@{state='NOT_INSTALLED';recommended='Install OneCChatWorker';project=$null;participant=$null;reason='Product runtime is not installed.'}}
+ if(-not $installed){return [pscustomobject]@{state='NOT_INSTALLED';recommended='Install OneC Orbit';project=$null;participant=$null;reason='Product runtime is not installed.'}}
  $preferredCurrent=Join-Path $ProgramDataRoot 'operations\current-operation.json'
  $recovery=if(Test-Path -LiteralPath $preferredCurrent -PathType Leaf){try{Get-OperationRecoveryClassification -ProgramDataRoot $ProgramDataRoot}catch{$null}}else{[pscustomobject]@{classification='NOT_STARTED';operation=$null}}
  if($recovery -and $recovery.classification -eq 'RECOVERY_REQUIRED'){
@@ -1473,7 +1500,7 @@ function Invoke-GuidedRecovery {
 function Show-GuidedHeader {
  param($Context)
  Write-Host ''
- Write-Host 'OneCChatWorker'
+ Write-Host 'OneC Orbit'
  Write-Host ((T 'State: {0}') -f (Get-GuidedStateLabel $Context.state))
  if($Context.project){Write-Host ((T 'Project: {0}') -f $Context.project.display_name)}
  if($Context.state -eq 'RUNNING' -and $Context.active){
@@ -1562,6 +1589,12 @@ function Guided-MainMenu {
   $ctx=$null
   try{$ctx=Get-GuidedContext}catch{Show-GuidedFailure $_.Exception;$ctx=[pscustomobject]@{state='UNKNOWN';recommended='Open Advanced diagnostics';project=$null;reason='State could not be read safely.'}}
   Show-GuidedHeader $ctx
+  if($ctx.state -eq 'MIGRATION_REQUIRED'){
+   Write-Host $ctx.reason
+   Write-Host 'MIGRATION_REQUIRED: no installation or project action is available. Use explicit legacy roots for the existing deployment.'
+   if(([string](Read-Ui 'Q to exit')) -match '^(?i:q|quit|0)$'){return}
+   continue
+  }
   if($ctx.state -eq 'RUNNING'){
    Write-Host (T '[Enter] Show current work status   [S] Stop work   [O] Open Output   [A] Advanced   [Q] Exit')
   }elseif($ctx.state -eq 'STARTING'){
@@ -1592,6 +1625,7 @@ function Guided-MainMenu {
   }
   if(-not [string]::IsNullOrWhiteSpace($choice)){Write-Host ("FAIL: {0}" -f (T 'Choose Enter for the recommended action, P, A, or Q.'));continue}
   switch($ctx.state){
+   'MIGRATION_REQUIRED' {Write-Host $ctx.reason}
    'NOT_INSTALLED' {
     Write-Host (T 'This installs the local runtime and may ask for Windows administrator approval.')
     if(Invoke-GuidedAction {Run-Install}){Write-Host (T 'SUCCESS: Installation step completed.');Write-Host (T 'Next: the menu will show the next required action.')}
