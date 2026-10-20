@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 127397,
-      "sha256": "115a9f6e90ccecae6df628f480e287d3b4237880f1990217cf6c083c932278f2"
+      "size": 128221,
+      "sha256": "d6187acbeb8ccaddda3b5e676e72bc0a0a51a8256e5d4681be80eac4ced4a107"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -415,13 +415,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml",
-      "size": 18945,
-      "sha256": "cd332713d8d7d42b5d7e3ecedcaa1e1a958cb0cb7578ee0b341179648666e004"
+      "size": 19994,
+      "sha256": "77f9cc600d0711fc7eeb3711bcd727588ca465b6c4ef9a12876489479ebf1e02"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 38274,
-      "sha256": "06b0af5680194c1aef9dd79705ab6b1487c16be3bcc51a568bd117e0436489c5"
+      "size": 47462,
+      "sha256": "92035fb0affb52848ed96d2b717133aa9c68d642a5ff3b686807c4182726631b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -450,13 +450,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 18662,
-      "sha256": "ddccb4f75fd089bd8aa9374863258d31980489515c2ae68c7cfed52f3e71f164"
+      "size": 19957,
+      "sha256": "b4e7bdaa0b812a833319cae1d87244828ca2ba252340b2f9d94d77ec38b0c8c7"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 24777,
-      "sha256": "f7ec9e1b327c4d093f27bfe087b68212cdaf70ccbe1cc0e8f63a69fbd24d006e"
+      "size": 26731,
+      "sha256": "fd926775e72542a729ef6121f2d707d2d3677b977fbf200a244f0f29dfad8848"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -470,8 +470,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/WorkerClient.cs",
-      "size": 7371,
-      "sha256": "981c35a8d2f96a5012db3632f8faaa66adc7d817a02e48b6a6e1269a93dc896f"
+      "size": 7737,
+      "sha256": "c26df82676ee65a7958a4928fa8e9e1cf50501730e91b12135b9dc7af49ce5db"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/app.manifest",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "size": 75466622,
-      "sha256": "4c4747f1dbd33dc719e3fc188b3648fc129cf51b80d0b0ce7d11fb43217bb64c"
+      "size": 75470965,
+      "sha256": "f851711785d6a2bb326feb79825debe97fd2db22c998dbf58e4120fa829cd585"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish_control_center.ps1",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "b3059052dc364ce2a2781bc25758f4c87266136a461674a744a8770b5568b2de"
+      "sha256": "da37ad472c5e7004db49f5012d5f7e3548b363411e194d4225fa16cafd959f6b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -640,8 +640,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 16271,
-      "sha256": "c2bfceef5189c939b42dacfd501dc792c23a4c8f61cfe5fbc3a2b8302f921967"
+      "size": 27049,
+      "sha256": "f7e60b3de200843d8aff729ae79b994d0e6b7967a586b70c96a051a5b97d91d4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Q113_EXISTING_EXTENSION_QUICK_SYNC.md",
@@ -2516,7 +2516,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 2433,
-      "sha256": "652d3c31719688001bed1730096a12240fb5b83ed9aaab527729fbabebd95dd6"
+      "sha256": "6c112e8f926efab5b5017811230f8072670f9ba12020186e8106ed2c16b4c845"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2830,5 +2830,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "52beafec1fd8526093b0674420c141cc867413bbbe6704b0abcc24fd3de982ef"
+  "snapshot_digest": "00b21578efb3fd22f7f79aec0dc6a8d7902378ab0d2da342e0213e2564c867de"
 }

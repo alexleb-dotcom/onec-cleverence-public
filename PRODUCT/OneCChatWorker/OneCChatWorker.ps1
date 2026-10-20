@@ -368,6 +368,9 @@ function Run-SyncExtension {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Check accepted identity, admission and source/target SHA256' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $x=Sync-ExistingWorkerExtension -ProjectId $project -ParticipantId $participant -ExtensionId $extension -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+  # Keep the bounded native outcome on the existing operation, including history,
+  # so an elevated caller without stdout can verify fresh canonical readback.
+  $op|Add-Member -NotePropertyName sync_extension_result -NotePropertyValue ([pscustomobject]@{status=$x.status;artifact_key=$x.artifact_key;generation_id=$x.generation_id;source_snapshot_id=$x.source_snapshot_id}) -Force
   $message=$(if($x.status -eq 'NO_CHANGE'){'Identical extension: skipped, no generation'}elseif($x.status -eq 'READY'){'Selected extension published and Source accepted'}else{'Selected source prepared/sealed; explicit recovery or admission action required'})
   $state=$(if($x.status -eq 'WAITING_FOR_USER'){'WAITING_FOR_USER'}else{'PASS'})
   $null=Update-WorkerOperation -Operation $op -Message $message -Step 3 -Total 3 -State $state -SafeDetails @{status=$x.status;generation_id=$x.generation_id;artifact_key=$x.artifact_key;source_snapshot_id=$x.source_snapshot_id} -ProgramDataRoot $ProgramDataRoot
@@ -635,6 +638,7 @@ function Get-UiContext {
   $guided=[pscustomobject]@{state='PROJECT_SELECTION_REQUIRED';recommended='Choose project';reason='Choose the project explicitly before starting access.'}
  }
  $sourceUpdate=if($selectedProjectId){Get-SourceUpdateSummary -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot}else{$null}
+ if($sourceUpdate){$sourceUpdate|Add-Member -NotePropertyName project_id -NotePropertyValue $selectedProjectId -Force}
  $updateActive=$sourceUpdate -and $sourceUpdate.status -ne 'NONE'
  $state=[string]$guided.state
  $actions=[ordered]@{}
@@ -646,6 +650,7 @@ function Get-UiContext {
   verify=($selectedProject -and -not $updateActive -and $state -eq 'PROJECT_NEEDS_VERIFY')
   repair=($selectedProject -and $state -eq 'PROJECT_NEEDS_VERIFY')
   update=$true;add_project=$true
+  sync_extension=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $active -and -not $updateActive -and -not $sourceUpdate.promotion_state -and $status.operation_recovery.classification -ne 'RECOVERY_REQUIRED' -and @($sourceArtifacts|Where-Object {$_.artifact_type -ceq 'EXTENSION'}).Count -gt 0)
   prepare_source_update=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $updateActive -and $sourceArtifacts.Count -gt 0)
   accept_source_update=([bool]$updateActive);cancel_source_update=([bool]$updateActive)
  }
