@@ -4354,9 +4354,8 @@ Export-ModuleMember -Function *
         if(-not [int64]::TryParse([string]$r.size,[ref]$bytes) -or $bytes -lt 0){
             throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
         }
-        if(-not $expected.TryAdd([string]$r.path,[pscustomobject]@{bytes=$bytes;sha256=[string]$r.sha256})){
-            throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
-        }
+        if($expected.ContainsKey([string]$r.path)){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'}
+        $expected.Add([string]$r.path,[pscustomobject]@{bytes=$bytes;sha256=[string]$r.sha256})
     }
     if($expected.Count -ne @($Current.files).Count){throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'}
     $configFound=$false
