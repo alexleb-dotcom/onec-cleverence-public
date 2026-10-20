@@ -31,6 +31,39 @@ function Root-Intersects([string]$A,[string]$B) {
         $A.StartsWith($B+'\',[StringComparison]::OrdinalIgnoreCase) -or
         $B.StartsWith($A+'\',[StringComparison]::OrdinalIgnoreCase)
 }
+# Query DOS device identity, not a lexical drive-letter spelling.
+# A SUBST drive maps to \??\C:\... and is refused conservatively.
+# Only a locally attached \Device\HarddiskVolumeN DOS drive is admitted in C0.
+# UNC, mapped, virtual, ambiguous or unresolvable devices remain a hard HOLD.
+if(-not ('OrbitC0.DosDeviceIdentity' -as [type])){
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+namespace OrbitC0 {
+    public static class DosDeviceIdentity {
+        [DllImport("kernel32.dll", EntryPoint="QueryDosDeviceW", CharSet=CharSet.Unicode, SetLastError=true)]
+        public static extern uint QueryDosDevice(string name, StringBuilder target, int maxChars);
+    }
+}
+'@ -ErrorAction Stop
+}
+function Get-PhysicalRoot([string]$PathValue) {
+    if($PathValue -notmatch '^[A-Za-z]:\\'){ throw 'UNTRUSTED_NON_LOCAL_ROOT' }
+    # NTFS 8.3 alias spellings are not reparse points; reject instead of trusting them.
+    if($PathValue -match '(?i)(^|\\)[^\\]*~[0-9]+(\\|$)'){throw 'UNTRUSTED_SHORT_NAME_ALIAS'}
+    $drive=$PathValue.Substring(0,2).ToUpperInvariant()
+    $buf=New-Object System.Text.StringBuilder 4096
+    $size=[OrbitC0.DosDeviceIdentity]::QueryDosDevice($drive,$buf,$buf.Capacity)
+    if($size -eq 0){throw 'DOS_DEVICE_IDENTITY_UNAVAILABLE'}
+    $targets=@($buf.ToString().Split([char]0,[StringSplitOptions]::RemoveEmptyEntries))
+    if($targets.Count -ne 1 -or $targets[0] -notmatch '^\\Device\\HarddiskVolume[0-9]+$'){
+        throw 'NONCANONICAL_DOS_DEVICE_ALIAS'
+    }
+    # The device name is the physical volume identifier, so drive letters
+    # which map to the same volume compare equal for ancestors and duplicates.
+    return $targets[0]+$PathValue.Substring(2).TrimEnd('\')
+}
 function Has-ReparseAncestor([string]$PathValue) {
     $cursor=$PathValue
     while (-not [string]::IsNullOrWhiteSpace($cursor)) {
@@ -64,6 +97,20 @@ try {
         Add-Hold 'PRODUCTION_INSPECTION_NOT_AUTHORIZED'
     }
     if($reasons.Count -eq 0) {
+        $resolved=@()
+        foreach($r in $roots){
+            try { $resolved+=,(Get-PhysicalRoot $r) }
+            catch { Add-Hold 'PHYSICAL_ROOT_IDENTITY_UNVERIFIED';break }
+        }
+        if($reasons.Count -eq 0){
+            for($i=0;$i -lt $resolved.Count;$i++){
+                for($j=$i+1;$j -lt $resolved.Count;$j++){
+                    if(Root-Intersects $resolved[$i] $resolved[$j]){Add-Hold 'ROOT_COLLISION'}
+                }
+            }
+        }
+    }
+    if($reasons.Count -eq 0) {
         foreach($r in $roots) {
             if(Has-ReparseAncestor $r) {Add-Hold 'REPARSE_ANCESTOR';break}
         }
@@ -94,7 +141,7 @@ if($reasons.Count -eq 0){
     # The absence of simple markers cannot prove that projects/Source/S4 are quiescent.
     Add-Hold 'PROJECT_SOURCE_S4_ATTESTATION_REQUIRED'
 }
-$hardBlock=@('ROOT_COLLISION','PRODUCTION_INSPECTION_NOT_AUTHORIZED','REPARSE_ANCESTOR',
+$hardBlock=@('ROOT_COLLISION','PHYSICAL_ROOT_IDENTITY_UNVERIFIED','PRODUCTION_INSPECTION_NOT_AUTHORIZED','REPARSE_ANCESTOR',
     'LEGACY_ROOT_MISSING','INCOMPLETE_LEGACY_INSTALL','ORBIT_DESTINATION_OCCUPIED',
     'ADMISSION_MARKER_PRESENT','HELPER_STATE_UNADJUDICATED',
     'OPERATION_STATE_UNADJUDICATED','METADATA_INSPECTION_FAILED')

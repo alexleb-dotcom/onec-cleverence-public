@@ -12,7 +12,8 @@ The gate does not read/hash/traverse/copy Source, Main or Incoming, inspect proj
 
 | Reason | Status | Meaning |
 | --- | --- | --- |
-| ROOT_COLLISION / REPARSE_ANCESTOR | BLOCKED | Path aliases, nested paths or reparse ancestors cannot be trusted |
+| ROOT_COLLISION / REPARSE_ANCESTOR | BLOCKED | Nested or equal roots, including duplicate physical DOS-device paths, or reparse ancestors |
+| PHYSICAL_ROOT_IDENTITY_UNVERIFIED | BLOCKED | Cannot prove a canonical attached local DOS device; SUBST, UNC/mapped/virtual drives, NTFS 8.3 aliases and other unproven namespace forms refused |
 | PRODUCTION_INSPECTION_NOT_AUTHORIZED | BLOCKED | Standard live roots cannot be inspected by off-production tests |
 | LEGACY_ROOT_MISSING / INCOMPLETE_LEGACY_INSTALL | BLOCKED | Legacy root or required marker missing; no reconstruction |
 | ORBIT_DESTINATION_OCCUPIED | BLOCKED | Pre-existing Orbit destination, including partial installation, must be adjudicated |
@@ -35,4 +36,4 @@ No public "migration available" or "install ready" UI status may be derived from
 
 ## Isolated test evidence
 
-`tests/run_orbit_migration_readonly_preflight_regression.ps1` constructs only disposable `%TEMP%` roots. It checks missing/partial legacy roots, clean-marker owner-review status, ACTIVE admission marker, helper/operation markers, occupied destination, root collision, production inspection guard, unchanged marker bytes, no source content access and `migration_permitted=false` on every branch.
+`tests/run_orbit_migration_readonly_preflight_regression.ps1` constructs only disposable `%TEMP%` roots. It checks missing/partial legacy roots, clean-marker owner-review status, ACTIVE admission marker, helper/operation markers, occupied destination, root collision, production inspection guard, unchanged marker bytes, no source content access and `migration_permitted=false` on every branch. The adversarial Windows matrix also creates and removes an actual disposable `SUBST` drive (same directory alias and parent/child alias), a disposable NTFS junction removed with a non-recursive directory unlink, a local unprovable device namespace, a denied-ACL temporary directory restored in `finally`, and a synthetic NTFS 8.3 spelling. No network path is probed.
