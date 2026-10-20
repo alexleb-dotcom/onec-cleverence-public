@@ -34,8 +34,10 @@ function Get-LauncherRootDisposition {
  # Installed older cores remain usable through explicit legacy/custom roots.
  if([IO.Path]::GetFullPath($WorkerRoot).TrimEnd('\') -ine 'C:\OneCOrbit' -or
     [IO.Path]::GetFullPath($ProgramDataRoot).TrimEnd('\') -ine 'C:\ProgramData\OneCOrbit'){return 'EXPLICIT_ROOTS'}
- if((Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf) -and
-    (Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf)){return 'ORBIT_INSTALLED'}
+ $hasCatalog=Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf
+ $hasInstalledState=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+ if($hasCatalog -xor $hasInstalledState){return 'MIGRATION_REQUIRED'}
+ if($hasCatalog -and $hasInstalledState){return 'ORBIT_INSTALLED'}
  if((Test-Path -LiteralPath 'C:\OneCChatWorker') -or (Test-Path -LiteralPath 'C:\ProgramData\OneCChatWorker')){return 'MIGRATION_REQUIRED'}
  return 'NEW_INSTALL'
 }

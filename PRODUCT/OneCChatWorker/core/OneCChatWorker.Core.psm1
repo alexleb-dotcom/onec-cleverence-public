@@ -19,8 +19,12 @@ function Get-InstallRootDisposition {
     $defaultPair=([IO.Path]::GetFullPath($WorkerRoot).TrimEnd('\') -ieq [IO.Path]::GetFullPath($script:DefaultWorkerRoot).TrimEnd('\')) -and
         ([IO.Path]::GetFullPath($ProgramDataRoot).TrimEnd('\') -ieq [IO.Path]::GetFullPath($script:DefaultProgramDataRoot).TrimEnd('\'))
     if(-not $defaultPair){return 'EXPLICIT_ROOTS'}
-    if((Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf) -and
-       (Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf)){return 'ORBIT_INSTALLED'}
+    $hasCatalog=Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf
+    $hasInstalledState=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+    # A partial Orbit root is an interrupted/ambiguous deployment, never a clean install.
+    # Hold before any admin, dependency, catalog, ACL, or Source owner can run.
+    if($hasCatalog -xor $hasInstalledState){return 'MIGRATION_REQUIRED'}
+    if($hasCatalog -and $hasInstalledState){return 'ORBIT_INSTALLED'}
     # Metadata/existence only: never enumerate, hash, copy or read legacy Source.
     if((Test-Path -LiteralPath $script:LegacyWorkerRoot) -or
        (Test-Path -LiteralPath $script:LegacyProgramDataRoot)){return 'MIGRATION_REQUIRED'}

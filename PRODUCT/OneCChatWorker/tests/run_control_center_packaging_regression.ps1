@@ -56,6 +56,7 @@ try{
   $identity=& $module { @($script:DefaultWorkerRoot,$script:DefaultProgramDataRoot) }
   Rec 'orbit_core_default_identity' (($identity -join '|') -eq 'C:\OneCOrbit|C:\ProgramData\OneCOrbit') ($identity -join '|')
   Rec 'orbit_native_defaults' ($launcher -match "WorkerRoot='C:\\OneCOrbit'" -and $launcher -match "ProgramDataRoot='C:\\ProgramData\\OneCOrbit'") ''
+  Rec 'orbit_launcher_partial_fallback_guard' ($launcher -match '\$hasCatalog -xor \$hasInstalledState') ''
   Rec 'orbit_preferences_default' ((Get-Content (Join-Path $project 'PreferencesStore.cs') -Raw -Encoding UTF8) -match '"OneCOrbit"') ''
   Rec 'orbit_run_value_name' ($startup -match 'ValueName = "OneC Orbit"') ''
   $proof=& $module {
@@ -68,6 +69,39 @@ try{
       $script:LegacyProgramDataRoot=Join-Path $base 'LegacyData'
       $worker=$script:DefaultWorkerRoot;$pd=$script:DefaultProgramDataRoot
       if((Get-InstallRootDisposition) -ne 'NEW_INSTALL'){throw 'DEFAULT_NEW_INSTALL_FAILED'}
+      # Independent negative cases: neither legacy root exists at this point.
+      # An interrupted Orbit install must hold, with zero admin/install/Source side effects.
+      $tokens=$null;$errors=$null
+      $ast=[Management.Automation.Language.Parser]::ParseInput($launcherText,[ref]$tokens,[ref]$errors)
+      foreach($name in @('Get-LauncherRootDisposition','Get-UiContext','Get-GuidedContext','Show-StatusReadable')){
+        $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+        . ([scriptblock]::Create($fn.Extent.Text))
+      }
+      $WorkerRoot=$worker;$ProgramDataRoot=$pd;$ProjectId=$null;$Json=$false
+      New-Item -ItemType Directory -Path $worker,$pd|Out-Null
+      foreach($partial in @('worker_only','installed_state_only')){
+        $catalogMarker=Join-Path $worker 'projects.json'
+        $installedMarker=Join-Path $pd 'installed-state.json'
+        $marker=if($partial -eq 'worker_only'){$catalogMarker}else{$installedMarker}
+        [IO.File]::WriteAllText($marker,('{"partial":"' + $partial + '"}'))
+        $before=[IO.File]::ReadAllText($marker)
+        if((Test-Path -LiteralPath $script:LegacyWorkerRoot) -or (Test-Path -LiteralPath $script:LegacyProgramDataRoot)){throw 'PARTIAL_NO_LEGACY_FIXTURE_INVALID'}
+        if((Get-InstallRootDisposition) -ne 'MIGRATION_REQUIRED'){throw ('PARTIAL_ORBIT_NOT_HELD_'+$partial)}
+        try{Install-OneCChatWorker -PackageRoot $package;throw ('PARTIAL_INSTALL_NOT_BLOCKED_'+$partial)}catch{if($_.Exception.Message -notlike 'MIGRATION_REQUIRED:*'){throw}}
+        $partialStatus=Get-WorkerStatus
+        if($partialStatus.state -ne 'MIGRATION_REQUIRED' -or $partialStatus.source_scan_performed -ne $false){throw ('PARTIAL_STATUS_HOLD_MISSING_'+$partial)}
+        $partialUi=Get-UiContext
+        if($partialUi.recommendation.state -ne 'MIGRATION_REQUIRED' -or @($partialUi.actions.PSObject.Properties|Where-Object{$_.Value.enabled}).Count){throw ('PARTIAL_UI_MUTATION_ENABLED_'+$partial)}
+        if((Get-GuidedContext).state -ne 'MIGRATION_REQUIRED'){throw ('PARTIAL_GUIDED_HOLD_MISSING_'+$partial)}
+        if([IO.File]::ReadAllText($marker) -ne $before -or
+          @(Get-ChildItem -LiteralPath $worker -Force).Count -ne $(if($partial -eq 'worker_only'){1}else{0}) -or
+          @(Get-ChildItem -LiteralPath $pd -Force).Count -ne $(if($partial -eq 'installed_state_only'){1}else{0})){
+          throw ('PARTIAL_MARKER_OR_DIRECTORY_MUTATED_'+$partial)
+        }
+        Remove-Item -LiteralPath $marker
+      }
+      Remove-Item -LiteralPath $worker,$pd -Force
+      if((Test-Path -LiteralPath $worker) -or (Test-Path -LiteralPath $pd)){throw 'PARTIAL_ROOTS_NOT_CLEANED'}
       New-Item -ItemType Directory -Path $script:LegacyWorkerRoot|Out-Null
       $legacyCatalog=Join-Path $script:LegacyWorkerRoot 'projects.json'
       [IO.File]::WriteAllText($legacyCatalog,'{"schema_version":1,"projects":[]}')
