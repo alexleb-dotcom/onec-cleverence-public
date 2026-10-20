@@ -1812,6 +1812,2570 @@ function Assert-QuickSyncTreesEqual {
     if($ld.Count -ne $rd.Count){throw 'QUICK_SYNC_DIRECTORY_MISMATCH'}
     for($i=0;$i -lt $ld.Count;$i++){if([string]$ld[$i] -cne [string]$rd[$i]){throw 'QUICK_SYNC_DIRECTORY_MISMATCH'}}
 }
+# Only the selected canonical extension is verified, never either Main. The
+# accepted snapshot authenticates the fingerprint path/hash; its JSONL rows
+# authenticate each canonical relative file path, byte length and SHA-256.
+function Assert-QuickSyncCanonicalAccepted {
+    param(
+        [Parameter(Mandatory)]$Current,
+        [Parameter(Mandatory)]$Accepted,
+        [Parameter(Mandatory)][string]$ManifestPath,
+        [Parameter(Mandatory)][string]$ParticipantId,
+        [Parameter(Mandatory)][string]$ExtensionId
+    )
+    if([string]$Accepted.fingerprint_inventory_state -cne 'PRESENT'){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_REQUIRED'}
+    $expectedRelative="Fingerprints/$ParticipantId.extension.$ExtensionId.jsonl"
+    if([string]$Accepted.fingerprint_inventory_path -cne $expectedRelative -or
+       [string]$Accepted.fingerprint_inventory_sha256 -notmatch '^[a-f0-9]{64}
+    param([Parameter(Mandatory)]$Source,[Parameter(Mandatory)][string]$Slot)
+    $dest=Get-SourceUpdateAclEntry -Path $Slot
+    if($dest -isnot [IO.DirectoryInfo]){throw 'QUICK_SYNC_SLOT_NOT_DIRECTORY'}
+    if(@($dest.GetFileSystemInfos()).Count){throw 'QUICK_SYNC_SLOT_NOT_EMPTY'}
+    foreach($relative in @($Source.directories|Sort-Object Length)){
+        $p=[IO.Path]::Combine([string]$dest.FullName,([string]$relative).Replace('/','\'))
+        $null=[IO.Directory]::CreateDirectory($p)
+    }
+    foreach($f in @($Source.files)){
+        $p=[IO.Path]::Combine([string]$dest.FullName,([string]$f.relative).Replace('/','\'))
+        $now=Get-SourceUpdateAclEntry -Path ([string]$f.absolute)
+        if($now -isnot [IO.FileInfo] -or (($now.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)){throw 'QUICK_SYNC_SOURCE_CHANGED'}
+        [IO.File]::Copy([string]$f.absolute,$p,$false)
+    }
+}
+function Sync-ExistingWorkerExtension {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$ParticipantId,
+        [Parameter(Mandatory)][string]$ExtensionId,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$OperatorIdentity
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $pk=Assert-SafeId $ProjectId 'project_id'
+    $participant=Assert-SafeId $ParticipantId 'participant_id'
+    $ext=Assert-SafeId $ExtensionId 'extension_id'
+    $key="$participant|EXTENSION|$ext"
+    $paths=Get-SourceUpdatePaths -ProjectId $pk -WorkerRoot $WorkerRoot
+    if(Test-ProjectActiveAdmission -ProjectId $pk -ProgramDataRoot $ProgramDataRoot){throw 'QUICK_SYNC_ACTIVE_ADMISSION_STOP_REQUIRED'}
+    if((Get-SourceUpdateSummary -ProjectId $pk -WorkerRoot $WorkerRoot).status -ne 'NONE'){throw 'QUICK_SYNC_EXISTING_INCOMING_RECOVER_FIRST'}
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'QUICK_SYNC_PROMOTION_RECOVERY_REQUIRED'}
+    $catalog=Read-WorkerCatalog $WorkerRoot
+    $project=Find-Project $catalog $pk
+    if(-not $project){throw 'PROJECT_NOT_FOUND'}
+    $matches=@(Get-SourceUpdateCatalogRows $project|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($matches.Count -ne 1){throw 'QUICK_SYNC_EXTENSION_NOT_REGISTERED'}
+    $row=$matches[0]
+    $manifestPath=Get-ProjectManifestPath -ProjectId $pk -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'QUICK_SYNC_ACCEPTED_MANIFEST_REQUIRED'}
+    $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $old=@(Get-ManifestArtifactRows $manifest|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($old.Count -ne 1){throw 'QUICK_SYNC_NEW_EXTENSION_USE_SELECTED_ADD'}
+    $priorPart=@($manifest.participants|Where-Object {$_.participant_id -ceq $participant -and $_.active -ne $false})
+    $priorExt=@();if($priorPart.Count -eq 1){$priorExt=@($priorPart[0].target.extensions|Where-Object {$_.extension_id -ceq $ext -and $_.active -ne $false})}
+    if($priorExt.Count -ne 1 -or [string]$old[0].canonical_path -cne [string]$row.canonical_path -or [string]$priorExt[0].source_path -cne [string]$row.source_path){throw 'QUICK_SYNC_SOURCE_IDENTITY_CHANGED'}
+    $fast=Get-FastProjectState -ProjectId $pk -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED'){throw ('QUICK_SYNC_BASE_NOT_ACCEPTED: '+[string]$fast.state)}
+    $source=[IO.Path]::GetFullPath([string]$row.source_path).TrimEnd('\')
+    $managed=[IO.Path]::GetFullPath([string]$paths.project_root).TrimEnd('\')
+    if($source.Equals($managed,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($managed+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'QUICK_SYNC_SOURCE_INSIDE_WORKER'}
+    Assert-OneCExportRoot $source
+    $canonical=Join-Path $paths.project_root ([string]$row.canonical_path).Replace('/','\')
+    $before=Get-QuickSyncExtensionTree -Root $source
+    $current=Get-QuickSyncExtensionTree -Root $canonical
+    $acceptedRows=@($manifest.accepted_snapshot.artifacts|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($acceptedRows.Count -ne 1){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_REQUIRED'}
+    Assert-QuickSyncCanonicalAccepted -Current $current -Accepted $acceptedRows[0] -ManifestPath $manifestPath -ParticipantId $participant -ExtensionId $ext
+    $unchanged=$false
+    try{Assert-QuickSyncTreesEqual -Expected $before -Actual $current;$unchanged=$true}catch{
+        if($_.Exception.Message -notin @('QUICK_SYNC_SHA256_MISMATCH','QUICK_SYNC_DIRECTORY_MISMATCH')){throw}
+    }
+    if($unchanged){
+        return [pscustomobject]@{status='NO_CHANGE';project_id=$pk;artifact_key=$key;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;files=$before.files.Count;copied_content_bytes=0;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0;generation_id=$null}
+    }
+    $prepared=Prepare-SourceUpdate -ProjectId $pk -Selections @($key) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+    if([string]$prepared.status -ne 'PREPARED_WRITABLE' -or @($prepared.slots).Count -ne 1 -or [string]$prepared.slots[0].key -cne $key){throw 'QUICK_SYNC_PREPARE_IDENTITY_MISMATCH'}
+    # From here a failure deliberately leaves this EXACT generation for native
+    # inspect/recovery. Never auto CANCEL/STOP, overwrite or replay it.
+    Copy-QuickSyncExtensionTree -Source $before -Slot ([string]$prepared.slots[0].slot_path)
+    $afterSource=Get-QuickSyncExtensionTree -Root $source
+    $afterSlot=Get-QuickSyncExtensionTree -Root ([string]$prepared.slots[0].slot_path)
+    Assert-QuickSyncTreesEqual -Expected $before -Actual $afterSource
+    Assert-QuickSyncTreesEqual -Expected $before -Actual $afterSlot
+    if(Test-ProjectActiveAdmission -ProjectId $pk -ProgramDataRoot $ProgramDataRoot){throw 'QUICK_SYNC_ADMISSION_BECAME_ACTIVE_INCOMING_PRESERVED'}
+    $accepted=Accept-SourceUpdate -ProjectId $pk -ExpectedGenerationId ([string]$prepared.generation_id) -ExpectedArtifactKey @($key) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+    if([string]$accepted.status -notin @('READY','NO_CHANGE')){
+        return [pscustomobject]@{status='WAITING_FOR_USER';reason=[string]$accepted.reason;generation_id=[string]$prepared.generation_id;artifact_key=$key;publication_performed=$false;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
+    }
+    [pscustomobject]@{status=[string]$accepted.status;project_id=$pk;artifact_key=$key;source_snapshot_id=$accepted.source_snapshot_id;publication_generation=$accepted.publication_generation;generation_id=[string]$prepared.generation_id;files=$before.files.Count;source_bytes=[int64]$before.bytes;copied_to_incoming_bytes=[int64]$before.bytes;copied_content_bytes=$accepted.copied_content_bytes;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
+}
+
+function Copy-ArtifactSafely {
+    param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Target,[switch]$ReplaceExisting,[Parameter(Mandatory)][string]$ProjectRoot,[Parameter(Mandatory)][string]$ArchiveKey,[string]$ExpectedTargetDigest,[scriptblock]$ProgressCallback)
+    $archive=$null
+    $targetExisted=Test-Path -LiteralPath $Target -PathType Container
+    $workerRoot=Split-Path -Parent $ProjectRoot
+    $stageRoot=Get-ApplyStageRoot $workerRoot
+    New-Item -ItemType Directory -Force -Path $stageRoot|Out-Null
+    do{$token=[Guid]::NewGuid().ToString('N').Substring(0,8);$stage=Join-Path $stageRoot ("a.stage-$token")}while(Test-Path -LiteralPath $stage)
+    $stageState='CREATED';$archiveMoved=$false;$copied=$null
+    try{
+        Write-ApplyStageState -StagePath $stage -State CREATED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        $stageState='COPYING';Write-ApplyStageState -StagePath $stage -State COPYING -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        $copied=Invoke-SourceAcquisition -Source $Source -Stage $stage -StageParent $stageRoot -ProgressCallback $ProgressCallback
+        $srcDigest=$copied.digest
+        $targetMaxChars=$(if([int]$srcDigest.max_relative_path_chars -gt 0){$Target.Length+1+[int]$srcDigest.max_relative_path_chars}else{$Target.Length})
+        $stageMaxChars=[int]$copied.metrics.max_stage_path_chars
+        $stageState='VERIFIED';Write-ApplyStageState -StagePath $stage -State VERIFIED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        if($targetExisted){
+            if([string]::IsNullOrWhiteSpace($ExpectedTargetDigest)){throw (New-ApplyCopyException -Class 'APPLY_TARGET_IDENTITY_REQUIRED' -SafeMessage 'Existing canonical Target has no manifest-bound digest; explicit recovery/deep verification is required before replacement.' -Phase 'PREFLIGHT' -Path $Target)}
+            $targetHash=$ExpectedTargetDigest
+            if($targetHash -eq $srcDigest.sha256){
+                $null=Remove-ApplyStageTree -StagePath $stage
+                Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+                return [pscustomobject]@{digest=$srcDigest;fingerprint_file=$copied.fingerprint_file;configuration_xml_sha256=$copied.configuration_xml_sha256;metrics=$copied.metrics;acquisition_contract=$copied.contract;changed=$false;archived=$null;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+            }
+            if(-not $ReplaceExisting){throw "TARGET_CONFLICT: $Target"}
+        }
+        if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='PUBLISH';files_processed=$srcDigest.files;files_total=$srcDigest.files;bytes_processed=[int64]$srcDigest.bytes;bytes_total=[int64]$srcDigest.bytes})}
+        if($targetExisted){$stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ');$archive=Join-Path $ProjectRoot ("Detached\$ArchiveKey\$stamp");New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive)|Out-Null;Move-Item -LiteralPath $Target -Destination $archive -ErrorAction Stop;$archiveMoved=$true}else{$parent=Split-Path -Parent $Target;New-Item -ItemType Directory -Force -Path $parent|Out-Null}
+        try{Move-Item -LiteralPath $stage -Destination $Target -ErrorAction Stop}catch{if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{}};throw}
+        $stageState='COMMITTED';Write-ApplyStageState -StagePath $stage -State COMMITTED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+        [pscustomobject]@{digest=$srcDigest;fingerprint_file=$copied.fingerprint_file;configuration_xml_sha256=$copied.configuration_xml_sha256;metrics=$copied.metrics;acquisition_contract=$copied.contract;changed=$true;archived=$archive;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+    }catch{
+        $cause=$_.Exception
+        $residue=[pscustomobject]@{stage_path=$stage;target_path=$Target;metadata_path=($stage+'.json')}
+        $cleanup=Remove-ApplyStageTree -StagePath $stage
+        $cleanupStatus=$cleanup.status
+        foreach($sidecar in @($stage+'.fingerprints.jsonl',$stage+'.request.json',$stage+'.progress.json',$stage+'.progress.json.tmp')){Remove-Item -LiteralPath $sidecar -Force -ErrorAction SilentlyContinue}
+        if($cleanup.status -eq 'CLEANUP_FAILED'){$q=Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $ProjectRoot;$cleanupStatus=$q.status}else{Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue}
+        if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{throw (New-ApplyCopyException -Class 'APPLY_COMMIT_ROLLBACK_FAILED' -SafeMessage 'Verified stage commit failed and the previous canonical Target could not be restored automatically.' -Phase 'COMMIT_ROLLBACK' -Path $Target -CleanupStatus $cleanupStatus -InnerException $_.Exception)}}
+        if($cause.Message -match '^SOURCE_CHANGED_DURING_SYNC:'){throw (New-ApplyCopyException -Class 'SOURCE_CHANGED_DURING_SYNC' -SafeMessage 'Source metadata changed while the managed snapshot was being copied; publication was aborted.' -Phase 'COPYING' -Path $Source -CleanupStatus $cleanupStatus -InnerException $cause)}
+        $class=$(if($stageState -eq 'COPYING'){'APPLY_COPY_FAILED'}elseif($stageState -eq 'VERIFIED'){'APPLY_COMMIT_FAILED'}else{'APPLY_STAGE_FAILED'})
+        $safe=$(if($stageState -eq 'COPYING'){'Copying into the managed staging area failed.'}elseif($stageState -eq 'VERIFIED'){'Verified staging data could not be committed to the canonical Target.'}else{'Managed staging failed before copy could complete.'})
+        throw (New-ApplyCopyException -Class $class -SafeMessage $safe -Phase $stageState -Path $Target -CleanupStatus $cleanupStatus -InnerException $cause)
+    }
+}
+
+function ConvertTo-ExtendedWindowsPath {
+    param([Parameter(Mandatory)][string]$Path)
+    $full=[IO.Path]::GetFullPath($Path)
+    if($full.StartsWith('\\')){return '\\?\UNC\'+$full.Substring(2)}
+    '\\?\'+$full
+}
+
+function Apply-ProjectAcl {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $reader="$env:COMPUTERNAME\$($script:ReaderName)"
+    if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){return}
+    $projectAclPath=ConvertTo-ExtendedWindowsPath $ProjectRoot
+    & icacls.exe $projectAclPath /grant:r ($reader+':(RX)') | Out-Null
+    if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $ProjectRoot"}
+    $participants=Join-Path $ProjectRoot 'Participants'
+    $output=Join-Path $ProjectRoot 'Output'
+    if(Test-Path -LiteralPath $participants){$aclPath=ConvertTo-ExtendedWindowsPath $participants;& icacls.exe $aclPath /grant:r ($reader+':(OI)(CI)(RX)') /T /C | Out-Null;if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $participants"}}
+    if(Test-Path -LiteralPath $output){$aclPath=ConvertTo-ExtendedWindowsPath $output;& icacls.exe $aclPath /grant:r ($reader+':(OI)(CI)(M)') /T /C | Out-Null;if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $output"}}
+}
+
+function Apply-WorkerProject {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[scriptblock]$ProgressCallback)
+    $c=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $c $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'};if($p.active -eq $false){throw 'PROJECT_INACTIVE'}
+    $catalogHash=Get-CatalogHash $WorkerRoot;$projectRoot=Join-Path $WorkerRoot $ProjectId;$residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    if($residue.Count){throw "APPLY_RESIDUE_REPAIR_REQUIRED: $($residue.Count) incomplete staging artifact(s) detected; run REPAIR before APPLY."}
+    $manifestDir=Join-Path $projectRoot 'ProjectManifest';New-Item -ItemType Directory -Force -Path $manifestDir,(Join-Path $projectRoot 'Participants'),(Join-Path $projectRoot 'Output')|Out-Null
+    $manifestPath=Join-Path $manifestDir 'project.json';$oldManifest=$null;if(Test-Path -LiteralPath $manifestPath -PathType Leaf){try{$oldManifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $oldGeneration=$(if($oldManifest -and $oldManifest.accepted_snapshot){[int]$oldManifest.accepted_snapshot.publication_generation}else{0});$manifestParticipants=@();$changes=@();$fingerprintMap=@{}
+    $activeParticipants=@($p.participants|Where-Object {$_.active -ne $false})
+    $missingRequiredMain=@($activeParticipants|Where-Object {$_.platform -eq 'ONEC' -and (-not $_.target.main -or $_.target.main.active -eq $false)})
+    foreach($part in $activeParticipants){
+        if($part.platform -ne 'ONEC'){throw "PLATFORM_NOT_IMPLEMENTED_1C_FIRST: $($part.platform)"};$participantKey=Assert-SafeId $part.participant_id 'participant_id';$mPart=[ordered]@{participant_id=$participantKey;platform=$part.platform;role=$part.role;active=$true;target=[ordered]@{main=$null;extensions=@()}}
+        if($part.target.main -and $part.target.main.active -ne $false){
+            Assert-OneCExportRoot $part.target.main.source_path;$rel="Participants/$participantKey/Target/Main";$target=Join-Path $projectRoot $rel.Replace('/','\');$oldDigest=$null
+            if($oldManifest){$oa=@(Get-ManifestArtifactRows $oldManifest|Where-Object {$_.canonical_path -eq $rel}|Select-Object -First 1);if($oa.Count){$oldDigest=$oa[0].tree_sha256}}
+            $copy=Copy-ArtifactSafely -Source $part.target.main.source_path -Target $target -ReplaceExisting:([bool]$part.target.main.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Main" -ExpectedTargetDigest $oldDigest -ProgressCallback $ProgressCallback
+            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='MAIN';artifact_id='main';source_input=$part.target.main.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived;acquisition_contract=$copy.acquisition_contract;acquisition_metrics=$copy.metrics}
+            $mPart.target.main=[ordered]@{artifact_id='main';active=$true;canonical_path=$rel;source_path=$part.target.main.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=[string]$copy.configuration_xml_sha256}
+            $fingerprintMap["$participantKey|MAIN|main"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType MAIN -ArtifactId main -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
+        }
+        foreach($ext in @($part.target.extensions|Where-Object {$_.active -ne $false})){
+            $eid=Assert-SafeId $ext.extension_id 'extension_id';Assert-OneCExportRoot $ext.source_path;$rel="Participants/$participantKey/Target/Extensions/$eid";$target=Join-Path $projectRoot $rel.Replace('/','\');$oldDigest=$null
+            if($oldManifest){$oa=@(Get-ManifestArtifactRows $oldManifest|Where-Object {$_.canonical_path -eq $rel}|Select-Object -First 1);if($oa.Count){$oldDigest=$oa[0].tree_sha256}}
+            $copy=Copy-ArtifactSafely -Source $ext.source_path -Target $target -ReplaceExisting:([bool]$ext.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Extensions\$eid" -ExpectedTargetDigest $oldDigest -ProgressCallback $ProgressCallback
+            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='EXTENSION';artifact_id=$eid;source_input=$ext.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived;acquisition_contract=$copy.acquisition_contract;acquisition_metrics=$copy.metrics}
+            $mPart.target.extensions+=,[ordered]@{extension_id=$eid;artifact_id=$eid;active=$true;canonical_path=$rel;source_path=$ext.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=[string]$copy.configuration_xml_sha256}
+            $fingerprintMap["$participantKey|EXTENSION|$eid"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType EXTENSION -ArtifactId $eid -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
+        }
+        $manifestParticipants+=,[pscustomobject]$mPart
+    }
+    $manifest=[pscustomobject][ordered]@{schema_version=2;project_id=$p.project_id;display_name=$p.display_name;active=$true;topology_authority='RP-20261004-026';catalog_sha256=$catalogHash;applied_utc=(Get-Date).ToUniversalTime().ToString('o');project_root=$projectRoot;participants=$manifestParticipants;output_relative='Output';accepted_snapshot=$null}
+    if(-not $missingRequiredMain.Count -and $activeParticipants.Count){
+        $manifest.accepted_snapshot=New-AcceptedSnapshot -ManifestParticipants @($manifestParticipants) -CatalogSha256 $catalogHash -ProofBasis 'ONE_PASS_COPY_HASH' -PublicationGeneration ($oldGeneration+1) -FingerprintMap $fingerprintMap
+    }
+    if($oldManifest){
+        $desired=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach($dp in @($manifest.participants)){
+            if($dp.target.main){$null=$desired.Add([string]$dp.target.main.canonical_path)}
+            foreach($de in @($dp.target.extensions)){$null=$desired.Add([string]$de.canonical_path)}
+        }
+        foreach($op in @($oldManifest.participants)){
+            $oldArts=@()
+            if($op.target.main){$oldArts+=,$op.target.main}
+            $oldArts+=@($op.target.extensions)
+            foreach($oa in $oldArts){
+                $rel=[string]$oa.canonical_path
+                if(-not $desired.Contains($rel)){
+                    $abs=Join-Path $projectRoot $rel.Replace('/','\')
+                    if(Test-Path -LiteralPath $abs){
+                        $stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+                        $detached=Join-Path $projectRoot ("Detached\Deactivated\$stamp\"+$rel.Replace('/','\'))
+                        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $detached)|Out-Null
+                        Move-Item -LiteralPath $abs -Destination $detached
+                        $changes+=,[pscustomobject]@{
+                            participant_id=[string]$op.participant_id
+                            artifact_type=$(if($rel -match '/Extensions/'){'EXTENSION'}else{'MAIN'})
+                            artifact_id=$(if($rel -match '/Extensions/([^/]+)$'){$Matches[1]}else{'main'})
+                            source_input=$null
+                            target_canonical_path=$rel
+                            action='DEACTIVATED_DETACHED'
+                            detached_path=$detached
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='PUBLISH';files_processed=$null;files_total=$null;bytes_processed=$null;bytes_total=$null})}
+    Write-JsonAtomic $manifest $manifestPath;Apply-ProjectAcl -ProjectRoot $projectRoot
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($missingRequiredMain.Count){
+        return [pscustomobject]@{project_id=$ProjectId;status='FAIL';state=$fast.state;catalog_sha256=$catalogHash;manifest_sha256=(Get-Sha256File $manifestPath);source_snapshot_id=$null;publication_generation=$oldGeneration;changes=$changes;errors=@($missingRequiredMain|ForEach-Object{"ONEC_MAIN_REQUIRED:"+[string]$_.participant_id});fast_state=$fast}
+    }
+    if(-not $activeParticipants.Count){
+        return [pscustomobject]@{project_id=$ProjectId;status='FAIL';state=$fast.state;catalog_sha256=$catalogHash;manifest_sha256=(Get-Sha256File $manifestPath);source_snapshot_id=$null;publication_generation=$oldGeneration;changes=$changes;errors=@('NO_ACTIVE_PARTICIPANTS');fast_state=$fast}
+    }
+    if($fast.state -ne 'ACCEPTED'){throw ("SNAPSHOT_PUBLICATION_NOT_ACCEPTED: "+$fast.reason)}
+    [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';catalog_sha256=$catalogHash;manifest_sha256=$fast.manifest_sha256;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;changes=$changes;fast_state=$fast}
+}
+
+function Verify-WorkerProject {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[scriptblock]$ProgressCallback)
+    $catalog=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $catalog $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'};$projectRoot=Join-Path $WorkerRoot $ProjectId;$manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot);if($residue.Count){return [pscustomobject]@{project_id=$ProjectId;status='INCOMPLETE_APPLY_RESIDUE';reason='ORPHAN_STAGE_PRESENT';residue_count=$residue.Count;residue=@($residue|Select-Object layout,state,stage_path,target_path);verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){return [pscustomobject]@{project_id=$ProjectId;status='APPLY_REQUIRED';reason='MANIFEST_MISSING';verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    try{$m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{return [pscustomobject]@{project_id=$ProjectId;status='FAIL';reason='MANIFEST_PARSE_FAILED';errors=@('MANIFEST_PARSE_FAILED');verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    $catalogHash=Get-CatalogHash $WorkerRoot;if($m.catalog_sha256 -ne $catalogHash){return [pscustomobject]@{project_id=$ProjectId;status='DRIFT_APPLY_REQUIRED';reason='CATALOG_HASH_MISMATCH';manifest_catalog_sha256=$m.catalog_sha256;catalog_sha256=$catalogHash;verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    $errors=New-Object System.Collections.Generic.List[string];$artifacts=@(Get-ManifestArtifactRows $m);if(-not $artifacts.Count){$errors.Add('NO_ACTIVE_PARTICIPANTS')};$artifactIndex=0
+    foreach($a in $artifacts){$artifactIndex++;$abs=Join-Path $projectRoot $a.canonical_path.Replace('/','\');if(-not(Test-Path -LiteralPath $abs -PathType Container)){$errors.Add("MISSING:$($a.canonical_path)");continue};$cb=$null;if($ProgressCallback){$cb={param($x);& $ProgressCallback ([pscustomobject]@{phase='DEEP_VERIFY';artifact_index=$artifactIndex;artifact_total=$artifacts.Count;artifact_path=$a.canonical_path;files_processed=$x.files_processed;files_total=$x.files_total;bytes_processed=$x.bytes_processed;bytes_total=$x.bytes_total})}.GetNewClosure()};try{$dig=Get-TreeDigest -Root $abs -ProgressCallback $cb;if($dig.sha256 -ne $a.tree_sha256){$errors.Add("HASH_MISMATCH:$($a.canonical_path)")}}catch{$errors.Add("VERIFY_ERROR:$($a.canonical_path):$($_.Exception.Message)")};if($a.platform -eq 'ONEC' -and -not(Test-Path -LiteralPath (Join-Path $abs 'Configuration.xml') -PathType Leaf)){$errors.Add("ONEC_LAYOUT:$($a.canonical_path)")}}
+    if(-not(Test-Path -LiteralPath (Join-Path $projectRoot 'Output') -PathType Container)){$errors.Add('OUTPUT_MISSING')}
+    if([int]$m.schema_version -eq 2 -and $m.accepted_snapshot){
+        if($errors.Count){
+            $m.accepted_snapshot.snapshot_state='DEEP_VERIFY_REQUIRED'
+            Write-JsonAtomic $m $manifestPath
+        }elseif([string]$m.accepted_snapshot.snapshot_state -ne 'ACCEPTED'){
+            $fp=@{}
+            foreach($sa in @($m.accepted_snapshot.artifacts)){
+                $fp[(Get-SnapshotArtifactKey $sa)]=[pscustomobject]@{state=[string]$sa.fingerprint_inventory_state;relative_path=[string]$sa.fingerprint_inventory_path;sha256=[string]$sa.fingerprint_inventory_sha256}
+            }
+            $null=Set-ManifestAcceptedSnapshot -Manifest $m -ManifestPath $manifestPath -ProofBasis 'EXPLICIT_DEEP_VERIFIED' -PublicationGeneration ([int]$m.accepted_snapshot.publication_generation+1) -FingerprintMap $fp
+        }
+    }
+    [pscustomobject]@{project_id=$ProjectId;status=$(if($errors.Count){'FAIL'}else{'READY'});catalog_sha256=$catalogHash;manifest_sha256=Get-Sha256File $manifestPath;errors=@($errors);verification_contract='DEEP_INTEGRITY_VERIFY_V1';artifact_count=$artifacts.Count}
+}
+
+function Get-WorkerDependencyHealth {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $nodePath=Get-HelperNodeExecutablePath
+    $nodeVersion=$(if(Test-Path -LiteralPath $nodePath -PathType Leaf){(& $nodePath --version).Trim()}else{$null})
+    $rgPath=Join-Path $ProgramDataRoot 'runtime\rg.exe'
+    $rgVersion=$null
+    if(Test-Path -LiteralPath $rgPath -PathType Leaf){
+        try{$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}catch{}
+    }
+    [pscustomobject]@{
+        node=[pscustomobject]@{required=$script:NodeVersion;actual=$nodeVersion;path=$nodePath;healthy=($nodeVersion -eq "v$($script:NodeVersion)")}
+        ripgrep=[pscustomobject]@{required=$script:RgVersion;actual=$rgVersion;healthy=($rgVersion -eq $script:RgVersion);path=$rgPath}
+        python_required=$false
+        cloudflare_cli_required=$false
+    }
+}
+
+function Get-HelperConnectionState {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $procs=@()
+    if(Test-Path -LiteralPath $helper -PathType Leaf){
+        $procs=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    }
+    $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+    $state=$null
+    if(Test-Path -LiteralPath $statePath -PathType Leaf){try{$state=Get-Content -LiteralPath $statePath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $logPath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-log.jsonl'
+    $connected=$null
+    if(Test-Path -LiteralPath $logPath -PathType Leaf){
+        foreach($line in @(Get-Content -LiteralPath $logPath -Tail 100 -Encoding UTF8)){
+            try{$e=$line|ConvertFrom-Json;if($e.event -eq 'CONNECTED'){$connected=$e}}catch{}
+        }
+    }
+    $notExpired=$false
+    if($state -and $state.expires_utc){try{$notExpired=(Get-Date).ToUniversalTime() -lt ([DateTime]::Parse($state.expires_utc).ToUniversalTime())}catch{}}
+    $status=if($procs.Count -eq 0){'OFFLINE'}elseif($connected -and $notExpired){'CONNECTED'}else{'RUNNING_NO_CONNECT_EVIDENCE'}
+    [pscustomobject]@{
+        status=$status
+        process_count=$procs.Count
+        process_ids=@($procs|Select-Object -ExpandProperty ProcessId)
+        session_id=$(if($state){$state.session_id}else{$null})
+        expires_utc=$(if($state){$state.expires_utc}else{$null})
+        project_id=$(if($state){$state.project_id}else{$null})
+        task_id=$(if($state){$state.task_id}else{$null})
+        last_connected_utc=$(if($connected){$connected.at_utc}else{$null})
+        helper_path=$helper
+    }
+}
+
+function Get-OutputProposalSummary {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+    $rows=@()
+    foreach($p in @($catalog.projects)){
+        $outRoot=Join-Path (Join-Path $WorkerRoot $p.project_id) 'Output'
+        $tasks=@()
+        if(Test-Path -LiteralPath $outRoot -PathType Container){
+            foreach($dir in @(Get-ChildItem -LiteralPath $outRoot -Directory -ErrorAction SilentlyContinue)){
+                $prov=Join-Path $dir.FullName '_proposal_provenance.json'
+                $status=$null;$files=$null;$bytes=$null
+                if(Test-Path -LiteralPath $prov -PathType Leaf){
+                    try{$doc=Get-Content -LiteralPath $prov -Raw -Encoding UTF8|ConvertFrom-Json;$status=$doc.status;$files=$doc.total_files;$bytes=$doc.total_bytes}catch{$status='INVALID_PROVENANCE'}
+                }
+                $tasks+=,[pscustomobject]@{task_id=$dir.Name;status=$status;proposal_files=$files;proposal_bytes=$bytes;last_write_utc=$dir.LastWriteTimeUtc.ToString('o')}
+            }
+        }
+        $rows+=,[pscustomobject]@{project_id=$p.project_id;task_count=$tasks.Count;tasks=@($tasks|Sort-Object last_write_utc -Descending|Select-Object -First 20)}
+    }
+    $rows
+}
+
+function Get-WorkerStatus {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing;$runtimeState=Join-Path $ProgramDataRoot 'runtime\active-admission.json';$active=$null;if(Test-Path -LiteralPath $runtimeState){try{$active=Get-Content $runtimeState -Raw|ConvertFrom-Json}catch{}}
+    $rows=@();foreach($p in @($catalog.projects)){$v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}};$snapshotId=$(if($v.PSObject.Properties.Name -contains 'source_snapshot_id'){$v.source_snapshot_id}else{$null});$reason=$(if($v.PSObject.Properties.Name -contains 'reason'){$v.reason}else{$null});$rows+=,[pscustomobject]@{project_id=$p.project_id;display_name=$p.display_name;active=($p.active -ne $false);verification=$(if($v.state -eq 'ACCEPTED'){'READY'}else{$v.state});fast_state=$v.state;fast_reason=$reason;source_snapshot_id=$snapshotId;participant_count=@($p.participants|Where-Object{$_.active -ne $false}).Count}}
+    $recent=@(Get-RecentWorkerOperations -Limit 20 -ProgramDataRoot $ProgramDataRoot);$lastVerify=@($recent|Where-Object{$_.operation_type -eq 'VERIFY'}|Select-Object -First 1);$installedPath=Join-Path $ProgramDataRoot 'installed-state.json';$installed=$null;if(Test-Path -LiteralPath $installedPath -PathType Leaf){try{$installed=Get-Content -LiteralPath $installedPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $integrity=$null;if($installed){try{$integrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot}catch{$integrity=[pscustomobject]@{status='FAIL';error_class=(($_.Exception.Message -split ':',2)[0]);message=$_.Exception.Message}}}else{$integrity=[pscustomobject]@{status='NOT_INSTALLED'}}
+    [pscustomobject]@{product_version=$script:ProductVersion;installed=($null -ne $installed);installed_state=$installed;installed_integrity=$integrity;worker_root=$WorkerRoot;catalog_path=Get-CatalogPath $WorkerRoot;dependencies=Get-WorkerDependencyHealth $ProgramDataRoot;projects=$rows;active_admission=$active;helper=Get-HelperConnectionState $ProgramDataRoot;current_operation=Get-CurrentWorkerOperation $ProgramDataRoot;last_operation=$(if($recent.Count){$recent[0]}else{$null});operation_recovery=Get-OperationRecoveryClassification $ProgramDataRoot;last_verify=$(if($lastVerify.Count){$lastVerify[0]}else{$null});output=Get-OutputProposalSummary $WorkerRoot;state_check_contract='FAST_STATE_CHECK_V1'}
+}
+
+function Get-WorkerDiagnostics {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[int]$Recent=20)
+    [pscustomobject]@{
+        generated_utc=(Get-Date).ToUniversalTime().ToString('o')
+        status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        recent_operations=@(Get-RecentWorkerOperations -Limit $Recent -ProgramDataRoot $ProgramDataRoot)
+        operation_log=@(Get-WorkerOperationLog -Tail 100 -ProgramDataRoot $ProgramDataRoot)
+        secret_material_included=$false
+    }
+}
+
+function Export-WorkerDiagnosticBundle {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$Destination)
+    if([string]::IsNullOrWhiteSpace($Destination)){
+        $dir=Join-Path $env:USERPROFILE 'Desktop'
+        if(-not(Test-Path -LiteralPath $dir -PathType Container)){$dir=$env:TEMP}
+        $Destination=Join-Path $dir ("OneCChatWorker-Diagnostics-{0}.zip" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    }
+    $stage=Join-Path $env:TEMP ('OneCChatWorker-Diag-'+[Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $stage|Out-Null
+    try{
+        $diag=Get-WorkerDiagnostics -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        [IO.File]::WriteAllText((Join-Path $stage 'diagnostics.json'),($diag|ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllLines((Join-Path $stage 'operations.log'),@($diag.operation_log),(New-Object Text.UTF8Encoding($false)))
+        $helperLog=Join-Path $ProgramDataRoot 'runtime\hosted-helper-log.jsonl'
+        if(Test-Path -LiteralPath $helperLog -PathType Leaf){
+            Get-Content -LiteralPath $helperLog -Tail 200 -Encoding UTF8|Set-Content -LiteralPath (Join-Path $stage 'helper-log-tail.jsonl') -Encoding UTF8
+        }
+        Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $Destination -Force
+    }finally{Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue}
+    [pscustomobject]@{status='PASS';bundle=$Destination;secret_material_included=$false}
+}
+
+function Write-ProviderConfig {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $rg=Join-Path $ProgramDataRoot 'runtime\rg.exe'
+    if(-not(Test-Path -LiteralPath $rg -PathType Leaf)){throw 'RG_NOT_INSTALLED'}
+    $cfg=[ordered]@{schema_version=1;contract_id='onecchatworker';contract_version='1.0';provider_version='1.0.0';worker_root=$WorkerRoot;admitted_projects=@($ProjectId);rg_path=$rg;audit_path=(Join-Path $ProgramDataRoot 'audit\reader-audit.jsonl');limits=[ordered]@{max_list_depth=4;max_list_entries=2000;default_read_lines=120;max_read_lines=400;max_context_lines=20;max_pattern_chars=512;default_search_matches=20;max_search_matches=100;search_timeout_ms=30000;max_rg_output_bytes=33554432;max_source_file_bytes=16777216;max_artifact_read_bytes=4194304;max_artifact_file_bytes=4194304;max_encoded_content_chars=6000000;max_batch_files=16;max_batch_total_bytes=12582912}}
+    Write-JsonAtomic $cfg (Join-Path $ProgramDataRoot 'provider\provider-config.json')
+}
+
+function Get-TaskStateRoot {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    Join-Path $ProgramDataRoot 'task-state'
+}
+
+function Read-TaskCheckpointContinuationHead {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot
+    )
+    $projectKey=Assert-SafeId $ProjectId 'project_id'
+    $taskKey=Assert-SafeId $TaskId 'task_id'
+    $taskRoot=Join-Path (Join-Path (Get-TaskStateRoot $ProgramDataRoot) $projectKey) $taskKey
+    $headPath=Join-Path $taskRoot 'head.json'
+    if(-not(Test-Path -LiteralPath $headPath -PathType Leaf)){throw 'TASK_CHECKPOINT_HEAD_MISSING'}
+    try{$head=Get-Content -LiteralPath $headPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    if([string]$head.schema -ne 'TASK_CHECKPOINT_HEAD_V1' -or [string]$head.project_id -ne $projectKey -or [string]$head.task_id -ne $taskKey){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    $headSeq=0;if(-not [int]::TryParse([string]$head.head_seq,[ref]$headSeq) -or $headSeq -lt 1){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    foreach($h in @([string]$head.head_checkpoint_sha256,[string]$head.head_checkpoint_file_sha256)){if($h -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}}
+    $name=[string]$head.head_checkpoint_file
+    if([IO.Path]::GetFileName($name) -ne $name -or $name -notmatch '^\d{8}-[a-f0-9]{64}\.json$'){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    $cpPath=Join-Path (Join-Path $taskRoot 'checkpoints') $name
+    if(-not(Test-Path -LiteralPath $cpPath -PathType Leaf)){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    if((Get-Sha256File $cpPath) -ne ([string]$head.head_checkpoint_file_sha256).ToLowerInvariant()){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    try{$cp=Get-Content -LiteralPath $cpPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([string]$cp.schema -ne 'TASK_CHECKPOINT_V1' -or [string]$cp.project_id -ne $projectKey -or [string]$cp.task_id -ne $taskKey){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([int]$cp.seq -ne $headSeq -or [string]$cp.checkpoint_sha256 -ne [string]$head.head_checkpoint_sha256){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([string]$cp.checkpoint_id -ne [string]$head.head_checkpoint_id -or [string]$cp.task_admission_id -ne [string]$head.head_task_admission_id){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    $cursor=$cp.activity_cursor
+    if(-not $cursor -or [string]$cursor.schema -ne 'S4_ACTIVITY_CURSOR_V1' -or [string]$cursor.task_admission_id -ne [string]$cp.task_admission_id){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    $aseq=0;if(-not [int]::TryParse([string]$cursor.activity_seq,[ref]$aseq) -or $aseq -lt 0){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    if($aseq -eq 0){if($null -ne $cursor.receipt_sha256){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}}
+    elseif([string]$cursor.receipt_sha256 -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    [pscustomobject]@{task_root=$taskRoot;head_path=$headPath;checkpoint_path=$cpPath;head=$head;checkpoint=$cp}
+}
+
+function Invoke-TaskStateRetention {
+    param(
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [int]$RetentionDays=30
+    )
+    if($RetentionDays -lt 1 -or $RetentionDays -gt 3650){throw 'TASK_STATE_RETENTION_DAYS_INVALID'}
+    $root=Get-TaskStateRoot $ProgramDataRoot
+    if(-not(Test-Path -LiteralPath $root -PathType Container)){return [pscustomobject]@{status='PASS';removed=@();retained=@();invalid=@()}}
+    $active=$null;$admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(Test-Path -LiteralPath $admissionPath -PathType Leaf){try{$active=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $cutoff=(Get-Date).ToUniversalTime().AddDays(-$RetentionDays)
+    $removed=New-Object Collections.Generic.List[string];$retained=New-Object Collections.Generic.List[string];$invalid=New-Object Collections.Generic.List[string]
+    $projects=@(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction Stop)
+    if($projects.Count -gt 512){throw 'TASK_STATE_RETENTION_ROOT_CAP'}
+    foreach($projectDir in $projects){
+        try{$null=Assert-SafeId $projectDir.Name 'project_id'}catch{$invalid.Add($projectDir.FullName);continue}
+        $tasks=@(Get-ChildItem -LiteralPath $projectDir.FullName -Directory -Force -ErrorAction Stop)
+        if($tasks.Count -gt 512){throw 'TASK_STATE_RETENTION_TASK_CAP'}
+        foreach($taskDir in $tasks){
+            try{$null=Assert-SafeId $taskDir.Name 'task_id'}catch{$invalid.Add($taskDir.FullName);continue}
+            $isActive=$active -and [string]$active.project_id -eq $projectDir.Name -and [string]$active.task_id -eq $taskDir.Name
+            if($isActive){$retained.Add($taskDir.FullName);continue}
+            try{$verified=Read-TaskCheckpointContinuationHead -ProjectId $projectDir.Name -TaskId $taskDir.Name -ProgramDataRoot $ProgramDataRoot}catch{$invalid.Add($taskDir.FullName);continue}
+            try{$updated=[DateTime]::Parse([string]$verified.head.updated_utc).ToUniversalTime()}catch{$invalid.Add($taskDir.FullName);continue}
+            if($updated -ge $cutoff){$retained.Add($taskDir.FullName);continue}
+            Remove-Item -LiteralPath $taskDir.FullName -Recurse -Force -ErrorAction Stop
+            $removed.Add($taskDir.FullName)
+        }
+    }
+    [pscustomobject]@{status='PASS';removed=@($removed);retained=@($retained);invalid=@($invalid);retention_days=$RetentionDays}
+}
+
+function Get-S4AdmissionPolicy {
+    $localLock=Join-Path $PSScriptRoot 'runtime.lock.json'
+    $parentRoot=Split-Path -Parent $PSScriptRoot
+    $parentLock=Join-Path $parentRoot 'runtime.lock.json'
+    $localExists=Test-Path -LiteralPath $localLock -PathType Leaf
+    $parentExists=Test-Path -LiteralPath $parentLock -PathType Leaf
+    if($localExists -and $parentExists){throw 'S4_RUNTIME_LOCK_LAYOUT_AMBIGUOUS'}
+    if($localExists){$lock=Read-RuntimeLock $PSScriptRoot}
+    elseif($parentExists){$lock=Read-RuntimeLock $parentRoot}
+    else{throw "RUNTIME_LOCK_MISSING: expected $localLock or $parentLock"}
+    if(-not $lock.hosted_mcp -or -not $lock.hosted_mcp.s4){throw 'S4_RUNTIME_POLICY_MISSING'}
+    $lock.hosted_mcp.s4
+}
+
+function New-Admission {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [AllowNull()][string]$TaskGoal=$null,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        $AcceptedState,
+        $Predecessor=$null,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    Assert-SafeId $TaskId 'task_id'|Out-Null
+    $v=$AcceptedState;if(-not $v){$v=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot};if($v.project_id -ne $ProjectId -or $v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
+    $manifest=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestDoc=Get-Content -LiteralPath $manifest -Raw -Encoding UTF8|ConvertFrom-Json
+    if([int]$manifestDoc.schema_version -ne 2 -or -not $manifestDoc.accepted_snapshot){throw 'SNAPSHOT_MANIFEST_INVALID'}
+    if(@($manifestDoc.participants|Where-Object {$_.platform -ne 'ONEC'}).Count){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
+    $manifestSha=Get-Sha256File $manifest
+    if([string]$v.manifest_sha256 -and $manifestSha -ne [string]$v.manifest_sha256){throw 'SNAPSHOT_CHANGED_DURING_ADMISSION'}
+    if([string]$manifestDoc.accepted_snapshot.source_snapshot_id -ne [string]$v.source_snapshot_id){throw 'SOURCE_SNAPSHOT_ID_MISMATCH'}
+    Write-ProviderConfig -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    $goal=$null;$goalSha=$null
+    if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){
+        if([Text.Encoding]::UTF8.GetByteCount($TaskGoal) -gt 1024){throw 'TASK_GOAL_BYTE_CAP'}
+        $goal=$TaskGoal;$goalSha=Get-Sha256Text $TaskGoal
+    }
+    $predecessorBinding=$null
+    if($null -ne $Predecessor){
+        $predAdmission=[string]$Predecessor.task_admission_id
+        $predCheckpoint=[string]$Predecessor.checkpoint_sha256
+        $predCheckpointId=[string]$Predecessor.checkpoint_id
+        $predSeq=0
+        if($predAdmission -notmatch '^[A-Fa-f0-9]{32}$' -or $predCheckpoint -notmatch '^[A-Fa-f0-9]{64}$' -or [string]::IsNullOrWhiteSpace($predCheckpointId) -or -not [int]::TryParse([string]$Predecessor.checkpoint_seq,[ref]$predSeq) -or $predSeq -lt 1){throw 'TASK_PREDECESSOR_INVALID'}
+        $cursor=$Predecessor.activity_cursor
+        $aseq=0
+        if(-not $cursor -or [string]$cursor.schema -ne 'S4_ACTIVITY_CURSOR_V1' -or [string]$cursor.task_admission_id -ne $predAdmission -or -not [int]::TryParse([string]$cursor.activity_seq,[ref]$aseq) -or $aseq -lt 0){throw 'TASK_PREDECESSOR_INVALID'}
+        if($aseq -eq 0){if($null -ne $cursor.receipt_sha256){throw 'TASK_PREDECESSOR_INVALID'}}
+        elseif([string]$cursor.receipt_sha256 -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_PREDECESSOR_INVALID'}
+        $predGoal=$Predecessor.task_goal_sha256
+        if(($null -eq $goalSha) -ne ($null -eq $predGoal)){throw 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+        if($null -ne $goalSha -and [string]$predGoal -ne $goalSha){throw 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+        $predecessorBinding=[ordered]@{
+            task_admission_id=$predAdmission
+            checkpoint_id=$predCheckpointId
+            checkpoint_seq=$predSeq
+            checkpoint_sha256=$predCheckpoint.ToLowerInvariant()
+            task_goal_sha256=$predGoal
+            source_snapshot_id=[string]$Predecessor.source_snapshot_id
+            activity_cursor=[ordered]@{
+                schema='S4_ACTIVITY_CURSOR_V1'
+                task_admission_id=$predAdmission
+                activity_seq=$aseq
+                receipt_sha256=$(if($aseq -eq 0){$null}else{([string]$cursor.receipt_sha256).ToLowerInvariant()})
+            }
+        }
+    }
+
+    $null=Invoke-TaskStateRetention -ProgramDataRoot $ProgramDataRoot
+    $policy=Get-S4AdmissionPolicy
+    $candidate=$policy.candidate
+    if($TaskRequestLimit -le 0 -or $TaskResultByteLimit -le 0 -or $TaskTtlMinutes -le 0){
+        if([string]$policy.qualification_status -ne 'QUALIFIED_CANDIDATE' -or -not $candidate){throw 'S4_CAP_QUALIFICATION_REQUIRED'}
+        if($TaskRequestLimit -le 0){$TaskRequestLimit=[int]$candidate.task_request_limit}
+        if($TaskResultByteLimit -le 0){$TaskResultByteLimit=[int]$candidate.task_result_byte_limit}
+        if($TaskTtlMinutes -le 0){$TaskTtlMinutes=[int]$candidate.task_ttl_minutes}
+    }
+    if($EpochSoftRequestLimit -le 0){$EpochSoftRequestLimit=[int]$policy.epoch_soft_request_limit}
+    if($EpochSoftResultByteLimit -le 0){$EpochSoftResultByteLimit=[int]$policy.epoch_soft_result_byte_limit}
+    $maxResult=[int]$policy.max_result_bytes
+    if($TaskRequestLimit -lt 1 -or $TaskResultByteLimit -lt 1 -or $TaskTtlMinutes -lt 1){throw 'S4_TASK_CAP_INVALID'}
+    if($EpochSoftRequestLimit -lt 1 -or $EpochSoftRequestLimit -gt $TaskRequestLimit){throw 'S4_EPOCH_REQUEST_CAP_INVALID'}
+    if($EpochSoftResultByteLimit -lt 1 -or $EpochSoftResultByteLimit -gt $TaskResultByteLimit -or $maxResult -gt $EpochSoftResultByteLimit){throw 'S4_EPOCH_BYTE_CAP_INVALID'}
+
+    $created=(Get-Date).ToUniversalTime()
+    $expires=$created.AddMinutes($TaskTtlMinutes)
+    $taskAdmissionId=[Guid]::NewGuid().ToString('N')
+    $stableSessionId=[Guid]::NewGuid().ToString('N')
+    $outputTaskRoot='Output/'+$TaskId
+    $a=[ordered]@{
+        schema_version=3
+        accounting_contract='S4_DURABLE_TASK_ACCOUNTING_V1'
+        task_admission_id=$taskAdmissionId
+        session_id=$stableSessionId
+        project_id=$ProjectId
+        task_id=$TaskId
+        task_goal=$goal
+        task_goal_sha256=$goalSha
+        created_utc=$created.ToString('o')
+        task_created_utc=$created.ToString('o')
+        task_expires_utc=$expires.ToString('o')
+        predecessor=$predecessorBinding
+        manifest_path=$manifest
+        manifest_sha256=$manifestSha
+        source_snapshot_id=[string]$v.source_snapshot_id
+        snapshot_contract='ACCEPTED_SNAPSHOT_V1'
+        output_task_root=$outputTaskRoot
+        provider_config_path=(Join-Path $ProgramDataRoot 'provider\provider-config.json')
+        relay_url=$RelayUrl
+        helper_secret_path=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
+        runtime_dir=(Join-Path $ProgramDataRoot 'runtime')
+        caps=[ordered]@{
+            ttl_minutes=$TaskTtlMinutes
+            task_request_limit=$TaskRequestLimit
+            task_result_byte_limit=$TaskResultByteLimit
+            epoch_soft_request_limit=$EpochSoftRequestLimit
+            epoch_soft_result_byte_limit=$EpochSoftResultByteLimit
+            max_requests=$EpochSoftRequestLimit
+            max_cumulative_result_bytes=$EpochSoftResultByteLimit
+            max_result_bytes=$maxResult
+            max_search_matches=8
+            max_read_lines=20
+            max_write_file_bytes=32768
+            max_task_bytes=131072
+            max_task_files=8
+            max_read_chunk_bytes=1800
+        }
+    }
+    Write-JsonAtomic $a (Join-Path $ProgramDataRoot 'runtime\active-admission.json')
+    [pscustomobject]$a
+}
+
+function Test-IsAdministrator {
+    $id=[Security.Principal.WindowsIdentity]::GetCurrent();$p=New-Object Security.Principal.WindowsPrincipal($id)
+    $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Invoke-Precheck {
+    param()
+    $node=Get-Command node.exe -ErrorAction SilentlyContinue
+    $winget=Get-Command winget.exe -ErrorAction SilentlyContinue
+    $rg=Get-Command rg.exe -ErrorAction SilentlyContinue
+    [pscustomobject]@{powershell=$PSVersionTable.PSVersion.ToString();administrator=(Test-IsAdministrator);winget=[bool]$winget;node=$(if($node){(& $node.Source --version).Trim()}else{$null});node_required=$script:NodeVersion;rg=$(if($rg){Get-RipgrepSemanticVersion ((& $rg.Source --version|Select-Object -First 1))}else{$null});rg_required=$script:RgVersion}
+}
+
+function Find-RipgrepExecutable {
+    $cmd=Get-Command rg.exe -ErrorAction SilentlyContinue
+    if($cmd){return $cmd.Source}
+    $candidates=@(
+        (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\rg.exe'),
+        (Join-Path $env:ProgramFiles 'WinGet\Links\rg.exe')
+    )
+    foreach($p in $candidates){if($p -and (Test-Path -LiteralPath $p -PathType Leaf)){return $p}}
+    foreach($root in @((Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'),(Join-Path $env:ProgramFiles 'WinGet\Packages'))){
+        if(-not $root -or -not(Test-Path -LiteralPath $root -PathType Container)){continue}
+        $hit=Get-ChildItem -LiteralPath $root -Filter rg.exe -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object {$_.FullName -match 'BurntSushi\.ripgrep\.MSVC'} | Select-Object -First 1
+        if($hit){return $hit.FullName}
+    }
+    return $null
+}
+
+function Get-HelperNodeExecutablePath {
+    'C:\Program Files\nodejs\node.exe'
+}
+
+function Ensure-PinnedDependencies {
+    param(
+        [Parameter(Mandatory)][string]$PackageRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [switch]$NoInstall
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $lock=Read-RuntimeLock $PackageRoot
+    $nodeSpec=$lock.dependencies.node
+    $rgSpec=$lock.dependencies.ripgrep
+
+    $nodePath=Get-HelperNodeExecutablePath
+    $nodeExists=Test-Path -LiteralPath $nodePath -PathType Leaf
+    $nodeAction='REUSED'
+    $nodeVersion=$(if($nodeExists){(& $nodePath --version).Trim()}else{$null})
+    if(-not $nodeExists -or $nodeVersion -ne "v$($nodeSpec.version)"){
+        if($NoInstall){
+            if(-not $nodeExists){throw "NODE_LAUNCH_PATH_MISSING: $nodePath"}
+            throw "NODE_VERSION_MISMATCH: $nodePath expected v$($nodeSpec.version), actual $nodeVersion"
+        }
+        if(-not(Get-Command winget.exe -ErrorAction SilentlyContinue)){throw 'WAITING_FOR_NODE: winget unavailable'}
+        $nodeAction=if($nodeExists){'UPDATED'}else{'INSTALLED'}
+        & winget.exe install --id $nodeSpec.winget_id --version $nodeSpec.version --exact --silent --accept-package-agreements --accept-source-agreements
+        if($LASTEXITCODE -ne 0){throw 'NODE_INSTALL_FAILED'}
+        if(-not(Test-Path -LiteralPath $nodePath -PathType Leaf)){throw 'NODE_NOT_FOUND_AFTER_INSTALL'}
+        $nodeVersion=(& $nodePath --version).Trim()
+    }
+    if($nodeVersion -ne "v$($nodeSpec.version)"){throw "NODE_VERSION_MISMATCH: $nodeVersion"}
+    $nodeHash=Get-Sha256File $nodePath
+    if($nodeHash -ne [string]$nodeSpec.reference_sha256){throw "NODE_HASH_MISMATCH: $nodeHash"}
+
+    $rgPath=Find-RipgrepExecutable
+    $rgVersion=$null
+    if($rgPath){$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}
+    $rgAction='REUSED'
+    if(-not $rgPath -or $rgVersion -ne [string]$rgSpec.version){
+        if($NoInstall){throw "RG_REQUIRED_PIN_MISSING: $($rgSpec.version)"}
+        if(-not(Get-Command winget.exe -ErrorAction SilentlyContinue)){throw 'WAITING_FOR_RG: winget unavailable'}
+        $rgAction=if($rgPath){'UPDATED'}else{'INSTALLED'}
+        & winget.exe install --id $rgSpec.winget_id --version $rgSpec.version --exact --silent --accept-package-agreements --accept-source-agreements
+        if($LASTEXITCODE -ne 0){throw 'RG_INSTALL_FAILED'}
+        $rgPath=Find-RipgrepExecutable
+    }
+    if(-not $rgPath){throw 'RG_NOT_FOUND_AFTER_INSTALL'}
+    $actualRg=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))
+    if($actualRg -ne [string]$rgSpec.version){throw "RG_VERSION_MISMATCH: $actualRg"}
+    $rgHash=Get-Sha256File $rgPath
+    if($rgHash -ne [string]$rgSpec.reference_sha256){throw "RG_HASH_MISMATCH: $rgHash"}
+    $runtime=Join-Path $ProgramDataRoot 'runtime';New-Item -ItemType Directory -Force -Path $runtime|Out-Null
+    $rgInstalled=Join-Path $runtime 'rg.exe'
+    $rgCopyAction='INSTALLED'
+    if(Test-Path -LiteralPath $rgInstalled -PathType Leaf){$rgCopyAction=if((Get-Sha256File $rgInstalled) -eq $rgHash){'REUSED'}else{'UPDATED'}}
+    if($rgCopyAction -ne 'REUSED'){Copy-Item -LiteralPath $rgPath -Destination $rgInstalled -Force}
+    if((Get-Sha256File $rgInstalled) -ne $rgHash){throw 'RG_INSTALLED_COPY_HASH_MISMATCH'}
+    [pscustomobject]@{
+        node=[pscustomobject]@{action=$nodeAction;version=$nodeVersion;sha256=$nodeHash;path=$nodePath}
+        ripgrep=[pscustomobject]@{action=$rgAction;runtime_copy_action=$rgCopyAction;version=$actualRg;sha256=$rgHash;source_path=$rgPath;runtime_path=$rgInstalled}
+        python=[pscustomobject]@{action='SKIPPED_NOT_REQUIRED'}
+        cloudflare_cli=[pscustomobject]@{action='SKIPPED_NOT_REQUIRED'}
+    }
+}
+
+function Resolve-WorkerOperatorIdentity {
+    param([string]$OperatorIdentity)
+    if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
+    try{
+        $account=New-Object Security.Principal.NTAccount($OperatorIdentity)
+        $sid=$account.Translate([Security.Principal.SecurityIdentifier])
+    }catch{throw "OPERATOR_IDENTITY_INVALID: $OperatorIdentity"}
+    $readerAccount=New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$($script:ReaderName)")
+    try{$readerSid=$readerAccount.Translate([Security.Principal.SecurityIdentifier])}catch{throw "READER_IDENTITY_INVALID: $($script:ReaderName)"}
+    if($sid.Value -eq $readerSid.Value){throw 'OPERATOR_IDENTITY_MUST_DIFFER_FROM_READER'}
+    [pscustomobject]@{account=$account.Value;sid=$sid.Value;icacls_identity=('*'+$sid.Value);reader_sid=$readerSid.Value;reader_icacls_identity=('*'+$readerSid.Value)}
+}
+
+function Invoke-IcaclsChecked {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string[]]$Arguments)
+    # Never allow icacls /C to conceal a failed descendant with an exit code of zero.
+    if(@($Arguments|Where-Object {$_ -ieq '/C'}).Count){throw "ACL_REPAIR_CONTINUE_ON_ERROR_FORBIDDEN: $Path"}
+    $output=@(& icacls.exe $Path @Arguments 2>&1)
+    $exitCode=$LASTEXITCODE
+    if($exitCode -ne 0 -or @($output|Where-Object {$_ -is [Management.Automation.ErrorRecord]}).Count){throw "ACL_REPAIR_FAILED: $Path"}
+}
+
+function Protect-WorkerRuntimeFile {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)]$Identity,[switch]$Secret)
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){return}
+    $grants=@('*S-1-5-18:F','*S-1-5-32-544:F')
+    if($Secret){$grants+=($Identity.reader_icacls_identity+':R')}
+    else{
+        $grants+=($Identity.icacls_identity+':RX')
+        $grants+=($Identity.reader_icacls_identity+':RX')
+    }
+    Invoke-IcaclsChecked -Path $Path -Arguments @('/reset')
+    Invoke-IcaclsChecked -Path $Path -Arguments @('/inheritance:r')
+    Invoke-IcaclsChecked -Path $Path -Arguments (@('/grant:r')+$grants)
+}
+
+function Set-WorkerOperatorAcl {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
+    $required=@($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'),(Join-Path $ProgramDataRoot 'task-state'))
+    foreach($path in $required){if(-not(Test-Path -LiteralPath $path -PathType Container)){throw "ACL_REPAIR_ROOT_MISSING: $path"}}
+    $operations=Join-Path $ProgramDataRoot 'operations'
+    New-Item -ItemType Directory -Force -Path $operations|Out-Null
+
+    $system='*S-1-5-18:(OI)(CI)F'
+    $admins='*S-1-5-32-544:(OI)(CI)F'
+    $operatorM=$identity.icacls_identity+':(OI)(CI)M'
+    $operatorRx=$identity.icacls_identity+':(OI)(CI)RX'
+    $readerRx=$identity.reader_icacls_identity+':(OI)(CI)RX'
+    $readerM=$identity.reader_icacls_identity+':(OI)(CI)M'
+
+    Invoke-IcaclsChecked -Path $ProgramDataRoot -Arguments @('/inheritance:r','/grant:r',$system,$admins,($identity.icacls_identity+':(OI)(CI)RX'),($identity.reader_icacls_identity+':(OI)(CI)RX'))
+    Invoke-IcaclsChecked -Path $WorkerRoot -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path $operations -Arguments @('/grant:r',$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'provider') -Arguments @('/grant:r',$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'runtime') -Arguments @('/grant:r',$operatorM,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'task-state') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorM,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'audit') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'helper') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'product') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'secrets') -Arguments @('/inheritance:r','/grant:r','*S-1-5-18:F','*S-1-5-32-544:F',($identity.icacls_identity+':RX'),($identity.reader_icacls_identity+':RX'))
+
+    Protect-WorkerRuntimeFile -Path (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -Identity $identity -Secret
+
+    [pscustomobject]@{
+        status='PASS'
+        operator_identity=$identity.account
+        operator_sid=$identity.sid
+        mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'task-state'))
+        read_only=@((Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'product'))
+        secret=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
+        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'),(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs'),(Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe'))
+    }
+}
+
+function Get-ControlCenterStartMenuShortcutPath {
+    param([string]$ShortcutRoot)
+    if([string]::IsNullOrWhiteSpace($ShortcutRoot)){
+        $ShortcutRoot=[Environment]::GetFolderPath([Environment+SpecialFolder]::CommonPrograms)
+    }
+    if([string]::IsNullOrWhiteSpace($ShortcutRoot)){throw 'START_MENU_ROOT_UNAVAILABLE'}
+    Join-Path $ShortcutRoot 'OneC Architecture Control Center.lnk'
+}
+
+function Install-ControlCenterArtifact {
+    param(
+        [Parameter(Mandatory)][string]$PackageRoot,
+        [Parameter(Mandatory)][string]$ProgramDataRoot,
+        [Parameter(Mandatory)]$RuntimeLock,
+        [string]$ShortcutRoot
+    )
+    $rel='control-center/publish/OneCArchitecture.ControlCenter.exe'
+    $expected=[string]$RuntimeLock.components.$rel
+    if([string]::IsNullOrWhiteSpace($expected)){throw 'CONTROL_CENTER_LOCK_COMPONENT_MISSING'}
+    $source=Join-Path $PackageRoot 'control-center\publish\OneCArchitecture.ControlCenter.exe'
+    $destination=Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe'
+    $copy=Copy-ProductComponent -Source $source -Destination $destination -ExpectedSha256 $expected
+    $shortcutPath=Get-ControlCenterStartMenuShortcutPath -ShortcutRoot $ShortcutRoot
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $shortcutPath)|Out-Null
+    $shell=New-Object -ComObject WScript.Shell
+    $shortcut=$shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath=$destination
+    $shortcut.WorkingDirectory=(Split-Path -Parent $destination)
+    $shortcut.Description='OneC Architecture Control Center'
+    $shortcut.Save()
+    $verify=$shell.CreateShortcut($shortcutPath)
+    if([string]$verify.TargetPath -ne $destination){throw 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH'}
+    [pscustomobject]@{
+        status='PASS'
+        component=$copy
+        executable_path=$destination
+        shortcut_path=$shortcutPath
+        startup_policy='HKCU_EXPLICIT_OPERATOR_CHOICE'
+        service_created=$false
+        loopback_listener_created=$false
+    }
+}
+
+function Install-OneCChatWorker {
+    param([Parameter(Mandatory)][string]$PackageRoot,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity,[switch]$SkipDependencies)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $packageCheck=Test-ProductPackageIntegrity $PackageRoot
+    $deps=Ensure-PinnedDependencies -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -NoInstall:$SkipDependencies
+    foreach($p in @($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'),(Join-Path $ProgramDataRoot 'task-state'))){New-Item -ItemType Directory -Force -Path $p|Out-Null}
+
+    $readerAction='REUSED'
+    if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){
+        $readerAction='CREATED'
+        $pw=Read-Host -Prompt "Set local password for $($script:ReaderName)" -AsSecureString
+        New-LocalUser -Name $script:ReaderName -Password $pw -Description 'OneCChatWorker non-admin bounded source/output identity'|Out-Null
+    }
+    $reader="$env:COMPUTERNAME\$($script:ReaderName)"
+    $lock=Read-RuntimeLock $PackageRoot
+    $componentResults=@()
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-https-pull.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-https-pull.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\https-pull-auth.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/https-pull-auth.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-state-coordinator.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-state-coordinator.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-acquisition.mjs') -Destination (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-acquisition.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
+    foreach($qualityScript in @('meta-info.ps1','form-info.ps1','form-validate.ps1')){$rel='runtime/quality/cc-1c-skills/'+$qualityScript;$componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot ('runtime\quality\cc-1c-skills\'+$qualityScript)) -Destination (Join-Path $ProgramDataRoot ('helper\quality\cc-1c-skills\'+$qualityScript)) -ExpectedSha256 ([string]$lock.components.$rel))}
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1') -Destination (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -ExpectedSha256 ([string]$lock.components.'core/OneCChatWorker.Core.psm1'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'OneCChatWorker.ps1') -Destination (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -ExpectedSha256 ([string]$lock.components.'OneCChatWorker.ps1'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'README.md') -Destination (Join-Path $ProgramDataRoot 'product\README.md') -ExpectedSha256 ([string]$lock.components.'README.md'))
+    $controlCenter=Install-ControlCenterArtifact -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -RuntimeLock $lock
+    $componentResults+=,$controlCenter.component
+    Copy-Item -LiteralPath (Join-Path $PackageRoot 'runtime.lock.json') -Destination (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Force
+
+    $catalogAction='REUSED'
+    if(-not(Test-Path -LiteralPath (Get-CatalogPath $WorkerRoot))){
+        $catalogAction='CREATED'
+        Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $WorkerRoot
+    }
+
+    $snapshotAdoption=@(Adopt-AllLegacyAcceptedSnapshots -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
+    $operatorAcl=Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+
+    $installedIntegrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
+    $state=[ordered]@{
+        schema_version=1
+        product_version=$script:ProductVersion
+        installed_utc=(Get-Date).ToUniversalTime().ToString('o')
+        worker_root=$WorkerRoot
+        program_data_root=$ProgramDataRoot
+        reader_identity=$reader
+        reader_action=$readerAction
+        operator_identity=$operatorAcl.operator_identity
+        operator_acl_status=$operatorAcl.status
+        catalog_action=$catalogAction
+        package_lock_sha256=$packageCheck.lock_sha256
+        node_version=$deps.node.version
+        node_sha256=$deps.node.sha256
+        rg_version=$deps.ripgrep.version
+        rg_sha256=$deps.ripgrep.sha256
+        component_integrity='PASS'
+        remote_auth_ready=$secretReady
+    }
+    Write-JsonAtomic $state (Join-Path $ProgramDataRoot 'installed-state.json')
+    [pscustomobject]@{
+        status=$(if($secretReady){'INSTALLED'}else{'INSTALLED_WAITING_FOR_REMOTE_AUTH'})
+        installed_state=(Join-Path $ProgramDataRoot 'installed-state.json')
+        package=$packageCheck
+        dependencies=$deps
+        reader=[pscustomobject]@{identity=$reader;action=$readerAction}
+        operator_acl=$operatorAcl
+        catalog=[pscustomobject]@{path=(Get-CatalogPath $WorkerRoot);action=$catalogAction}
+        snapshot_adoption=$snapshotAdoption
+        components=$componentResults
+        control_center=$controlCenter
+        installed_integrity=$installedIntegrity
+        next=$(if($secretReady){'ADD/APPLY/VERIFY project then START'}else{'Complete ChatGPT app authorization and SETTINGS helper enrollment, then ADD/APPLY/VERIFY/START'})
+    }
+}
+
+function Set-HelperEnrollmentSecret {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $secure=Read-Host -Prompt 'Paste helper enrollment secret' -AsSecureString
+    $b=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    try{
+        $plain=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($b);if($plain.Length -lt 20){throw 'HELPER_SECRET_TOO_SHORT'}
+        $secretPath=Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'
+        [IO.File]::WriteAllText($secretPath,$plain,(New-Object Text.UTF8Encoding($false)))
+        $reader="$env:COMPUTERNAME\$($script:ReaderName)"
+        & icacls.exe $secretPath /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' ($reader+':R') | Out-Null
+    }finally{if($b -ne [IntPtr]::Zero){[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b)};$plain=$null}
+}
+
+function New-HelperRunAsCommand {
+    param([Parameter(Mandatory)][string]$HelperPath,[Parameter(Mandatory)][string]$ProgramDataRoot)
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    $programDataLiteral=$ProgramDataRoot.Replace("'","''")
+    $admissionLiteral=$admissionPath.Replace("'","''")
+    $helperLiteral=$HelperPath.Replace("'","''")
+    $nodeLiteral=(Get-HelperNodeExecutablePath).Replace("'","''")
+    $launchScript="`$env:ONECCHAT_PROGRAM_DATA='$programDataLiteral'; `$env:ONECCHAT_ADMISSION_PATH='$admissionLiteral'; & '$nodeLiteral' '$helperLiteral'"
+    $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($launchScript))
+    "powershell.exe -NoProfile -EncodedCommand $encoded"
+}
+
+function Read-HelperStateRecoveryFile {
+    param([Parameter(Mandatory)][string]$Path,[switch]$AllowMissing)
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){
+        if($AllowMissing){return $null}
+        throw "HELPER_STATE_FILE_MISSING: $Path"
+    }
+    $item=Get-Item -LiteralPath $Path
+    if($item.Length -gt 16777216){throw "HELPER_STATE_FILE_TOO_LARGE: $Path"}
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    try{$doc=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json}catch{throw "HELPER_STATE_FILE_CORRUPT: $Path"}
+    [pscustomobject]@{path=$Path;bytes=$bytes;doc=$doc;sha256=Get-Sha256File $Path}
+}
+
+function Test-HelperStateMatchesAdmission {
+    param([Parameter(Mandatory)]$State,[Parameter(Mandatory)]$Admission)
+    if([int]$Admission.schema_version -ne 3 -or [int]$State.schema_version -ne 2){return $false}
+    ([string]$State.task_admission_id -eq [string]$Admission.task_admission_id) -and
+    ([string]$State.session_id -eq [string]$Admission.session_id) -and
+    ([string]$State.project_id -eq [string]$Admission.project_id) -and
+    ([string]$State.task_id -eq [string]$Admission.task_id) -and
+    ([string]$State.snapshot_id -eq [string]$Admission.source_snapshot_id) -and
+    ([string]$State.manifest_sha256 -eq [string]$Admission.manifest_sha256) -and
+    ([string]$State.expires_utc -eq [string]$Admission.task_expires_utc)
+}
+
+function Get-HelperStateProcessedMap {
+    param([Parameter(Mandatory)]$State)
+    $map=@{}
+    if($null -eq $State.processed){return $map}
+    foreach($prop in @($State.processed.PSObject.Properties)){
+        $key=[string]$prop.Name
+        $entry=$prop.Value
+        if([string]::IsNullOrWhiteSpace($key) -or $key.Length -gt 128){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry -or [string]$entry.type -ne 'result' -or [string]$entry.request_id -ne $key -or [string]$entry.status -notin @('OK','ERROR')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry.metadata -or -not($entry.PSObject.Properties.Name -contains 'payload')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        $map[$key]=($entry|ConvertTo-Json -Depth 30 -Compress)
+    }
+    $map
+}
+
+function Test-HelperStateStrictMonotonicProcessedSuperset {
+    param([Parameter(Mandatory)]$FinalState,[Parameter(Mandatory)]$TmpState)
+    try{
+        if([int]$FinalState.schema_version -ne 2 -or [int]$TmpState.schema_version -ne 2){return $false}
+        if([string]$FinalState.started_utc -ne [string]$TmpState.started_utc){return $false}
+        $finalIdem=$(if($null -eq $FinalState.idempotency){'{}'}else{$FinalState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        $tmpIdem=$(if($null -eq $TmpState.idempotency){'{}'}else{$TmpState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        if($finalIdem -ne $tmpIdem){return $false}
+        if(@($FinalState.quality_targets).Count -gt 2 -or @($TmpState.quality_targets).Count -gt 2){return $false}
+        $finalMap=Get-HelperStateProcessedMap -State $FinalState
+        $tmpMap=Get-HelperStateProcessedMap -State $TmpState
+        if($tmpMap.Count -le $finalMap.Count){return $false}
+        foreach($key in $finalMap.Keys){
+            if(-not $tmpMap.ContainsKey($key) -or [string]$tmpMap[$key] -ne [string]$finalMap[$key]){return $false}
+        }
+        return $true
+    }catch{return $false}
+}
+
+function Save-HelperStateRecoveryEvidence {
+    param(
+        [Parameter(Mandatory)]$Entry,
+        [Parameter(Mandatory)][string]$ProgramDataRoot,
+        [Parameter(Mandatory)][ValidateSet('final','tmp')][string]$Kind
+    )
+    $root=Join-Path $ProgramDataRoot 'operations\helper-state-recovery'
+    New-Item -ItemType Directory -Force -Path $root|Out-Null
+    $target=Join-Path $root ("{0}-{1}.json" -f $Kind,[string]$Entry.sha256)
+    if(Test-Path -LiteralPath $target -PathType Leaf){
+        if((Get-Sha256File $target) -ne [string]$Entry.sha256){throw 'HELPER_STATE_RECOVERY_EVIDENCE_COLLISION'}
+    }else{
+        [IO.File]::WriteAllBytes($target,[byte[]]$Entry.bytes)
+        if((Get-Sha256File $target) -ne [string]$Entry.sha256){Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue;throw 'HELPER_STATE_RECOVERY_EVIDENCE_VERIFY_FAILED'}
+    }
+    [pscustomobject]@{kind=$Kind;sha256=[string]$Entry.sha256;path=$target}
+}
+
+function Repair-HelperStateForActiveAdmission {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'HELPER_STATE_RECOVERY_ADMISSION_MISSING'}
+    try{$admission=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'HELPER_STATE_RECOVERY_ADMISSION_CORRUPT'}
+    if([int]$admission.schema_version -ne 3 -or [string]$admission.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'HELPER_STATE_RECOVERY_ADMISSION_UNSUPPORTED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $live=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($live.Count){throw 'HELPER_STATE_RECOVERY_REQUIRES_STOPPED_HELPER'}
+
+    $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+    $tmpPath=$statePath+'.tmp'
+    $final=Read-HelperStateRecoveryFile -Path $statePath -AllowMissing
+    $tmp=Read-HelperStateRecoveryFile -Path $tmpPath -AllowMissing
+    $finalMatches=($null -ne $final -and (Test-HelperStateMatchesAdmission -State $final.doc -Admission $admission))
+    $tmpMatches=($null -ne $tmp -and (Test-HelperStateMatchesAdmission -State $tmp.doc -Admission $admission))
+    $evidence=@()
+
+    if($finalMatches){
+        if($tmp){
+            if($tmpMatches){
+                if([string]$tmp.sha256 -eq [string]$final.sha256){
+                    Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+                    return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+                }
+                if(Test-HelperStateStrictMonotonicProcessedSuperset -FinalState $final.doc -TmpState $tmp.doc){
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+                    Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop
+                    Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+                    $published=Read-HelperStateRecoveryFile -Path $statePath
+                    if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission) -or [string]$published.sha256 -ne [string]$tmp.sha256){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+                    return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_MONOTONIC_SUPERSET_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+                }
+                throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'
+            }
+            $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+            Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+            return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='STALE_TMP_ARCHIVED_AND_REMOVED';evidence=@($evidence)}
+        }
+        return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='NONE';evidence=@()}
+    }
+
+    if($final){
+        $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+    }
+
+    if($tmp -and -not $tmpMatches){
+        $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+    }
+
+    if($final){Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop}
+
+    if($tmpMatches){
+        Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+        $published=Read-HelperStateRecoveryFile -Path $statePath
+        if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission)){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+        return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+    }
+
+    if($tmp){Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop}
+    [pscustomobject]@{status='RECOVERED';action=$(if($final){'STALE_FINAL_ARCHIVED_AND_CLEARED'}else{'STALE_TMP_ARCHIVED_AND_CLEARED'});evidence=@($evidence)}
+}
+
+function Get-ActiveAdmissionRecoveryAssessment {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    # Read-only gate. Local cache/UI counters cannot attest relay-owned leases
+    # and receipts. Never repair files, remint an admission or launch here.
+    $reason='RELAY_RECOVERY_EVIDENCE_UNAVAILABLE'
+    try{
+        $path=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+        $a=Get-Content -LiteralPath $path -Raw -Encoding UTF8|ConvertFrom-Json
+        if([int]$a.schema_version -ne 3 -or [string]$a.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'RECOVERY_ADMISSION_UNSUPPORTED'}
+        if((Get-Date).ToUniversalTime() -ge ([datetime]::Parse($a.task_expires_utc).ToUniversalTime())){throw 'RECOVERY_ADMISSION_EXPIRED'}
+        $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+        $live=@(Get-CimInstance Win32_Process -ErrorAction Stop|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+        if($live.Count){throw 'RECOVERY_HELPER_ALREADY_RUNNING'}
+        $accepted=Get-FastProjectState -ProjectId ([string]$a.project_id) -WorkerRoot $WorkerRoot
+        if($accepted.state -ne 'ACCEPTED' -or [string]$accepted.source_snapshot_id -ne [string]$a.source_snapshot_id -or [string]$accepted.manifest_sha256 -ne [string]$a.manifest_sha256){throw 'RECOVERY_SNAPSHOT_MISMATCH'}
+        $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+        if(Test-Path -LiteralPath ($statePath+'.tmp')){throw 'RECOVERY_TMP_REQUIRES_ADJUDICATION'}
+        $entry=Read-HelperStateRecoveryFile -Path $statePath
+        if(-not(Test-HelperStateMatchesAdmission -State $entry.doc -Admission $a)){throw 'RECOVERY_CACHE_BINDING_MISMATCH'}
+        $cache=Get-HelperStateProcessedMap -State $entry.doc
+        if([string]$entry.doc.pull_helper_id -notmatch '^[a-fA-F0-9-]{36}$' -or $null -eq $entry.doc.idempotency){throw 'RECOVERY_CACHE_IDENTITY_MISSING'}
+        if(($entry.doc.PSObject.Properties.Name -contains 'pull_inflight') -and $entry.doc.pull_inflight -and -not $cache.ContainsKey([string]$entry.doc.pull_inflight.request_id)){throw 'RECOVERY_EXECUTION_AMBIGUOUS'}
+    }catch{
+        $message=[string]$_.Exception.Message
+        $reason=if($message -match '^([A-Z][A-Z0-9_]{2,63})(?::|$)'){$Matches[1]}else{'RECOVERY_TRUSTED_LOCAL_EVIDENCE_UNAVAILABLE'}
+    }
+    [pscustomobject]@{status='BLOCKED';reason=$reason;admission_preserved=$true;launch_allowed=$false;accounting_owner='relay';required_evidence='Fresh authenticated relay lease/receipt reconciliation for this unchanged admission/session/snapshot; local UI projection is insufficient'}
+}
+
+function Start-WorkerAdmission {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [string]$TaskGoal,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        $AcceptedState,
+        $Predecessor=$null,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    if(-not(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'))){throw 'REMOTE_AUTH_REQUIRED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
+    $newAdmission=New-Admission -ProjectId $ProjectId -TaskId $TaskId -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState -Predecessor $Predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
+    $stateRecovery=Repair-HelperStateForActiveAdmission -ProgramDataRoot $ProgramDataRoot
+    $runAs="$env:SystemRoot\System32\runas.exe";$program=New-HelperRunAsCommand -HelperPath $helper -ProgramDataRoot $ProgramDataRoot;& $runAs "/profile" "/user:$env:COMPUTERNAME\$($script:ReaderName)" $program;if($LASTEXITCODE -ne 0){throw "RUNAS_FAILED_OR_CANCELLED: $LASTEXITCODE"}
+    [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id;task_admission_id=[string]$newAdmission.task_admission_id;session_id=[string]$newAdmission.session_id;continued=($null -ne $newAdmission.predecessor);helper_state_recovery=$stateRecovery}
+}
+
+function Continue-WorkerAdmission {
+    param(
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'CONTINUE_PREVIOUS_ADMISSION_MISSING'}
+    try{$previous=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'CONTINUE_PREVIOUS_ADMISSION_CORRUPT'}
+    if([int]$previous.schema_version -ne 3 -or [string]$previous.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'CONTINUE_PREVIOUS_ADMISSION_UNSUPPORTED'}
+    $projectKey=Assert-SafeId ([string]$previous.project_id) 'project_id'
+    $taskKey=Assert-SafeId ([string]$previous.task_id) 'task_id'
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($existing.Count){throw 'CONTINUE_REQUIRES_STOPPED_HELPER'}
+    $verified=Read-TaskCheckpointContinuationHead -ProjectId $projectKey -TaskId $taskKey -ProgramDataRoot $ProgramDataRoot
+    $cp=$verified.checkpoint
+    if([string]$cp.task_admission_id -ne [string]$previous.task_admission_id){throw 'CONTINUE_CHECKPOINT_ADMISSION_MISMATCH'}
+    $prevGoal=$previous.task_goal_sha256;$cpGoal=$cp.task_goal_sha256
+    if(($null -eq $prevGoal) -ne ($null -eq $cpGoal)){throw 'CONTINUE_TASK_GOAL_MISMATCH'}
+    if($null -ne $prevGoal -and [string]$prevGoal -ne [string]$cpGoal){throw 'CONTINUE_TASK_GOAL_MISMATCH'}
+    $current=Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot
+    if($current.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($current.state)"}
+    $predecessor=[pscustomobject]@{
+        task_admission_id=[string]$cp.task_admission_id
+        checkpoint_id=[string]$cp.checkpoint_id
+        checkpoint_seq=[int]$cp.seq
+        checkpoint_sha256=[string]$cp.checkpoint_sha256
+        task_goal_sha256=$cp.task_goal_sha256
+        source_snapshot_id=[string]$cp.source_snapshot_id
+        activity_cursor=$cp.activity_cursor
+    }
+    Start-WorkerAdmission -ProjectId $projectKey -TaskId $taskKey -TaskGoal ([string]$previous.task_goal) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $current -Predecessor $predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
+}
+
+function Stop-WorkerAdmission {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $procs=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    foreach($p in $procs){Stop-Process -Id $p.ProcessId -Force}
+    Remove-Item -LiteralPath (Join-Path $ProgramDataRoot 'runtime\active-admission.json') -Force -ErrorAction SilentlyContinue
+    [pscustomobject]@{status='OFF';stopped=$procs.Count}
+}
+
+function Repair-WorkerProject {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[scriptblock]$ProgressCallback,[string]$OperatorIdentity)
+    $updatePaths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $updateState=try{Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -AllowMissing}catch{$null}
+    if((Test-Path -LiteralPath $updatePaths.promotion_path -PathType Leaf) -or ($updateState -and [string]$updateState.state -eq 'MANIFEST_COMMITTED')){
+        $recovered=Recover-SourceUpdatePromotion -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+        $f=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($f.state -eq 'CATALOG_DRIFT' -and $recovered.state -eq 'CATALOG_DRIFT'){return [pscustomobject]@{project_id=$ProjectId;status='CATALOG_DRIFT';state='CATALOG_DRIFT';repair_action=$recovered.recovery_action;source_update_recovery=$recovered;full_apply_performed=$false}}
+        if($f.state -ne 'ACCEPTED'){throw 'SOURCE_UPDATE_RECOVERY_DID_NOT_RESTORE_ACCEPTED'}
+        return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action=$recovered.recovery_action;source_update_recovery=$recovered}
+    }
+    $cleanup=$null;$state=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($state.state -eq 'INCOMPLETE_APPLY_RESIDUE'){$cleanup=Resolve-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot;if($cleanup.status -ne 'CLEAN'){throw "APPLY_RESIDUE_CLEANUP_FAILED: $($cleanup|ConvertTo-Json -Depth 8 -Compress)"};$state=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot}
+    if($state.state -eq 'ACCEPTED'){$r=[pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$state.source_snapshot_id;repair_action='FAST_ACCEPTED_NO_DEEP_VERIFY'};if($cleanup){$r|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force};return $r}
+    if($state.state -eq 'DEEP_VERIFY_REQUIRED'){
+        $adopt=Adopt-LegacyAcceptedSnapshot -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        if($adopt.status -in @('ADOPTED','ALREADY_ACCEPTED')){$f=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot;return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action='LEGACY_ADOPTED_NO_DEEP_VERIFY';adoption=$adopt}}
+        $deep=Verify-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgressCallback $ProgressCallback
+        if($deep.status -eq 'READY'){$f=Convert-DeepVerifiedManifestToAcceptedSnapshot -ProjectId $ProjectId -WorkerRoot $WorkerRoot;return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action='DEEP_VERIFY_THEN_ACCEPT';deep_verification=$deep}}
+        throw "REPAIR_DEEP_VERIFY_FAILED: $($deep|ConvertTo-Json -Compress)"
+    }
+    if($state.state -in @('APPLY_REQUIRED','CATALOG_DRIFT','SNAPSHOT_ROOT_MISSING')){$x=Apply-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgressCallback $ProgressCallback;if($cleanup){$x|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force};return $x}
+    throw "REPAIR_REFUSED_DESTRUCTIVE_OR_UNKNOWN: $($state|ConvertTo-Json -Compress)"
+}
+
+function Get-UninstallPlan {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    [pscustomobject]@{
+        action='SAFE_UNINSTALL_PLAN'
+        requires_explicit_confirmation=$true
+        remove=@(
+            (Join-Path $ProgramDataRoot 'provider'),
+            (Join-Path $ProgramDataRoot 'helper'),
+            (Join-Path $ProgramDataRoot 'runtime'),
+            (Join-Path $ProgramDataRoot 'secrets'),
+            (Join-Path $ProgramDataRoot 'product'),
+            (Join-Path $ProgramDataRoot 'installed-state.json'),
+            (Join-Path $WorkerRoot 'OneCChatWorker.ps1'),
+            (Get-ControlCenterStartMenuShortcutPath)
+        )
+        retain=@(
+            (Get-CatalogPath $WorkerRoot),
+            (Join-Path $WorkerRoot '<project>\Participants'),
+            (Join-Path $WorkerRoot '<project>\Output'),
+            (Join-Path $WorkerRoot '<project>\Detached'),
+            (Join-Path $ProgramDataRoot 'audit'),
+            (Join-Path $ProgramDataRoot 'operations'),
+            (Join-Path $ProgramDataRoot 'task-state'),
+            "$env:COMPUTERNAME\$($script:ReaderName) local account"
+        )
+        explicitly_not_performed=@('recursive project deletion','external business Source deletion','Output purge','Detached purge','reader account deletion')
+        runtime_root=$ProgramDataRoot
+        worker_root=$WorkerRoot
+    }
+}
+
+function Invoke-SafeUninstall {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[switch]$ConfirmRuntimeRemoval)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $plan=Get-UninstallPlan -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    if(-not $ConfirmRuntimeRemoval){return [pscustomobject]@{status='WAITING_FOR_USER';plan=$plan}}
+    $stop=$null
+    try{$stop=Stop-WorkerAdmission -ProgramDataRoot $ProgramDataRoot}catch{
+        if($_.Exception.Message -notmatch 'ADMIN_REQUIRED'){throw}
+    }
+    $removed=@();$alreadyAbsent=@()
+    foreach($target in @($plan.remove)){
+        if(Test-Path -LiteralPath $target){
+            Remove-Item -LiteralPath $target -Recurse -Force
+            $removed+=,$target
+        }else{$alreadyAbsent+=,$target}
+    }
+    [pscustomobject]@{
+        status='PASS'
+        stopped=$stop
+        removed=$removed
+        already_absent=$alreadyAbsent
+        retained=$plan.retain
+        reader_identity_retained=$true
+        authoritative_external_source_untouched=$true
+    }
+}
+
+Export-ModuleMember -Function *
+){
+        throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+    }
+    if([int64]$Accepted.files -ne @($Current.files).Count -or [int64]$Accepted.bytes -ne [int64]$Current.bytes){
+        throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'
+    }
+    $path=Join-Path (Split-Path -Parent $ManifestPath) ($expectedRelative.Replace('/','\'))
+    if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_MISSING'}
+    $fp=Get-Item -LiteralPath $path -Force -ErrorAction Stop
+    if(($fp.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $fp.Length -gt 33554432){
+        throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+    }
+    if((Get-Sha256File $path) -cne [string]$Accepted.fingerprint_inventory_sha256){
+        throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_MISMATCH'
+    }
+    $lines=[IO.File]::ReadAllLines($path,(New-Object Text.UTF8Encoding($false,$true)))
+    $expected=New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+    foreach($line in $lines){
+        $r=$null
+        try{$r=$line|ConvertFrom-Json -ErrorAction Stop}catch{throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'}
+        if(-not $r -or [string]::IsNullOrEmpty([string]$r.path) -or
+           [string]$r.path -match '[\\:]|(^|/)\.\.?(/|$)|//' -or
+           [string]$r.sha256 -notmatch '^[a-f0-9]{64}
+    param([Parameter(Mandatory)]$Source,[Parameter(Mandatory)][string]$Slot)
+    $dest=Get-SourceUpdateAclEntry -Path $Slot
+    if($dest -isnot [IO.DirectoryInfo]){throw 'QUICK_SYNC_SLOT_NOT_DIRECTORY'}
+    if(@($dest.GetFileSystemInfos()).Count){throw 'QUICK_SYNC_SLOT_NOT_EMPTY'}
+    foreach($relative in @($Source.directories|Sort-Object Length)){
+        $p=[IO.Path]::Combine([string]$dest.FullName,([string]$relative).Replace('/','\'))
+        $null=[IO.Directory]::CreateDirectory($p)
+    }
+    foreach($f in @($Source.files)){
+        $p=[IO.Path]::Combine([string]$dest.FullName,([string]$f.relative).Replace('/','\'))
+        $now=Get-SourceUpdateAclEntry -Path ([string]$f.absolute)
+        if($now -isnot [IO.FileInfo] -or (($now.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)){throw 'QUICK_SYNC_SOURCE_CHANGED'}
+        [IO.File]::Copy([string]$f.absolute,$p,$false)
+    }
+}
+function Sync-ExistingWorkerExtension {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$ParticipantId,
+        [Parameter(Mandatory)][string]$ExtensionId,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$OperatorIdentity
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $pk=Assert-SafeId $ProjectId 'project_id'
+    $participant=Assert-SafeId $ParticipantId 'participant_id'
+    $ext=Assert-SafeId $ExtensionId 'extension_id'
+    $key="$participant|EXTENSION|$ext"
+    $paths=Get-SourceUpdatePaths -ProjectId $pk -WorkerRoot $WorkerRoot
+    if(Test-ProjectActiveAdmission -ProjectId $pk -ProgramDataRoot $ProgramDataRoot){throw 'QUICK_SYNC_ACTIVE_ADMISSION_STOP_REQUIRED'}
+    if((Get-SourceUpdateSummary -ProjectId $pk -WorkerRoot $WorkerRoot).status -ne 'NONE'){throw 'QUICK_SYNC_EXISTING_INCOMING_RECOVER_FIRST'}
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'QUICK_SYNC_PROMOTION_RECOVERY_REQUIRED'}
+    $catalog=Read-WorkerCatalog $WorkerRoot
+    $project=Find-Project $catalog $pk
+    if(-not $project){throw 'PROJECT_NOT_FOUND'}
+    $matches=@(Get-SourceUpdateCatalogRows $project|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($matches.Count -ne 1){throw 'QUICK_SYNC_EXTENSION_NOT_REGISTERED'}
+    $row=$matches[0]
+    $manifestPath=Get-ProjectManifestPath -ProjectId $pk -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'QUICK_SYNC_ACCEPTED_MANIFEST_REQUIRED'}
+    $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $old=@(Get-ManifestArtifactRows $manifest|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($old.Count -ne 1){throw 'QUICK_SYNC_NEW_EXTENSION_USE_SELECTED_ADD'}
+    $priorPart=@($manifest.participants|Where-Object {$_.participant_id -ceq $participant -and $_.active -ne $false})
+    $priorExt=@();if($priorPart.Count -eq 1){$priorExt=@($priorPart[0].target.extensions|Where-Object {$_.extension_id -ceq $ext -and $_.active -ne $false})}
+    if($priorExt.Count -ne 1 -or [string]$old[0].canonical_path -cne [string]$row.canonical_path -or [string]$priorExt[0].source_path -cne [string]$row.source_path){throw 'QUICK_SYNC_SOURCE_IDENTITY_CHANGED'}
+    $fast=Get-FastProjectState -ProjectId $pk -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED'){throw ('QUICK_SYNC_BASE_NOT_ACCEPTED: '+[string]$fast.state)}
+    $source=[IO.Path]::GetFullPath([string]$row.source_path).TrimEnd('\')
+    $managed=[IO.Path]::GetFullPath([string]$paths.project_root).TrimEnd('\')
+    if($source.Equals($managed,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($managed+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'QUICK_SYNC_SOURCE_INSIDE_WORKER'}
+    Assert-OneCExportRoot $source
+    $canonical=Join-Path $paths.project_root ([string]$row.canonical_path).Replace('/','\')
+    $before=Get-QuickSyncExtensionTree -Root $source
+    $current=Get-QuickSyncExtensionTree -Root $canonical
+    $unchanged=$false
+    try{Assert-QuickSyncTreesEqual -Expected $before -Actual $current;$unchanged=$true}catch{
+        if($_.Exception.Message -notin @('QUICK_SYNC_SHA256_MISMATCH','QUICK_SYNC_DIRECTORY_MISMATCH')){throw}
+    }
+    if($unchanged){
+        return [pscustomobject]@{status='NO_CHANGE';project_id=$pk;artifact_key=$key;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;files=$before.files.Count;copied_content_bytes=0;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0;generation_id=$null}
+    }
+    $prepared=Prepare-SourceUpdate -ProjectId $pk -Selections @($key) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+    if([string]$prepared.status -ne 'PREPARED_WRITABLE' -or @($prepared.slots).Count -ne 1 -or [string]$prepared.slots[0].key -cne $key){throw 'QUICK_SYNC_PREPARE_IDENTITY_MISMATCH'}
+    # From here a failure deliberately leaves this EXACT generation for native
+    # inspect/recovery. Never auto CANCEL/STOP, overwrite or replay it.
+    Copy-QuickSyncExtensionTree -Source $before -Slot ([string]$prepared.slots[0].slot_path)
+    $afterSource=Get-QuickSyncExtensionTree -Root $source
+    $afterSlot=Get-QuickSyncExtensionTree -Root ([string]$prepared.slots[0].slot_path)
+    Assert-QuickSyncTreesEqual -Expected $before -Actual $afterSource
+    Assert-QuickSyncTreesEqual -Expected $before -Actual $afterSlot
+    if(Test-ProjectActiveAdmission -ProjectId $pk -ProgramDataRoot $ProgramDataRoot){throw 'QUICK_SYNC_ADMISSION_BECAME_ACTIVE_INCOMING_PRESERVED'}
+    $accepted=Accept-SourceUpdate -ProjectId $pk -ExpectedGenerationId ([string]$prepared.generation_id) -ExpectedArtifactKey @($key) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+    if([string]$accepted.status -notin @('READY','NO_CHANGE')){
+        return [pscustomobject]@{status='WAITING_FOR_USER';reason=[string]$accepted.reason;generation_id=[string]$prepared.generation_id;artifact_key=$key;publication_performed=$false;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
+    }
+    [pscustomobject]@{status=[string]$accepted.status;project_id=$pk;artifact_key=$key;source_snapshot_id=$accepted.source_snapshot_id;publication_generation=$accepted.publication_generation;generation_id=[string]$prepared.generation_id;files=$before.files.Count;source_bytes=[int64]$before.bytes;copied_to_incoming_bytes=[int64]$before.bytes;copied_content_bytes=$accepted.copied_content_bytes;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
+}
+
+function Copy-ArtifactSafely {
+    param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Target,[switch]$ReplaceExisting,[Parameter(Mandatory)][string]$ProjectRoot,[Parameter(Mandatory)][string]$ArchiveKey,[string]$ExpectedTargetDigest,[scriptblock]$ProgressCallback)
+    $archive=$null
+    $targetExisted=Test-Path -LiteralPath $Target -PathType Container
+    $workerRoot=Split-Path -Parent $ProjectRoot
+    $stageRoot=Get-ApplyStageRoot $workerRoot
+    New-Item -ItemType Directory -Force -Path $stageRoot|Out-Null
+    do{$token=[Guid]::NewGuid().ToString('N').Substring(0,8);$stage=Join-Path $stageRoot ("a.stage-$token")}while(Test-Path -LiteralPath $stage)
+    $stageState='CREATED';$archiveMoved=$false;$copied=$null
+    try{
+        Write-ApplyStageState -StagePath $stage -State CREATED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        $stageState='COPYING';Write-ApplyStageState -StagePath $stage -State COPYING -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        $copied=Invoke-SourceAcquisition -Source $Source -Stage $stage -StageParent $stageRoot -ProgressCallback $ProgressCallback
+        $srcDigest=$copied.digest
+        $targetMaxChars=$(if([int]$srcDigest.max_relative_path_chars -gt 0){$Target.Length+1+[int]$srcDigest.max_relative_path_chars}else{$Target.Length})
+        $stageMaxChars=[int]$copied.metrics.max_stage_path_chars
+        $stageState='VERIFIED';Write-ApplyStageState -StagePath $stage -State VERIFIED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        if($targetExisted){
+            if([string]::IsNullOrWhiteSpace($ExpectedTargetDigest)){throw (New-ApplyCopyException -Class 'APPLY_TARGET_IDENTITY_REQUIRED' -SafeMessage 'Existing canonical Target has no manifest-bound digest; explicit recovery/deep verification is required before replacement.' -Phase 'PREFLIGHT' -Path $Target)}
+            $targetHash=$ExpectedTargetDigest
+            if($targetHash -eq $srcDigest.sha256){
+                $null=Remove-ApplyStageTree -StagePath $stage
+                Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+                return [pscustomobject]@{digest=$srcDigest;fingerprint_file=$copied.fingerprint_file;configuration_xml_sha256=$copied.configuration_xml_sha256;metrics=$copied.metrics;acquisition_contract=$copied.contract;changed=$false;archived=$null;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+            }
+            if(-not $ReplaceExisting){throw "TARGET_CONFLICT: $Target"}
+        }
+        if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='PUBLISH';files_processed=$srcDigest.files;files_total=$srcDigest.files;bytes_processed=[int64]$srcDigest.bytes;bytes_total=[int64]$srcDigest.bytes})}
+        if($targetExisted){$stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ');$archive=Join-Path $ProjectRoot ("Detached\$ArchiveKey\$stamp");New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive)|Out-Null;Move-Item -LiteralPath $Target -Destination $archive -ErrorAction Stop;$archiveMoved=$true}else{$parent=Split-Path -Parent $Target;New-Item -ItemType Directory -Force -Path $parent|Out-Null}
+        try{Move-Item -LiteralPath $stage -Destination $Target -ErrorAction Stop}catch{if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{}};throw}
+        $stageState='COMMITTED';Write-ApplyStageState -StagePath $stage -State COMMITTED -ProjectRoot $ProjectRoot -TargetPath $Target -ArchiveKey $ArchiveKey
+        Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue
+        [pscustomobject]@{digest=$srcDigest;fingerprint_file=$copied.fingerprint_file;configuration_xml_sha256=$copied.configuration_xml_sha256;metrics=$copied.metrics;acquisition_contract=$copied.contract;changed=$true;archived=$archive;stage_lifecycle=@('CREATED','COPYING','VERIFIED','COMMITTED');target_max_path_chars=$targetMaxChars;stage_max_path_chars=$stageMaxChars}
+    }catch{
+        $cause=$_.Exception
+        $residue=[pscustomobject]@{stage_path=$stage;target_path=$Target;metadata_path=($stage+'.json')}
+        $cleanup=Remove-ApplyStageTree -StagePath $stage
+        $cleanupStatus=$cleanup.status
+        foreach($sidecar in @($stage+'.fingerprints.jsonl',$stage+'.request.json',$stage+'.progress.json',$stage+'.progress.json.tmp')){Remove-Item -LiteralPath $sidecar -Force -ErrorAction SilentlyContinue}
+        if($cleanup.status -eq 'CLEANUP_FAILED'){$q=Move-ApplyStageToQuarantine -Residue $residue -ProjectRoot $ProjectRoot;$cleanupStatus=$q.status}else{Remove-Item -LiteralPath ($stage+'.json') -Force -ErrorAction SilentlyContinue}
+        if($archiveMoved -and (Test-Path -LiteralPath $archive -PathType Container) -and -not(Test-Path -LiteralPath $Target)){try{Move-Item -LiteralPath $archive -Destination $Target -ErrorAction Stop;$archiveMoved=$false;$archive=$null}catch{throw (New-ApplyCopyException -Class 'APPLY_COMMIT_ROLLBACK_FAILED' -SafeMessage 'Verified stage commit failed and the previous canonical Target could not be restored automatically.' -Phase 'COMMIT_ROLLBACK' -Path $Target -CleanupStatus $cleanupStatus -InnerException $_.Exception)}}
+        if($cause.Message -match '^SOURCE_CHANGED_DURING_SYNC:'){throw (New-ApplyCopyException -Class 'SOURCE_CHANGED_DURING_SYNC' -SafeMessage 'Source metadata changed while the managed snapshot was being copied; publication was aborted.' -Phase 'COPYING' -Path $Source -CleanupStatus $cleanupStatus -InnerException $cause)}
+        $class=$(if($stageState -eq 'COPYING'){'APPLY_COPY_FAILED'}elseif($stageState -eq 'VERIFIED'){'APPLY_COMMIT_FAILED'}else{'APPLY_STAGE_FAILED'})
+        $safe=$(if($stageState -eq 'COPYING'){'Copying into the managed staging area failed.'}elseif($stageState -eq 'VERIFIED'){'Verified staging data could not be committed to the canonical Target.'}else{'Managed staging failed before copy could complete.'})
+        throw (New-ApplyCopyException -Class $class -SafeMessage $safe -Phase $stageState -Path $Target -CleanupStatus $cleanupStatus -InnerException $cause)
+    }
+}
+
+function ConvertTo-ExtendedWindowsPath {
+    param([Parameter(Mandatory)][string]$Path)
+    $full=[IO.Path]::GetFullPath($Path)
+    if($full.StartsWith('\\')){return '\\?\UNC\'+$full.Substring(2)}
+    '\\?\'+$full
+}
+
+function Apply-ProjectAcl {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $reader="$env:COMPUTERNAME\$($script:ReaderName)"
+    if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){return}
+    $projectAclPath=ConvertTo-ExtendedWindowsPath $ProjectRoot
+    & icacls.exe $projectAclPath /grant:r ($reader+':(RX)') | Out-Null
+    if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $ProjectRoot"}
+    $participants=Join-Path $ProjectRoot 'Participants'
+    $output=Join-Path $ProjectRoot 'Output'
+    if(Test-Path -LiteralPath $participants){$aclPath=ConvertTo-ExtendedWindowsPath $participants;& icacls.exe $aclPath /grant:r ($reader+':(OI)(CI)(RX)') /T /C | Out-Null;if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $participants"}}
+    if(Test-Path -LiteralPath $output){$aclPath=ConvertTo-ExtendedWindowsPath $output;& icacls.exe $aclPath /grant:r ($reader+':(OI)(CI)(M)') /T /C | Out-Null;if($LASTEXITCODE -ne 0){throw "PROJECT_ACL_FAILED: $output"}}
+}
+
+function Apply-WorkerProject {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[scriptblock]$ProgressCallback)
+    $c=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $c $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'};if($p.active -eq $false){throw 'PROJECT_INACTIVE'}
+    $catalogHash=Get-CatalogHash $WorkerRoot;$projectRoot=Join-Path $WorkerRoot $ProjectId;$residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot)
+    if($residue.Count){throw "APPLY_RESIDUE_REPAIR_REQUIRED: $($residue.Count) incomplete staging artifact(s) detected; run REPAIR before APPLY."}
+    $manifestDir=Join-Path $projectRoot 'ProjectManifest';New-Item -ItemType Directory -Force -Path $manifestDir,(Join-Path $projectRoot 'Participants'),(Join-Path $projectRoot 'Output')|Out-Null
+    $manifestPath=Join-Path $manifestDir 'project.json';$oldManifest=$null;if(Test-Path -LiteralPath $manifestPath -PathType Leaf){try{$oldManifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $oldGeneration=$(if($oldManifest -and $oldManifest.accepted_snapshot){[int]$oldManifest.accepted_snapshot.publication_generation}else{0});$manifestParticipants=@();$changes=@();$fingerprintMap=@{}
+    $activeParticipants=@($p.participants|Where-Object {$_.active -ne $false})
+    $missingRequiredMain=@($activeParticipants|Where-Object {$_.platform -eq 'ONEC' -and (-not $_.target.main -or $_.target.main.active -eq $false)})
+    foreach($part in $activeParticipants){
+        if($part.platform -ne 'ONEC'){throw "PLATFORM_NOT_IMPLEMENTED_1C_FIRST: $($part.platform)"};$participantKey=Assert-SafeId $part.participant_id 'participant_id';$mPart=[ordered]@{participant_id=$participantKey;platform=$part.platform;role=$part.role;active=$true;target=[ordered]@{main=$null;extensions=@()}}
+        if($part.target.main -and $part.target.main.active -ne $false){
+            Assert-OneCExportRoot $part.target.main.source_path;$rel="Participants/$participantKey/Target/Main";$target=Join-Path $projectRoot $rel.Replace('/','\');$oldDigest=$null
+            if($oldManifest){$oa=@(Get-ManifestArtifactRows $oldManifest|Where-Object {$_.canonical_path -eq $rel}|Select-Object -First 1);if($oa.Count){$oldDigest=$oa[0].tree_sha256}}
+            $copy=Copy-ArtifactSafely -Source $part.target.main.source_path -Target $target -ReplaceExisting:([bool]$part.target.main.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Main" -ExpectedTargetDigest $oldDigest -ProgressCallback $ProgressCallback
+            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='MAIN';artifact_id='main';source_input=$part.target.main.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived;acquisition_contract=$copy.acquisition_contract;acquisition_metrics=$copy.metrics}
+            $mPart.target.main=[ordered]@{artifact_id='main';active=$true;canonical_path=$rel;source_path=$part.target.main.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=[string]$copy.configuration_xml_sha256}
+            $fingerprintMap["$participantKey|MAIN|main"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType MAIN -ArtifactId main -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
+        }
+        foreach($ext in @($part.target.extensions|Where-Object {$_.active -ne $false})){
+            $eid=Assert-SafeId $ext.extension_id 'extension_id';Assert-OneCExportRoot $ext.source_path;$rel="Participants/$participantKey/Target/Extensions/$eid";$target=Join-Path $projectRoot $rel.Replace('/','\');$oldDigest=$null
+            if($oldManifest){$oa=@(Get-ManifestArtifactRows $oldManifest|Where-Object {$_.canonical_path -eq $rel}|Select-Object -First 1);if($oa.Count){$oldDigest=$oa[0].tree_sha256}}
+            $copy=Copy-ArtifactSafely -Source $ext.source_path -Target $target -ReplaceExisting:([bool]$ext.replace_existing) -ProjectRoot $projectRoot -ArchiveKey "$participantKey\Target\Extensions\$eid" -ExpectedTargetDigest $oldDigest -ProgressCallback $ProgressCallback
+            $action=if(-not $copy.changed){'REUSED'}elseif($copy.archived){'REPLACED_DETACHED'}else{'COPIED'};$changes+=,[pscustomobject]@{participant_id=$participantKey;artifact_type='EXTENSION';artifact_id=$eid;source_input=$ext.source_path;target_canonical_path=$rel;action=$action;detached_path=$copy.archived;acquisition_contract=$copy.acquisition_contract;acquisition_metrics=$copy.metrics}
+            $mPart.target.extensions+=,[ordered]@{extension_id=$eid;artifact_id=$eid;active=$true;canonical_path=$rel;source_path=$ext.source_path;tree_sha256=$copy.digest.sha256;files=$copy.digest.files;bytes=$copy.digest.bytes;configuration_xml_sha256=[string]$copy.configuration_xml_sha256}
+            $fingerprintMap["$participantKey|EXTENSION|$eid"]=Write-FingerprintInventory -ManifestDir $manifestDir -ParticipantId $participantKey -ArtifactType EXTENSION -ArtifactId $eid -PreparedFile ([string]$copy.fingerprint_file.path) -ExpectedSha256 ([string]$copy.fingerprint_file.sha256)
+        }
+        $manifestParticipants+=,[pscustomobject]$mPart
+    }
+    $manifest=[pscustomobject][ordered]@{schema_version=2;project_id=$p.project_id;display_name=$p.display_name;active=$true;topology_authority='RP-20261004-026';catalog_sha256=$catalogHash;applied_utc=(Get-Date).ToUniversalTime().ToString('o');project_root=$projectRoot;participants=$manifestParticipants;output_relative='Output';accepted_snapshot=$null}
+    if(-not $missingRequiredMain.Count -and $activeParticipants.Count){
+        $manifest.accepted_snapshot=New-AcceptedSnapshot -ManifestParticipants @($manifestParticipants) -CatalogSha256 $catalogHash -ProofBasis 'ONE_PASS_COPY_HASH' -PublicationGeneration ($oldGeneration+1) -FingerprintMap $fingerprintMap
+    }
+    if($oldManifest){
+        $desired=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach($dp in @($manifest.participants)){
+            if($dp.target.main){$null=$desired.Add([string]$dp.target.main.canonical_path)}
+            foreach($de in @($dp.target.extensions)){$null=$desired.Add([string]$de.canonical_path)}
+        }
+        foreach($op in @($oldManifest.participants)){
+            $oldArts=@()
+            if($op.target.main){$oldArts+=,$op.target.main}
+            $oldArts+=@($op.target.extensions)
+            foreach($oa in $oldArts){
+                $rel=[string]$oa.canonical_path
+                if(-not $desired.Contains($rel)){
+                    $abs=Join-Path $projectRoot $rel.Replace('/','\')
+                    if(Test-Path -LiteralPath $abs){
+                        $stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+                        $detached=Join-Path $projectRoot ("Detached\Deactivated\$stamp\"+$rel.Replace('/','\'))
+                        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $detached)|Out-Null
+                        Move-Item -LiteralPath $abs -Destination $detached
+                        $changes+=,[pscustomobject]@{
+                            participant_id=[string]$op.participant_id
+                            artifact_type=$(if($rel -match '/Extensions/'){'EXTENSION'}else{'MAIN'})
+                            artifact_id=$(if($rel -match '/Extensions/([^/]+)$'){$Matches[1]}else{'main'})
+                            source_input=$null
+                            target_canonical_path=$rel
+                            action='DEACTIVATED_DETACHED'
+                            detached_path=$detached
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if($ProgressCallback){& $ProgressCallback ([pscustomobject]@{phase='PUBLISH';files_processed=$null;files_total=$null;bytes_processed=$null;bytes_total=$null})}
+    Write-JsonAtomic $manifest $manifestPath;Apply-ProjectAcl -ProjectRoot $projectRoot
+    $fast=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($missingRequiredMain.Count){
+        return [pscustomobject]@{project_id=$ProjectId;status='FAIL';state=$fast.state;catalog_sha256=$catalogHash;manifest_sha256=(Get-Sha256File $manifestPath);source_snapshot_id=$null;publication_generation=$oldGeneration;changes=$changes;errors=@($missingRequiredMain|ForEach-Object{"ONEC_MAIN_REQUIRED:"+[string]$_.participant_id});fast_state=$fast}
+    }
+    if(-not $activeParticipants.Count){
+        return [pscustomobject]@{project_id=$ProjectId;status='FAIL';state=$fast.state;catalog_sha256=$catalogHash;manifest_sha256=(Get-Sha256File $manifestPath);source_snapshot_id=$null;publication_generation=$oldGeneration;changes=$changes;errors=@('NO_ACTIVE_PARTICIPANTS');fast_state=$fast}
+    }
+    if($fast.state -ne 'ACCEPTED'){throw ("SNAPSHOT_PUBLICATION_NOT_ACCEPTED: "+$fast.reason)}
+    [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';catalog_sha256=$catalogHash;manifest_sha256=$fast.manifest_sha256;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;changes=$changes;fast_state=$fast}
+}
+
+function Verify-WorkerProject {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[scriptblock]$ProgressCallback)
+    $catalog=Read-WorkerCatalog $WorkerRoot;$p=Find-Project $catalog $ProjectId;if(!$p){throw 'PROJECT_NOT_FOUND'};$projectRoot=Join-Path $WorkerRoot $ProjectId;$manifestPath=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $residue=@(Get-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot);if($residue.Count){return [pscustomobject]@{project_id=$ProjectId;status='INCOMPLETE_APPLY_RESIDUE';reason='ORPHAN_STAGE_PRESENT';residue_count=$residue.Count;residue=@($residue|Select-Object layout,state,stage_path,target_path);verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){return [pscustomobject]@{project_id=$ProjectId;status='APPLY_REQUIRED';reason='MANIFEST_MISSING';verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    try{$m=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{return [pscustomobject]@{project_id=$ProjectId;status='FAIL';reason='MANIFEST_PARSE_FAILED';errors=@('MANIFEST_PARSE_FAILED');verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    $catalogHash=Get-CatalogHash $WorkerRoot;if($m.catalog_sha256 -ne $catalogHash){return [pscustomobject]@{project_id=$ProjectId;status='DRIFT_APPLY_REQUIRED';reason='CATALOG_HASH_MISMATCH';manifest_catalog_sha256=$m.catalog_sha256;catalog_sha256=$catalogHash;verification_contract='DEEP_INTEGRITY_VERIFY_V1'}}
+    $errors=New-Object System.Collections.Generic.List[string];$artifacts=@(Get-ManifestArtifactRows $m);if(-not $artifacts.Count){$errors.Add('NO_ACTIVE_PARTICIPANTS')};$artifactIndex=0
+    foreach($a in $artifacts){$artifactIndex++;$abs=Join-Path $projectRoot $a.canonical_path.Replace('/','\');if(-not(Test-Path -LiteralPath $abs -PathType Container)){$errors.Add("MISSING:$($a.canonical_path)");continue};$cb=$null;if($ProgressCallback){$cb={param($x);& $ProgressCallback ([pscustomobject]@{phase='DEEP_VERIFY';artifact_index=$artifactIndex;artifact_total=$artifacts.Count;artifact_path=$a.canonical_path;files_processed=$x.files_processed;files_total=$x.files_total;bytes_processed=$x.bytes_processed;bytes_total=$x.bytes_total})}.GetNewClosure()};try{$dig=Get-TreeDigest -Root $abs -ProgressCallback $cb;if($dig.sha256 -ne $a.tree_sha256){$errors.Add("HASH_MISMATCH:$($a.canonical_path)")}}catch{$errors.Add("VERIFY_ERROR:$($a.canonical_path):$($_.Exception.Message)")};if($a.platform -eq 'ONEC' -and -not(Test-Path -LiteralPath (Join-Path $abs 'Configuration.xml') -PathType Leaf)){$errors.Add("ONEC_LAYOUT:$($a.canonical_path)")}}
+    if(-not(Test-Path -LiteralPath (Join-Path $projectRoot 'Output') -PathType Container)){$errors.Add('OUTPUT_MISSING')}
+    if([int]$m.schema_version -eq 2 -and $m.accepted_snapshot){
+        if($errors.Count){
+            $m.accepted_snapshot.snapshot_state='DEEP_VERIFY_REQUIRED'
+            Write-JsonAtomic $m $manifestPath
+        }elseif([string]$m.accepted_snapshot.snapshot_state -ne 'ACCEPTED'){
+            $fp=@{}
+            foreach($sa in @($m.accepted_snapshot.artifacts)){
+                $fp[(Get-SnapshotArtifactKey $sa)]=[pscustomobject]@{state=[string]$sa.fingerprint_inventory_state;relative_path=[string]$sa.fingerprint_inventory_path;sha256=[string]$sa.fingerprint_inventory_sha256}
+            }
+            $null=Set-ManifestAcceptedSnapshot -Manifest $m -ManifestPath $manifestPath -ProofBasis 'EXPLICIT_DEEP_VERIFIED' -PublicationGeneration ([int]$m.accepted_snapshot.publication_generation+1) -FingerprintMap $fp
+        }
+    }
+    [pscustomobject]@{project_id=$ProjectId;status=$(if($errors.Count){'FAIL'}else{'READY'});catalog_sha256=$catalogHash;manifest_sha256=Get-Sha256File $manifestPath;errors=@($errors);verification_contract='DEEP_INTEGRITY_VERIFY_V1';artifact_count=$artifacts.Count}
+}
+
+function Get-WorkerDependencyHealth {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $nodePath=Get-HelperNodeExecutablePath
+    $nodeVersion=$(if(Test-Path -LiteralPath $nodePath -PathType Leaf){(& $nodePath --version).Trim()}else{$null})
+    $rgPath=Join-Path $ProgramDataRoot 'runtime\rg.exe'
+    $rgVersion=$null
+    if(Test-Path -LiteralPath $rgPath -PathType Leaf){
+        try{$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}catch{}
+    }
+    [pscustomobject]@{
+        node=[pscustomobject]@{required=$script:NodeVersion;actual=$nodeVersion;path=$nodePath;healthy=($nodeVersion -eq "v$($script:NodeVersion)")}
+        ripgrep=[pscustomobject]@{required=$script:RgVersion;actual=$rgVersion;healthy=($rgVersion -eq $script:RgVersion);path=$rgPath}
+        python_required=$false
+        cloudflare_cli_required=$false
+    }
+}
+
+function Get-HelperConnectionState {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $procs=@()
+    if(Test-Path -LiteralPath $helper -PathType Leaf){
+        $procs=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    }
+    $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+    $state=$null
+    if(Test-Path -LiteralPath $statePath -PathType Leaf){try{$state=Get-Content -LiteralPath $statePath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $logPath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-log.jsonl'
+    $connected=$null
+    if(Test-Path -LiteralPath $logPath -PathType Leaf){
+        foreach($line in @(Get-Content -LiteralPath $logPath -Tail 100 -Encoding UTF8)){
+            try{$e=$line|ConvertFrom-Json;if($e.event -eq 'CONNECTED'){$connected=$e}}catch{}
+        }
+    }
+    $notExpired=$false
+    if($state -and $state.expires_utc){try{$notExpired=(Get-Date).ToUniversalTime() -lt ([DateTime]::Parse($state.expires_utc).ToUniversalTime())}catch{}}
+    $status=if($procs.Count -eq 0){'OFFLINE'}elseif($connected -and $notExpired){'CONNECTED'}else{'RUNNING_NO_CONNECT_EVIDENCE'}
+    [pscustomobject]@{
+        status=$status
+        process_count=$procs.Count
+        process_ids=@($procs|Select-Object -ExpandProperty ProcessId)
+        session_id=$(if($state){$state.session_id}else{$null})
+        expires_utc=$(if($state){$state.expires_utc}else{$null})
+        project_id=$(if($state){$state.project_id}else{$null})
+        task_id=$(if($state){$state.task_id}else{$null})
+        last_connected_utc=$(if($connected){$connected.at_utc}else{$null})
+        helper_path=$helper
+    }
+}
+
+function Get-OutputProposalSummary {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot)
+    $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing
+    $rows=@()
+    foreach($p in @($catalog.projects)){
+        $outRoot=Join-Path (Join-Path $WorkerRoot $p.project_id) 'Output'
+        $tasks=@()
+        if(Test-Path -LiteralPath $outRoot -PathType Container){
+            foreach($dir in @(Get-ChildItem -LiteralPath $outRoot -Directory -ErrorAction SilentlyContinue)){
+                $prov=Join-Path $dir.FullName '_proposal_provenance.json'
+                $status=$null;$files=$null;$bytes=$null
+                if(Test-Path -LiteralPath $prov -PathType Leaf){
+                    try{$doc=Get-Content -LiteralPath $prov -Raw -Encoding UTF8|ConvertFrom-Json;$status=$doc.status;$files=$doc.total_files;$bytes=$doc.total_bytes}catch{$status='INVALID_PROVENANCE'}
+                }
+                $tasks+=,[pscustomobject]@{task_id=$dir.Name;status=$status;proposal_files=$files;proposal_bytes=$bytes;last_write_utc=$dir.LastWriteTimeUtc.ToString('o')}
+            }
+        }
+        $rows+=,[pscustomobject]@{project_id=$p.project_id;task_count=$tasks.Count;tasks=@($tasks|Sort-Object last_write_utc -Descending|Select-Object -First 20)}
+    }
+    $rows
+}
+
+function Get-WorkerStatus {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing;$runtimeState=Join-Path $ProgramDataRoot 'runtime\active-admission.json';$active=$null;if(Test-Path -LiteralPath $runtimeState){try{$active=Get-Content $runtimeState -Raw|ConvertFrom-Json}catch{}}
+    $rows=@();foreach($p in @($catalog.projects)){$v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}};$snapshotId=$(if($v.PSObject.Properties.Name -contains 'source_snapshot_id'){$v.source_snapshot_id}else{$null});$reason=$(if($v.PSObject.Properties.Name -contains 'reason'){$v.reason}else{$null});$rows+=,[pscustomobject]@{project_id=$p.project_id;display_name=$p.display_name;active=($p.active -ne $false);verification=$(if($v.state -eq 'ACCEPTED'){'READY'}else{$v.state});fast_state=$v.state;fast_reason=$reason;source_snapshot_id=$snapshotId;participant_count=@($p.participants|Where-Object{$_.active -ne $false}).Count}}
+    $recent=@(Get-RecentWorkerOperations -Limit 20 -ProgramDataRoot $ProgramDataRoot);$lastVerify=@($recent|Where-Object{$_.operation_type -eq 'VERIFY'}|Select-Object -First 1);$installedPath=Join-Path $ProgramDataRoot 'installed-state.json';$installed=$null;if(Test-Path -LiteralPath $installedPath -PathType Leaf){try{$installed=Get-Content -LiteralPath $installedPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $integrity=$null;if($installed){try{$integrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot}catch{$integrity=[pscustomobject]@{status='FAIL';error_class=(($_.Exception.Message -split ':',2)[0]);message=$_.Exception.Message}}}else{$integrity=[pscustomobject]@{status='NOT_INSTALLED'}}
+    [pscustomobject]@{product_version=$script:ProductVersion;installed=($null -ne $installed);installed_state=$installed;installed_integrity=$integrity;worker_root=$WorkerRoot;catalog_path=Get-CatalogPath $WorkerRoot;dependencies=Get-WorkerDependencyHealth $ProgramDataRoot;projects=$rows;active_admission=$active;helper=Get-HelperConnectionState $ProgramDataRoot;current_operation=Get-CurrentWorkerOperation $ProgramDataRoot;last_operation=$(if($recent.Count){$recent[0]}else{$null});operation_recovery=Get-OperationRecoveryClassification $ProgramDataRoot;last_verify=$(if($lastVerify.Count){$lastVerify[0]}else{$null});output=Get-OutputProposalSummary $WorkerRoot;state_check_contract='FAST_STATE_CHECK_V1'}
+}
+
+function Get-WorkerDiagnostics {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[int]$Recent=20)
+    [pscustomobject]@{
+        generated_utc=(Get-Date).ToUniversalTime().ToString('o')
+        status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        recent_operations=@(Get-RecentWorkerOperations -Limit $Recent -ProgramDataRoot $ProgramDataRoot)
+        operation_log=@(Get-WorkerOperationLog -Tail 100 -ProgramDataRoot $ProgramDataRoot)
+        secret_material_included=$false
+    }
+}
+
+function Export-WorkerDiagnosticBundle {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$Destination)
+    if([string]::IsNullOrWhiteSpace($Destination)){
+        $dir=Join-Path $env:USERPROFILE 'Desktop'
+        if(-not(Test-Path -LiteralPath $dir -PathType Container)){$dir=$env:TEMP}
+        $Destination=Join-Path $dir ("OneCChatWorker-Diagnostics-{0}.zip" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    }
+    $stage=Join-Path $env:TEMP ('OneCChatWorker-Diag-'+[Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $stage|Out-Null
+    try{
+        $diag=Get-WorkerDiagnostics -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        [IO.File]::WriteAllText((Join-Path $stage 'diagnostics.json'),($diag|ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllLines((Join-Path $stage 'operations.log'),@($diag.operation_log),(New-Object Text.UTF8Encoding($false)))
+        $helperLog=Join-Path $ProgramDataRoot 'runtime\hosted-helper-log.jsonl'
+        if(Test-Path -LiteralPath $helperLog -PathType Leaf){
+            Get-Content -LiteralPath $helperLog -Tail 200 -Encoding UTF8|Set-Content -LiteralPath (Join-Path $stage 'helper-log-tail.jsonl') -Encoding UTF8
+        }
+        Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $Destination -Force
+    }finally{Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue}
+    [pscustomobject]@{status='PASS';bundle=$Destination;secret_material_included=$false}
+}
+
+function Write-ProviderConfig {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $rg=Join-Path $ProgramDataRoot 'runtime\rg.exe'
+    if(-not(Test-Path -LiteralPath $rg -PathType Leaf)){throw 'RG_NOT_INSTALLED'}
+    $cfg=[ordered]@{schema_version=1;contract_id='onecchatworker';contract_version='1.0';provider_version='1.0.0';worker_root=$WorkerRoot;admitted_projects=@($ProjectId);rg_path=$rg;audit_path=(Join-Path $ProgramDataRoot 'audit\reader-audit.jsonl');limits=[ordered]@{max_list_depth=4;max_list_entries=2000;default_read_lines=120;max_read_lines=400;max_context_lines=20;max_pattern_chars=512;default_search_matches=20;max_search_matches=100;search_timeout_ms=30000;max_rg_output_bytes=33554432;max_source_file_bytes=16777216;max_artifact_read_bytes=4194304;max_artifact_file_bytes=4194304;max_encoded_content_chars=6000000;max_batch_files=16;max_batch_total_bytes=12582912}}
+    Write-JsonAtomic $cfg (Join-Path $ProgramDataRoot 'provider\provider-config.json')
+}
+
+function Get-TaskStateRoot {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    Join-Path $ProgramDataRoot 'task-state'
+}
+
+function Read-TaskCheckpointContinuationHead {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot
+    )
+    $projectKey=Assert-SafeId $ProjectId 'project_id'
+    $taskKey=Assert-SafeId $TaskId 'task_id'
+    $taskRoot=Join-Path (Join-Path (Get-TaskStateRoot $ProgramDataRoot) $projectKey) $taskKey
+    $headPath=Join-Path $taskRoot 'head.json'
+    if(-not(Test-Path -LiteralPath $headPath -PathType Leaf)){throw 'TASK_CHECKPOINT_HEAD_MISSING'}
+    try{$head=Get-Content -LiteralPath $headPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    if([string]$head.schema -ne 'TASK_CHECKPOINT_HEAD_V1' -or [string]$head.project_id -ne $projectKey -or [string]$head.task_id -ne $taskKey){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    $headSeq=0;if(-not [int]::TryParse([string]$head.head_seq,[ref]$headSeq) -or $headSeq -lt 1){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    foreach($h in @([string]$head.head_checkpoint_sha256,[string]$head.head_checkpoint_file_sha256)){if($h -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}}
+    $name=[string]$head.head_checkpoint_file
+    if([IO.Path]::GetFileName($name) -ne $name -or $name -notmatch '^\d{8}-[a-f0-9]{64}\.json$'){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    $cpPath=Join-Path (Join-Path $taskRoot 'checkpoints') $name
+    if(-not(Test-Path -LiteralPath $cpPath -PathType Leaf)){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    if((Get-Sha256File $cpPath) -ne ([string]$head.head_checkpoint_file_sha256).ToLowerInvariant()){throw 'TASK_CHECKPOINT_HEAD_CORRUPT'}
+    try{$cp=Get-Content -LiteralPath $cpPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([string]$cp.schema -ne 'TASK_CHECKPOINT_V1' -or [string]$cp.project_id -ne $projectKey -or [string]$cp.task_id -ne $taskKey){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([int]$cp.seq -ne $headSeq -or [string]$cp.checkpoint_sha256 -ne [string]$head.head_checkpoint_sha256){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    if([string]$cp.checkpoint_id -ne [string]$head.head_checkpoint_id -or [string]$cp.task_admission_id -ne [string]$head.head_task_admission_id){throw 'TASK_CHECKPOINT_STATE_CORRUPT'}
+    $cursor=$cp.activity_cursor
+    if(-not $cursor -or [string]$cursor.schema -ne 'S4_ACTIVITY_CURSOR_V1' -or [string]$cursor.task_admission_id -ne [string]$cp.task_admission_id){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    $aseq=0;if(-not [int]::TryParse([string]$cursor.activity_seq,[ref]$aseq) -or $aseq -lt 0){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    if($aseq -eq 0){if($null -ne $cursor.receipt_sha256){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}}
+    elseif([string]$cursor.receipt_sha256 -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_CHECKPOINT_ACTIVITY_CURSOR_INVALID'}
+    [pscustomobject]@{task_root=$taskRoot;head_path=$headPath;checkpoint_path=$cpPath;head=$head;checkpoint=$cp}
+}
+
+function Invoke-TaskStateRetention {
+    param(
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [int]$RetentionDays=30
+    )
+    if($RetentionDays -lt 1 -or $RetentionDays -gt 3650){throw 'TASK_STATE_RETENTION_DAYS_INVALID'}
+    $root=Get-TaskStateRoot $ProgramDataRoot
+    if(-not(Test-Path -LiteralPath $root -PathType Container)){return [pscustomobject]@{status='PASS';removed=@();retained=@();invalid=@()}}
+    $active=$null;$admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(Test-Path -LiteralPath $admissionPath -PathType Leaf){try{$active=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
+    $cutoff=(Get-Date).ToUniversalTime().AddDays(-$RetentionDays)
+    $removed=New-Object Collections.Generic.List[string];$retained=New-Object Collections.Generic.List[string];$invalid=New-Object Collections.Generic.List[string]
+    $projects=@(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction Stop)
+    if($projects.Count -gt 512){throw 'TASK_STATE_RETENTION_ROOT_CAP'}
+    foreach($projectDir in $projects){
+        try{$null=Assert-SafeId $projectDir.Name 'project_id'}catch{$invalid.Add($projectDir.FullName);continue}
+        $tasks=@(Get-ChildItem -LiteralPath $projectDir.FullName -Directory -Force -ErrorAction Stop)
+        if($tasks.Count -gt 512){throw 'TASK_STATE_RETENTION_TASK_CAP'}
+        foreach($taskDir in $tasks){
+            try{$null=Assert-SafeId $taskDir.Name 'task_id'}catch{$invalid.Add($taskDir.FullName);continue}
+            $isActive=$active -and [string]$active.project_id -eq $projectDir.Name -and [string]$active.task_id -eq $taskDir.Name
+            if($isActive){$retained.Add($taskDir.FullName);continue}
+            try{$verified=Read-TaskCheckpointContinuationHead -ProjectId $projectDir.Name -TaskId $taskDir.Name -ProgramDataRoot $ProgramDataRoot}catch{$invalid.Add($taskDir.FullName);continue}
+            try{$updated=[DateTime]::Parse([string]$verified.head.updated_utc).ToUniversalTime()}catch{$invalid.Add($taskDir.FullName);continue}
+            if($updated -ge $cutoff){$retained.Add($taskDir.FullName);continue}
+            Remove-Item -LiteralPath $taskDir.FullName -Recurse -Force -ErrorAction Stop
+            $removed.Add($taskDir.FullName)
+        }
+    }
+    [pscustomobject]@{status='PASS';removed=@($removed);retained=@($retained);invalid=@($invalid);retention_days=$RetentionDays}
+}
+
+function Get-S4AdmissionPolicy {
+    $localLock=Join-Path $PSScriptRoot 'runtime.lock.json'
+    $parentRoot=Split-Path -Parent $PSScriptRoot
+    $parentLock=Join-Path $parentRoot 'runtime.lock.json'
+    $localExists=Test-Path -LiteralPath $localLock -PathType Leaf
+    $parentExists=Test-Path -LiteralPath $parentLock -PathType Leaf
+    if($localExists -and $parentExists){throw 'S4_RUNTIME_LOCK_LAYOUT_AMBIGUOUS'}
+    if($localExists){$lock=Read-RuntimeLock $PSScriptRoot}
+    elseif($parentExists){$lock=Read-RuntimeLock $parentRoot}
+    else{throw "RUNTIME_LOCK_MISSING: expected $localLock or $parentLock"}
+    if(-not $lock.hosted_mcp -or -not $lock.hosted_mcp.s4){throw 'S4_RUNTIME_POLICY_MISSING'}
+    $lock.hosted_mcp.s4
+}
+
+function New-Admission {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [AllowNull()][string]$TaskGoal=$null,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        $AcceptedState,
+        $Predecessor=$null,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    Assert-SafeId $TaskId 'task_id'|Out-Null
+    $v=$AcceptedState;if(-not $v){$v=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot};if($v.project_id -ne $ProjectId -or $v.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($v.state)"}
+    $manifest=Get-ProjectManifestPath -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $manifestDoc=Get-Content -LiteralPath $manifest -Raw -Encoding UTF8|ConvertFrom-Json
+    if([int]$manifestDoc.schema_version -ne 2 -or -not $manifestDoc.accepted_snapshot){throw 'SNAPSHOT_MANIFEST_INVALID'}
+    if(@($manifestDoc.participants|Where-Object {$_.platform -ne 'ONEC'}).Count){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
+    $manifestSha=Get-Sha256File $manifest
+    if([string]$v.manifest_sha256 -and $manifestSha -ne [string]$v.manifest_sha256){throw 'SNAPSHOT_CHANGED_DURING_ADMISSION'}
+    if([string]$manifestDoc.accepted_snapshot.source_snapshot_id -ne [string]$v.source_snapshot_id){throw 'SOURCE_SNAPSHOT_ID_MISMATCH'}
+    Write-ProviderConfig -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    $goal=$null;$goalSha=$null
+    if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){
+        if([Text.Encoding]::UTF8.GetByteCount($TaskGoal) -gt 1024){throw 'TASK_GOAL_BYTE_CAP'}
+        $goal=$TaskGoal;$goalSha=Get-Sha256Text $TaskGoal
+    }
+    $predecessorBinding=$null
+    if($null -ne $Predecessor){
+        $predAdmission=[string]$Predecessor.task_admission_id
+        $predCheckpoint=[string]$Predecessor.checkpoint_sha256
+        $predCheckpointId=[string]$Predecessor.checkpoint_id
+        $predSeq=0
+        if($predAdmission -notmatch '^[A-Fa-f0-9]{32}$' -or $predCheckpoint -notmatch '^[A-Fa-f0-9]{64}$' -or [string]::IsNullOrWhiteSpace($predCheckpointId) -or -not [int]::TryParse([string]$Predecessor.checkpoint_seq,[ref]$predSeq) -or $predSeq -lt 1){throw 'TASK_PREDECESSOR_INVALID'}
+        $cursor=$Predecessor.activity_cursor
+        $aseq=0
+        if(-not $cursor -or [string]$cursor.schema -ne 'S4_ACTIVITY_CURSOR_V1' -or [string]$cursor.task_admission_id -ne $predAdmission -or -not [int]::TryParse([string]$cursor.activity_seq,[ref]$aseq) -or $aseq -lt 0){throw 'TASK_PREDECESSOR_INVALID'}
+        if($aseq -eq 0){if($null -ne $cursor.receipt_sha256){throw 'TASK_PREDECESSOR_INVALID'}}
+        elseif([string]$cursor.receipt_sha256 -notmatch '^[A-Fa-f0-9]{64}$'){throw 'TASK_PREDECESSOR_INVALID'}
+        $predGoal=$Predecessor.task_goal_sha256
+        if(($null -eq $goalSha) -ne ($null -eq $predGoal)){throw 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+        if($null -ne $goalSha -and [string]$predGoal -ne $goalSha){throw 'TASK_PREDECESSOR_GOAL_MISMATCH'}
+        $predecessorBinding=[ordered]@{
+            task_admission_id=$predAdmission
+            checkpoint_id=$predCheckpointId
+            checkpoint_seq=$predSeq
+            checkpoint_sha256=$predCheckpoint.ToLowerInvariant()
+            task_goal_sha256=$predGoal
+            source_snapshot_id=[string]$Predecessor.source_snapshot_id
+            activity_cursor=[ordered]@{
+                schema='S4_ACTIVITY_CURSOR_V1'
+                task_admission_id=$predAdmission
+                activity_seq=$aseq
+                receipt_sha256=$(if($aseq -eq 0){$null}else{([string]$cursor.receipt_sha256).ToLowerInvariant()})
+            }
+        }
+    }
+
+    $null=Invoke-TaskStateRetention -ProgramDataRoot $ProgramDataRoot
+    $policy=Get-S4AdmissionPolicy
+    $candidate=$policy.candidate
+    if($TaskRequestLimit -le 0 -or $TaskResultByteLimit -le 0 -or $TaskTtlMinutes -le 0){
+        if([string]$policy.qualification_status -ne 'QUALIFIED_CANDIDATE' -or -not $candidate){throw 'S4_CAP_QUALIFICATION_REQUIRED'}
+        if($TaskRequestLimit -le 0){$TaskRequestLimit=[int]$candidate.task_request_limit}
+        if($TaskResultByteLimit -le 0){$TaskResultByteLimit=[int]$candidate.task_result_byte_limit}
+        if($TaskTtlMinutes -le 0){$TaskTtlMinutes=[int]$candidate.task_ttl_minutes}
+    }
+    if($EpochSoftRequestLimit -le 0){$EpochSoftRequestLimit=[int]$policy.epoch_soft_request_limit}
+    if($EpochSoftResultByteLimit -le 0){$EpochSoftResultByteLimit=[int]$policy.epoch_soft_result_byte_limit}
+    $maxResult=[int]$policy.max_result_bytes
+    if($TaskRequestLimit -lt 1 -or $TaskResultByteLimit -lt 1 -or $TaskTtlMinutes -lt 1){throw 'S4_TASK_CAP_INVALID'}
+    if($EpochSoftRequestLimit -lt 1 -or $EpochSoftRequestLimit -gt $TaskRequestLimit){throw 'S4_EPOCH_REQUEST_CAP_INVALID'}
+    if($EpochSoftResultByteLimit -lt 1 -or $EpochSoftResultByteLimit -gt $TaskResultByteLimit -or $maxResult -gt $EpochSoftResultByteLimit){throw 'S4_EPOCH_BYTE_CAP_INVALID'}
+
+    $created=(Get-Date).ToUniversalTime()
+    $expires=$created.AddMinutes($TaskTtlMinutes)
+    $taskAdmissionId=[Guid]::NewGuid().ToString('N')
+    $stableSessionId=[Guid]::NewGuid().ToString('N')
+    $outputTaskRoot='Output/'+$TaskId
+    $a=[ordered]@{
+        schema_version=3
+        accounting_contract='S4_DURABLE_TASK_ACCOUNTING_V1'
+        task_admission_id=$taskAdmissionId
+        session_id=$stableSessionId
+        project_id=$ProjectId
+        task_id=$TaskId
+        task_goal=$goal
+        task_goal_sha256=$goalSha
+        created_utc=$created.ToString('o')
+        task_created_utc=$created.ToString('o')
+        task_expires_utc=$expires.ToString('o')
+        predecessor=$predecessorBinding
+        manifest_path=$manifest
+        manifest_sha256=$manifestSha
+        source_snapshot_id=[string]$v.source_snapshot_id
+        snapshot_contract='ACCEPTED_SNAPSHOT_V1'
+        output_task_root=$outputTaskRoot
+        provider_config_path=(Join-Path $ProgramDataRoot 'provider\provider-config.json')
+        relay_url=$RelayUrl
+        helper_secret_path=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
+        runtime_dir=(Join-Path $ProgramDataRoot 'runtime')
+        caps=[ordered]@{
+            ttl_minutes=$TaskTtlMinutes
+            task_request_limit=$TaskRequestLimit
+            task_result_byte_limit=$TaskResultByteLimit
+            epoch_soft_request_limit=$EpochSoftRequestLimit
+            epoch_soft_result_byte_limit=$EpochSoftResultByteLimit
+            max_requests=$EpochSoftRequestLimit
+            max_cumulative_result_bytes=$EpochSoftResultByteLimit
+            max_result_bytes=$maxResult
+            max_search_matches=8
+            max_read_lines=20
+            max_write_file_bytes=32768
+            max_task_bytes=131072
+            max_task_files=8
+            max_read_chunk_bytes=1800
+        }
+    }
+    Write-JsonAtomic $a (Join-Path $ProgramDataRoot 'runtime\active-admission.json')
+    [pscustomobject]$a
+}
+
+function Test-IsAdministrator {
+    $id=[Security.Principal.WindowsIdentity]::GetCurrent();$p=New-Object Security.Principal.WindowsPrincipal($id)
+    $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Invoke-Precheck {
+    param()
+    $node=Get-Command node.exe -ErrorAction SilentlyContinue
+    $winget=Get-Command winget.exe -ErrorAction SilentlyContinue
+    $rg=Get-Command rg.exe -ErrorAction SilentlyContinue
+    [pscustomobject]@{powershell=$PSVersionTable.PSVersion.ToString();administrator=(Test-IsAdministrator);winget=[bool]$winget;node=$(if($node){(& $node.Source --version).Trim()}else{$null});node_required=$script:NodeVersion;rg=$(if($rg){Get-RipgrepSemanticVersion ((& $rg.Source --version|Select-Object -First 1))}else{$null});rg_required=$script:RgVersion}
+}
+
+function Find-RipgrepExecutable {
+    $cmd=Get-Command rg.exe -ErrorAction SilentlyContinue
+    if($cmd){return $cmd.Source}
+    $candidates=@(
+        (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\rg.exe'),
+        (Join-Path $env:ProgramFiles 'WinGet\Links\rg.exe')
+    )
+    foreach($p in $candidates){if($p -and (Test-Path -LiteralPath $p -PathType Leaf)){return $p}}
+    foreach($root in @((Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'),(Join-Path $env:ProgramFiles 'WinGet\Packages'))){
+        if(-not $root -or -not(Test-Path -LiteralPath $root -PathType Container)){continue}
+        $hit=Get-ChildItem -LiteralPath $root -Filter rg.exe -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object {$_.FullName -match 'BurntSushi\.ripgrep\.MSVC'} | Select-Object -First 1
+        if($hit){return $hit.FullName}
+    }
+    return $null
+}
+
+function Get-HelperNodeExecutablePath {
+    'C:\Program Files\nodejs\node.exe'
+}
+
+function Ensure-PinnedDependencies {
+    param(
+        [Parameter(Mandatory)][string]$PackageRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [switch]$NoInstall
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $lock=Read-RuntimeLock $PackageRoot
+    $nodeSpec=$lock.dependencies.node
+    $rgSpec=$lock.dependencies.ripgrep
+
+    $nodePath=Get-HelperNodeExecutablePath
+    $nodeExists=Test-Path -LiteralPath $nodePath -PathType Leaf
+    $nodeAction='REUSED'
+    $nodeVersion=$(if($nodeExists){(& $nodePath --version).Trim()}else{$null})
+    if(-not $nodeExists -or $nodeVersion -ne "v$($nodeSpec.version)"){
+        if($NoInstall){
+            if(-not $nodeExists){throw "NODE_LAUNCH_PATH_MISSING: $nodePath"}
+            throw "NODE_VERSION_MISMATCH: $nodePath expected v$($nodeSpec.version), actual $nodeVersion"
+        }
+        if(-not(Get-Command winget.exe -ErrorAction SilentlyContinue)){throw 'WAITING_FOR_NODE: winget unavailable'}
+        $nodeAction=if($nodeExists){'UPDATED'}else{'INSTALLED'}
+        & winget.exe install --id $nodeSpec.winget_id --version $nodeSpec.version --exact --silent --accept-package-agreements --accept-source-agreements
+        if($LASTEXITCODE -ne 0){throw 'NODE_INSTALL_FAILED'}
+        if(-not(Test-Path -LiteralPath $nodePath -PathType Leaf)){throw 'NODE_NOT_FOUND_AFTER_INSTALL'}
+        $nodeVersion=(& $nodePath --version).Trim()
+    }
+    if($nodeVersion -ne "v$($nodeSpec.version)"){throw "NODE_VERSION_MISMATCH: $nodeVersion"}
+    $nodeHash=Get-Sha256File $nodePath
+    if($nodeHash -ne [string]$nodeSpec.reference_sha256){throw "NODE_HASH_MISMATCH: $nodeHash"}
+
+    $rgPath=Find-RipgrepExecutable
+    $rgVersion=$null
+    if($rgPath){$rgVersion=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))}
+    $rgAction='REUSED'
+    if(-not $rgPath -or $rgVersion -ne [string]$rgSpec.version){
+        if($NoInstall){throw "RG_REQUIRED_PIN_MISSING: $($rgSpec.version)"}
+        if(-not(Get-Command winget.exe -ErrorAction SilentlyContinue)){throw 'WAITING_FOR_RG: winget unavailable'}
+        $rgAction=if($rgPath){'UPDATED'}else{'INSTALLED'}
+        & winget.exe install --id $rgSpec.winget_id --version $rgSpec.version --exact --silent --accept-package-agreements --accept-source-agreements
+        if($LASTEXITCODE -ne 0){throw 'RG_INSTALL_FAILED'}
+        $rgPath=Find-RipgrepExecutable
+    }
+    if(-not $rgPath){throw 'RG_NOT_FOUND_AFTER_INSTALL'}
+    $actualRg=Get-RipgrepSemanticVersion ((& $rgPath --version|Select-Object -First 1))
+    if($actualRg -ne [string]$rgSpec.version){throw "RG_VERSION_MISMATCH: $actualRg"}
+    $rgHash=Get-Sha256File $rgPath
+    if($rgHash -ne [string]$rgSpec.reference_sha256){throw "RG_HASH_MISMATCH: $rgHash"}
+    $runtime=Join-Path $ProgramDataRoot 'runtime';New-Item -ItemType Directory -Force -Path $runtime|Out-Null
+    $rgInstalled=Join-Path $runtime 'rg.exe'
+    $rgCopyAction='INSTALLED'
+    if(Test-Path -LiteralPath $rgInstalled -PathType Leaf){$rgCopyAction=if((Get-Sha256File $rgInstalled) -eq $rgHash){'REUSED'}else{'UPDATED'}}
+    if($rgCopyAction -ne 'REUSED'){Copy-Item -LiteralPath $rgPath -Destination $rgInstalled -Force}
+    if((Get-Sha256File $rgInstalled) -ne $rgHash){throw 'RG_INSTALLED_COPY_HASH_MISMATCH'}
+    [pscustomobject]@{
+        node=[pscustomobject]@{action=$nodeAction;version=$nodeVersion;sha256=$nodeHash;path=$nodePath}
+        ripgrep=[pscustomobject]@{action=$rgAction;runtime_copy_action=$rgCopyAction;version=$actualRg;sha256=$rgHash;source_path=$rgPath;runtime_path=$rgInstalled}
+        python=[pscustomobject]@{action='SKIPPED_NOT_REQUIRED'}
+        cloudflare_cli=[pscustomobject]@{action='SKIPPED_NOT_REQUIRED'}
+    }
+}
+
+function Resolve-WorkerOperatorIdentity {
+    param([string]$OperatorIdentity)
+    if([string]::IsNullOrWhiteSpace($OperatorIdentity)){$OperatorIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
+    try{
+        $account=New-Object Security.Principal.NTAccount($OperatorIdentity)
+        $sid=$account.Translate([Security.Principal.SecurityIdentifier])
+    }catch{throw "OPERATOR_IDENTITY_INVALID: $OperatorIdentity"}
+    $readerAccount=New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$($script:ReaderName)")
+    try{$readerSid=$readerAccount.Translate([Security.Principal.SecurityIdentifier])}catch{throw "READER_IDENTITY_INVALID: $($script:ReaderName)"}
+    if($sid.Value -eq $readerSid.Value){throw 'OPERATOR_IDENTITY_MUST_DIFFER_FROM_READER'}
+    [pscustomobject]@{account=$account.Value;sid=$sid.Value;icacls_identity=('*'+$sid.Value);reader_sid=$readerSid.Value;reader_icacls_identity=('*'+$readerSid.Value)}
+}
+
+function Invoke-IcaclsChecked {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)][string[]]$Arguments)
+    # Never allow icacls /C to conceal a failed descendant with an exit code of zero.
+    if(@($Arguments|Where-Object {$_ -ieq '/C'}).Count){throw "ACL_REPAIR_CONTINUE_ON_ERROR_FORBIDDEN: $Path"}
+    $output=@(& icacls.exe $Path @Arguments 2>&1)
+    $exitCode=$LASTEXITCODE
+    if($exitCode -ne 0 -or @($output|Where-Object {$_ -is [Management.Automation.ErrorRecord]}).Count){throw "ACL_REPAIR_FAILED: $Path"}
+}
+
+function Protect-WorkerRuntimeFile {
+    param([Parameter(Mandatory)][string]$Path,[Parameter(Mandatory)]$Identity,[switch]$Secret)
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){return}
+    $grants=@('*S-1-5-18:F','*S-1-5-32-544:F')
+    if($Secret){$grants+=($Identity.reader_icacls_identity+':R')}
+    else{
+        $grants+=($Identity.icacls_identity+':RX')
+        $grants+=($Identity.reader_icacls_identity+':RX')
+    }
+    Invoke-IcaclsChecked -Path $Path -Arguments @('/reset')
+    Invoke-IcaclsChecked -Path $Path -Arguments @('/inheritance:r')
+    Invoke-IcaclsChecked -Path $Path -Arguments (@('/grant:r')+$grants)
+}
+
+function Set-WorkerOperatorAcl {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $identity=Resolve-WorkerOperatorIdentity $OperatorIdentity
+    $required=@($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'),(Join-Path $ProgramDataRoot 'task-state'))
+    foreach($path in $required){if(-not(Test-Path -LiteralPath $path -PathType Container)){throw "ACL_REPAIR_ROOT_MISSING: $path"}}
+    $operations=Join-Path $ProgramDataRoot 'operations'
+    New-Item -ItemType Directory -Force -Path $operations|Out-Null
+
+    $system='*S-1-5-18:(OI)(CI)F'
+    $admins='*S-1-5-32-544:(OI)(CI)F'
+    $operatorM=$identity.icacls_identity+':(OI)(CI)M'
+    $operatorRx=$identity.icacls_identity+':(OI)(CI)RX'
+    $readerRx=$identity.reader_icacls_identity+':(OI)(CI)RX'
+    $readerM=$identity.reader_icacls_identity+':(OI)(CI)M'
+
+    Invoke-IcaclsChecked -Path $ProgramDataRoot -Arguments @('/inheritance:r','/grant:r',$system,$admins,($identity.icacls_identity+':(OI)(CI)RX'),($identity.reader_icacls_identity+':(OI)(CI)RX'))
+    Invoke-IcaclsChecked -Path $WorkerRoot -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path $operations -Arguments @('/grant:r',$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'provider') -Arguments @('/grant:r',$operatorM,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'runtime') -Arguments @('/grant:r',$operatorM,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'task-state') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorM,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'audit') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerM)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'helper') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'product') -Arguments @('/inheritance:r','/grant:r',$system,$admins,$operatorRx,$readerRx)
+    Invoke-IcaclsChecked -Path (Join-Path $ProgramDataRoot 'secrets') -Arguments @('/inheritance:r','/grant:r','*S-1-5-18:F','*S-1-5-32-544:F',($identity.icacls_identity+':RX'),($identity.reader_icacls_identity+':RX'))
+
+    Protect-WorkerRuntimeFile -Path (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'runtime\rg.exe') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -Identity $identity -Secret
+
+    [pscustomobject]@{
+        status='PASS'
+        operator_identity=$identity.account
+        operator_sid=$identity.sid
+        mutable=@($WorkerRoot,$operations,(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'task-state'))
+        read_only=@((Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'product'))
+        secret=(Join-Path $ProgramDataRoot 'secrets\helper-secret.txt')
+        protected_binaries=@((Join-Path $WorkerRoot 'OneCChatWorker.ps1'),(Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs'),(Join-Path $ProgramDataRoot 'runtime\rg.exe'),(Join-Path $ProgramDataRoot 'product\source-acquisition.mjs'),(Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe'))
+    }
+}
+
+function Get-ControlCenterStartMenuShortcutPath {
+    param([string]$ShortcutRoot)
+    if([string]::IsNullOrWhiteSpace($ShortcutRoot)){
+        $ShortcutRoot=[Environment]::GetFolderPath([Environment+SpecialFolder]::CommonPrograms)
+    }
+    if([string]::IsNullOrWhiteSpace($ShortcutRoot)){throw 'START_MENU_ROOT_UNAVAILABLE'}
+    Join-Path $ShortcutRoot 'OneC Architecture Control Center.lnk'
+}
+
+function Install-ControlCenterArtifact {
+    param(
+        [Parameter(Mandatory)][string]$PackageRoot,
+        [Parameter(Mandatory)][string]$ProgramDataRoot,
+        [Parameter(Mandatory)]$RuntimeLock,
+        [string]$ShortcutRoot
+    )
+    $rel='control-center/publish/OneCArchitecture.ControlCenter.exe'
+    $expected=[string]$RuntimeLock.components.$rel
+    if([string]::IsNullOrWhiteSpace($expected)){throw 'CONTROL_CENTER_LOCK_COMPONENT_MISSING'}
+    $source=Join-Path $PackageRoot 'control-center\publish\OneCArchitecture.ControlCenter.exe'
+    $destination=Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe'
+    $copy=Copy-ProductComponent -Source $source -Destination $destination -ExpectedSha256 $expected
+    $shortcutPath=Get-ControlCenterStartMenuShortcutPath -ShortcutRoot $ShortcutRoot
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $shortcutPath)|Out-Null
+    $shell=New-Object -ComObject WScript.Shell
+    $shortcut=$shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath=$destination
+    $shortcut.WorkingDirectory=(Split-Path -Parent $destination)
+    $shortcut.Description='OneC Architecture Control Center'
+    $shortcut.Save()
+    $verify=$shell.CreateShortcut($shortcutPath)
+    if([string]$verify.TargetPath -ne $destination){throw 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH'}
+    [pscustomobject]@{
+        status='PASS'
+        component=$copy
+        executable_path=$destination
+        shortcut_path=$shortcutPath
+        startup_policy='HKCU_EXPLICIT_OPERATOR_CHOICE'
+        service_created=$false
+        loopback_listener_created=$false
+    }
+}
+
+function Install-OneCChatWorker {
+    param([Parameter(Mandatory)][string]$PackageRoot,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity,[switch]$SkipDependencies)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $packageCheck=Test-ProductPackageIntegrity $PackageRoot
+    $deps=Ensure-PinnedDependencies -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -NoInstall:$SkipDependencies
+    foreach($p in @($WorkerRoot,$ProgramDataRoot,(Join-Path $ProgramDataRoot 'runtime'),(Join-Path $ProgramDataRoot 'provider'),(Join-Path $ProgramDataRoot 'helper'),(Join-Path $ProgramDataRoot 'helper\quality\cc-1c-skills'),(Join-Path $ProgramDataRoot 'audit'),(Join-Path $ProgramDataRoot 'secrets'),(Join-Path $ProgramDataRoot 'product'),(Join-Path $ProgramDataRoot 'task-state'))){New-Item -ItemType Directory -Force -Path $p|Out-Null}
+
+    $readerAction='REUSED'
+    if(-not(Get-LocalUser -Name $script:ReaderName -ErrorAction SilentlyContinue)){
+        $readerAction='CREATED'
+        $pw=Read-Host -Prompt "Set local password for $($script:ReaderName)" -AsSecureString
+        New-LocalUser -Name $script:ReaderName -Password $pw -Description 'OneCChatWorker non-admin bounded source/output identity'|Out-Null
+    }
+    $reader="$env:COMPUTERNAME\$($script:ReaderName)"
+    $lock=Read-RuntimeLock $PackageRoot
+    $componentResults=@()
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-reader-integration.mjs') -Destination (Join-Path $ProgramDataRoot 'provider\source-reader-integration.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-reader-integration.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\hosted-helper.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/hosted-helper.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-https-pull.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-https-pull.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-https-pull.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\https-pull-auth.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\https-pull-auth.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/https-pull-auth.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\helper-state-coordinator.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\helper-state-coordinator.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/helper-state-coordinator.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\source-acquisition.mjs') -Destination (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/source-acquisition.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\task-checkpoint-store.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/task-checkpoint-store.mjs'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'runtime\local-quality-adapter.mjs') -Destination (Join-Path $ProgramDataRoot 'helper\local-quality-adapter.mjs') -ExpectedSha256 ([string]$lock.components.'runtime/local-quality-adapter.mjs'))
+    foreach($qualityScript in @('meta-info.ps1','form-info.ps1','form-validate.ps1')){$rel='runtime/quality/cc-1c-skills/'+$qualityScript;$componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot ('runtime\quality\cc-1c-skills\'+$qualityScript)) -Destination (Join-Path $ProgramDataRoot ('helper\quality\cc-1c-skills\'+$qualityScript)) -ExpectedSha256 ([string]$lock.components.$rel))}
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1') -Destination (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -ExpectedSha256 ([string]$lock.components.'core/OneCChatWorker.Core.psm1'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'OneCChatWorker.ps1') -Destination (Join-Path $WorkerRoot 'OneCChatWorker.ps1') -ExpectedSha256 ([string]$lock.components.'OneCChatWorker.ps1'))
+    $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'README.md') -Destination (Join-Path $ProgramDataRoot 'product\README.md') -ExpectedSha256 ([string]$lock.components.'README.md'))
+    $controlCenter=Install-ControlCenterArtifact -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -RuntimeLock $lock
+    $componentResults+=,$controlCenter.component
+    Copy-Item -LiteralPath (Join-Path $PackageRoot 'runtime.lock.json') -Destination (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Force
+
+    $catalogAction='REUSED'
+    if(-not(Test-Path -LiteralPath (Get-CatalogPath $WorkerRoot))){
+        $catalogAction='CREATED'
+        Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $WorkerRoot
+    }
+
+    $snapshotAdoption=@(Adopt-AllLegacyAcceptedSnapshots -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
+    $operatorAcl=Set-WorkerOperatorAcl -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+
+    $installedIntegrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
+    $state=[ordered]@{
+        schema_version=1
+        product_version=$script:ProductVersion
+        installed_utc=(Get-Date).ToUniversalTime().ToString('o')
+        worker_root=$WorkerRoot
+        program_data_root=$ProgramDataRoot
+        reader_identity=$reader
+        reader_action=$readerAction
+        operator_identity=$operatorAcl.operator_identity
+        operator_acl_status=$operatorAcl.status
+        catalog_action=$catalogAction
+        package_lock_sha256=$packageCheck.lock_sha256
+        node_version=$deps.node.version
+        node_sha256=$deps.node.sha256
+        rg_version=$deps.ripgrep.version
+        rg_sha256=$deps.ripgrep.sha256
+        component_integrity='PASS'
+        remote_auth_ready=$secretReady
+    }
+    Write-JsonAtomic $state (Join-Path $ProgramDataRoot 'installed-state.json')
+    [pscustomobject]@{
+        status=$(if($secretReady){'INSTALLED'}else{'INSTALLED_WAITING_FOR_REMOTE_AUTH'})
+        installed_state=(Join-Path $ProgramDataRoot 'installed-state.json')
+        package=$packageCheck
+        dependencies=$deps
+        reader=[pscustomobject]@{identity=$reader;action=$readerAction}
+        operator_acl=$operatorAcl
+        catalog=[pscustomobject]@{path=(Get-CatalogPath $WorkerRoot);action=$catalogAction}
+        snapshot_adoption=$snapshotAdoption
+        components=$componentResults
+        control_center=$controlCenter
+        installed_integrity=$installedIntegrity
+        next=$(if($secretReady){'ADD/APPLY/VERIFY project then START'}else{'Complete ChatGPT app authorization and SETTINGS helper enrollment, then ADD/APPLY/VERIFY/START'})
+    }
+}
+
+function Set-HelperEnrollmentSecret {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $secure=Read-Host -Prompt 'Paste helper enrollment secret' -AsSecureString
+    $b=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    try{
+        $plain=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($b);if($plain.Length -lt 20){throw 'HELPER_SECRET_TOO_SHORT'}
+        $secretPath=Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'
+        [IO.File]::WriteAllText($secretPath,$plain,(New-Object Text.UTF8Encoding($false)))
+        $reader="$env:COMPUTERNAME\$($script:ReaderName)"
+        & icacls.exe $secretPath /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' ($reader+':R') | Out-Null
+    }finally{if($b -ne [IntPtr]::Zero){[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b)};$plain=$null}
+}
+
+function New-HelperRunAsCommand {
+    param([Parameter(Mandatory)][string]$HelperPath,[Parameter(Mandatory)][string]$ProgramDataRoot)
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    $programDataLiteral=$ProgramDataRoot.Replace("'","''")
+    $admissionLiteral=$admissionPath.Replace("'","''")
+    $helperLiteral=$HelperPath.Replace("'","''")
+    $nodeLiteral=(Get-HelperNodeExecutablePath).Replace("'","''")
+    $launchScript="`$env:ONECCHAT_PROGRAM_DATA='$programDataLiteral'; `$env:ONECCHAT_ADMISSION_PATH='$admissionLiteral'; & '$nodeLiteral' '$helperLiteral'"
+    $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($launchScript))
+    "powershell.exe -NoProfile -EncodedCommand $encoded"
+}
+
+function Read-HelperStateRecoveryFile {
+    param([Parameter(Mandatory)][string]$Path,[switch]$AllowMissing)
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){
+        if($AllowMissing){return $null}
+        throw "HELPER_STATE_FILE_MISSING: $Path"
+    }
+    $item=Get-Item -LiteralPath $Path
+    if($item.Length -gt 16777216){throw "HELPER_STATE_FILE_TOO_LARGE: $Path"}
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    try{$doc=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json}catch{throw "HELPER_STATE_FILE_CORRUPT: $Path"}
+    [pscustomobject]@{path=$Path;bytes=$bytes;doc=$doc;sha256=Get-Sha256File $Path}
+}
+
+function Test-HelperStateMatchesAdmission {
+    param([Parameter(Mandatory)]$State,[Parameter(Mandatory)]$Admission)
+    if([int]$Admission.schema_version -ne 3 -or [int]$State.schema_version -ne 2){return $false}
+    ([string]$State.task_admission_id -eq [string]$Admission.task_admission_id) -and
+    ([string]$State.session_id -eq [string]$Admission.session_id) -and
+    ([string]$State.project_id -eq [string]$Admission.project_id) -and
+    ([string]$State.task_id -eq [string]$Admission.task_id) -and
+    ([string]$State.snapshot_id -eq [string]$Admission.source_snapshot_id) -and
+    ([string]$State.manifest_sha256 -eq [string]$Admission.manifest_sha256) -and
+    ([string]$State.expires_utc -eq [string]$Admission.task_expires_utc)
+}
+
+function Get-HelperStateProcessedMap {
+    param([Parameter(Mandatory)]$State)
+    $map=@{}
+    if($null -eq $State.processed){return $map}
+    foreach($prop in @($State.processed.PSObject.Properties)){
+        $key=[string]$prop.Name
+        $entry=$prop.Value
+        if([string]::IsNullOrWhiteSpace($key) -or $key.Length -gt 128){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry -or [string]$entry.type -ne 'result' -or [string]$entry.request_id -ne $key -or [string]$entry.status -notin @('OK','ERROR')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        if($null -eq $entry.metadata -or -not($entry.PSObject.Properties.Name -contains 'payload')){throw 'HELPER_STATE_PROCESSED_INVALID'}
+        $map[$key]=($entry|ConvertTo-Json -Depth 30 -Compress)
+    }
+    $map
+}
+
+function Test-HelperStateStrictMonotonicProcessedSuperset {
+    param([Parameter(Mandatory)]$FinalState,[Parameter(Mandatory)]$TmpState)
+    try{
+        if([int]$FinalState.schema_version -ne 2 -or [int]$TmpState.schema_version -ne 2){return $false}
+        if([string]$FinalState.started_utc -ne [string]$TmpState.started_utc){return $false}
+        $finalIdem=$(if($null -eq $FinalState.idempotency){'{}'}else{$FinalState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        $tmpIdem=$(if($null -eq $TmpState.idempotency){'{}'}else{$TmpState.idempotency|ConvertTo-Json -Depth 30 -Compress})
+        if($finalIdem -ne $tmpIdem){return $false}
+        if(@($FinalState.quality_targets).Count -gt 2 -or @($TmpState.quality_targets).Count -gt 2){return $false}
+        $finalMap=Get-HelperStateProcessedMap -State $FinalState
+        $tmpMap=Get-HelperStateProcessedMap -State $TmpState
+        if($tmpMap.Count -le $finalMap.Count){return $false}
+        foreach($key in $finalMap.Keys){
+            if(-not $tmpMap.ContainsKey($key) -or [string]$tmpMap[$key] -ne [string]$finalMap[$key]){return $false}
+        }
+        return $true
+    }catch{return $false}
+}
+
+function Save-HelperStateRecoveryEvidence {
+    param(
+        [Parameter(Mandatory)]$Entry,
+        [Parameter(Mandatory)][string]$ProgramDataRoot,
+        [Parameter(Mandatory)][ValidateSet('final','tmp')][string]$Kind
+    )
+    $root=Join-Path $ProgramDataRoot 'operations\helper-state-recovery'
+    New-Item -ItemType Directory -Force -Path $root|Out-Null
+    $target=Join-Path $root ("{0}-{1}.json" -f $Kind,[string]$Entry.sha256)
+    if(Test-Path -LiteralPath $target -PathType Leaf){
+        if((Get-Sha256File $target) -ne [string]$Entry.sha256){throw 'HELPER_STATE_RECOVERY_EVIDENCE_COLLISION'}
+    }else{
+        [IO.File]::WriteAllBytes($target,[byte[]]$Entry.bytes)
+        if((Get-Sha256File $target) -ne [string]$Entry.sha256){Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue;throw 'HELPER_STATE_RECOVERY_EVIDENCE_VERIFY_FAILED'}
+    }
+    [pscustomobject]@{kind=$Kind;sha256=[string]$Entry.sha256;path=$target}
+}
+
+function Repair-HelperStateForActiveAdmission {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'HELPER_STATE_RECOVERY_ADMISSION_MISSING'}
+    try{$admission=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'HELPER_STATE_RECOVERY_ADMISSION_CORRUPT'}
+    if([int]$admission.schema_version -ne 3 -or [string]$admission.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'HELPER_STATE_RECOVERY_ADMISSION_UNSUPPORTED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $live=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($live.Count){throw 'HELPER_STATE_RECOVERY_REQUIRES_STOPPED_HELPER'}
+
+    $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+    $tmpPath=$statePath+'.tmp'
+    $final=Read-HelperStateRecoveryFile -Path $statePath -AllowMissing
+    $tmp=Read-HelperStateRecoveryFile -Path $tmpPath -AllowMissing
+    $finalMatches=($null -ne $final -and (Test-HelperStateMatchesAdmission -State $final.doc -Admission $admission))
+    $tmpMatches=($null -ne $tmp -and (Test-HelperStateMatchesAdmission -State $tmp.doc -Admission $admission))
+    $evidence=@()
+
+    if($finalMatches){
+        if($tmp){
+            if($tmpMatches){
+                if([string]$tmp.sha256 -eq [string]$final.sha256){
+                    Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+                    return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='DUPLICATE_CURRENT_TMP_REMOVED';evidence=@()}
+                }
+                if(Test-HelperStateStrictMonotonicProcessedSuperset -FinalState $final.doc -TmpState $tmp.doc){
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+                    $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+                    Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop
+                    Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+                    $published=Read-HelperStateRecoveryFile -Path $statePath
+                    if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission) -or [string]$published.sha256 -ne [string]$tmp.sha256){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+                    return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_MONOTONIC_SUPERSET_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+                }
+                throw 'HELPER_STATE_CURRENT_TMP_AMBIGUOUS'
+            }
+            $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+            Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop
+            return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='STALE_TMP_ARCHIVED_AND_REMOVED';evidence=@($evidence)}
+        }
+        return [pscustomobject]@{status='CURRENT_STATE_PRESERVED';action='NONE';evidence=@()}
+    }
+
+    if($final){
+        $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $final -ProgramDataRoot $ProgramDataRoot -Kind final)
+    }
+
+    if($tmp -and -not $tmpMatches){
+        $evidence+=, (Save-HelperStateRecoveryEvidence -Entry $tmp -ProgramDataRoot $ProgramDataRoot -Kind tmp)
+    }
+
+    if($final){Remove-Item -LiteralPath $statePath -Force -ErrorAction Stop}
+
+    if($tmpMatches){
+        Move-Item -LiteralPath $tmpPath -Destination $statePath -Force -ErrorAction Stop
+        $published=Read-HelperStateRecoveryFile -Path $statePath
+        if(-not(Test-HelperStateMatchesAdmission -State $published.doc -Admission $admission)){throw 'HELPER_STATE_RECOVERY_PROMOTION_VERIFY_FAILED'}
+        return [pscustomobject]@{status='RECOVERED';action='CURRENT_TMP_PROMOTED';state_sha256=$published.sha256;evidence=@($evidence)}
+    }
+
+    if($tmp){Remove-Item -LiteralPath $tmpPath -Force -ErrorAction Stop}
+    [pscustomobject]@{status='RECOVERED';action=$(if($final){'STALE_FINAL_ARCHIVED_AND_CLEARED'}else{'STALE_TMP_ARCHIVED_AND_CLEARED'});evidence=@($evidence)}
+}
+
+function Get-ActiveAdmissionRecoveryAssessment {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    # Read-only gate. Local cache/UI counters cannot attest relay-owned leases
+    # and receipts. Never repair files, remint an admission or launch here.
+    $reason='RELAY_RECOVERY_EVIDENCE_UNAVAILABLE'
+    try{
+        $path=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+        $a=Get-Content -LiteralPath $path -Raw -Encoding UTF8|ConvertFrom-Json
+        if([int]$a.schema_version -ne 3 -or [string]$a.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'RECOVERY_ADMISSION_UNSUPPORTED'}
+        if((Get-Date).ToUniversalTime() -ge ([datetime]::Parse($a.task_expires_utc).ToUniversalTime())){throw 'RECOVERY_ADMISSION_EXPIRED'}
+        $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+        $live=@(Get-CimInstance Win32_Process -ErrorAction Stop|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+        if($live.Count){throw 'RECOVERY_HELPER_ALREADY_RUNNING'}
+        $accepted=Get-FastProjectState -ProjectId ([string]$a.project_id) -WorkerRoot $WorkerRoot
+        if($accepted.state -ne 'ACCEPTED' -or [string]$accepted.source_snapshot_id -ne [string]$a.source_snapshot_id -or [string]$accepted.manifest_sha256 -ne [string]$a.manifest_sha256){throw 'RECOVERY_SNAPSHOT_MISMATCH'}
+        $statePath=Join-Path $ProgramDataRoot 'runtime\hosted-helper-state.json'
+        if(Test-Path -LiteralPath ($statePath+'.tmp')){throw 'RECOVERY_TMP_REQUIRES_ADJUDICATION'}
+        $entry=Read-HelperStateRecoveryFile -Path $statePath
+        if(-not(Test-HelperStateMatchesAdmission -State $entry.doc -Admission $a)){throw 'RECOVERY_CACHE_BINDING_MISMATCH'}
+        $cache=Get-HelperStateProcessedMap -State $entry.doc
+        if([string]$entry.doc.pull_helper_id -notmatch '^[a-fA-F0-9-]{36}$' -or $null -eq $entry.doc.idempotency){throw 'RECOVERY_CACHE_IDENTITY_MISSING'}
+        if(($entry.doc.PSObject.Properties.Name -contains 'pull_inflight') -and $entry.doc.pull_inflight -and -not $cache.ContainsKey([string]$entry.doc.pull_inflight.request_id)){throw 'RECOVERY_EXECUTION_AMBIGUOUS'}
+    }catch{
+        $message=[string]$_.Exception.Message
+        $reason=if($message -match '^([A-Z][A-Z0-9_]{2,63})(?::|$)'){$Matches[1]}else{'RECOVERY_TRUSTED_LOCAL_EVIDENCE_UNAVAILABLE'}
+    }
+    [pscustomobject]@{status='BLOCKED';reason=$reason;admission_preserved=$true;launch_allowed=$false;accounting_owner='relay';required_evidence='Fresh authenticated relay lease/receipt reconciliation for this unchanged admission/session/snapshot; local UI projection is insufficient'}
+}
+
+function Start-WorkerAdmission {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$TaskId,
+        [string]$TaskGoal,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        $AcceptedState,
+        $Predecessor=$null,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    if(-not(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt'))){throw 'REMOTE_AUTH_REQUIRED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($existing.Count){throw 'ADMISSION_ALREADY_RUNNING'}
+    $newAdmission=New-Admission -ProjectId $ProjectId -TaskId $TaskId -TaskGoal $TaskGoal -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $AcceptedState -Predecessor $Predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
+    $stateRecovery=Repair-HelperStateForActiveAdmission -ProgramDataRoot $ProgramDataRoot
+    $runAs="$env:SystemRoot\System32\runas.exe";$program=New-HelperRunAsCommand -HelperPath $helper -ProgramDataRoot $ProgramDataRoot;& $runAs "/profile" "/user:$env:COMPUTERNAME\$($script:ReaderName)" $program;if($LASTEXITCODE -ne 0){throw "RUNAS_FAILED_OR_CANCELLED: $LASTEXITCODE"}
+    [pscustomobject]@{status='START_REQUESTED';project_id=$ProjectId;task_id=$TaskId;source_snapshot_id=[string]$AcceptedState.source_snapshot_id;task_admission_id=[string]$newAdmission.task_admission_id;session_id=[string]$newAdmission.session_id;continued=($null -ne $newAdmission.predecessor);helper_state_recovery=$stateRecovery}
+}
+
+function Continue-WorkerAdmission {
+    param(
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$RelayUrl=$script:DefaultRelayUrl,
+        [int]$TaskRequestLimit=0,
+        [int]$TaskResultByteLimit=0,
+        [int]$TaskTtlMinutes=0,
+        [int]$EpochSoftRequestLimit=0,
+        [int]$EpochSoftResultByteLimit=0
+    )
+    $admissionPath=Join-Path $ProgramDataRoot 'runtime\active-admission.json'
+    if(-not(Test-Path -LiteralPath $admissionPath -PathType Leaf)){throw 'CONTINUE_PREVIOUS_ADMISSION_MISSING'}
+    try{$previous=Get-Content -LiteralPath $admissionPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw 'CONTINUE_PREVIOUS_ADMISSION_CORRUPT'}
+    if([int]$previous.schema_version -ne 3 -or [string]$previous.accounting_contract -ne 'S4_DURABLE_TASK_ACCOUNTING_V1'){throw 'CONTINUE_PREVIOUS_ADMISSION_UNSUPPORTED'}
+    $projectKey=Assert-SafeId ([string]$previous.project_id) 'project_id'
+    $taskKey=Assert-SafeId ([string]$previous.task_id) 'task_id'
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $existing=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    if($existing.Count){throw 'CONTINUE_REQUIRES_STOPPED_HELPER'}
+    $verified=Read-TaskCheckpointContinuationHead -ProjectId $projectKey -TaskId $taskKey -ProgramDataRoot $ProgramDataRoot
+    $cp=$verified.checkpoint
+    if([string]$cp.task_admission_id -ne [string]$previous.task_admission_id){throw 'CONTINUE_CHECKPOINT_ADMISSION_MISMATCH'}
+    $prevGoal=$previous.task_goal_sha256;$cpGoal=$cp.task_goal_sha256
+    if(($null -eq $prevGoal) -ne ($null -eq $cpGoal)){throw 'CONTINUE_TASK_GOAL_MISMATCH'}
+    if($null -ne $prevGoal -and [string]$prevGoal -ne [string]$cpGoal){throw 'CONTINUE_TASK_GOAL_MISMATCH'}
+    $current=Get-FastProjectState -ProjectId $projectKey -WorkerRoot $WorkerRoot
+    if($current.state -ne 'ACCEPTED'){throw "PROJECT_NOT_READY: $($current.state)"}
+    $predecessor=[pscustomobject]@{
+        task_admission_id=[string]$cp.task_admission_id
+        checkpoint_id=[string]$cp.checkpoint_id
+        checkpoint_seq=[int]$cp.seq
+        checkpoint_sha256=[string]$cp.checkpoint_sha256
+        task_goal_sha256=$cp.task_goal_sha256
+        source_snapshot_id=[string]$cp.source_snapshot_id
+        activity_cursor=$cp.activity_cursor
+    }
+    Start-WorkerAdmission -ProjectId $projectKey -TaskId $taskKey -TaskGoal ([string]$previous.task_goal) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -RelayUrl $RelayUrl -AcceptedState $current -Predecessor $predecessor -TaskRequestLimit $TaskRequestLimit -TaskResultByteLimit $TaskResultByteLimit -TaskTtlMinutes $TaskTtlMinutes -EpochSoftRequestLimit $EpochSoftRequestLimit -EpochSoftResultByteLimit $EpochSoftResultByteLimit
+}
+
+function Stop-WorkerAdmission {
+    param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $helper=Join-Path $ProgramDataRoot 'helper\hosted-helper.mjs'
+    $procs=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object{$_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine.Contains($helper)})
+    foreach($p in $procs){Stop-Process -Id $p.ProcessId -Force}
+    Remove-Item -LiteralPath (Join-Path $ProgramDataRoot 'runtime\active-admission.json') -Force -ErrorAction SilentlyContinue
+    [pscustomobject]@{status='OFF';stopped=$procs.Count}
+}
+
+function Repair-WorkerProject {
+    param([Parameter(Mandatory)][string]$ProjectId,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[scriptblock]$ProgressCallback,[string]$OperatorIdentity)
+    $updatePaths=Get-SourceUpdatePaths -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    $updateState=try{Read-SourceUpdateState -ProjectId $ProjectId -WorkerRoot $WorkerRoot -AllowMissing}catch{$null}
+    if((Test-Path -LiteralPath $updatePaths.promotion_path -PathType Leaf) -or ($updateState -and [string]$updateState.state -eq 'MANIFEST_COMMITTED')){
+        $recovered=Recover-SourceUpdatePromotion -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+        $f=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+        if($f.state -eq 'CATALOG_DRIFT' -and $recovered.state -eq 'CATALOG_DRIFT'){return [pscustomobject]@{project_id=$ProjectId;status='CATALOG_DRIFT';state='CATALOG_DRIFT';repair_action=$recovered.recovery_action;source_update_recovery=$recovered;full_apply_performed=$false}}
+        if($f.state -ne 'ACCEPTED'){throw 'SOURCE_UPDATE_RECOVERY_DID_NOT_RESTORE_ACCEPTED'}
+        return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action=$recovered.recovery_action;source_update_recovery=$recovered}
+    }
+    $cleanup=$null;$state=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot
+    if($state.state -eq 'INCOMPLETE_APPLY_RESIDUE'){$cleanup=Resolve-ApplyStageResidue -ProjectId $ProjectId -WorkerRoot $WorkerRoot;if($cleanup.status -ne 'CLEAN'){throw "APPLY_RESIDUE_CLEANUP_FAILED: $($cleanup|ConvertTo-Json -Depth 8 -Compress)"};$state=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot}
+    if($state.state -eq 'ACCEPTED'){$r=[pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$state.source_snapshot_id;repair_action='FAST_ACCEPTED_NO_DEEP_VERIFY'};if($cleanup){$r|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force};return $r}
+    if($state.state -eq 'DEEP_VERIFY_REQUIRED'){
+        $adopt=Adopt-LegacyAcceptedSnapshot -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        if($adopt.status -in @('ADOPTED','ALREADY_ACCEPTED')){$f=Get-FastProjectState -ProjectId $ProjectId -WorkerRoot $WorkerRoot;return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action='LEGACY_ADOPTED_NO_DEEP_VERIFY';adoption=$adopt}}
+        $deep=Verify-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgressCallback $ProgressCallback
+        if($deep.status -eq 'READY'){$f=Convert-DeepVerifiedManifestToAcceptedSnapshot -ProjectId $ProjectId -WorkerRoot $WorkerRoot;return [pscustomobject]@{project_id=$ProjectId;status='READY';state='ACCEPTED';source_snapshot_id=$f.source_snapshot_id;repair_action='DEEP_VERIFY_THEN_ACCEPT';deep_verification=$deep}}
+        throw "REPAIR_DEEP_VERIFY_FAILED: $($deep|ConvertTo-Json -Compress)"
+    }
+    if($state.state -in @('APPLY_REQUIRED','CATALOG_DRIFT','SNAPSHOT_ROOT_MISSING')){$x=Apply-WorkerProject -ProjectId $ProjectId -WorkerRoot $WorkerRoot -ProgressCallback $ProgressCallback;if($cleanup){$x|Add-Member -NotePropertyName recovery_cleanup -NotePropertyValue $cleanup -Force};return $x}
+    throw "REPAIR_REFUSED_DESTRUCTIVE_OR_UNKNOWN: $($state|ConvertTo-Json -Compress)"
+}
+
+function Get-UninstallPlan {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    [pscustomobject]@{
+        action='SAFE_UNINSTALL_PLAN'
+        requires_explicit_confirmation=$true
+        remove=@(
+            (Join-Path $ProgramDataRoot 'provider'),
+            (Join-Path $ProgramDataRoot 'helper'),
+            (Join-Path $ProgramDataRoot 'runtime'),
+            (Join-Path $ProgramDataRoot 'secrets'),
+            (Join-Path $ProgramDataRoot 'product'),
+            (Join-Path $ProgramDataRoot 'installed-state.json'),
+            (Join-Path $WorkerRoot 'OneCChatWorker.ps1'),
+            (Get-ControlCenterStartMenuShortcutPath)
+        )
+        retain=@(
+            (Get-CatalogPath $WorkerRoot),
+            (Join-Path $WorkerRoot '<project>\Participants'),
+            (Join-Path $WorkerRoot '<project>\Output'),
+            (Join-Path $WorkerRoot '<project>\Detached'),
+            (Join-Path $ProgramDataRoot 'audit'),
+            (Join-Path $ProgramDataRoot 'operations'),
+            (Join-Path $ProgramDataRoot 'task-state'),
+            "$env:COMPUTERNAME\$($script:ReaderName) local account"
+        )
+        explicitly_not_performed=@('recursive project deletion','external business Source deletion','Output purge','Detached purge','reader account deletion')
+        runtime_root=$ProgramDataRoot
+        worker_root=$WorkerRoot
+    }
+}
+
+function Invoke-SafeUninstall {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[switch]$ConfirmRuntimeRemoval)
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $plan=Get-UninstallPlan -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    if(-not $ConfirmRuntimeRemoval){return [pscustomobject]@{status='WAITING_FOR_USER';plan=$plan}}
+    $stop=$null
+    try{$stop=Stop-WorkerAdmission -ProgramDataRoot $ProgramDataRoot}catch{
+        if($_.Exception.Message -notmatch 'ADMIN_REQUIRED'){throw}
+    }
+    $removed=@();$alreadyAbsent=@()
+    foreach($target in @($plan.remove)){
+        if(Test-Path -LiteralPath $target){
+            Remove-Item -LiteralPath $target -Recurse -Force
+            $removed+=,$target
+        }else{$alreadyAbsent+=,$target}
+    }
+    [pscustomobject]@{
+        status='PASS'
+        stopped=$stop
+        removed=$removed
+        already_absent=$alreadyAbsent
+        retained=$plan.retain
+        reader_identity_retained=$true
+        authoritative_external_source_untouched=$true
+    }
+}
+
+Export-ModuleMember -Function *
+){
+            throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+        }
+        $bytes=[int64]0
+        if(-not [int64]::TryParse([string]$r.size,[ref]$bytes) -or $bytes -lt 0){
+            throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+        }
+        if(-not $expected.TryAdd([string]$r.path,[pscustomobject]@{bytes=$bytes;sha256=[string]$r.sha256})){
+            throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+        }
+    }
+    if($expected.Count -ne @($Current.files).Count){throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'}
+    $configFound=$false
+    foreach($file in @($Current.files)){
+        $acceptedFile=$null
+        if(-not $expected.TryGetValue([string]$file.relative,[ref]$acceptedFile) -or
+           [int64]$file.bytes -ne [int64]$acceptedFile.bytes -or
+           [string]$file.sha256 -cne [string]$acceptedFile.sha256){
+            throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'
+        }
+        if([string]$file.relative -ceq 'Configuration.xml'){
+            $configFound=$true
+            if([string]$file.sha256 -cne [string]$Accepted.configuration_xml_sha256){
+                throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'
+            }
+        }
+    }
+    if(-not $configFound){throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'}
+}
 function Copy-QuickSyncExtensionTree {
     param([Parameter(Mandatory)]$Source,[Parameter(Mandatory)][string]$Slot)
     $dest=Get-SourceUpdateAclEntry -Path $Slot
