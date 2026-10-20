@@ -1824,9 +1824,13 @@ function Assert-QuickSyncCanonicalAccepted {
         [Parameter(Mandatory)][string]$ExtensionId
     )
     if([string]$Accepted.fingerprint_inventory_state -cne 'PRESENT'){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_REQUIRED'}
-    $expectedRelative="Fingerprints/$ParticipantId.extension.$ExtensionId.jsonl"
-    if([string]$Accepted.fingerprint_inventory_path -cne $expectedRelative -or
-       [string]$Accepted.fingerprint_inventory_sha256 -notmatch '^[a-f0-9]{64}$'){
+    $fingerprintSha=[string]$Accepted.fingerprint_inventory_sha256
+    if($fingerprintSha -notmatch '^[a-f0-9]{64}$'){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'}
+    $prefix="Fingerprints/$ParticipantId.extension.$ExtensionId"
+    $legacy="$prefix.jsonl"
+    $versioned="$prefix.$fingerprintSha.jsonl"
+    $expectedRelative=[string]$Accepted.fingerprint_inventory_path
+    if($expectedRelative -cne $legacy -and $expectedRelative -cne $versioned){
         throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
     }
     if([int64]$Accepted.files -ne @($Current.files).Count -or [int64]$Accepted.bytes -ne [int64]$Current.bytes){
