@@ -57,6 +57,11 @@ internal static class Program
             var w = new MainWindow(fake, fixture: true);
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Check(!Control<Button>(w, "StartButton").IsEnabled, "initial multiple projects require explicit choice");
+            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Projects", "Home directs unselected context to Projects");
+            var callsBeforeHomeNavigation = fake.Calls.Count;
+            Control<Button>(w, "HomePrimaryButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Control<FrameworkElement>(w, "ProjectsPage").Visibility == Visibility.Visible && fake.Calls.Count == callsBeforeHomeNavigation,
+                "Home primary navigation dispatches no worker mutation");
             var list = Control<ListView>(w, "ProjectsList");
             Call(w, "ShowPage", "Projects");
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-unselected-Projects.png"), 1);
@@ -94,6 +99,7 @@ internal static class Program
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-offline-Work.png"), 1);
             Check(!Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "ContinueButton").IsEnabled,
                 "offline existing admission has no new START or CONTINUE");
+            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Work", "offline Home primary is navigation to owner-controlled Work");
             Check(Control<TextBlock>(w, "RecommendationReasonText").Text.Contains(Localization.Get("OfflineRecoveryBlocked")), "offline recovery blocked reason rendered");
             Check(!Control<TextBlock>(w, "RecommendationReasonText").Text.Contains("Clear incomplete"), "offline never recommends clearing admission");
             fake.State = "RUNNING";
@@ -111,6 +117,7 @@ internal static class Program
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-error-Home.png"), 1);
             Check(!Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "StopButton").IsEnabled &&
                 !Control<Button>(w, "UpdateButton").IsEnabled, "failed refresh clears old action eligibility");
+            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Projects", "failed context clears stale Home destination");
             Check(Control<TextBox>(w, "AdvancedText").Text.Contains("fixture diagnostic") &&
                 !Control<TextBlock>(w, "RecommendationReasonText").Text.Contains("fixture diagnostic"), "raw failure only Advanced");
             fake.Fail = false; fake.State = null;
@@ -144,6 +151,15 @@ internal static class Program
                         Call(w, "ShowPage", page);
                         Render((FrameworkElement)w.Content, Path.Combine(output, $"{language}-{theme}-{dpi.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}-{page}.png"), dpi);
                     }
+                    Call(w, "ShowPage", "Home");
+                    // 920 x 620 outer window, allowing for native frame/title bar.
+                    Render((FrameworkElement)w.Content, Path.Combine(output, $"ux6-{language}-{theme}-{dpi}-min-Home.png"), dpi, 904, 581);
+                    var primary = Control<Button>(w, "HomePrimaryButton");
+                    var home = Control<ScrollViewer>(w, "HomePage");
+                    Check(primary.ActualWidth >= 80 && primary.ActualHeight >= 36 && home.ViewportWidth > 500,
+                        $"minimum Home retains readable content and primary target {language}{theme}{dpi}: width={primary.ActualWidth}, height={primary.ActualHeight}, viewport={home.ViewportWidth}");
+                    Check(System.Windows.Automation.AutomationProperties.GetItemStatus(Control<Button>(w, "NavHomeButton")) == "Selected",
+                        "selected navigation exposed without Enter default action " + language + theme + dpi);
                     var wizard = new ProjectWizardWindow();
                     Render((FrameworkElement)wizard.Content, Path.Combine(output, $"{language}-{theme}-{dpi.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}-Wizard.png"), dpi, 640, 620);
                     var label = (TextBlock)wizard.FindName("WizardExtensionFolderLabel");

@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Diagnostics;
 using System.Text.Json;
@@ -83,6 +83,9 @@ public partial class MainWindow : Window
         NavMaintenanceButton.Content = Localization.Get("NavMaintenance");
         NavSettingsButton.Content = Localization.Get("NavSettings");
         NavAdvancedButton.Content = Localization.Get("NavAdvanced");
+        HomeDetailsButton.Content = Localization.Get("NavAdvanced");
+        WorkDetailsLabel.Text = Localization.Get("WorkRecovery");
+        UpdateHomeNavigation();
         CurrentWorkLabel.Text = Localization.Get("CurrentWork");
         RecommendedLabel.Text = Localization.Get("Recommended");
         McpTitleLabel.Text = Localization.Get("McpTitle");
@@ -196,6 +199,7 @@ public partial class MainWindow : Window
         _contextReady = false;
         _context = null;
         DisableActions(Localization.Get("UiContextReason"));
+        UpdateHomeNavigation();
         SourceStateText.Text = McpStateText.Text = WorkStatusText.Text = Localization.Get("UnknownState");
         WorkDetailText.Text = Localization.Get("UiContextReason");
         RecommendationText.Text = Localization.Get("UiContextUnavailable");
@@ -225,7 +229,7 @@ public partial class MainWindow : Window
 
         var recommendationState = Text(ctx, "recommendation", "state") ?? "";
         RecommendationText.Text = RecommendationTitle(recommendationState);
-        RecommendationReasonText.Text = Presentation.Reason(recommendationState) + "\n" + Localization.Get("ReadOnlyPreservation");
+        RecommendationReasonText.Text = Presentation.Reason(recommendationState);
         if (SourceSyncResultText.Tag as string == "SyncUnverified")
         {
             RecommendationText.Text = Localization.Get("SyncUnverified");
@@ -362,6 +366,7 @@ public partial class MainWindow : Window
 
         AdvancedText.Text = ctx.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         UpdateReadOnlyAvailability(ctx);
+        UpdateHomeNavigation();
     }
 
     private string RecommendationTitle(string state) => Presentation.Status(state);
@@ -556,8 +561,22 @@ public partial class MainWindow : Window
         if (sender is System.Windows.Controls.Button b && b.Tag is string page) ShowPage(page);
     }
 
+    // Navigation only: eligibility and mutations remain exclusively owned by UI_CONTEXT.
+    private void UpdateHomeNavigation()
+    {
+        var page = _contextReady && !string.IsNullOrWhiteSpace(Text(_context, "selected_project", "project_id"))
+            ? "Work" : "Projects";
+        HomePrimaryButton.Tag = page;
+        HomePrimaryButton.Content = Localization.Get(page == "Work" ? "NavWork" : "ChooseProject");
+        System.Windows.Automation.AutomationProperties.SetName(HomePrimaryButton, HomePrimaryButton.Content.ToString());
+        System.Windows.Automation.AutomationProperties.SetHelpText(HomePrimaryButton, Localization.Get("HomeNavigationHelp"));
+    }
+
     private void ShowPage(string name)
     {
+        foreach (var button in new[] { NavHomeButton, NavProjectsButton, NavWorkButton, NavActivityButton,
+            NavMaintenanceButton, NavSettingsButton, NavAdvancedButton })
+            System.Windows.Automation.AutomationProperties.SetItemStatus(button, button.Tag?.ToString() == name ? "Selected" : "");
         foreach (var control in new FrameworkElement[] { HomePage, ProjectsPage, WorkPage, ActivityPage, MaintenancePage, SettingsPage, AdvancedPage })
             control.Visibility = Visibility.Collapsed;
         FrameworkElement target = name switch

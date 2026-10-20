@@ -1,8 +1,30 @@
 <Application x:Class="OneCArchitecture.ControlCenter.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
              ShutdownMode="OnExplicitShutdown">
   <Application.Resources>
+    <!-- Native font fallback; type scale 13 / 14 / 20 / 28, spacing in units of 8. -->
+    <FontFamily x:Key="UIFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <sys:Double x:Key="CaptionSize">13</sys:Double>
+    <sys:Double x:Key="BodySize">14</sys:Double>
+    <sys:Double x:Key="SectionSize">20</sys:Double>
+    <sys:Double x:Key="TitleSize">28</sys:Double>
+    <Thickness x:Key="Space2">16</Thickness>
+    <Thickness x:Key="Space3">24</Thickness>
+    <Style x:Key="CaptionText" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource CaptionSize}"/>
+      <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="SectionText" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource SectionSize}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="TitleText" TargetType="TextBlock" BasedOn="{StaticResource SectionText}">
+      <Setter Property="FontSize" Value="{StaticResource TitleSize}"/>
+    </Style>
     <SolidColorBrush x:Key="WindowBrush" Color="#F4F6F8"/>
     <SolidColorBrush x:Key="NavBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF"/>
@@ -21,8 +43,8 @@
     <Style TargetType="Window">
       <Setter Property="Background" Value="{DynamicResource WindowBrush}"/>
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-      <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
-      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+      <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
       <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
     </Style>
     <Style TargetType="Label"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
@@ -49,7 +71,14 @@
       <Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
     </Style>
     <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="BorderThickness" Value="0"/><Setter Property="Background" Value="Transparent"/><Setter Property="FontSize" Value="14"/>
+      <Setter Property="BorderThickness" Value="2"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Background" Value="Transparent"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+      <Style.Triggers>
+        <Trigger Property="AutomationProperties.ItemStatus" Value="Selected">
+          <Setter Property="Background" Value="{DynamicResource SelectionBrush}"/>
+          <Setter Property="FontWeight" Value="SemiBold"/>
+          <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Trigger>
+      </Style.Triggers>
     </Style>
 
     <Style TargetType="TextBox">
