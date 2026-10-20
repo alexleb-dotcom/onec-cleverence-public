@@ -5,7 +5,7 @@ namespace OneCArchitecture.ControlCenter;
 internal static class StartupRegistration
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "OneCArchitectureControlCenter";
+    internal const string ValueName = "OneC Orbit";
 
     public static void Apply(bool enabled)
     {
@@ -22,7 +22,7 @@ internal static class StartupRegistration
         }
     }
 
-    private static string Quote(string value)
+    internal static string Quote(string value)
     {
         var sanitized = value.Replace(((char)34).ToString(), string.Empty);
         return ((char)34) + sanitized + ((char)34).ToString();

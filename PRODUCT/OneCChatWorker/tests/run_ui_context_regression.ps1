@@ -10,6 +10,9 @@ function Rec([string]$name,[bool]$pass,[string]$detail=''){
 }
 $s=New-OneCTestScratch -Purpose 'UiContextRegression'
 $mainHandle=$null
+$previousLocalAppData=$env:LOCALAPPDATA
+$env:LOCALAPPDATA=Join-Path $s.path 'LocalAppData'
+New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA|Out-Null
 try {
   $worker=Join-Path $s.path 'worker'
   $pd=Join-Path $s.path 'pd'
@@ -149,6 +152,7 @@ try {
   Write-Host ("UI_CONTEXT_REGRESSION_PASS checks={0}" -f $results.Count)
   $results|ConvertTo-Json -Depth 8
 } finally {
+  $env:LOCALAPPDATA=$previousLocalAppData
   if($mainHandle){$mainHandle.Dispose()}
   Remove-OneCTestScratch -Path $s.path -RunId $s.run_id -Base $s.base|Out-Null
 }

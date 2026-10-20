@@ -12,7 +12,11 @@ try {
  & $module {
   param($PackageRoot,$FixtureRoot)
   $script:FixtureRoot=$FixtureRoot
-  $worker=Join-Path $FixtureRoot 'worker';$data=Join-Path $FixtureRoot 'programdata'
+  $worker=Join-Path $FixtureRoot 'OneCOrbit';$data=Join-Path $FixtureRoot 'ProgramData\OneCOrbit'
+  # Rebind every discoverable root to the fixture before exercising defaults.
+  $script:DefaultWorkerRoot=$worker;$script:DefaultProgramDataRoot=$data
+  $script:LegacyWorkerRoot=Join-Path $FixtureRoot 'LegacyWorker'
+  $script:LegacyProgramDataRoot=Join-Path $FixtureRoot 'LegacyData'
   # Read-only SID lookup. No account is created or changed; a stock Windows
   # identity covers a development machine where OneCSourceReader is absent.
   try{$readerSid=(New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$script:ReaderName")).Translate([Security.Principal.SecurityIdentifier]).Value}
@@ -45,7 +49,9 @@ try {
   $sentinels=@{}
   foreach($phase in @('clean','update')){
    $script:AclCalls=@()
-   $install=Install-OneCChatWorker -PackageRoot $PackageRoot -WorkerRoot $worker -ProgramDataRoot $data -SkipDependencies
+   if($phase -eq 'clean'){$install=Install-OneCChatWorker -PackageRoot $PackageRoot -SkipDependencies}
+   else{$install=Install-OneCChatWorker -PackageRoot $PackageRoot -WorkerRoot $worker -ProgramDataRoot $data -SkipDependencies}
+   Check ($install.catalog.path -eq (Join-Path $worker 'projects.json') -and $install.control_center.executable_path.StartsWith($data+'\',[StringComparison]::OrdinalIgnoreCase)) ($phase+' Orbit default/custom root identity')
    Check ($install.installed_integrity.status -eq 'PASS') ($phase+' actual installer/integrity owner')
    foreach($name in $modules){
     $target=Join-Path $data ('helper\'+$name)

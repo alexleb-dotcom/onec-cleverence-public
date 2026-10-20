@@ -35,7 +35,13 @@ internal static class PackagedProbe
     static void Wait(Func<bool> condition, string name)
     {
         var timer = Stopwatch.StartNew();
-        while (timer.Elapsed < TimeSpan.FromSeconds(20)) { if (condition()) return; Thread.Sleep(100); }
+        while (timer.Elapsed < TimeSpan.FromSeconds(20))
+        {
+            try { if (condition()) return; }
+            catch (InvalidOperationException ex) when (ex.Message.StartsWith("CONTROL_MISSING:", StringComparison.Ordinal)) { }
+            catch (ElementNotAvailableException) { }
+            Thread.Sleep(100);
+        }
         throw new TimeoutException("PACKAGED_TIMEOUT:" + name);
     }
     static AutomationElement Find(string id) => Root.FindFirst(TreeScope.Descendants,
@@ -160,7 +166,10 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
             Wait(() => { Owned.Refresh(); Window = Owned.MainWindowHandle; return Window != IntPtr.Zero; }, "packaged process window");
             Root = AutomationElement.FromHandle(Window);
             Assert(string.Equals(Owned.MainModule!.FileName, exe, StringComparison.OrdinalIgnoreCase), "actual process executable identity");
+            Console.WriteLine("PACKAGED_WINDOW title=" + Owned.MainWindowTitle + " class=" + Root.Current.ClassName);
             Wait(() => Find("RecommendationText").Current.Name.Length > 0, "initial context");
+            Assert(Find("RecommendationText").Current.Name.Length > 0, "packaged fake-owner UI context rendered");
+            Shot(Path.Combine(evidence, "packaged-startup.png"));
             SetForegroundWindow(Window);
             Wait(() => GetForegroundWindow() == Window, "owned foreground");
             Shot(Path.Combine(evidence, "packaged-ru-dark-Home.png"));

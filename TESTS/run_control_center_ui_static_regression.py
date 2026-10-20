@@ -127,7 +127,7 @@ try:
 
     rec("install_owner_control_center","function Install-ControlCenterArtifact" in core and "$controlCenter=Install-ControlCenterArtifact" in core and "Get-ControlCenterStartMenuShortcutPath" in core)
     rec("update_reuses_install_owner","function Run-Update" in launcher and "Install-OneCChatWorker" in launcher[launcher.index("function Run-Update"):launcher.index("function Run-AddProject")])
-    rec("start_menu_shortcut_owned","OneC Architecture Control Center.lnk" in core and "WScript.Shell" in core)
+    rec("start_menu_shortcut_owned","OneC Orbit.lnk" in core and "WScript.Shell" in core)
     rec("uninstall_removes_shortcut","Get-ControlCenterStartMenuShortcutPath" in core[core.index("function Get-UninstallPlan"):core.index("function Invoke-SafeUninstall")])
 
     rec("published_exe_exists",exe.is_file())

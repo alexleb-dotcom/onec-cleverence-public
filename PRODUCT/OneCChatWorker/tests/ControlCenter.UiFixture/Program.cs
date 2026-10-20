@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Windows;
@@ -42,11 +42,30 @@ internal static class Program
         try
         {
             if (args.Length == 3 && args[0] == "--packaged") return PackagedProbe.Run(args[1], args[2]);
+            var orbitEvidence = args.Length == 1 ? args[0] : Path.Combine(Path.GetTempPath(), "onec-ui-fixture");
+            Environment.SetEnvironmentVariable("ONEC_CONTROL_CENTER_PREFERENCES_ROOT", Path.Combine(orbitEvidence, "preferences"));
+            Check(StartupRegistration.ValueName == "OneC Orbit" &&
+                StartupRegistration.Quote(@"C:\Synthetic Orbit\Orbit.exe") == "\"C:\\Synthetic Orbit\\Orbit.exe\"", "Orbit Run value and quoted command");
+            Check(!WorkerClient.NeedsMigration(@"C:\Synthetic\worker", @"C:\Synthetic\pd", null,
+                _ => throw new Exception("custom root probe"), _ => throw new Exception("custom legacy probe")), "custom roots never probe legacy");
+            Check(WorkerClient.NeedsMigration(@"C:\OneCOrbit", @"C:\ProgramData\OneCOrbit", null,
+                _ => false, _ => true), "legacy-only GUI blocks without actual filesystem probes");
+            Check(!WorkerClient.NeedsMigration(@"C:\OneCOrbit", @"C:\ProgramData\OneCOrbit", null,
+                _ => true, _ => throw new Exception("complete Orbit legacy probe")), "complete Orbit skips legacy probes");
+            Check(!WorkerClient.NeedsMigration(@"C:\OneCOrbit", @"C:\ProgramData\OneCOrbit", "fake-launcher",
+                _ => throw new Exception("override probe"), _ => throw new Exception("override legacy probe")), "fake launcher override preserved");
+            var preferences = new UiPreferences("ru", "dark", false);
+            PreferencesStore.Save(preferences);
+            Check(PreferencesStore.Load() == preferences && File.Exists(Path.Combine(orbitEvidence, "preferences", "preferences.json")), "isolated preference roundtrip");
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
             var app = new App(); app.InitializeComponent(); // No OnStartup, tray, worker or settings writes.
             foreach (var language in new[] { "en", "ru" })
             {
                 Localization.SetLanguage(language);
+                Check(Presentation.Status("ORBIT_PARTIAL_INSTALL") == Localization.Get("OrbitPartialInstall") &&
+                    Presentation.Reason("ORBIT_PARTIAL_INSTALL") == Localization.Get("OrbitPartialInstallHelp") &&
+                    Presentation.Reason("ORBIT_PARTIAL_INSTALL") != Presentation.Reason("MIGRATION_REQUIRED"),
+                    "distinct Orbit partial and legacy copy " + language);
                 foreach (var code in new[] { "PROJECT_ADMISSION_ACTIVE", "SOURCE_UPDATE_STATE_INVALID", "RECOVERY_REQUIRED", "SOURCE_UPDATE_RECOVERY_REQUIRED" })
                     Check(Presentation.Reason(code) != Localization.Get("OwnerEvidenceRequired") && Presentation.Reason(code) != code, "localized source update reason " + language + " " + code);
             }
@@ -55,6 +74,25 @@ internal static class Program
             var fake = new FixtureWorker();
             Localization.SetLanguage("ru"); ThemeService.Apply("dark");
             var w = new MainWindow(fake, fixture: true);
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Call(w, "ShowContextFailure", 2, "MIGRATION_REQUIRED", "");
+            Check(Control<TextBlock>(w, "RecommendationText").Text == Localization.Get("MigrationRequired") &&
+                !Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "UpdateButton").IsEnabled,
+                "migration hold displayed with mutations disabled");
+            Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-migration-required.png"), 1);
+            var partialContext = FixtureWorker.Context(null, "MIGRATION_REQUIRED");
+            partialContext["recommendation"]!["reason_code"] = "ORBIT_PARTIAL_INSTALL";
+            partialContext["projects"] = new JsonArray();
+            partialContext["selected_project"] = null;
+            foreach (var action in partialContext["actions"]!.AsObject()) action.Value!["enabled"] = false;
+            fake.ContextOverride = partialContext;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(Control<TextBlock>(w, "RecommendationText").Text == Localization.Get("OrbitPartialInstall") &&
+                Control<TextBlock>(w, "RecommendationReasonText").Text == Localization.Get("OrbitPartialInstallHelp") &&
+                !Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "UpdateButton").IsEnabled,
+                "WPF Orbit partial recovery is truthful and blocks mutations");
+            Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-orbit-partial-install.png"), 1);
+            fake.ContextOverride = null;
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Check(!Control<Button>(w, "StartButton").IsEnabled, "initial multiple projects require explicit choice");
             Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Projects", "Home directs unselected context to Projects");

@@ -1,6 +1,6 @@
-# OneCChatWorker turnkey product
+# OneC Orbit turnkey product
 
-This directory contains the 1C-first turnkey OneCChatWorker product defined by control thread #44. It packages the accepted hosted-MCP read/proposal contour behind one deterministic Windows lifecycle manager. Cleverence remains deferred.
+This directory contains the 1C-first turnkey OneC Orbit product defined by control thread #44. It packages the accepted hosted-MCP read/proposal contour behind one deterministic Windows lifecycle manager. Cleverence remains deferred.
 
 ## One visible entry point
 
@@ -55,11 +55,11 @@ The helper secret is entered locally. Its value is not written to operation logs
 
 ## Project catalog and canonical topology
 
-C:\OneCChatWorker\projects.json is the one human-editable desired-state catalog. JSON is intentional: no YAML runtime dependency is required.
+C:\OneCOrbit\projects.json is the one human-editable desired-state catalog. JSON is intentional: no YAML runtime dependency is required.
 
 Each applied project receives generated normalized runtime state at:
 
-    C:\OneCChatWorker\<project>\
+    C:\OneCOrbit\<project>\
       ProjectManifest\project.json
       Participants\<participant>\Target\Main\Configuration.xml
       Participants\<participant>\Target\Extensions\<extension-id>\Configuration.xml
@@ -204,3 +204,55 @@ Run the Windows clean-root regression:
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\PRODUCT\OneCChatWorker\tests\run_local_regression.ps1
 
 The cross-platform shareable CI also validates static product/security/observability contracts through TESTS/run_onecchatworker_product_regression.py.
+
+
+## OneC Orbit installation identity (Q117)
+
+New installations use `C:\OneCOrbit` (launcher, projects.json and managed projects),
+`C:\ProgramData\OneCOrbit` (product, GUI executable, runtime and operations), and
+`%LOCALAPPDATA%\OneCOrbit` (preferences.json and operation fallback). The common
+Start Menu shortcut and the optional HKCU Run value are named **OneC Orbit**.
+Startup remains disabled until the operator enables it in Settings.
+
+Native `-WorkerRoot` / `-ProgramDataRoot` and all `ONEC_CONTROL_CENTER_*` overrides
+remain supported, including fake launchers and synthetic roots. Without an explicit
+launcher override, the GUI derives OneCChatWorker.ps1 from its worker root.
+`PRODUCT/OneCChatWorker`, .NET namespaces and `OneC_G1Q1_MCP` remain internal identities.
+
+If either legacy default root exists while the default Orbit catalog/installed-state
+pair is incomplete, native STATUS/UI_CONTEXT and the GUI report
+`MIGRATION_REQUIRED`. Installation and native mutations stop before elevation,
+dependency provisioning, operation logs or catalog creation. The check inspects
+existence only; it does not read legacy catalogs or Source. Complete Orbit installs
+and explicit custom/legacy root pairs do not probe unrelated legacy roots. Existing
+legacy installations can continue through their existing launcher with explicit
+worker and ProgramData roots; no legacy startup entry or shortcut is removed.
+
+### Migration hold and preflight design
+
+There is no MIGRATE command. Installation is not a migration procedure. Migration
+acceptance remains **HOLD** until a separately authorized downtime procedure proves:
+
+- Both legacy roots and the destination are bound to one deployment identity.
+  Reject reparse points, unexpected volume boundaries, destination collisions and
+  incomplete prior migration evidence; never rewrite arbitrary catalog Source paths.
+- No active S4 admission/helper/MCP or in-flight native operation exists, and the
+  authorization covers downtime. Read-only preflight cannot stop a session itself.
+- Catalog metadata, project/participant identities, accepted snapshot IDs, manifests,
+  fingerprints, admission/checkpoint state and ACL/security descriptors are preserved.
+  External Source and Incoming remain untouched. No source update is performed.
+- Free space, filesystem/volume behavior, operator and reader permissions and
+  recovery access are checked before staging. Large source-tree copy/hash work is
+  forbidden until downtime and the exact operation are separately authorized.
+- A protected staging journal records prepared, staged, verified, committed and
+  rollback phases. Publication across worker and ProgramData roots is not assumed
+  atomic. Crash recovery must deterministically resume or roll back each boundary.
+- Rollback restores original roots, ACLs, catalogs, executable/lock pair, shortcuts
+  and optional startup value without losing Output or accepting mixed generations.
+  Legacy data is retained until independent post-migration acceptance.
+
+Required future adversarial tests include active S4 refusal, denied ACL/UAC, low disk,
+reparse substitution, cross-volume interruption, catalog absolute-path preservation,
+crash at every journal/publication boundary, stale locks and rollback failure. These
+invariants are design requirements, not claims that a migration was implemented or
+accepted. Phase A neither moves, copies nor hashes an installed legacy project tree.

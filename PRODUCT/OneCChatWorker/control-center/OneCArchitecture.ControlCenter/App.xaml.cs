@@ -28,7 +28,7 @@ public partial class App : System.Windows.Application
     {
         _tray = new Forms.NotifyIcon
         {
-            Text = "OneC Architecture",
+            Text = "OneC Orbit",
             Icon = System.Drawing.SystemIcons.Application,
             Visible = true
         };

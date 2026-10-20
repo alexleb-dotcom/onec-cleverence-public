@@ -2,13 +2,55 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:ProductVersion = '1.0.0-preview1'
-$script:DefaultWorkerRoot = 'C:\OneCChatWorker'
-$script:DefaultProgramDataRoot = 'C:\ProgramData\OneCChatWorker'
+$script:DefaultWorkerRoot = 'C:\OneCOrbit'
+$script:LegacyWorkerRoot = 'C:\OneCChatWorker'
+$script:LegacyProgramDataRoot = 'C:\ProgramData\OneCChatWorker'
+$script:DefaultProgramDataRoot = 'C:\ProgramData\OneCOrbit'
 $script:ReaderName = 'OneCSourceReader'
 $script:DefaultRelayUrl = 'wss://onec-g1q1-relay.alex-lebad1.workers.dev/helper'
 $script:NodeVersion = '26.7.0'
 $script:RgVersion = '15.2.0'
 $script:OperationLogMaxBytes = 2097152
+
+# Only the product default pair participates in legacy discovery. Custom roots
+# (including explicit legacy roots) never probe an unrelated installation.
+function Get-InstallRootDisposition {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $defaultPair=([IO.Path]::GetFullPath($WorkerRoot).TrimEnd('\') -ieq [IO.Path]::GetFullPath($script:DefaultWorkerRoot).TrimEnd('\')) -and
+        ([IO.Path]::GetFullPath($ProgramDataRoot).TrimEnd('\') -ieq [IO.Path]::GetFullPath($script:DefaultProgramDataRoot).TrimEnd('\'))
+    if(-not $defaultPair){return 'EXPLICIT_ROOTS'}
+    $hasCatalog=Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf
+    $hasInstalledState=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+    # A partial Orbit root is an interrupted/ambiguous deployment, never a clean install.
+    # Hold before any admin, dependency, catalog, ACL, or Source owner can run.
+    if($hasCatalog -xor $hasInstalledState){return 'MIGRATION_REQUIRED'}
+    if($hasCatalog -and $hasInstalledState){return 'ORBIT_INSTALLED'}
+    # Metadata/existence only: never enumerate, hash, copy or read legacy Source.
+    if((Test-Path -LiteralPath $script:LegacyWorkerRoot) -or
+       (Test-Path -LiteralPath $script:LegacyProgramDataRoot)){return 'MIGRATION_REQUIRED'}
+    return 'NEW_INSTALL'
+}
+
+# Exact metadata-only explanation for a fail-closed default-root hold.
+function Get-InstallRootHoldReason {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    if((Get-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot) -ne 'MIGRATION_REQUIRED'){return $null}
+    $hasCatalog=Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf
+    $hasInstalledState=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+    if($hasCatalog -xor $hasInstalledState){return 'ORBIT_PARTIAL_INSTALL'}
+    return 'LEGACY_INSTALL_PRESENT'
+}
+
+function Assert-InstallRootDisposition {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $reason=Get-InstallRootHoldReason -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    if($reason -eq 'ORBIT_PARTIAL_INSTALL'){
+        throw 'MIGRATION_REQUIRED: [ORBIT_PARTIAL_INSTALL] Incomplete OneC Orbit installation detected. Preserve existing files; request separately authorized recovery. Do not retry a new install automatically.'
+    }
+    if($reason -eq 'LEGACY_INSTALL_PRESENT'){
+        throw 'MIGRATION_REQUIRED: [LEGACY_INSTALL_PRESENT] Legacy installation retained. OneC Orbit migration requires separately authorized downtime and a validated migration procedure. Use explicit legacy roots to operate the existing installation.'
+    }
+}
 
 function Get-RipgrepSemanticVersion {
     param([Parameter(Mandatory)][string]$VersionLine)
@@ -24,7 +66,7 @@ function Get-WorkerOperationRoot {
     if(Test-Path -LiteralPath $ProgramDataRoot -PathType Container){
         try {New-Item -ItemType Directory -Force -Path $preferred|Out-Null;return $preferred}catch{}
     }
-    $fallback=Join-Path $env:LOCALAPPDATA 'OneCChatWorker\operations'
+    $fallback=Join-Path $env:LOCALAPPDATA 'OneCOrbit\operations'
     New-Item -ItemType Directory -Force -Path $fallback|Out-Null
     return $fallback
 }
@@ -33,7 +75,7 @@ function Get-WorkerOperationRoots {
     param([string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
     $roots=New-Object Collections.Generic.List[string]
     $preferred=Join-Path $ProgramDataRoot 'operations'
-    $fallback=Join-Path $env:LOCALAPPDATA 'OneCChatWorker\operations'
+    $fallback=Join-Path $env:LOCALAPPDATA 'OneCOrbit\operations'
     if(Test-Path -LiteralPath $preferred -PathType Container){$roots.Add($preferred)}
     if((Test-Path -LiteralPath $fallback -PathType Container) -and -not $roots.Contains($fallback)){$roots.Add($fallback)}
     @($roots)
@@ -2211,11 +2253,16 @@ function Get-OutputProposalSummary {
 
 function Get-WorkerStatus {
     param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    $rootDisposition=Get-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    if($rootDisposition -eq 'MIGRATION_REQUIRED'){
+        $holdReason=Get-InstallRootHoldReason -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        return [pscustomobject]@{state='MIGRATION_REQUIRED';root_disposition=$rootDisposition;root_hold_reason=$holdReason;product_version=$script:ProductVersion;installed=$false;installed_state=$null;installed_integrity=[pscustomobject]@{status='MIGRATION_REQUIRED'};worker_root=$WorkerRoot;program_data_root=$ProgramDataRoot;catalog_path=(Get-CatalogPath $WorkerRoot);projects=@();active_admission=$null;source_scan_performed=$false}
+    }
     $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing;$runtimeState=Join-Path $ProgramDataRoot 'runtime\active-admission.json';$active=$null;if(Test-Path -LiteralPath $runtimeState){try{$active=Get-Content $runtimeState -Raw|ConvertFrom-Json}catch{}}
     $rows=@();foreach($p in @($catalog.projects)){$v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}};$snapshotId=$(if($v.PSObject.Properties.Name -contains 'source_snapshot_id'){$v.source_snapshot_id}else{$null});$reason=$(if($v.PSObject.Properties.Name -contains 'reason'){$v.reason}else{$null});$rows+=,[pscustomobject]@{project_id=$p.project_id;display_name=$p.display_name;active=($p.active -ne $false);verification=$(if($v.state -eq 'ACCEPTED'){'READY'}else{$v.state});fast_state=$v.state;fast_reason=$reason;source_snapshot_id=$snapshotId;participant_count=@($p.participants|Where-Object{$_.active -ne $false}).Count}}
     $recent=@(Get-RecentWorkerOperations -Limit 20 -ProgramDataRoot $ProgramDataRoot);$lastVerify=@($recent|Where-Object{$_.operation_type -eq 'VERIFY'}|Select-Object -First 1);$installedPath=Join-Path $ProgramDataRoot 'installed-state.json';$installed=$null;if(Test-Path -LiteralPath $installedPath -PathType Leaf){try{$installed=Get-Content -LiteralPath $installedPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{}}
     $integrity=$null;if($installed){try{$integrity=Test-InstalledProductIntegrity -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot}catch{$integrity=[pscustomobject]@{status='FAIL';error_class=(($_.Exception.Message -split ':',2)[0]);message=$_.Exception.Message}}}else{$integrity=[pscustomobject]@{status='NOT_INSTALLED'}}
-    [pscustomobject]@{product_version=$script:ProductVersion;installed=($null -ne $installed);installed_state=$installed;installed_integrity=$integrity;worker_root=$WorkerRoot;catalog_path=Get-CatalogPath $WorkerRoot;dependencies=Get-WorkerDependencyHealth $ProgramDataRoot;projects=$rows;active_admission=$active;helper=Get-HelperConnectionState $ProgramDataRoot;current_operation=Get-CurrentWorkerOperation $ProgramDataRoot;last_operation=$(if($recent.Count){$recent[0]}else{$null});operation_recovery=Get-OperationRecoveryClassification $ProgramDataRoot;last_verify=$(if($lastVerify.Count){$lastVerify[0]}else{$null});output=Get-OutputProposalSummary $WorkerRoot;state_check_contract='FAST_STATE_CHECK_V1'}
+    [pscustomobject]@{root_disposition=$rootDisposition;program_data_root=$ProgramDataRoot;product_version=$script:ProductVersion;installed=($null -ne $installed);installed_state=$installed;installed_integrity=$integrity;worker_root=$WorkerRoot;catalog_path=Get-CatalogPath $WorkerRoot;dependencies=Get-WorkerDependencyHealth $ProgramDataRoot;projects=$rows;active_admission=$active;helper=Get-HelperConnectionState $ProgramDataRoot;current_operation=Get-CurrentWorkerOperation $ProgramDataRoot;last_operation=$(if($recent.Count){$recent[0]}else{$null});operation_recovery=Get-OperationRecoveryClassification $ProgramDataRoot;last_verify=$(if($lastVerify.Count){$lastVerify[0]}else{$null});output=Get-OutputProposalSummary $WorkerRoot;state_check_contract='FAST_STATE_CHECK_V1'}
 }
 
 function Get-WorkerDiagnostics {
@@ -2659,7 +2706,7 @@ function Get-ControlCenterStartMenuShortcutPath {
         $ShortcutRoot=[Environment]::GetFolderPath([Environment+SpecialFolder]::CommonPrograms)
     }
     if([string]::IsNullOrWhiteSpace($ShortcutRoot)){throw 'START_MENU_ROOT_UNAVAILABLE'}
-    Join-Path $ShortcutRoot 'OneC Architecture Control Center.lnk'
+    Join-Path $ShortcutRoot 'OneC Orbit.lnk'
 }
 
 function Install-ControlCenterArtifact {
@@ -2681,7 +2728,7 @@ function Install-ControlCenterArtifact {
     $shortcut=$shell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath=$destination
     $shortcut.WorkingDirectory=(Split-Path -Parent $destination)
-    $shortcut.Description='OneC Architecture Control Center'
+    $shortcut.Description='OneC Orbit'
     $shortcut.Save()
     $verify=$shell.CreateShortcut($shortcutPath)
     if([string]$verify.TargetPath -ne $destination){throw 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH'}
@@ -2698,6 +2745,7 @@ function Install-ControlCenterArtifact {
 
 function Install-OneCChatWorker {
     param([Parameter(Mandatory)][string]$PackageRoot,[string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot,[string]$OperatorIdentity,[switch]$SkipDependencies)
+    Assert-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     $packageCheck=Test-ProductPackageIntegrity $PackageRoot
     $deps=Ensure-PinnedDependencies -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -NoInstall:$SkipDependencies

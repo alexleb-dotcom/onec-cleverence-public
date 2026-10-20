@@ -11,7 +11,7 @@ internal static class PreferencesStore
     // This never changes the worker's state roots or its authentication/authorization.
     private static readonly string Root = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_PREFERENCES_ROOT") ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OneCArchitecture", "ControlCenter");
+        "OneCOrbit");
     private static readonly string FilePath = Path.Combine(Root, "preferences.json");
 
     public static UiPreferences Load()
