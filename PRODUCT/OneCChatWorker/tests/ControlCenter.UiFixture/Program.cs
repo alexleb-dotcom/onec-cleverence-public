@@ -44,6 +44,12 @@ internal static class Program
             if (args.Length == 3 && args[0] == "--packaged") return PackagedProbe.Run(args[1], args[2]);
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
             var app = new App(); app.InitializeComponent(); // No OnStartup, tray, worker or settings writes.
+            foreach (var language in new[] { "en", "ru" })
+            {
+                Localization.SetLanguage(language);
+                foreach (var code in new[] { "PROJECT_ADMISSION_ACTIVE", "SOURCE_UPDATE_STATE_INVALID", "RECOVERY_REQUIRED", "SOURCE_UPDATE_RECOVERY_REQUIRED" })
+                    Check(Presentation.Reason(code) != Localization.Get("OwnerEvidenceRequired") && Presentation.Reason(code) != code, "localized source update reason " + language + " " + code);
+            }
             var output = args.Length == 1 ? args[0] : Path.Combine(Path.GetTempPath(), "onec-ui-fixture");
             Directory.CreateDirectory(output);
             var fake = new FixtureWorker();
@@ -238,6 +244,21 @@ internal static class Program
         Check((string?)Call(w, "SelectedSourceUpdateSlotPath", pending) == "isolated-selected-slot" && Control<Button>(w, "OpenIncomingButton").IsEnabled,
             "OpenIncoming uses selected exact slot without probing filesystem");
         Check(Control<TextBlock>(w, "SourceUpdateStatusText").Text == Localization.Get("SourceFolderPrepared"), "prepared folder makes no validation claim");
+        foreach (var language in new[] { "en", "ru" })
+        {
+            Localization.SetLanguage(language); Call(w, "ApplyLocalization");
+            foreach (var reason in new[] { "PROJECT_ADMISSION_ACTIVE", "SOURCE_UPDATE_STATE_INVALID", "RECOVERY_REQUIRED" })
+            {
+                var blocked = (JsonObject)pending.DeepClone();
+                blocked["actions"]!["accept_source_update"] = new JsonObject { ["enabled"] = false, ["reason"] = reason };
+                blocked["actions"]!["cancel_source_update"] = new JsonObject { ["enabled"] = reason != "RECOVERY_REQUIRED", ["reason"] = reason == "RECOVERY_REQUIRED" ? reason : "AVAILABLE" };
+                Reload(blocked);
+                Check(!Control<Button>(w, "AcceptSourceUpdateButton").IsEnabled &&
+                    (string?)Control<Button>(w, "AcceptSourceUpdateButton").ToolTip == Presentation.Reason(reason), "owner Accept reason reaches WPF tooltip " + language + " " + reason);
+                Check(Control<Button>(w, "CancelSourceUpdateButton").IsEnabled == (reason != "RECOVERY_REQUIRED"), "owner Cancel eligibility reaches WPF " + language + " " + reason);
+            }
+        }
+        Reload(pending);
         Select("do|EXTENSION|bitdo");
         Check(Call(w, "ObservedSourceUpdateArgs") is null && !Control<Button>(w, "OpenIncomingButton").IsEnabled &&
             !Control<Button>(w, "AcceptSourceUpdateButton").IsEnabled && !Control<Button>(w, "CancelSourceUpdateButton").IsEnabled, "different selected key cannot open/accept/cancel G1");

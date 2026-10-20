@@ -110,4 +110,6 @@
   <data name="SyncUnverified" xml:space="preserve"><value>Update result is not verified.</value></data>
   <data name="SyncInspect" xml:space="preserve"><value>Inspect the current operation and recovery details in Advanced before retrying.</value></data>
   <data name="SourceFolderPrepared" xml:space="preserve"><value>Folder prepared; validation runs on Accept.</value></data>
+  <data name="SourceUpdateAdmissionHelp" xml:space="preserve"><value>The update is validated. End this project's access explicitly before accepting publication. Access will not be stopped automatically.</value></data>
+  <data name="SourceUpdateStageHelp" xml:space="preserve"><value>This update stage cannot be accepted. Inspect recovery details; an explicit Cancel is available for a valid sealed update.</value></data>
 </root>

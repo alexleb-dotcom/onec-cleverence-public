@@ -640,6 +640,15 @@ function Get-UiContext {
  $sourceUpdate=if($selectedProjectId){Get-SourceUpdateSummary -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot}else{$null}
  if($sourceUpdate){$sourceUpdate|Add-Member -NotePropertyName project_id -NotePropertyValue $selectedProjectId -Force}
  $updateActive=$sourceUpdate -and $sourceUpdate.status -ne 'NONE'
+ # Read-only projection of the native owner gates. A prepared generation can be
+ # sealed/validated during admission; publication waits for that project's admission.
+ $updateStage=[string]$sourceUpdate.status
+ $updateRecovery=([bool]$sourceUpdate.promotion_state -or $updateStage -eq 'RECOVERY_REQUIRED' -or [string]$status.operation_recovery.classification -eq 'RECOVERY_REQUIRED')
+ $sameProjectAdmission=($active -and [string]$active.project_id -eq $selectedProjectId)
+ $updateReasons=@{accept_source_update='AVAILABLE';cancel_source_update='AVAILABLE'}
+ foreach($action in @('accept_source_update','cancel_source_update')){
+  $updateReasons[$action]=if(-not $selectedProject){'PROJECT_SELECTION_REQUIRED'}elseif($updateRecovery){'RECOVERY_REQUIRED'}elseif(-not $updateActive){'NO_SOURCE_UPDATE'}elseif($updateStage -notin @('PREPARED_WRITABLE','SEALED','SEALED_VALIDATED')){'SOURCE_UPDATE_STATE_INVALID'}elseif($action -eq 'accept_source_update' -and $updateStage -eq 'SEALED'){'SOURCE_UPDATE_STATE_INVALID'}elseif($action -eq 'accept_source_update' -and $updateStage -eq 'SEALED_VALIDATED' -and $sameProjectAdmission){'PROJECT_ADMISSION_ACTIVE'}else{'AVAILABLE'}
+ }
  $state=[string]$guided.state
  $actions=[ordered]@{}
  $enabled=[ordered]@{
@@ -652,9 +661,10 @@ function Get-UiContext {
   update=$true;add_project=$true
   sync_extension=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $active -and -not $updateActive -and -not $sourceUpdate.promotion_state -and $status.operation_recovery.classification -ne 'RECOVERY_REQUIRED' -and @($sourceArtifacts|Where-Object {$_.artifact_type -ceq 'EXTENSION'}).Count -gt 0)
   prepare_source_update=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $updateActive -and $sourceArtifacts.Count -gt 0)
-  accept_source_update=([bool]$updateActive);cancel_source_update=([bool]$updateActive)
+  accept_source_update=($updateReasons.accept_source_update -eq 'AVAILABLE');cancel_source_update=($updateReasons.cancel_source_update -eq 'AVAILABLE')
  }
  foreach($key in $enabled.Keys){$actions[$key]=[pscustomobject]@{enabled=[bool]$enabled[$key];reason=$(if($enabled[$key]){'AVAILABLE'}elseif($key -eq 'stop'){'NO_ACTIVE_SESSION'}elseif($key -eq 'continue'){'NO_VERIFIED_CONTINUATION'}elseif($active -and $key -eq 'start'){'SESSION_ALREADY_EXISTS'}elseif(-not $selectedProject){'PROJECT_SELECTION_REQUIRED'}elseif($key -in @('accept_source_update','cancel_source_update') -and -not $updateActive){'NO_SOURCE_UPDATE'}elseif($updateActive){'SOURCE_UPDATE_ACTIVE'}elseif($key -in @('verify','repair') -and $state -eq 'PROJECT_READY'){'VERIFICATION_NOT_REQUIRED'}elseif($key -eq 'prepare_source_update' -and -not $sourceArtifacts.Count){'NO_ARTIFACTS'}else{$state})}}
+ foreach($key in $updateReasons.Keys){$actions[$key].reason=$updateReasons[$key]}
  [pscustomobject]@{
   schema='UI_CONTEXT_V1';generated_utc=(Get-Date).ToUniversalTime().ToString('o');bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1'
   product=[pscustomobject]@{version=$status.product_version;installed=$status.installed;integrity_status=$status.installed_integrity.status;update_status='NOT_CHECKED_NO_NETWORK_SIDE_EFFECT'}
