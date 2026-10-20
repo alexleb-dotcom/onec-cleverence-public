@@ -28,6 +28,52 @@ function Check([string]$Expect,[string]$Reason){
  return $out
 }
 try {
+ # Deterministic C:/D: SAME PHYSICAL VOLUME regression, without creating
+ # drive mounts or touching ANY standard product root. Extract the actual
+ # pure production helpers from the parsed probe; do not execute its main body.
+ $parseTokens=$null
+ $parseErrors=$null
+ $sourceAst=[Management.Automation.Language.Parser]::ParseFile($probe,[ref]$parseTokens,[ref]$parseErrors)
+ Assert (@($parseErrors).Count -eq 0) 'C0 PS5.1 source parses'
+ $defns=@($sourceAst.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst]},$true))
+ foreach($functionName in @('Root-Intersects','Convert-DosDeviceRoot','Test-ProtectedPhysicalRootOverlap')){
+   $def=@($defns|Where-Object {$_.Name -eq $functionName})
+   Assert ($def.Count -eq 1) ('actual production helper '+$functionName+' exists exactly once')
+   . ([scriptblock]::Create($def[0].Extent.Text))
+ }
+ $simulatedVolume='\Device\HarddiskVolume777'
+ $protectedPhysical=@(
+   'C:\OneCChatWorker','C:\ProgramData\OneCChatWorker',
+   'C:\OneCOrbit','C:\ProgramData\OneCOrbit' |
+     ForEach-Object {Convert-DosDeviceRoot -PathValue $_ -DeviceTarget $simulatedVolume}
+ )
+ $aliasPhysical=@(
+   'D:\OneCChatWorker','D:\ProgramData\OneCChatWorker',
+   'D:\OneCOrbit','D:\ProgramData\OneCOrbit' |
+     ForEach-Object {Convert-DosDeviceRoot -PathValue $_ -DeviceTarget $simulatedVolume}
+ )
+ Assert ($protectedPhysical.Count -eq 4 -and $aliasPhysical.Count -eq 4) 'synthetic protected C and alias D mapping cardinality'
+ for($i=0;$i -lt 4;$i++){
+   Assert ($protectedPhysical[$i] -eq $aliasPhysical[$i]) ('D maps exactly to protected C physical default '+$i)
+   Assert (Test-ProtectedPhysicalRootOverlap -RequestedRoots @($aliasPhysical[$i]) -ProtectedRoots $protectedPhysical) ('alias default '+$i+' blocked with no production switch')
+ }
+ $subPath=Convert-DosDeviceRoot -PathValue 'D:\OneCChatWorker\child' -DeviceTarget $simulatedVolume
+ Assert (Test-ProtectedPhysicalRootOverlap -RequestedRoots @($subPath) -ProtectedRoots $protectedPhysical) 'D worker descendant is protected'
+ $ancestor=Convert-DosDeviceRoot -PathValue 'D:\ProgramData' -DeviceTarget $simulatedVolume
+ Assert (Test-ProtectedPhysicalRootOverlap -RequestedRoots @($ancestor) -ProtectedRoots $protectedPhysical) 'D ancestor of protected ProgramData is protected'
+ Assert (-not (Test-ProtectedPhysicalRootOverlap -RequestedRoots $aliasPhysical -ProtectedRoots $protectedPhysical -AllowProductionReadOnly $true)) 'explicit read-only flag relaxes only production-overlap hold'
+ $disjoint=Convert-DosDeviceRoot -PathValue 'D:\UnrelatedFixture' -DeviceTarget $simulatedVolume
+ Assert (-not (Test-ProtectedPhysicalRootOverlap -RequestedRoots @($disjoint) -ProtectedRoots $protectedPhysical)) 'honest disjoint roots are not blocked by protected-default physical compare'
+ $otherVolume=Convert-DosDeviceRoot -PathValue 'D:\OneCChatWorker' -DeviceTarget '\Device\HarddiskVolume778'
+ Assert (-not (Test-ProtectedPhysicalRootOverlap -RequestedRoots @($otherVolume) -ProtectedRoots $protectedPhysical)) 'different real physical volume does not cause false protected hold'
+ $rejected=$false
+ try {$null=Convert-DosDeviceRoot -PathValue 'D:\OneCChatWorker' -DeviceTarget '\??\C:\temp'}
+ catch {$rejected=$true}
+ Assert $rejected 'SUBST DOS-device mapping rejected by same production helper'
+ $probeSource=[IO.File]::ReadAllText($probe)
+ $comparePos=$probeSource.IndexOf('if(Test-ProtectedPhysicalRootOverlap -RequestedRoots $resolved -ProtectedRoots $protectedPhysical)')
+ $rootMetadataPos=$probeSource.IndexOf('if(Has-ReparseAncestor $r)')
+ Assert ($comparePos -gt 0 -and $rootMetadataPos -gt $comparePos) 'physical protected-default check is integrated before metadata inspection'
  $null=Check 'BLOCKED' 'LEGACY_ROOT_MISSING'
  File (Join-Path $legacy 'projects.json')
  $null=Check 'BLOCKED' 'LEGACY_ROOT_MISSING'

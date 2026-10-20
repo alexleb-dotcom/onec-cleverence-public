@@ -48,21 +48,38 @@ namespace OrbitC0 {
 }
 '@ -ErrorAction Stop
 }
+# The pure conversion accepts a Windows mapping target. Only Get-PhysicalRoot
+# queries the real OS mapping; regression injects synthetic C:/D: targets.
+function Convert-DosDeviceRoot([string]$PathValue,[string]$DeviceTarget) {
+    if($PathValue -notmatch '^[A-Za-z]:\\'){ throw 'UNTRUSTED_NON_LOCAL_ROOT' }
+    if($PathValue -match '(?i)(^|\\)[^\\]*~[0-9]+(\\|$)'){throw 'UNTRUSTED_SHORT_NAME_ALIAS'}
+    if($DeviceTarget -notmatch '^\\Device\\HarddiskVolume[0-9]+$'){
+        throw 'NONCANONICAL_DOS_DEVICE_ALIAS'
+    }
+    return $DeviceTarget+$PathValue.Substring(2).TrimEnd('\')
+}
 function Get-PhysicalRoot([string]$PathValue) {
     if($PathValue -notmatch '^[A-Za-z]:\\'){ throw 'UNTRUSTED_NON_LOCAL_ROOT' }
-    # NTFS 8.3 alias spellings are not reparse points; reject instead of trusting them.
-    if($PathValue -match '(?i)(^|\\)[^\\]*~[0-9]+(\\|$)'){throw 'UNTRUSTED_SHORT_NAME_ALIAS'}
     $drive=$PathValue.Substring(0,2).ToUpperInvariant()
     $buf=New-Object System.Text.StringBuilder 4096
     $size=[OrbitC0.DosDeviceIdentity]::QueryDosDevice($drive,$buf,$buf.Capacity)
     if($size -eq 0){throw 'DOS_DEVICE_IDENTITY_UNAVAILABLE'}
     $targets=@($buf.ToString().Split([char]0,[StringSplitOptions]::RemoveEmptyEntries))
-    if($targets.Count -ne 1 -or $targets[0] -notmatch '^\\Device\\HarddiskVolume[0-9]+$'){
-        throw 'NONCANONICAL_DOS_DEVICE_ALIAS'
+    if($targets.Count -ne 1){throw 'NONCANONICAL_DOS_DEVICE_ALIAS'}
+    return Convert-DosDeviceRoot -PathValue $PathValue -DeviceTarget $targets[0]
+}
+# Compare against FIXED PROTECTED defaults as well as against each other.
+# This function is pure; the caller obtains device mappings without inspecting
+# C:\OneCChatWorker, ProgramData, Source or any other protected folder.
+function Test-ProtectedPhysicalRootOverlap {
+    param([string[]]$RequestedRoots,[string[]]$ProtectedRoots,[bool]$AllowProductionReadOnly=$false)
+    if($AllowProductionReadOnly){return $false}
+    foreach($requested in $RequestedRoots){
+        foreach($protected in $ProtectedRoots){
+            if(Root-Intersects $requested $protected){return $true}
+        }
     }
-    # The device name is the physical volume identifier, so drive letters
-    # which map to the same volume compare equal for ancestors and duplicates.
-    return $targets[0]+$PathValue.Substring(2).TrimEnd('\')
+    return $false
 }
 # Deny ACEs relevant to reading root metadata are a hard hold even if an
 # elevated runner happens to bypass them when opening files.
@@ -130,6 +147,23 @@ try {
                     if(Root-Intersects $resolved[$i] $resolved[$j]){Add-Hold 'ROOT_COLLISION'}
                 }
             }
+        }
+    }
+    # An alias of any fixed live product root is protected too. Resolve
+    # the defaults with QueryDosDevice ONLY: no Test-Path/ACL or marker read
+    # from a protected root occurs before this gate.
+    if($reasons.Count -eq 0 -and -not $AllowProductionReadOnly) {
+        try {
+            $protectedPhysical=@()
+            foreach($fixed in @('C:\OneCChatWorker','C:\ProgramData\OneCChatWorker',
+                                 'C:\OneCOrbit','C:\ProgramData\OneCOrbit')){
+                $protectedPhysical+=,(Get-PhysicalRoot $fixed)
+            }
+            if(Test-ProtectedPhysicalRootOverlap -RequestedRoots $resolved -ProtectedRoots $protectedPhysical){
+                Add-Hold 'PRODUCTION_INSPECTION_NOT_AUTHORIZED'
+            }
+        } catch {
+            Add-Hold 'PHYSICAL_ROOT_IDENTITY_UNVERIFIED'
         }
     }
     if($reasons.Count -eq 0) {
