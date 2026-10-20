@@ -2275,8 +2275,8 @@
     },
     {
       "path": "TESTS/run_control_center_ui_static_regression.py",
-      "size": 12031,
-      "sha256": "bae08d4e1c935619648073951b611e32e2de7097c2fd4e1b3e57d62d9ea04a42"
+      "size": 12047,
+      "sha256": "7c56c96a3c7becb58999ef6aba4ec5569860cf0acacc672d1ff5c91ff430fd69"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -2830,5 +2830,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "00b21578efb3fd22f7f79aec0dc6a8d7902378ab0d2da342e0213e2564c867de"
+  "snapshot_digest": "03e02a64977b458771794e28ac849f71fa456bfc9200b50f8860f475cbcb6fbd"
 }

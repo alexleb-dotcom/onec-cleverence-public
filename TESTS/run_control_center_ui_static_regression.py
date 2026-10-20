@@ -56,7 +56,7 @@ try:
     enum=re.search(r"internal enum WorkerAction\s*\{([^}]+)\}",client,re.S)
     rec("typed_worker_enum_present", enum is not None)
     actions={x.strip() for x in enum.group(1).replace("\n"," ").split(",") if x.strip()}
-    expected={"UiContext","Apply","Verify","Repair","Start","Continue","Stop","Update","AddProject","AddParticipant","SetMain","AddExtension","PrepareSourceUpdate","AcceptSourceUpdate","CancelSourceUpdate"}
+    expected={"UiContext","Apply","Verify","Repair","Start","Continue","Stop","Update","AddProject","AddParticipant","SetMain","AddExtension","PrepareSourceUpdate","AcceptSourceUpdate","CancelSourceUpdate","SyncExtension"}
     rec("typed_worker_actions_exact",actions==expected,sorted(actions))
     rec("typed_process_arguments_no_shell_concat","ArgumentList.Add" in client and "cmd.exe" not in client and " -Command " not in client)
     rec("no_password_capture",not re.search(r"PasswordBox|NetworkCredential|SecureString|savecred|CredentialManager|OneCSourceReader password",all_ui,re.I))
