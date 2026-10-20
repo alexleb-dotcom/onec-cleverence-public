@@ -9,7 +9,7 @@ internal enum WorkerAction
 {
     UiContext, Apply, Verify, Repair, Start, Continue, Stop, Update,
     AddProject, AddParticipant, SetMain, AddExtension,
-    PrepareSourceUpdate, AcceptSourceUpdate, CancelSourceUpdate
+    PrepareSourceUpdate, AcceptSourceUpdate, CancelSourceUpdate, SyncExtension
 }
 
 internal sealed record WorkerActionArgs(
@@ -52,6 +52,7 @@ internal sealed class WorkerClient : IWorkerClient
             [WorkerAction.AddParticipant] = "ADD_PARTICIPANT",
             [WorkerAction.SetMain] = "SET_MAIN",
             [WorkerAction.AddExtension] = "ADD_EXTENSION",
+            [WorkerAction.SyncExtension] = "SYNC_EXTENSION",
             [WorkerAction.PrepareSourceUpdate] = "PREPARE_SOURCE_UPDATE",
             [WorkerAction.AcceptSourceUpdate] = "ACCEPT_SOURCE_UPDATE",
             [WorkerAction.CancelSourceUpdate] = "CANCEL_SOURCE_UPDATE"
@@ -76,6 +77,9 @@ internal sealed class WorkerClient : IWorkerClient
 
     internal ProcessStartInfo CreateStartInfo(WorkerAction action, WorkerActionArgs args, bool elevated)
     {
+        if (action == WorkerAction.SyncExtension &&
+            (string.IsNullOrWhiteSpace(args.ProjectId) || string.IsNullOrWhiteSpace(args.ParticipantId) || string.IsNullOrWhiteSpace(args.ExtensionId)))
+            throw new InvalidOperationException("SYNC_EXTENSION_IDENTITY_REQUIRED");
         if ((action is WorkerAction.AcceptSourceUpdate or WorkerAction.CancelSourceUpdate) &&
             (string.IsNullOrWhiteSpace(args.ExpectedGenerationId) || string.IsNullOrWhiteSpace(args.ExpectedArtifactKey)))
             throw new InvalidOperationException("SOURCE_UPDATE_EXPECTED_IDENTITY_REQUIRED");
@@ -93,7 +97,7 @@ internal sealed class WorkerClient : IWorkerClient
         };
         if (!elevated)
         {
-            psi.StandardOutputEncoding = new UTF8Encoding(false);
+            psi.StandardOutputEncoding = new UTF8Encoding(false, true);
             psi.StandardErrorEncoding = new UTF8Encoding(false);
         }
         Add(psi, "-NoProfile");
@@ -140,8 +144,18 @@ internal sealed class WorkerClient : IWorkerClient
             var stdoutTask = process.StandardOutput.ReadToEndAsync(token);
             var stderrTask = process.StandardError.ReadToEndAsync(token);
             await process.WaitForExitAsync(token);
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
+            string stdout;
+            string stderr;
+            try
+            {
+                stdout = await stdoutTask;
+                stderr = await stderrTask;
+            }
+            catch (DecoderFallbackException)
+            {
+                // Do not silently replace valid owner-provided Unicode with U+FFFD.
+                return new(2, null, "", "WORKER_OUTPUT_NOT_UTF8");
+            }
             JsonObject? json = null;
             if (!string.IsNullOrWhiteSpace(stdout))
             {

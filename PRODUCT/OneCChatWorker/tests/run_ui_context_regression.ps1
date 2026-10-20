@@ -101,6 +101,51 @@ try {
   $selectionAfter=@(Get-ChildItem -LiteralPath $s.path -Recurse -File|ForEach-Object{$_.FullName+'|'+$_.Length+'|'+$_.LastWriteTimeUtc.Ticks})
   Rec 'selection_context_never_mutates_state' (($selectionBefore -join '|') -eq ($selectionAfter -join '|')) ''
   Rec 'main_payload_locked_through_all_context_reads' ($null -ne $mainHandle -and $mainHandle.CanRead) ''
+
+  # FA T5/T6: real read-only launcher and canonical summaries, synthetic files only.
+  $incoming=Join-Path $worker 'P1\Incoming'
+  New-Item -ItemType Directory -Force -Path $incoming|Out-Null
+  $statePath=Join-Path $incoming 'fixture-state.json'
+  $activePath=Join-Path $incoming 'active-source-update.json'
+  $promotionPath=Join-Path $incoming 'promotion-source-update.json'
+  $admissionPath=Join-Path $pd 'runtime\active-admission.json'
+  $operationPath=Join-Path $pd 'operations\current-operation.json'
+  function Write-FixtureJson($path,$value){[IO.File]::WriteAllText($path,($value|ConvertTo-Json -Depth 20),[Text.UTF8Encoding]::new($false))}
+  function Probe-UpdateGate([string]$name,[string]$stage,[string]$admissionProject,[string]$promotion,[bool]$recovery,[bool]$accept,[bool]$cancel,[string]$acceptReason,[string]$cancelReason){
+    foreach($path in @($activePath,$promotionPath,$admissionPath,$operationPath)){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}}
+    if($stage -ne 'NONE'){
+      Write-FixtureJson $statePath @{schema='SOURCE_UPDATE_V1';project_id='P1';generation_id='fixture-generation';state=$stage;selected=@();created_utc='2026-10-20T00:00:00Z'}
+      Write-FixtureJson $activePath @{schema='SOURCE_UPDATE_ACTIVE_V1';project_id='P1';generation_id='fixture-generation';state_path=$statePath}
+      if($stage -eq 'CORRUPT'){[IO.File]::WriteAllText($statePath,'{invalid')}
+      if($stage -eq 'MISSING'){Remove-Item -LiteralPath $statePath}
+    }
+    if($admissionProject){$admission.project_id=$admissionProject;Write-FixtureJson $admissionPath $admission}
+    if($promotion){[IO.File]::WriteAllText($promotionPath,$promotion)}
+    if($recovery){New-Item -ItemType Directory -Force -Path (Split-Path $operationPath)|Out-Null;Write-FixtureJson $operationPath @{state='RUNNING';operation_type='SOURCE_UPDATE_ACCEPT';project_id='P1'}}
+    $beforeGate=@(Get-ChildItem -LiteralPath $s.path -Recurse -File|ForEach-Object{$_.FullName+'|'+$_.Length+'|'+$_.LastWriteTimeUtc.Ticks})
+    $gateRaw=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -Mode UI_CONTEXT -ProjectId P1 -Json -WorkerRoot $worker -ProgramDataRoot $pd
+    if($LASTEXITCODE-ne0){throw ('GATE_CONTEXT_FAILED:'+ $name)}
+    $gate=($gateRaw -join [Environment]::NewLine)|ConvertFrom-Json
+    Rec ($name+'_accept') ($gate.actions.accept_source_update.enabled -eq $accept -and $gate.actions.accept_source_update.reason -eq $acceptReason) ($gate.actions.accept_source_update|ConvertTo-Json -Compress)
+    Rec ($name+'_cancel') ($gate.actions.cancel_source_update.enabled -eq $cancel -and $gate.actions.cancel_source_update.reason -eq $cancelReason) ($gate.actions.cancel_source_update|ConvertTo-Json -Compress)
+    $afterGate=@(Get-ChildItem -LiteralPath $s.path -Recurse -File|ForEach-Object{$_.FullName+'|'+$_.Length+'|'+$_.LastWriteTimeUtc.Ticks})
+    Rec ($name+'_read_only') (($beforeGate -join '|') -eq ($afterGate -join '|') -and $mainHandle.CanRead) ''
+  }
+  Probe-UpdateGate 'T5_prepared_same_admission_can_validate' 'PREPARED_WRITABLE' 'P1' '' $false $true $true 'AVAILABLE' 'AVAILABLE'
+  Probe-UpdateGate 'T5_validated_same_admission_waits' 'SEALED_VALIDATED' 'P1' '' $false $false $true 'PROJECT_ADMISSION_ACTIVE' 'AVAILABLE'
+  Probe-UpdateGate 'T5_explicit_admission_end_enables_accept' 'SEALED_VALIDATED' '' '' $false $true $true 'AVAILABLE' 'AVAILABLE'
+  Probe-UpdateGate 'other_project_admission_does_not_block' 'SEALED_VALIDATED' 'NeoHim' '' $false $true $true 'AVAILABLE' 'AVAILABLE'
+  foreach($stage in @('PREPARED_WRITABLE','SEALED_VALIDATED','SEALED','INVALID','NONE','CORRUPT','MISSING')){
+    $valid=$stage -in @('PREPARED_WRITABLE','SEALED_VALIDATED')
+    $cancelValid=$stage -in @('PREPARED_WRITABLE','SEALED_VALIDATED','SEALED')
+    $reason=if($stage -eq 'NONE'){'NO_SOURCE_UPDATE'}elseif($stage -in @('CORRUPT','MISSING')){'RECOVERY_REQUIRED'}else{'SOURCE_UPDATE_STATE_INVALID'}
+    Probe-UpdateGate ('stage_'+$stage) $stage '' '' $false $valid $cancelValid $(if($valid){'AVAILABLE'}else{$reason}) $(if($cancelValid){'AVAILABLE'}else{$reason})
+    Probe-UpdateGate ('T6_owner_recovery_'+$stage) $stage '' '' $true $false $false 'RECOVERY_REQUIRED' 'RECOVERY_REQUIRED'
+    foreach($marker in @('{"state":"PROMOTING"}','{broken')){
+      Probe-UpdateGate ('T6_promotion_'+$stage+'_'+$marker.Length) $stage '' $marker $false $false $false 'RECOVERY_REQUIRED' 'RECOVERY_REQUIRED'
+    }
+  }
+
   Write-Host ("UI_CONTEXT_REGRESSION_PASS checks={0}" -f $results.Count)
   $results|ConvertTo-Json -Depth 8
 } finally {

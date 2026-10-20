@@ -59,7 +59,15 @@ function Require-AdminOrRelaunch {
  exit $p.ExitCode
 }
 function Need([string]$Value,[string]$Name){if([string]::IsNullOrWhiteSpace($Value)){throw "ARG_REQUIRED: $Name"};$Value}
-function Show-JsonValue($Value){$Value|ConvertTo-Json -Depth 30}
+function Show-JsonValue($Value){
+ # Bypass Windows PowerShell 5.1 OEM console encoding for machine-readable JSON.
+ # Console.OutputEncoding alone does not consistently control -File stdout pipes.
+ $text=$Value|ConvertTo-Json -Depth 30
+ $bytes=[Text.UTF8Encoding]::new($false).GetBytes([string]$text+[Environment]::NewLine)
+ $stream=[Console]::OpenStandardOutput()
+ $stream.Write($bytes,0,$bytes.Length)
+ $stream.Flush()
+}
 function Show-Value($Value){
  if($Json){Show-JsonValue $Value;return}
  if($script:InGuidedMenu -and -not $script:InAdvancedMenu){return}
@@ -368,6 +376,9 @@ function Run-SyncExtension {
   param($op)
   $null=Update-WorkerOperation -Operation $op -Message 'Check accepted identity, admission and source/target SHA256' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
   $x=Sync-ExistingWorkerExtension -ProjectId $project -ParticipantId $participant -ExtensionId $extension -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+  # Keep the bounded native outcome on the existing operation, including history,
+  # so an elevated caller without stdout can verify fresh canonical readback.
+  $op|Add-Member -NotePropertyName sync_extension_result -NotePropertyValue ([pscustomobject]@{status=$x.status;artifact_key=$x.artifact_key;generation_id=$x.generation_id;source_snapshot_id=$x.source_snapshot_id}) -Force
   $message=$(if($x.status -eq 'NO_CHANGE'){'Identical extension: skipped, no generation'}elseif($x.status -eq 'READY'){'Selected extension published and Source accepted'}else{'Selected source prepared/sealed; explicit recovery or admission action required'})
   $state=$(if($x.status -eq 'WAITING_FOR_USER'){'WAITING_FOR_USER'}else{'PASS'})
   $null=Update-WorkerOperation -Operation $op -Message $message -Step 3 -Total 3 -State $state -SafeDetails @{status=$x.status;generation_id=$x.generation_id;artifact_key=$x.artifact_key;source_snapshot_id=$x.source_snapshot_id} -ProgramDataRoot $ProgramDataRoot
@@ -635,7 +646,17 @@ function Get-UiContext {
   $guided=[pscustomobject]@{state='PROJECT_SELECTION_REQUIRED';recommended='Choose project';reason='Choose the project explicitly before starting access.'}
  }
  $sourceUpdate=if($selectedProjectId){Get-SourceUpdateSummary -ProjectId $selectedProjectId -WorkerRoot $WorkerRoot}else{$null}
+ if($sourceUpdate){$sourceUpdate|Add-Member -NotePropertyName project_id -NotePropertyValue $selectedProjectId -Force}
  $updateActive=$sourceUpdate -and $sourceUpdate.status -ne 'NONE'
+ # Read-only projection of the native owner gates. A prepared generation can be
+ # sealed/validated during admission; publication waits for that project's admission.
+ $updateStage=[string]$sourceUpdate.status
+ $updateRecovery=([bool]$sourceUpdate.promotion_state -or $updateStage -eq 'RECOVERY_REQUIRED' -or [string]$status.operation_recovery.classification -eq 'RECOVERY_REQUIRED')
+ $sameProjectAdmission=($active -and [string]$active.project_id -eq $selectedProjectId)
+ $updateReasons=@{accept_source_update='AVAILABLE';cancel_source_update='AVAILABLE'}
+ foreach($action in @('accept_source_update','cancel_source_update')){
+  $updateReasons[$action]=if(-not $selectedProject){'PROJECT_SELECTION_REQUIRED'}elseif($updateRecovery){'RECOVERY_REQUIRED'}elseif(-not $updateActive){'NO_SOURCE_UPDATE'}elseif($updateStage -notin @('PREPARED_WRITABLE','SEALED','SEALED_VALIDATED')){'SOURCE_UPDATE_STATE_INVALID'}elseif($action -eq 'accept_source_update' -and $updateStage -eq 'SEALED'){'SOURCE_UPDATE_STATE_INVALID'}elseif($action -eq 'accept_source_update' -and $updateStage -eq 'SEALED_VALIDATED' -and $sameProjectAdmission){'PROJECT_ADMISSION_ACTIVE'}else{'AVAILABLE'}
+ }
  $state=[string]$guided.state
  $actions=[ordered]@{}
  $enabled=[ordered]@{
@@ -646,10 +667,12 @@ function Get-UiContext {
   verify=($selectedProject -and -not $updateActive -and $state -eq 'PROJECT_NEEDS_VERIFY')
   repair=($selectedProject -and $state -eq 'PROJECT_NEEDS_VERIFY')
   update=$true;add_project=$true
+  sync_extension=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $active -and -not $updateActive -and -not $sourceUpdate.promotion_state -and $status.operation_recovery.classification -ne 'RECOVERY_REQUIRED' -and @($sourceArtifacts|Where-Object {$_.artifact_type -ceq 'EXTENSION'}).Count -gt 0)
   prepare_source_update=($selectedProject -and $selectedProject.fast_state -eq 'ACCEPTED' -and -not $updateActive -and $sourceArtifacts.Count -gt 0)
-  accept_source_update=([bool]$updateActive);cancel_source_update=([bool]$updateActive)
+  accept_source_update=($updateReasons.accept_source_update -eq 'AVAILABLE');cancel_source_update=($updateReasons.cancel_source_update -eq 'AVAILABLE')
  }
  foreach($key in $enabled.Keys){$actions[$key]=[pscustomobject]@{enabled=[bool]$enabled[$key];reason=$(if($enabled[$key]){'AVAILABLE'}elseif($key -eq 'stop'){'NO_ACTIVE_SESSION'}elseif($key -eq 'continue'){'NO_VERIFIED_CONTINUATION'}elseif($active -and $key -eq 'start'){'SESSION_ALREADY_EXISTS'}elseif(-not $selectedProject){'PROJECT_SELECTION_REQUIRED'}elseif($key -in @('accept_source_update','cancel_source_update') -and -not $updateActive){'NO_SOURCE_UPDATE'}elseif($updateActive){'SOURCE_UPDATE_ACTIVE'}elseif($key -in @('verify','repair') -and $state -eq 'PROJECT_READY'){'VERIFICATION_NOT_REQUIRED'}elseif($key -eq 'prepare_source_update' -and -not $sourceArtifacts.Count){'NO_ARTIFACTS'}else{$state})}}
+ foreach($key in $updateReasons.Keys){$actions[$key].reason=$updateReasons[$key]}
  [pscustomobject]@{
   schema='UI_CONTEXT_V1';generated_utc=(Get-Date).ToUniversalTime().ToString('o');bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1'
   product=[pscustomobject]@{version=$status.product_version;installed=$status.installed;integrity_status=$status.installed_integrity.status;update_status='NOT_CHECKED_NO_NETWORK_SIDE_EFFECT'}

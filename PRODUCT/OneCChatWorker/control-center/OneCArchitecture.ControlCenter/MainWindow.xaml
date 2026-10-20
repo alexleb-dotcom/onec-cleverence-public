@@ -1,4 +1,4 @@
-<Window x:Class="OneCArchitecture.ControlCenter.MainWindow"
+﻿<Window x:Class="OneCArchitecture.ControlCenter.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
@@ -174,13 +174,21 @@
                 <TextBlock x:Name="SourceUpdateTitleLabel" Text="Incoming Source update" FontWeight="SemiBold"/>
                 <TextBlock x:Name="SourceUpdateStatusText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,7,0,12"/>
                 <TextBlock x:Name="SourceUpdateSelectLabel" Text="Artifact" FontWeight="SemiBold"/>
-                <ComboBox x:Name="SourceArtifactCombo" DisplayMemberPath="Display" Margin="0,7,0,10" MinWidth="420" AutomationProperties.Name="Source update artifact"/>
+                <ComboBox x:Name="SourceArtifactCombo" SelectionChanged="SourceArtifact_SelectionChanged" Margin="0,7,0,10" MinWidth="420" AutomationProperties.Name="Source update artifact">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Display}" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button x:Name="SyncExtensionButton" Style="{StaticResource PrimaryButton}" Content="Update selected extension" Click="SyncExtension_Click" IsEnabled="False" HorizontalAlignment="Left" ToolTipService.ShowOnDisabled="True"/>
+                <TextBlock x:Name="SyncExtensionHelpText" TextWrapping="Wrap" Margin="0,7,0,10" Foreground="{DynamicResource MutedTextBrush}"/>
+                <TextBlock x:Name="SourceSyncResultText" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <Expander x:Name="SourceAdvancedExpander" Foreground="{DynamicResource TextBrush}">
+                <Expander.Header><TextBlock x:Name="SourceAdvancedLabel" Text="Advanced: manual Incoming update" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/></Expander.Header>
                 <WrapPanel>
                   <Button x:Name="PrepareSourceUpdateButton" Content="Prepare update folder" Click="PrepareSourceUpdate_Click" IsEnabled="False"/>
                   <Button x:Name="OpenIncomingButton" Content="Open prepared folder" Click="OpenIncoming_Click" IsEnabled="False" Margin="8,4,0,4"/>
                   <Button x:Name="AcceptSourceUpdateButton" Content="Accept update" Click="AcceptSourceUpdate_Click" IsEnabled="False" Margin="8,4,0,4"/>
                   <Button x:Name="CancelSourceUpdateButton" Content="Cancel update" Click="CancelSourceUpdate_Click" IsEnabled="False" Margin="8,4,0,4"/>
                 </WrapPanel>
+                </Expander>
               </StackPanel>
             </Border>
             <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">

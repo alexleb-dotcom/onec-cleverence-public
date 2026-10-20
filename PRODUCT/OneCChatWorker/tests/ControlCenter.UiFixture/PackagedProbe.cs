@@ -112,7 +112,9 @@ $ErrorActionPreference='Stop'
 if($WorkerRoot -ne $PSScriptRoot -or $ProgramDataRoot -ne $PSScriptRoot){throw 'FIXTURE_ROOT_MISMATCH'}
 if($Mode -eq 'UI_CONTEXT') {
  $file=if($ProjectId -eq 'RetailGroup'){'RetailGroup.json'}elseif($ProjectId -eq 'NeoHim'){'NeoHim.json'}else{'unselected.json'}
- [Console]::Write([IO.File]::ReadAllText((Join-Path $PSScriptRoot $file))); exit 0
+ $body=[IO.File]::ReadAllText((Join-Path $PSScriptRoot $file),[Text.Encoding]::UTF8)
+ $bytes=[Text.UTF8Encoding]::new($false).GetBytes($body)
+ [Console]::OpenStandardOutput().Write($bytes,0,$bytes.Length); exit 0
 }
 if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_REJECTED'}
 # Capture only: never load a worker module, reserve admission or execute START.
@@ -122,10 +124,29 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
         foreach (var id in new[] { "unselected", "NeoHim", "RetailGroup" })
         {
             var ctx = FixtureWorker.Context(id == "unselected" ? null : id);
+            // Owner-provided Unicode must round-trip across REAL powershell.exe -File,
+            // WorkerClient UTF-8 capture, JsonNode, and the packaged WPF automation tree.
+            foreach (var project in ctx["projects"]!.AsArray().OfType<JsonObject>())
+                project["display_name"] = project["project_id"]!.GetValue<string>() + " — ТОЛЬКО ТЕСТ";
+            if (ctx["selected_project"] is JsonObject selected)
+                selected["display_name"] = selected["project_id"]!.GetValue<string>() + " — ТОЛЬКО ТЕСТ";
             // Disable every mutation except a fake START; wizard cancellation is UI-only.
             foreach (var action in ctx["actions"]!.AsObject()) if (action.Key is not ("start" or "add_project")) action.Value!["enabled"] = false;
+            if (id == "RetailGroup")
+            {
+                // No source trees or native owner: UI selection gates only. This
+                // lane must stay usable without administrator or OS consent.
+                ctx["source"]!["artifacts"] = JsonNode.Parse("""
+                [{"key":"fixture|MAIN|main","participant_id":"fixture","artifact_type":"MAIN","artifact_id":"main"},
+                 {"key":"fixture|EXTENSION|testext","participant_id":"fixture","artifact_type":"EXTENSION","artifact_id":"testext"}]
+                """);
+                ctx["actions"]!["sync_extension"] = new JsonObject { ["enabled"] = true, ["reason"] = "AVAILABLE" };
+            }
             ctx["operation"] = new JsonObject { ["current"] = new JsonObject { ["operation_type"] = "UPDATE", ["state"] = "PASS" } };
-            File.WriteAllText(Path.Combine(scratch, id + ".json"), ctx.ToJsonString());
+            File.WriteAllText(Path.Combine(scratch, id + ".json"),
+                ctx.ToJsonString(new JsonSerializerOptions {
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                }), new System.Text.UTF8Encoding(false));
         }
         File.WriteAllText(Path.Combine(scratch, "preferences.json"), """{"Language":"ru","Theme":"dark","StartWithWindows":false}""");
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = scratch };
@@ -144,6 +165,10 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
             Wait(() => GetForegroundWindow() == Window, "owned foreground");
             Shot(Path.Combine(evidence, "packaged-ru-dark-Home.png"));
             Page("NavProjectsButton", Localization.Get("NavProjects"));
+            var projectElements = Find("ProjectsList").FindAll(TreeScope.Descendants, Condition.TrueCondition);
+            Assert(projectElements.Cast<AutomationElement>().Any(x =>
+                x.Current.Name.Contains("RetailGroup — ТОЛЬКО ТЕСТ", StringComparison.Ordinal)),
+                "real packaged WPF preserves owner-provided Cyrillic and em dash, no U+FFFD");
             TabTo("ProjectsList"); Key(40); Key(40);
             Wait(() => Find("SelectedProjectText").Current.Name.Contains("RetailGroup"), "RetailGroup canonical selection");
             // Selecting a project refreshes context asynchronously. Focus must remain
@@ -161,11 +186,24 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
             Page("NavMaintenanceButton", Localization.Get("NavMaintenance"));
             Assert(Find("OperationText").Current.Name.Contains(Localization.Get("Verified")) && Find("HelperBadge").Current.Name.Contains(Localization.Get("Offline")), "F-G UPDATE PASS is not helper connectivity");
             Shot(Path.Combine(evidence, "packaged-ru-dark-update-pass-helper-offline-Maintenance.png"));
+            TabTo("SourceArtifactCombo"); Key(36); // Home selects Main.
+            Wait(() => !Find("SyncExtensionButton").Current.IsEnabled, "Main cannot sync");
+            Assert(FocusWithin("SourceArtifactCombo"), "Main selected through actual combo keyboard input");
+            Key(35); // End selects the only synthetic extension.
+            Wait(() => Find("SyncExtensionButton").Current.IsEnabled, "selected extension can sync");
+            Assert(FocusWithin("SourceArtifactCombo"), "extension selected through actual combo keyboard input");
+            TabTo("SyncExtensionButton");
+            Shot(Path.Combine(evidence, "packaged-ru-dark-SYNC-keyboard-focus-Maintenance.png"));
+            // Do not press Space here: the real packaged handler requests runas.
+            // An unattended UI-only lane cannot provide or cancel OS consent.
+            Assert(File.ReadAllLines(capture).Length == 1, "source selection/focus dispatches no mutation");
             File.WriteAllText(Path.Combine(evidence, "packaged-result.json"), JsonSerializer.Serialize(new {
                 result="PASS", executable_sha256=sha, pid=Owned.Id, process_executable="isolated copy of distributed EXE",
                 native_hwnd_capture=true, keyboard="Tab / arrows / Enter / Space through native key events", trace=Trace,
                 captured_start=JsonNode.Parse(File.ReadAllText(capture)), fixture_owner=true, production_access=false,
-                limitations=new[]{"No production execution; no physical multi-monitor DPI migration tested."}
+                source_combo_keyboard_selection=true, sync_button_keyboard_focus=true,
+                sync_keyboard_activation="NOT_PROVED", elevated_canonical_readback="NOT_PROVED", os_uac="NOT_PROVED",
+                limitations=new[]{"Synthetic owner; Sync activation requires separate human OS consent test. No source publication proven.", "No production execution; no physical multi-monitor DPI migration tested."}
             }, new JsonSerializerOptions { WriteIndented=true }));
             return 0;
         }

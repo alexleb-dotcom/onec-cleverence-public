@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Diagnostics;
 using System.Text.Json;
@@ -109,6 +109,9 @@ public partial class MainWindow : Window
         DiagnosticsLabel.Text = Localization.Get("Diagnostics");
         SourceUpdateTitleLabel.Text = Localization.Get("SourceUpdateTitle");
         SourceUpdateSelectLabel.Text = Localization.Get("SourceUpdateArtifact");
+        SyncExtensionButton.Content = Localization.Get("SyncExtension");
+        SourceAdvancedLabel.Text = Localization.Get("SourceAdvanced");
+        if (SourceSyncResultText.Tag is string resultKey) SourceSyncResultText.Text = Localization.Get(resultKey);
         PrepareSourceUpdateButton.Content = Localization.Get("PrepareSourceUpdate");
         OpenIncomingButton.Content = Localization.Get("OpenIncoming");
         AcceptSourceUpdateButton.Content = Localization.Get("AcceptSourceUpdate");
@@ -168,6 +171,10 @@ public partial class MainWindow : Window
                 ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
                 return;
             }
+            // A poll begun before a mutation may finish after its fresh readback.
+            // Keep the newer canonical projection instead of restoring an old generation.
+            if (DateTimeOffset.TryParse(Text(_context, "generated_utc"), out var currentUtc) &&
+                DateTimeOffset.TryParse(Text(result.Json, "generated_utc"), out var responseUtc) && responseUtc < currentUtc) return;
             _context = result.Json;
             _contextReady = true;
             if (_selectedProjectId is null) _selectedProjectId = Text(result.Json, "selected_project", "project_id");
@@ -219,6 +226,11 @@ public partial class MainWindow : Window
         var recommendationState = Text(ctx, "recommendation", "state") ?? "";
         RecommendationText.Text = RecommendationTitle(recommendationState);
         RecommendationReasonText.Text = Presentation.Reason(recommendationState) + "\n" + Localization.Get("ReadOnlyPreservation");
+        if (SourceSyncResultText.Tag as string == "SyncUnverified")
+        {
+            RecommendationText.Text = Localization.Get("SyncUnverified");
+            RecommendationReasonText.Text = Localization.Get("SyncInspect");
+        }
 
         var projectName = Text(ctx, "selected_project", "display_name") ?? Localization.Get("ChooseProject");
         var workProjectId = Text(ctx, "work", "project_id");
@@ -301,8 +313,12 @@ public partial class MainWindow : Window
                 artifacts.Add(new(key, display, participantId, artifactType, artifactId, files, bytes));
             }
         }
-        SourceArtifactCombo.ItemsSource = artifacts;
-        SourceArtifactCombo.SelectedItem = artifacts.FirstOrDefault(a => a.Key == previousArtifactKey) ?? artifacts.FirstOrDefault();
+        _applyingContext = true;
+        if (SourceArtifactCombo.ItemsSource is not ObservableCollection<ArtifactRow> currentArtifacts ||
+            !currentArtifacts.SequenceEqual(artifacts)) SourceArtifactCombo.ItemsSource = artifacts;
+        SourceArtifactCombo.SelectedItem = SourceArtifactCombo.Items.OfType<ArtifactRow>().FirstOrDefault(a => a.Key == previousArtifactKey)
+            ?? SourceArtifactCombo.Items.OfType<ArtifactRow>().FirstOrDefault();
+        _applyingContext = false;
 
         var activities = new ObservableCollection<ActivityRow>();
         if (Node(ctx, "s4", "projection", "activity", "events") is JsonArray events)
@@ -341,6 +357,7 @@ public partial class MainWindow : Window
         var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
         SourceUpdateStatusText.Text = updateStatus == "NONE"
             ? $"{Localization.Get("SourceUpdateNone")} {Localization.Get("SourceUpdateChoose")}"
+            : updateStatus == "PREPARED_WRITABLE" ? Localization.Get("SourceFolderPrepared")
             : $"{Localization.Get("SourceUpdateTitle")}: {Presentation.Status(updateStatus)}";
 
         AdvancedText.Text = ctx.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
@@ -358,7 +375,7 @@ public partial class MainWindow : Window
 
         var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
         var sourceUpdateActive = updateStatus != "NONE";
-        var slotPath = FirstSourceUpdateSlotPath(ctx);
+        var slotPath = SelectedSourceUpdateSlotPath(ctx);
 
         foreach (var (button, key) in ActionButtons())
         {
@@ -374,7 +391,16 @@ public partial class MainWindow : Window
                 .Select(p => $"{p.Button.Content}: {p.Button.ToolTip}"));
         MaintenanceAvailabilityText.Text = string.Join("\n", ActionButtons().Where(p => p.Key is "apply" or "verify" or "repair" or "prepare_source_update" or "accept_source_update" or "cancel_source_update" && p.Button != ApplyButton && !p.Button.IsEnabled)
             .Select(p => $"{p.Button.Content}: {p.Button.ToolTip}"));
-        OpenIncomingButton.IsEnabled = sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath) && Directory.Exists(slotPath);
+        var selectedUpdate = ObservedSourceUpdateArgs();
+        AcceptSourceUpdateButton.IsEnabled &= selectedUpdate is not null;
+        CancelSourceUpdateButton.IsEnabled &= selectedUpdate is not null;
+        PrepareSourceUpdateButton.IsEnabled &= SelectedArtifactMatches(ctx);
+        SyncExtensionButton.IsEnabled &= SyncExtensionArgs() is not null;
+        SyncExtensionHelpText.Text = SyncExtensionButton.IsEnabled ? Localization.Get("SyncExtensionHelp")
+            : !_mutationsEnabled ? Localization.Get("ActionInProgress") : Localization.Get("SyncExtensionBlocked");
+        SyncExtensionButton.ToolTip = SyncExtensionHelpText.Text;
+        System.Windows.Automation.AutomationProperties.SetHelpText(SyncExtensionButton, SyncExtensionHelpText.Text);
+        OpenIncomingButton.IsEnabled = _contextReady && sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath);
         OpenIncomingButton.ToolTip = Localization.Get("IncomingUnavailable");
         HomeOpenSourceButton.ToolTip = OpenSourceButton.ToolTip = Localization.Get("SourceUnavailable");
         HomeOpenOutputButton.ToolTip = Localization.Get("OutputUnavailable");
@@ -383,7 +409,7 @@ public partial class MainWindow : Window
     private IEnumerable<(System.Windows.Controls.Button Button, string Key)> ActionButtons() =>
     [ (StartButton, "start"), (ContinueButton, "continue"), (StopButton, "stop"), (HomeStopButton, "stop"),
       (ApplyButton, "apply"), (MaintenanceApplyButton, "apply"), (VerifyButton, "verify"), (RepairButton, "repair"),
-      (UpdateButton, "update"), (AddProjectButton, "add_project"), (PrepareSourceUpdateButton, "prepare_source_update"),
+      (SyncExtensionButton, "sync_extension"), (UpdateButton, "update"), (AddProjectButton, "add_project"), (PrepareSourceUpdateButton, "prepare_source_update"),
       (AcceptSourceUpdateButton, "accept_source_update"), (CancelSourceUpdateButton, "cancel_source_update") ];
 
     private void DisableActions(string reason)
@@ -405,14 +431,124 @@ public partial class MainWindow : Window
         RecommendationReasonText.Text = "";
         SourceStateText.Text = SourceUpdateStatusText.Text = Localization.Get("UnknownState");
         SourceArtifactCombo.ItemsSource = null;
+        SourceSyncResultText.Tag = null; SourceSyncResultText.Text = "";
         DisableActions(Localization.Get("LoadingProject"));
         await RefreshContextAsync();
     }
 
-    private static string? FirstSourceUpdateSlotPath(JsonObject ctx)
+    private bool SelectedArtifactMatches(JsonObject ctx) =>
+        _contextReady && Text(ctx, "selected_project", "project_id") == _selectedProjectId &&
+        SourceArtifactCombo.SelectedItem is ArtifactRow a &&
+        a.Key == $"{a.ParticipantId}|{a.ArtifactType}|{a.ArtifactId}" &&
+        (Node(ctx, "source", "artifacts") as JsonArray)?.OfType<JsonObject>().Count(n =>
+            Text(n, "key") == a.Key && Text(n, "participant_id") == a.ParticipantId &&
+            Text(n, "artifact_type") == a.ArtifactType && Text(n, "artifact_id") == a.ArtifactId) == 1;
+
+    private WorkerActionArgs? SyncExtensionArgs()
     {
-        if (Node(ctx, "source", "source_update", "slots") is not JsonArray slots) return null;
-        return slots.OfType<JsonObject>().Select(s => Text(s, "slot_path")).FirstOrDefault(p => !string.IsNullOrWhiteSpace(p));
+        if (_context is not { } ctx || !SelectedArtifactMatches(ctx) ||
+            SourceArtifactCombo.SelectedItem is not ArtifactRow { ArtifactType: "EXTENSION" } a ||
+            Text(ctx, "source", "state") != "ACCEPTED" || Bool(ctx, "work", "active") ||
+            Text(ctx, "source", "source_update", "status") != "NONE" ||
+            !string.IsNullOrWhiteSpace(Text(ctx, "source", "source_update", "promotion_state")) ||
+            Text(ctx, "operation", "recovery", "classification") == "RECOVERY_REQUIRED" ||
+            !Bool(ctx, "actions", "sync_extension", "enabled")) return null;
+        return new(ProjectId: _selectedProjectId, ParticipantId: a.ParticipantId, ExtensionId: a.ArtifactId);
+    }
+
+    private string? SelectedSourceUpdateSlotPath(JsonObject ctx)
+    {
+        var expected = ObservedSourceUpdateArgs();
+        if (expected is null || Node(ctx, "source", "source_update", "slots") is not JsonArray slots) return null;
+        return slots.OfType<JsonObject>().Where(s => Text(s, "key") == expected.ExpectedArtifactKey)
+            .Select(s => Text(s, "slot_path")).SingleOrDefault();
+    }
+
+    private void SourceArtifact_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_applyingContext || _context is null) return;
+        SourceSyncResultText.Tag = null; SourceSyncResultText.Text = "";
+        UpdateReadOnlyAvailability(_context);
+    }
+
+    // Pure verification of the existing canonical operation; no file inspection or replay.
+    internal static string? VerifiedSyncOutcome(JsonObject ctx, WorkerActionArgs args,
+        string? previousOperationId, DateTimeOffset requestedUtc, string? previousSnapshot)
+    {
+        var op = Node(ctx, "operation", "last");
+        var result = Node(op, "sync_extension_result");
+        var status = Text(result, "status");
+        var key = $"{args.ParticipantId}|EXTENSION|{args.ExtensionId}";
+        if (Text(ctx, "selected_project", "project_id") != args.ProjectId ||
+            Text(op, "project_id") != args.ProjectId || Text(op, "participant_id") != args.ParticipantId ||
+            Text(op, "artifact_id") != args.ExtensionId || Text(result, "artifact_key") != key ||
+            Text(op, "operation_type") != "SOURCE_UPDATE_QUICK_SYNC" || Text(op, "state") != "PASS" ||
+            string.IsNullOrWhiteSpace(Text(op, "operation_id")) || Text(op, "operation_id") == previousOperationId ||
+            !DateTimeOffset.TryParse(Text(op, "started_utc"), out var started) || started < requestedUtc ||
+            !DateTimeOffset.TryParse(Text(op, "ended_utc"), out var ended) || ended < started ||
+            !DateTimeOffset.TryParse(Text(ctx, "generated_utc"), out var generated) || generated < ended ||
+            Text(ctx, "source", "state") != "ACCEPTED" || Bool(ctx, "work", "active") ||
+            Text(ctx, "source", "source_update", "status") != "NONE" ||
+            !string.IsNullOrWhiteSpace(Text(ctx, "source", "source_update", "promotion_state")) ||
+            Text(ctx, "operation", "recovery", "classification") == "RECOVERY_REQUIRED" ||
+            string.IsNullOrWhiteSpace(Text(result, "source_snapshot_id")) ||
+            Text(result, "source_snapshot_id") != Text(ctx, "source", "snapshot_id") ||
+            (Node(ctx, "source", "artifacts") as JsonArray)?.OfType<JsonObject>().Count(n => Text(n, "key") == key) != 1)
+            return null;
+        if (status == "NO_CHANGE" && Text(result, "source_snapshot_id") == previousSnapshot) return status;
+        if (status == "READY" && !string.IsNullOrWhiteSpace(Text(result, "generation_id")) &&
+            Text(result, "source_snapshot_id") != previousSnapshot) return status;
+        return null;
+    }
+
+    private async void SyncExtension_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_mutationsEnabled || !SyncExtensionButton.IsEnabled || SyncExtensionArgs() is not { } args) return;
+        var previousOperation = Text(_context, "operation", "last", "operation_id");
+        var previousSnapshot = Text(_context, "source", "snapshot_id");
+        var requestedUtc = DateTimeOffset.UtcNow;
+        _mutationsEnabled = false;
+        _timer.Stop();
+        ProjectsList.IsEnabled = SourceArtifactCombo.IsEnabled = false;
+        SourceSyncResultText.Tag = null; SourceSyncResultText.Text = "";
+        DisableActions(Localization.Get("ActionInProgress"));
+        try
+        {
+            var result = await _worker.RunAsync(WorkerAction.SyncExtension, args, elevated: true);
+            // UAC supplies an exit code but no JSON. Always read the native owner again.
+            var readback = await _worker.GetContextAsync(args.ProjectId);
+            string? outcome = null;
+            if (readback.ExitCode == 0 && readback.Json is { } ctx &&
+                Text(ctx, "selected_project", "project_id") == _selectedProjectId && args.ProjectId == _selectedProjectId)
+            {
+                SourceSyncResultText.Tag = null;
+                _context = ctx; _contextReady = true;
+                ApplyContext(ctx);
+                if (result.ExitCode == 0) outcome = VerifiedSyncOutcome(ctx, args, previousOperation, requestedUtc, previousSnapshot);
+            }
+            else ShowContextFailure(readback.ExitCode, readback.StandardError, readback.StandardOutput);
+            SourceSyncResultText.Tag = outcome == "NO_CHANGE" ? "SyncNoChange" : outcome == "READY" ? "SyncReady" : "SyncUnverified";
+            SourceSyncResultText.Text = Localization.Get((string)SourceSyncResultText.Tag);
+            if (outcome is null && _context is not null)
+            {
+                // A generic PROJECT_READY recommendation is not proof of this action.
+                RecommendationText.Text = Localization.Get("SyncUnverified");
+                RecommendationReasonText.Text = Localization.Get("SyncInspect");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowContextFailure(-1, ex.ToString(), "");
+            SourceSyncResultText.Tag = "SyncUnverified";
+            SourceSyncResultText.Text = Localization.Get("SyncUnverified");
+        }
+        finally
+        {
+            _mutationsEnabled = true;
+            ProjectsList.IsEnabled = SourceArtifactCombo.IsEnabled = true;
+            if (_contextReady && _context is not null) UpdateReadOnlyAvailability(_context);
+            if (IsLoaded) _timer.Start();
+        }
     }
 
     private void Nav_Click(object sender, RoutedEventArgs e)
@@ -445,12 +581,12 @@ public partial class MainWindow : Window
     private void OpenOutput_Click(object sender, RoutedEventArgs e) => OpenFolder(Text(_context, "navigation", "output_root"));
     private void OpenIncoming_Click(object sender, RoutedEventArgs e)
     {
-        if (_context is not null) OpenFolder(FirstSourceUpdateSlotPath(_context));
+        if (_context is not null) OpenFolder(SelectedSourceUpdateSlotPath(_context));
     }
 
     private async void PrepareSourceUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null || SourceArtifactCombo.SelectedItem is not ArtifactRow artifact) return;
+        if (!_mutationsEnabled || !PrepareSourceUpdateButton.IsEnabled || _context is null || !SelectedArtifactMatches(_context) || SourceArtifactCombo.SelectedItem is not ArtifactRow artifact) return;
         var projectId = Text(_context, "selected_project", "project_id");
         if (string.IsNullOrWhiteSpace(projectId)) return;
         var result = await _worker.RunAsync(
@@ -462,7 +598,7 @@ public partial class MainWindow : Window
 
     private WorkerActionArgs? ObservedSourceUpdateArgs()
     {
-        if (_context is null) return null;
+        if (_context is null || !SelectedArtifactMatches(_context)) return null;
         var projectId = Text(_context, "selected_project", "project_id");
         var update = _context["source"]?["source_update"] as JsonObject;
         var generation = update?["generation_id"]?.GetValue<string>();
@@ -470,13 +606,14 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(generation) ||
             slots is null || slots.Count != 1) return null;
         var key = slots[0]?["key"]?.GetValue<string>();
-        if (string.IsNullOrWhiteSpace(key)) return null;
+        if (string.IsNullOrWhiteSpace(key) || key != (SourceArtifactCombo.SelectedItem as ArtifactRow)?.Key ||
+            Text(update, "project_id") != projectId || Text(update, "status") == "NONE") return null;
         return new(ProjectId: projectId, ExpectedGenerationId: generation, ExpectedArtifactKey: key);
     }
 
     private async void AcceptSourceUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !_contextReady || _context is null) return;
         var expected = ObservedSourceUpdateArgs();
         if (expected is null) return;
         var result = await _worker.RunAsync(WorkerAction.AcceptSourceUpdate, expected, elevated: true);
@@ -485,7 +622,7 @@ public partial class MainWindow : Window
 
     private async void CancelSourceUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !_contextReady || _context is null) return;
         var expected = ObservedSourceUpdateArgs();
         if (expected is null) return;
         if (System.Windows.MessageBox.Show(Localization.Get("CancelSourceUpdate") + "?", Localization.Get("AppTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
