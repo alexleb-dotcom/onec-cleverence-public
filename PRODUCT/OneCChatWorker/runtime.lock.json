@@ -23,7 +23,7 @@
     "runtime/quality/cc-1c-skills/form-info.ps1": "ad9d6881bf4d6c57c04f17cd76802d2d332afa575117c8d1e87cd7e608ac4727",
     "runtime/quality/cc-1c-skills/form-validate.ps1": "b1ff7204d09d0e7435f035db8670a51a091924b0c3f6e9d40eae67ffb3fb49ec",
     "core/OneCChatWorker.Core.psm1": "0d8d1c9473bf812cfa2afea246c9c81659bd07c8e470aae864b1a6f635f8f6f2",
-    "OneCChatWorker.ps1": "243f2133998ecf0055c2dcffe0cf2d33fd9c76025c0e86f4d7329440d18812f4",
+    "OneCChatWorker.ps1": "d95fb6e955882da28fbf4f72d6f5560541a2c9bf014dbe722e026fa73de05d27",
     "README.md": "f4eb19bfc8acfcda143639b0b2762255d59d3c4fabac5c7ee69720e89caa6a1c",
     "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",
     "control-center/publish/OneCArchitecture.ControlCenter.exe": "591b44c5b3059e6f60ba7504dac31ca09fd4202953f90f1182b476a5b24c07b9",

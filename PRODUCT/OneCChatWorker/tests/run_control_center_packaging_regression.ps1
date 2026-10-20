@@ -20,7 +20,10 @@ $main=Get-Content -LiteralPath (Join-Path $project 'MainWindow.xaml.cs') -Raw -E
 $xaml=Get-Content -LiteralPath (Join-Path $project 'MainWindow.xaml') -Raw -Encoding UTF8
 $publishScript=Get-Content -LiteralPath (Join-Path $PackageRoot 'control-center\publish_control_center.ps1') -Raw -Encoding UTF8
 $core=Get-Content -LiteralPath (Join-Path $PackageRoot 'core\OneCChatWorker.Core.psm1') -Raw -Encoding UTF8
-$launcher=Get-Content -LiteralPath (Join-Path $PackageRoot 'OneCChatWorker.ps1') -Raw -Encoding UTF8
+$launcherPath=Join-Path $PackageRoot 'OneCChatWorker.ps1'
+$launcher=Get-Content -LiteralPath $launcherPath -Raw -Encoding UTF8
+$launcherBytes=[IO.File]::ReadAllBytes($launcherPath)
+Rec 'ps51_launcher_utf8_bom' ($launcherBytes.Length -ge 3 -and $launcherBytes[0] -eq 0xef -and $launcherBytes[1] -eq 0xbb -and $launcherBytes[2] -eq 0xbf) 'UTF-8 BOM required for non-ASCII PowerShell 5.1 script'
 $lock=Read-RuntimeLock -PackageRoot $PackageRoot
 $policy=Get-Content -LiteralPath (Join-Path (Split-Path -Parent (Split-Path -Parent $PackageRoot)) 'TOOLS\SHAREABLE_BINARY_REVIEW_POLICY.json') -Raw -Encoding UTF8|ConvertFrom-Json
 $exe=Join-Path $PackageRoot 'control-center\publish\OneCArchitecture.ControlCenter.exe'
