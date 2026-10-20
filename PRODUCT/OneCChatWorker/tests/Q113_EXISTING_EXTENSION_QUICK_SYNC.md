@@ -33,8 +33,14 @@ separate local `START` operation.
    no recovery marker exists, and **no active admission** exists.
 2. Inspect and SHA-256-hash the external Source and accepted selected
    extension only, rejecting junctions/reparse points and overlapping Source.
-   Compare relative filenames, file lengths, full SHA-256 and directories.
-   If identical, return `NO_CHANGE` without creating any generation.
+   **Before comparing Source with canonical or returning NO_CHANGE**, prove
+   selected canonical bytes against the accepted snapshot's authenticated
+   fingerprint inventory (expected selected JSONL location and SHA-256,
+   every relative file path, size and SHA-256, Configuration.xml SHA-256).
+   If that proof fails, stop with a canonical/fingerprint integrity error.
+   Never read either Main. Compare the external Source and canonical tree
+   by relative paths, file sizes, full SHA-256 and directories only after
+   the accepted proof passes. If identical, return `NO_CHANGE` with no generation.
 3. Otherwise call **existing** `Prepare-SourceUpdate` for the **single**
    exact key, fill only the returned Incoming slot, verify the original
    Source and every staged file after copying, and recheck the admission
@@ -67,7 +73,9 @@ integration is substituted. Both Main trees are held with exclusive
 Windows handles throughout SHA/copy/publish, so a Main read or hash
 throws. The suite tests unchanged skip, changed publish, Main invariance,
 existing-other-extension invariance, folder copy, idempotence, live
-admission refusal, new identity refusal and existing Incoming refusal.
+admission refusal, new identity refusal, existing Incoming refusal,
+canonical and external H1 bytes against accepted H0 (FA false-NO_CHANGE
+counterexample), and modified accepted fingerprint inventory.
 
 The separate real ACL test remains mandatory. Require same-head
 Public Fast, UI, Windows and Full CI and independent FA review
