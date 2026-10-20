@@ -26,7 +26,7 @@
     "OneCChatWorker.ps1": "243f2133998ecf0055c2dcffe0cf2d33fd9c76025c0e86f4d7329440d18812f4",
     "README.md": "f4eb19bfc8acfcda143639b0b2762255d59d3c4fabac5c7ee69720e89caa6a1c",
     "runtime/task-checkpoint-store.mjs": "05093598046481104bfb35ed27152fca44dd4600315c26865e6f49a779a4b348",
-    "control-center/publish/OneCArchitecture.ControlCenter.exe": "f1637bd35a00378fca53c94794e73467f1929c504b5eca27519a73eb0b5bffa3",
+    "control-center/publish/OneCArchitecture.ControlCenter.exe": "591b44c5b3059e6f60ba7504dac31ca09fd4202953f90f1182b476a5b24c07b9",
     "runtime/helper-https-pull.mjs": "b92ec6cda970752419fbc28ccc5fcd8f3b694ba0754de4aba5dc58a447a9255d",
     "runtime/https-pull-auth.mjs": "951d0593afbf0833c979b6f4428e4b56149683bec5b362706d812f8e1d91431f"
   },

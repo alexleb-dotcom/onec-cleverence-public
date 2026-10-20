@@ -455,8 +455,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 30649,
-      "sha256": "d31c30c5e9f0e6689788fd04f25c25f9e4901044284ca3915c30dd9907b703e9"
+      "size": 28447,
+      "sha256": "a487941fa9a335e4d2b82989fc744ca749bbc78a725b9a6017991a9dd0bc8c2d"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "size": 75474409,
-      "sha256": "f1637bd35a00378fca53c94794e73467f1929c504b5eca27519a73eb0b5bffa3"
+      "size": 75474095,
+      "sha256": "591b44c5b3059e6f60ba7504dac31ca09fd4202953f90f1182b476a5b24c07b9"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish_control_center.ps1",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7920,
-      "sha256": "77dfe953cdd5084df535367cf201670416b37bb39491b34e76ac54eb6e0ddb1b"
+      "sha256": "d2b677fb9604f631a80cd41f8c63eeaf6f9b59cdaf2b9ab4f6b6c558942ac345"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -2516,7 +2516,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 2433,
-      "sha256": "e11cd2e215177d596c02dc88f513529cf8d5515ad6adf6927885cb7f27ac302f"
+      "sha256": "dc23943ab775b91f22084e7d4bf98ca8c57e57fbe21b9cf7daa02efda8c4549a"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2830,5 +2830,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "fef785c271101eef26d59adb2f76056d64453a34d644527e30e96a362bf05aef"
+  "snapshot_digest": "560431fb4b60ef812a872cc2c4fe14cf639acf29760bd2fc144408e16a6acc97"
 }
