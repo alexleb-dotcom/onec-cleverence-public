@@ -112,4 +112,5 @@
   <data name="SourceFolderPrepared" xml:space="preserve"><value>Папка подготовлена; проверка выполняется при принятии.</value></data>
   <data name="SourceUpdateAdmissionHelp" xml:space="preserve"><value>Обновление проверено. Явно завершите доступ к этому проекту перед принятием публикации. Доступ не будет остановлен автоматически.</value></data>
   <data name="SourceUpdateStageHelp" xml:space="preserve"><value>Принятие на этом этапе недоступно. Проверьте сведения о восстановлении; для корректного запечатанного обновления доступна явная отмена.</value></data>
+  <data name="HomeNavigationHelp" xml:space="preserve"><value>Перейти к разделу и посмотреть доступные действия.</value></data>
 </root>
