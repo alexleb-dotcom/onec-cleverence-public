@@ -20,6 +20,7 @@ The gate does not read/hash/traverse/copy Source, Main or Incoming, inspect proj
 | ADMISSION_MARKER_PRESENT | BLOCKED | Any saved admission marker, even offline/expired/unknown, must be adjudicated before migration |
 | HELPER_STATE_UNADJUDICATED | BLOCKED | Presence of helper state is not proof that helper exited |
 | OPERATION_STATE_UNADJUDICATED | BLOCKED | Current operation evidence may represent recovery/source transition |
+| ACL_READ_DENY_PRESENT | BLOCKED | An explicit root/ancestor ACL deny for metadata-reading rights is a hard hold even if this session is elevated |
 | METADATA_INSPECTION_FAILED | BLOCKED | Access denied, malformed path, or other uncertainty fails closed |
 | PROJECT_SOURCE_S4_ATTESTATION_REQUIRED | OWNER_ATTESTATION_REQUIRED | Basic markers are clean; **not** permission to copy, rebind or install |
 

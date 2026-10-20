@@ -90,7 +90,7 @@ try {
  [void]$denyAcl.AddAccessRule($denyRule)
  Set-Acl -LiteralPath $aclDenyPath -AclObject $denyAcl -ErrorAction Stop
  $denied=(& $probe -LegacyWorkerRoot $aclDenyPath -LegacyProgramDataRoot $data -OrbitWorkerRoot $orbit -OrbitProgramDataRoot $orbitData)|ConvertFrom-Json
- Assert ($denied.status -eq 'BLOCKED' -and $denied.migration_permitted -eq $false) 'ACL-denied disposable root is never accepted'
+ Assert ($denied.status -eq 'BLOCKED' -and @($denied.reasons) -contains 'ACL_READ_DENY_PRESENT' -and $denied.migration_permitted -eq $false) 'ACL explicit read deny detected even under elevated runner'
  Set-Acl -LiteralPath $aclDenyPath -AclObject $aclOriginal -ErrorAction Stop
  $aclOriginal=$null
  $short=(& $probe -LegacyWorkerRoot ($root+'\\CACHE~1\\legacy') -LegacyProgramDataRoot $data -OrbitWorkerRoot $orbit -OrbitProgramDataRoot $orbitData)|ConvertFrom-Json

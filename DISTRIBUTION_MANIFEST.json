@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_MIGRATION_PREFLIGHT.md",
-      "size": 4906,
-      "sha256": "88275a13ce6b1e12cc2b78531b539b6b0e5fb31b27e1285753a534655fbd7cab"
+      "size": 5055,
+      "sha256": "fa137474cefe4e73612779db571ab98a58a7ffbab6ee87657360a7774cda16f2"
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
@@ -650,8 +650,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
-      "size": 7370,
-      "sha256": "76c3aa696dcb19d5683902e460c7c3505d88083b05d3bd5481e973f75d6e547d"
+      "size": 8632,
+      "sha256": "0f738e1e29cbb21d901786a127fa62ae9e0a5ef8cb971021499062f3ce12c136"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Q113_EXISTING_EXTENSION_QUICK_SYNC.md",
@@ -810,8 +810,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
-      "size": 8319,
-      "sha256": "33d590e13d684c3f06f9bf1ed6142a08fd8105b5473fc72be9d810055daa2e75"
+      "size": 8391,
+      "sha256": "bf726b58290f7d8d61ee3854efa0504a22bd3e6f8cd66960435ce4b49aea6f2f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_package_core_bootstrap_regression.ps1",
@@ -2845,5 +2845,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "b9f47a4adb64057094ab720bce1ed09523cc322a62dccdab538bc6b5c9277d24"
+  "snapshot_digest": "52cebbeafec6dd3f905260368593eeac0d0c09e208224ea5e3e5988dacefa24c"
 }

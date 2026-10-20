@@ -64,6 +64,28 @@ function Get-PhysicalRoot([string]$PathValue) {
     # which map to the same volume compare equal for ancestors and duplicates.
     return $targets[0]+$PathValue.Substring(2).TrimEnd('\')
 }
+# Deny ACEs relevant to reading root metadata are a hard hold even if an
+# elevated runner happens to bypass them when opening files.
+function Has-MetadataReadDenyAcl([string]$PathValue) {
+    $mask=([Security.AccessControl.FileSystemRights]::ListDirectory -bor
+           [Security.AccessControl.FileSystemRights]::ReadAttributes -bor
+           [Security.AccessControl.FileSystemRights]::ReadExtendedAttributes -bor
+           [Security.AccessControl.FileSystemRights]::ReadPermissions)
+    $cursor=$PathValue
+    while (-not [string]::IsNullOrWhiteSpace($cursor)) {
+        if (Test-Path -LiteralPath $cursor) {
+            $acl=Get-Acl -LiteralPath $cursor -ErrorAction Stop
+            foreach($ace in @($acl.Access)) {
+                if($ace.AccessControlType -eq [Security.AccessControl.AccessControlType]::Deny -and
+                   (($ace.FileSystemRights -band $mask) -ne 0)) {return $true}
+            }
+        }
+        $parent=[IO.Directory]::GetParent($cursor)
+        if ($null -eq $parent) {break}
+        $cursor=$parent.FullName
+    }
+    return $false
+}
 function Has-ReparseAncestor([string]$PathValue) {
     $cursor=$PathValue
     while (-not [string]::IsNullOrWhiteSpace($cursor)) {
@@ -116,6 +138,11 @@ try {
         }
     }
     if($reasons.Count -eq 0) {
+        foreach($r in $roots){
+            if(Has-MetadataReadDenyAcl $r){Add-Hold 'ACL_READ_DENY_PRESENT';break}
+        }
+    }
+    if($reasons.Count -eq 0) {
         if(-not (Test-Path -LiteralPath $legacyWorker -PathType Container) -or
            -not (Test-Path -LiteralPath $legacyData -PathType Container)) {
             Add-Hold 'LEGACY_ROOT_MISSING'
@@ -141,7 +168,7 @@ if($reasons.Count -eq 0){
     # The absence of simple markers cannot prove that projects/Source/S4 are quiescent.
     Add-Hold 'PROJECT_SOURCE_S4_ATTESTATION_REQUIRED'
 }
-$hardBlock=@('ROOT_COLLISION','PHYSICAL_ROOT_IDENTITY_UNVERIFIED','PRODUCTION_INSPECTION_NOT_AUTHORIZED','REPARSE_ANCESTOR',
+$hardBlock=@('ROOT_COLLISION','PHYSICAL_ROOT_IDENTITY_UNVERIFIED','ACL_READ_DENY_PRESENT','PRODUCTION_INSPECTION_NOT_AUTHORIZED','REPARSE_ANCESTOR',
     'LEGACY_ROOT_MISSING','INCOMPLETE_LEGACY_INSTALL','ORBIT_DESTINATION_OCCUPIED',
     'ADMISSION_MARKER_PRESENT','HELPER_STATE_UNADJUDICATED',
     'OPERATION_STATE_UNADJUDICATED','METADATA_INSPECTION_FAILED')
