@@ -82,6 +82,36 @@ try {
    $second=Sync $f
    Check ($second.status -eq 'NO_CHANGE' -and $second.source_snapshot_id -eq $changed.source_snapshot_id) 'idempotent repeat does not remint snapshot'
   }finally{foreach($h in $handles){$h.Dispose()}}
+  # FA counterexample: external and canonical bytes are both H1 while the
+  # accepted snapshot/fingerprint still authenticates H0. Fast state alone
+  # stays ACCEPTED; quick-sync must NOT report NO_CHANGE on stale content.
+  $f=Fixture 'canonical-tamper'
+  $manifestPath=Get-ProjectManifestPath RetailGroup $f.worker
+  $manifestSha=Get-Sha256File $manifestPath
+  $acceptedSnapshot=(ReadManifest $f.worker).accepted_snapshot.source_snapshot_id
+  $handles=New-Object 'System.Collections.Generic.List[object]'
+  try{
+   foreach($part in @('do','un')){
+    foreach($base in @((Join-Path $f.worker ('RetailGroup\Participants\'+$part+'\Target\Main')),(Join-Path $f.external $part))){
+     foreach($file in @(Get-ChildItem -LiteralPath $base -File -Recurse)){
+      $handles.Add([IO.File]::Open($file.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::None))
+     }
+    }
+   }
+   $h1='<Configuration name="bitdo" revision="tampered-canonical-and-source"/>'
+   W (Join-Path $f.external 'bitdo\Configuration.xml') $h1
+   W (Join-Path $f.worker 'RetailGroup\Participants\do\Target\Extensions\bitdo\Configuration.xml') $h1
+   Check ((Get-FastProjectState RetailGroup $f.worker).state -eq 'ACCEPTED') 'tamper fixture demonstrates fast state does not hash canonical bytes'
+   Rejected 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED' {Sync $f}
+   Check ((Get-SourceUpdateSummary RetailGroup $f.worker).status -eq 'NONE' -and (Get-Sha256File $manifestPath) -eq $manifestSha) 'matching H1 source/canonical does not silently retain H0 manifest as NO_CHANGE'
+   Check ((ReadManifest $f.worker).accepted_snapshot.source_snapshot_id -eq $acceptedSnapshot) 'tampered selected canonical never remints or claims a new snapshot'
+  }finally{foreach($h in $handles){$h.Dispose()}}
+  $f=Fixture 'fingerprint-tamper'
+  $accepted=(ReadManifest $f.worker).accepted_snapshot.artifacts|Where-Object {$_.participant_id -eq 'do' -and $_.artifact_type -eq 'EXTENSION'}
+  $fp=Join-Path (Split-Path -Parent (Get-ProjectManifestPath RetailGroup $f.worker)) ([string]$accepted.fingerprint_inventory_path).Replace('/','\')
+  [IO.File]::AppendAllText($fp,'tamper')
+  Rejected 'QUICK_SYNC_ACCEPTED_FINGERPRINT_MISMATCH' {Sync $f}
+  Check ((Get-SourceUpdateSummary RetailGroup $f.worker).status -eq 'NONE') 'modified accepted fingerprint cannot create a slot'
   $f=Fixture 'admission'
   $adm=Join-Path $f.data 'runtime\active-admission.json'
   W $adm '{"project_id":"RetailGroup"}'
