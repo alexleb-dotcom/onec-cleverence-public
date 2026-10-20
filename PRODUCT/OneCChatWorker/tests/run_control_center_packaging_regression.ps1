@@ -73,7 +73,7 @@ try{
       # An interrupted Orbit install must hold, with zero admin/install/Source side effects.
       $tokens=$null;$errors=$null
       $ast=[Management.Automation.Language.Parser]::ParseInput($launcherText,[ref]$tokens,[ref]$errors)
-      foreach($name in @('Get-LauncherRootDisposition','Get-UiContext','Get-GuidedContext','Show-StatusReadable')){
+      foreach($name in @('Get-LauncherRootDisposition','Get-LauncherRootHoldReason','Get-UiContext','Get-GuidedContext','Show-StatusReadable')){
         $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
         . ([scriptblock]::Create($fn.Extent.Text))
       }
@@ -90,9 +90,14 @@ try{
         try{Install-OneCChatWorker -PackageRoot $package;throw ('PARTIAL_INSTALL_NOT_BLOCKED_'+$partial)}catch{if($_.Exception.Message -notlike 'MIGRATION_REQUIRED:*'){throw}}
         $partialStatus=Get-WorkerStatus
         if($partialStatus.state -ne 'MIGRATION_REQUIRED' -or $partialStatus.source_scan_performed -ne $false){throw ('PARTIAL_STATUS_HOLD_MISSING_'+$partial)}
+        if($partialStatus.root_hold_reason -ne 'ORBIT_PARTIAL_INSTALL'){throw ('PARTIAL_REASON_INCORRECT_'+$partial)}
+        $readablePartial=Show-StatusReadable $partialStatus 6>&1|Out-String
+        if($readablePartial -notlike '*Incomplete OneC Orbit*' -or $readablePartial -like '*Legacy installation retained*'){throw ('PARTIAL_STATUS_COPY_FALSE_'+$partial)}
         $partialUi=Get-UiContext
         if($partialUi.recommendation.state -ne 'MIGRATION_REQUIRED' -or @($partialUi.actions.PSObject.Properties|Where-Object{$_.Value.enabled}).Count){throw ('PARTIAL_UI_MUTATION_ENABLED_'+$partial)}
-        if((Get-GuidedContext).state -ne 'MIGRATION_REQUIRED'){throw ('PARTIAL_GUIDED_HOLD_MISSING_'+$partial)}
+        if($partialUi.recommendation.reason_code -ne 'ORBIT_PARTIAL_INSTALL' -or $partialUi.recommendation.reason -notlike '*Incomplete OneC Orbit*' -or $partialUi.recommendation.reason -like '*Legacy installation*'){throw ('PARTIAL_UI_COPY_FALSE_'+$partial)}
+        $partialGuided=Get-GuidedContext
+        if($partialGuided.state -ne 'MIGRATION_REQUIRED' -or $partialGuided.reason -notlike '*Incomplete OneC Orbit*' -or $partialGuided.reason -like '*Legacy installation*'){throw ('PARTIAL_GUIDED_COPY_FALSE_'+$partial)}
         if([IO.File]::ReadAllText($marker) -ne $before -or
           @(Get-ChildItem -LiteralPath $worker -Force).Count -ne $(if($partial -eq 'worker_only'){1}else{0}) -or
           @(Get-ChildItem -LiteralPath $pd -Force).Count -ne $(if($partial -eq 'installed_state_only'){1}else{0})){
@@ -111,10 +116,11 @@ try{
       try{Install-OneCChatWorker -PackageRoot $package;throw 'INSTALL_NOT_BLOCKED'}catch{if($_.Exception.Message -notlike 'MIGRATION_REQUIRED:*'){throw}}
       $status=Get-WorkerStatus
       if($status.state -ne 'MIGRATION_REQUIRED' -or $status.source_scan_performed -ne $false){throw 'STATUS_HOLD_MISSING'}
+      if($status.root_hold_reason -ne 'LEGACY_INSTALL_PRESENT'){throw 'LEGACY_REASON_INCORRECT'}
       # Execute the actual launcher projection/guided owners against synthetic defaults.
       $tokens=$null;$errors=$null
       $ast=[Management.Automation.Language.Parser]::ParseInput($launcherText,[ref]$tokens,[ref]$errors)
-      foreach($name in @('Get-LauncherRootDisposition','Get-UiContext','Get-GuidedContext','Show-StatusReadable')){
+      foreach($name in @('Get-LauncherRootDisposition','Get-LauncherRootHoldReason','Get-UiContext','Get-GuidedContext','Show-StatusReadable')){
         $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
         . ([scriptblock]::Create($fn.Extent.Text))
       }
@@ -124,6 +130,7 @@ try{
       if($readable -notlike '*MIGRATION_REQUIRED*' -or $readable -like '*Projects:*'){throw 'READABLE_STATUS_HOLD_MISSING'}
       $context=Get-UiContext
       if($context.recommendation.state -ne 'MIGRATION_REQUIRED' -or @($context.actions.PSObject.Properties|Where-Object{$_.Value.enabled}).Count){throw 'UI_HOLD_NOT_BLOCKED'}
+      if($context.recommendation.reason_code -ne 'LEGACY_INSTALL_PRESENT' -or $context.recommendation.reason -notlike '*Legacy installation retained*'){throw 'LEGACY_UI_COPY_INCORRECT'}
       if((Get-GuidedContext).state -ne 'MIGRATION_REQUIRED'){throw 'GUIDED_HOLD_MISSING'}
       if((Test-Path -LiteralPath $worker) -or (Test-Path -LiteralPath $pd)){throw 'SURPRISE_NEW_ROOT_CREATED'}
       if([IO.File]::ReadAllText($legacyCatalog) -ne $legacyBefore){throw 'LEGACY_MUTATED'}

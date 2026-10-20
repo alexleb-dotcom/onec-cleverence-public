@@ -202,9 +202,10 @@ public partial class MainWindow : Window
         UpdateHomeNavigation();
         SourceStateText.Text = McpStateText.Text = WorkStatusText.Text = Localization.Get("UnknownState");
         WorkDetailText.Text = Localization.Get("UiContextReason");
+        var orbitPartial = raw.Contains("ORBIT_PARTIAL_INSTALL", StringComparison.Ordinal);
         var migrationRequired = raw.Contains("MIGRATION_REQUIRED", StringComparison.Ordinal);
-        RecommendationText.Text = Localization.Get(migrationRequired ? "MigrationRequired" : "UiContextUnavailable");
-        RecommendationReasonText.Text = Localization.Get(migrationRequired ? "MigrationRequiredHelp" : "UiContextReason") +
+        RecommendationText.Text = Localization.Get(orbitPartial ? "OrbitPartialInstall" : migrationRequired ? "MigrationRequired" : "UiContextUnavailable");
+        RecommendationReasonText.Text = Localization.Get(orbitPartial ? "OrbitPartialInstallHelp" : migrationRequired ? "MigrationRequiredHelp" : "UiContextReason") +
             (exitCode >= 0 ? $" {Localization.Get("WorkerExit")}: {exitCode}." : "");
         HelperBadge.Text = Localization.Get("HelperLabel") + " · —";
         DiagnosticsText.Text = Localization.Get("UiContextUnavailable");
@@ -229,8 +230,10 @@ public partial class MainWindow : Window
         HelperBadge.Text = $"{Localization.Get("HelperLabel")} · {helper}";
 
         var recommendationState = Text(ctx, "recommendation", "state") ?? "";
-        RecommendationText.Text = RecommendationTitle(recommendationState);
-        RecommendationReasonText.Text = Presentation.Reason(recommendationState);
+        var recommendationReason = Text(ctx, "recommendation", "reason_code") == "ORBIT_PARTIAL_INSTALL"
+            ? "ORBIT_PARTIAL_INSTALL" : recommendationState;
+        RecommendationText.Text = RecommendationTitle(recommendationReason);
+        RecommendationReasonText.Text = Presentation.Reason(recommendationReason);
         if (SourceSyncResultText.Tag as string == "SyncUnverified")
         {
             RecommendationText.Text = Localization.Get("SyncUnverified");
@@ -275,7 +278,7 @@ public partial class MainWindow : Window
         McpPolicyText.Text = Localization.Get("AccountingPending");
 
         WorkStatusText.Text = Bool(ctx, "work", "active") ? workProjectName : projectName;
-        WorkDetailText.Text = Presentation.Reason(recommendationState) + "\n" + Presentation.Expiry(Text(ctx, "work", "task_expires_utc"));
+        WorkDetailText.Text = Presentation.Reason(recommendationReason) + "\n" + Presentation.Expiry(Text(ctx, "work", "task_expires_utc"));
         SessionHelpText.Text = Localization.Get("SessionHelp");
 
         var projects = new ObservableCollection<ProjectRow>();
@@ -357,7 +360,7 @@ public partial class MainWindow : Window
         var opType = Text(ctx, "operation", "current", "operation_type");
         var opState = Text(ctx, "operation", "current", "state");
         OperationText.Text = opType is null ? Localization.Get("NoOperation") : $"{Presentation.Operation(opType)} · {Presentation.Status(opState)}";
-        DiagnosticsText.Text = Presentation.Reason(recommendationState) + "\n" + Localization.Get("PackageIsNotConnection") + "\n" + Localization.Get("ReadOnlyPreservation");
+        DiagnosticsText.Text = Presentation.Reason(recommendationReason) + "\n" + Localization.Get("PackageIsNotConnection") + "\n" + Localization.Get("ReadOnlyPreservation");
 
         var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
         SourceUpdateStatusText.Text = updateStatus == "NONE"

@@ -1,4 +1,4 @@
-﻿param(
+param(
  [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','SYNC_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
@@ -41,8 +41,21 @@ function Get-LauncherRootDisposition {
  if((Test-Path -LiteralPath 'C:\OneCChatWorker') -or (Test-Path -LiteralPath 'C:\ProgramData\OneCChatWorker')){return 'MIGRATION_REQUIRED'}
  return 'NEW_INSTALL'
 }
+function Get-LauncherRootHoldReason {
+ if((Get-LauncherRootDisposition) -ne 'MIGRATION_REQUIRED'){return $null}
+ if(Get-Command Get-InstallRootHoldReason -ErrorAction SilentlyContinue){
+  return Get-InstallRootHoldReason -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+ }
+ # Old installed Core fallback: metadata-only; no Source inspection.
+ $hasCatalog=Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf
+ $hasInstalledState=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+ if($hasCatalog -xor $hasInstalledState){return 'ORBIT_PARTIAL_INSTALL'}
+ return 'LEGACY_INSTALL_PRESENT'
+}
 function Assert-LauncherRootDisposition {
- if((Get-LauncherRootDisposition) -eq 'MIGRATION_REQUIRED'){throw 'MIGRATION_REQUIRED: Legacy installation retained; separately authorized downtime and a validated migration procedure are required.'}
+ $reason=Get-LauncherRootHoldReason
+ if($reason -eq 'ORBIT_PARTIAL_INSTALL'){throw 'MIGRATION_REQUIRED: [ORBIT_PARTIAL_INSTALL] Incomplete OneC Orbit installation detected. Preserve existing files; request authorized recovery.'}
+ if($reason -eq 'LEGACY_INSTALL_PRESENT'){throw 'MIGRATION_REQUIRED: [LEGACY_INSTALL_PRESENT] Legacy installation retained; separately authorized downtime and a validated migration procedure are required.'}
 }
 # Fail before elevation, operation/fallback logs, dependencies or catalog writes.
 if($Mode -notin @('STATUS','UI_CONTEXT','MENU')){
@@ -185,7 +198,14 @@ function Show-StatusReadable {
  if($Json){Show-JsonValue $Status;return}
  Write-Host ''
  Write-Host 'OneC Orbit STATUS'
- if($Status.root_disposition -eq 'MIGRATION_REQUIRED'){Write-Host 'MIGRATION_REQUIRED: Legacy installation retained; migration is on hold. Use explicit legacy roots for the existing deployment.';return}
+ if($Status.root_disposition -eq 'MIGRATION_REQUIRED'){
+  if($Status.root_hold_reason -eq 'ORBIT_PARTIAL_INSTALL'){
+   Write-Host 'MIGRATION_REQUIRED: [ORBIT_PARTIAL_INSTALL] Incomplete OneC Orbit installation detected; preserve files and arrange authorized recovery. No installation action is available.'
+  }else{
+   Write-Host 'MIGRATION_REQUIRED: [LEGACY_INSTALL_PRESENT] Legacy installation retained; migration is on hold. Use explicit legacy roots for the existing deployment.'
+  }
+  return
+ }
  Write-Host ('  Product version : {0}' -f $Status.product_version)
  Write-Host ('  Installed       : {0}' -f $Status.installed)
  Write-Host ('  Worker root     : {0}' -f $Status.worker_root)
@@ -622,9 +642,11 @@ function Run-Uninstall {
 function Get-UiContext {
  $status=Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
  if((Get-LauncherRootDisposition) -eq 'MIGRATION_REQUIRED'){
+  $reasonCode=Get-LauncherRootHoldReason
+  $partial=$reasonCode -eq 'ORBIT_PARTIAL_INSTALL'
   $blocked=[ordered]@{}
   foreach($name in @('start','continue','stop','apply','verify','repair','update','add_project','sync_extension','prepare_source_update','accept_source_update','cancel_source_update')){$blocked[$name]=[pscustomobject]@{enabled=$false;reason='MIGRATION_REQUIRED'}}
-  return [pscustomobject]@{schema='UI_CONTEXT_V1';bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1';product=[pscustomobject]@{version=$status.product_version;installed=$false;integrity_status='MIGRATION_REQUIRED'};recommendation=[pscustomobject]@{state='MIGRATION_REQUIRED';action='Arrange authorized migration downtime';reason='Legacy installation retained; migration is on hold.'};projects=@();actions=[pscustomobject]$blocked;safety=[pscustomobject]@{mcp_side_effect=$false;source_request_issued=$false;acquisition_called=$false;secret_values_included=$false;model_tool_surface_count=6}}
+  return [pscustomobject]@{schema='UI_CONTEXT_V1';bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1';product=[pscustomobject]@{version=$status.product_version;installed=$false;integrity_status='MIGRATION_REQUIRED'};recommendation=[pscustomobject]@{state='MIGRATION_REQUIRED';reason_code=$reasonCode;action=$(if($partial){'Arrange authorized recovery of incomplete OneC Orbit installation'}else{'Arrange authorized migration downtime'});reason=$(if($partial){'Incomplete OneC Orbit installation detected. Existing files are retained; recovery is on hold.'}else{'Legacy installation retained; migration is on hold.'})};projects=@();actions=[pscustomobject]$blocked;safety=[pscustomobject]@{mcp_side_effect=$false;source_request_issued=$false;acquisition_called=$false;secret_values_included=$false;model_tool_surface_count=6}}
  }
  $guided=Get-GuidedContext -SelectedProjectId $ProjectId
  $active=$status.active_admission
@@ -1168,7 +1190,8 @@ function Invoke-GuidedAction {
 function Get-GuidedContext {
  param([string]$SelectedProjectId)
  if((Get-LauncherRootDisposition) -eq 'MIGRATION_REQUIRED'){
-  return [pscustomobject]@{state='MIGRATION_REQUIRED';recommended='Arrange authorized migration downtime';project=$null;participant=$null;reason='Legacy installation retained. Migration is on hold; use explicit legacy roots for the existing installation.'}
+  $partial=(Get-LauncherRootHoldReason) -eq 'ORBIT_PARTIAL_INSTALL'
+  return [pscustomobject]@{state='MIGRATION_REQUIRED';recommended=$(if($partial){'Arrange authorized Orbit installation recovery'}else{'Arrange authorized migration downtime'});project=$null;participant=$null;reason=$(if($partial){'Incomplete OneC Orbit installation detected. Preserve files; authorized recovery required.'}else{'Legacy installation retained. Migration is on hold; use explicit legacy roots for the existing installation.'})}
  }
  $installed=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
  if(-not $installed){return [pscustomobject]@{state='NOT_INSTALLED';recommended='Install OneC Orbit';project=$null;participant=$null;reason='Product runtime is not installed.'}}
@@ -1593,7 +1616,7 @@ function Guided-MainMenu {
   Show-GuidedHeader $ctx
   if($ctx.state -eq 'MIGRATION_REQUIRED'){
    Write-Host $ctx.reason
-   Write-Host 'MIGRATION_REQUIRED: no installation or project action is available. Use explicit legacy roots for the existing deployment.'
+   Write-Host 'MIGRATION_REQUIRED: no installation or project action is available until authorized recovery.'
    if(([string](Read-Ui 'Q to exit')) -match '^(?i:q|quit|0)$'){return}
    continue
   }

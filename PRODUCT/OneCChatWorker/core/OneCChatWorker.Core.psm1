@@ -31,10 +31,24 @@ function Get-InstallRootDisposition {
     return 'NEW_INSTALL'
 }
 
+# Exact metadata-only explanation for a fail-closed default-root hold.
+function Get-InstallRootHoldReason {
+    param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
+    if((Get-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot) -ne 'MIGRATION_REQUIRED'){return $null}
+    $hasCatalog=Test-Path -LiteralPath (Join-Path $WorkerRoot 'projects.json') -PathType Leaf
+    $hasInstalledState=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'installed-state.json') -PathType Leaf
+    if($hasCatalog -xor $hasInstalledState){return 'ORBIT_PARTIAL_INSTALL'}
+    return 'LEGACY_INSTALL_PRESENT'
+}
+
 function Assert-InstallRootDisposition {
     param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
-    if((Get-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot) -eq 'MIGRATION_REQUIRED'){
-        throw 'MIGRATION_REQUIRED: Legacy installation retained. OneC Orbit migration requires separately authorized downtime and a validated migration procedure. Use explicit legacy roots to operate the existing installation.'
+    $reason=Get-InstallRootHoldReason -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    if($reason -eq 'ORBIT_PARTIAL_INSTALL'){
+        throw 'MIGRATION_REQUIRED: [ORBIT_PARTIAL_INSTALL] Incomplete OneC Orbit installation detected. Preserve existing files; request separately authorized recovery. Do not retry a new install automatically.'
+    }
+    if($reason -eq 'LEGACY_INSTALL_PRESENT'){
+        throw 'MIGRATION_REQUIRED: [LEGACY_INSTALL_PRESENT] Legacy installation retained. OneC Orbit migration requires separately authorized downtime and a validated migration procedure. Use explicit legacy roots to operate the existing installation.'
     }
 }
 
@@ -2241,7 +2255,8 @@ function Get-WorkerStatus {
     param([string]$WorkerRoot=$script:DefaultWorkerRoot,[string]$ProgramDataRoot=$script:DefaultProgramDataRoot)
     $rootDisposition=Get-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
     if($rootDisposition -eq 'MIGRATION_REQUIRED'){
-        return [pscustomobject]@{state='MIGRATION_REQUIRED';root_disposition=$rootDisposition;product_version=$script:ProductVersion;installed=$false;installed_state=$null;installed_integrity=[pscustomobject]@{status='MIGRATION_REQUIRED'};worker_root=$WorkerRoot;program_data_root=$ProgramDataRoot;catalog_path=(Get-CatalogPath $WorkerRoot);projects=@();active_admission=$null;source_scan_performed=$false}
+        $holdReason=Get-InstallRootHoldReason -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+        return [pscustomobject]@{state='MIGRATION_REQUIRED';root_disposition=$rootDisposition;root_hold_reason=$holdReason;product_version=$script:ProductVersion;installed=$false;installed_state=$null;installed_integrity=[pscustomobject]@{status='MIGRATION_REQUIRED'};worker_root=$WorkerRoot;program_data_root=$ProgramDataRoot;catalog_path=(Get-CatalogPath $WorkerRoot);projects=@();active_admission=$null;source_scan_performed=$false}
     }
     $catalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing;$runtimeState=Join-Path $ProgramDataRoot 'runtime\active-admission.json';$active=$null;if(Test-Path -LiteralPath $runtimeState){try{$active=Get-Content $runtimeState -Raw|ConvertFrom-Json}catch{}}
     $rows=@();foreach($p in @($catalog.projects)){$v=try{Get-FastProjectState -ProjectId $p.project_id -WorkerRoot $WorkerRoot}catch{[pscustomobject]@{state='SNAPSHOT_MANIFEST_INVALID';status='SNAPSHOT_MANIFEST_INVALID';reason=$_.Exception.Message}};$snapshotId=$(if($v.PSObject.Properties.Name -contains 'source_snapshot_id'){$v.source_snapshot_id}else{$null});$reason=$(if($v.PSObject.Properties.Name -contains 'reason'){$v.reason}else{$null});$rows+=,[pscustomobject]@{project_id=$p.project_id;display_name=$p.display_name;active=($p.active -ne $false);verification=$(if($v.state -eq 'ACCEPTED'){'READY'}else{$v.state});fast_state=$v.state;fast_reason=$reason;source_snapshot_id=$snapshotId;participant_count=@($p.participants|Where-Object{$_.active -ne $false}).Count}}

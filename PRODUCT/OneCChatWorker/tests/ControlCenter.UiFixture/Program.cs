@@ -62,6 +62,10 @@ internal static class Program
             foreach (var language in new[] { "en", "ru" })
             {
                 Localization.SetLanguage(language);
+                Check(Presentation.Status("ORBIT_PARTIAL_INSTALL") == Localization.Get("OrbitPartialInstall") &&
+                    Presentation.Reason("ORBIT_PARTIAL_INSTALL") == Localization.Get("OrbitPartialInstallHelp") &&
+                    Presentation.Reason("ORBIT_PARTIAL_INSTALL") != Presentation.Reason("MIGRATION_REQUIRED"),
+                    "distinct Orbit partial and legacy copy " + language);
                 foreach (var code in new[] { "PROJECT_ADMISSION_ACTIVE", "SOURCE_UPDATE_STATE_INVALID", "RECOVERY_REQUIRED", "SOURCE_UPDATE_RECOVERY_REQUIRED" })
                     Check(Presentation.Reason(code) != Localization.Get("OwnerEvidenceRequired") && Presentation.Reason(code) != code, "localized source update reason " + language + " " + code);
             }
@@ -76,6 +80,19 @@ internal static class Program
                 !Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "UpdateButton").IsEnabled,
                 "migration hold displayed with mutations disabled");
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-migration-required.png"), 1);
+            var partialContext = FixtureWorker.Context(null, "MIGRATION_REQUIRED");
+            partialContext["recommendation"]!["reason_code"] = "ORBIT_PARTIAL_INSTALL";
+            partialContext["projects"] = new JsonArray();
+            partialContext["selected_project"] = null;
+            foreach (var action in partialContext["actions"]!.AsObject()) action.Value!["enabled"] = false;
+            fake.ContextOverride = partialContext;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(Control<TextBlock>(w, "RecommendationText").Text == Localization.Get("OrbitPartialInstall") &&
+                Control<TextBlock>(w, "RecommendationReasonText").Text == Localization.Get("OrbitPartialInstallHelp") &&
+                !Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "UpdateButton").IsEnabled,
+                "WPF Orbit partial recovery is truthful and blocks mutations");
+            Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-orbit-partial-install.png"), 1);
+            fake.ContextOverride = null;
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Check(!Control<Button>(w, "StartButton").IsEnabled, "initial multiple projects require explicit choice");
             Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Projects", "Home directs unselected context to Projects");

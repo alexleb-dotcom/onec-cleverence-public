@@ -115,4 +115,6 @@
   <data name="HomeNavigationHelp" xml:space="preserve"><value>Open the selected destination to review available actions.</value></data>
   <data name="MigrationRequired" xml:space="preserve"><value>Migration required</value></data>
   <data name="MigrationRequiredHelp" xml:space="preserve"><value>The legacy installation is retained. Arrange separately authorized downtime and a validated migration procedure. Migration is on hold.</value></data>
+  <data name="OrbitPartialInstall" xml:space="preserve"><value>Incomplete OneC Orbit installation</value></data>
+  <data name="OrbitPartialInstallHelp" xml:space="preserve"><value>An incomplete OneC Orbit installation was detected. Existing files are preserved and installation is blocked. Arrange authorized recovery before retrying.</value></data>
 </root>

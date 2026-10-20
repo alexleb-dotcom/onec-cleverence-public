@@ -25,7 +25,7 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "sha256": "20f34e744d0cabced67cabdceae3ceb6bbda2503ebb6659acb3cd8758fb7d269",
+      "sha256": "f1637bd35a00378fca53c94794e73467f1929c504b5eca27519a73eb0b5bffa3",
       "type_class": "executable/pe",
       "reason": "Exact hash-reviewed self-contained .NET 10 win-x64 WPF Control Center PE; bundled .NET runtime may contain loopback/private IPv4 literals. Only the bounded PRIVATE_NETWORK_IPV4 embedded finding is exempt; secrets, user paths, hostnames, keys, and tokens remain fail-closed.",
       "policy_id": "shareable-binary-review-v1",
