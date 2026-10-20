@@ -59,7 +59,15 @@ function Require-AdminOrRelaunch {
  exit $p.ExitCode
 }
 function Need([string]$Value,[string]$Name){if([string]::IsNullOrWhiteSpace($Value)){throw "ARG_REQUIRED: $Name"};$Value}
-function Show-JsonValue($Value){$Value|ConvertTo-Json -Depth 30}
+function Show-JsonValue($Value){
+ # Bypass Windows PowerShell 5.1 OEM console encoding for machine-readable JSON.
+ # Console.OutputEncoding alone does not consistently control -File stdout pipes.
+ $text=$Value|ConvertTo-Json -Depth 30
+ $bytes=[Text.UTF8Encoding]::new($false).GetBytes([string]$text+[Environment]::NewLine)
+ $stream=[Console]::OpenStandardOutput()
+ $stream.Write($bytes,0,$bytes.Length)
+ $stream.Flush()
+}
 function Show-Value($Value){
  if($Json){Show-JsonValue $Value;return}
  if($script:InGuidedMenu -and -not $script:InAdvancedMenu){return}

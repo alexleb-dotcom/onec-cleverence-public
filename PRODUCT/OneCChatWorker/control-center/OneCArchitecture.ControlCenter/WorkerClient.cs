@@ -97,7 +97,7 @@ internal sealed class WorkerClient : IWorkerClient
         };
         if (!elevated)
         {
-            psi.StandardOutputEncoding = new UTF8Encoding(false);
+            psi.StandardOutputEncoding = new UTF8Encoding(false, true);
             psi.StandardErrorEncoding = new UTF8Encoding(false);
         }
         Add(psi, "-NoProfile");
@@ -144,8 +144,18 @@ internal sealed class WorkerClient : IWorkerClient
             var stdoutTask = process.StandardOutput.ReadToEndAsync(token);
             var stderrTask = process.StandardError.ReadToEndAsync(token);
             await process.WaitForExitAsync(token);
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
+            string stdout;
+            string stderr;
+            try
+            {
+                stdout = await stdoutTask;
+                stderr = await stderrTask;
+            }
+            catch (DecoderFallbackException)
+            {
+                // Do not silently replace valid owner-provided Unicode with U+FFFD.
+                return new(2, null, "", "WORKER_OUTPUT_NOT_UTF8");
+            }
             JsonObject? json = null;
             if (!string.IsNullOrWhiteSpace(stdout))
             {

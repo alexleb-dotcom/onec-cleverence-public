@@ -90,7 +90,7 @@ try:
         'x:Name="ActivityList"' in xaml and
         all(x in app_xaml for x in ['TargetType="DataGrid"','TargetType="DataGridColumnHeader"','TargetType="DataGridCell"','SelectionBrush']))
     rec("utf8_ps51_process_boundary",
-        "StandardOutputEncoding = new UTF8Encoding(false)" in client and
+        "StandardOutputEncoding = new UTF8Encoding(false, true)" in client and
         "StandardErrorEncoding = new UTF8Encoding(false)" in client and
         "[Console]::OutputEncoding=$utf8" in launcher and "$OutputEncoding=$utf8" in launcher)
     rec("bounded_home_error_advanced_raw",

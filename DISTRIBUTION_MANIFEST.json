@@ -385,8 +385,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 129537,
-      "sha256": "cce1979e6f0fef8c1c83e391a8c21753a8b5bedfde6118ab586dbdabc54fd3dd"
+      "size": 129894,
+      "sha256": "a1479094dabc0d7284f578855b91fadd9c9e43ddcc32fd7c27b9a5b20456afa3"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -470,8 +470,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/WorkerClient.cs",
-      "size": 7737,
-      "sha256": "c26df82676ee65a7958a4928fa8e9e1cf50501730e91b12135b9dc7af49ce5db"
+      "size": 8066,
+      "sha256": "8ea5c7d862a76fddb84bcf521a0d7d0e44a801889465c426c8a74f310494b5fa"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/app.manifest",
@@ -485,8 +485,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "size": 75471405,
-      "sha256": "55cf01b1870f1bf90c5e7fd1bd210940649b211907b6dff133b0bd4f501c9d1e"
+      "size": 75471500,
+      "sha256": "3bff0ae6cbba44a10dff5933497ff1ddcd968459ecffce70a63a647da82631aa"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish_control_center.ps1",
@@ -561,7 +561,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7925,
-      "sha256": "92cd442d0bd0dd6d417c60f4fb4acab399ac28f71d938fde6bfcd27a33922bf8"
+      "sha256": "65347744c358eb5fcf91dbc8b76098f7855e1a88d34facf546c12be43bb5c5b1"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -635,8 +635,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/PackagedProbe.cs",
-      "size": 14125,
-      "sha256": "97b4b0def2920bba225918d37eae9715c92cf87c1e11e1671933281439871ba6"
+      "size": 15401,
+      "sha256": "74ee0769f0a8c8017f1a9a3b6d8452be1c6700d9870ed56486e08171f1990f83"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
@@ -2275,8 +2275,8 @@
     },
     {
       "path": "TESTS/run_control_center_ui_static_regression.py",
-      "size": 12047,
-      "sha256": "7c56c96a3c7becb58999ef6aba4ec5569860cf0acacc672d1ff5c91ff430fd69"
+      "size": 12053,
+      "sha256": "8a8fd36548dab85037591d4fcf26487dc173d06baa4e7278df6a0905efdfbb05"
     },
     {
       "path": "TESTS/run_distribution_binary_policy_regression.py",
@@ -2516,7 +2516,7 @@
     {
       "path": "TOOLS/SHAREABLE_BINARY_REVIEW_POLICY.json",
       "size": 2433,
-      "sha256": "52dc1487cbaae1520d8404eeebbac831b5d2d91169f288934a57ec0939df204a"
+      "sha256": "b1258be65b447febff8f43314d0d2a6eeb182c093c2771aec16ac2b566af0f8a"
     },
     {
       "path": "TOOLS/analyze_changeset_architecture.py",
@@ -2830,5 +2830,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "423ecb9e92ea770bcc150ec4ee632a3d038eb4420d61e2b3d590a77a522edfe4"
+  "snapshot_digest": "a6000d333dd2803b0b633032f8a1420b09c85737fa59e6213853c556d0b1fe45"
 }

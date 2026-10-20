@@ -112,7 +112,9 @@ $ErrorActionPreference='Stop'
 if($WorkerRoot -ne $PSScriptRoot -or $ProgramDataRoot -ne $PSScriptRoot){throw 'FIXTURE_ROOT_MISMATCH'}
 if($Mode -eq 'UI_CONTEXT') {
  $file=if($ProjectId -eq 'RetailGroup'){'RetailGroup.json'}elseif($ProjectId -eq 'NeoHim'){'NeoHim.json'}else{'unselected.json'}
- [Console]::Write([IO.File]::ReadAllText((Join-Path $PSScriptRoot $file))); exit 0
+ $body=[IO.File]::ReadAllText((Join-Path $PSScriptRoot $file),[Text.Encoding]::UTF8)
+ $bytes=[Text.UTF8Encoding]::new($false).GetBytes($body)
+ [Console]::OpenStandardOutput().Write($bytes,0,$bytes.Length); exit 0
 }
 if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_REJECTED'}
 # Capture only: never load a worker module, reserve admission or execute START.
@@ -122,6 +124,12 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
         foreach (var id in new[] { "unselected", "NeoHim", "RetailGroup" })
         {
             var ctx = FixtureWorker.Context(id == "unselected" ? null : id);
+            // Owner-provided Unicode must round-trip across REAL powershell.exe -File,
+            // WorkerClient UTF-8 capture, JsonNode, and the packaged WPF automation tree.
+            foreach (var project in ctx["projects"]!.AsArray().OfType<JsonObject>())
+                project["display_name"] = project["project_id"]!.GetValue<string>() + " — ТОЛЬКО ТЕСТ";
+            if (ctx["selected_project"] is JsonObject selected)
+                selected["display_name"] = selected["project_id"]!.GetValue<string>() + " — ТОЛЬКО ТЕСТ";
             // Disable every mutation except a fake START; wizard cancellation is UI-only.
             foreach (var action in ctx["actions"]!.AsObject()) if (action.Key is not ("start" or "add_project")) action.Value!["enabled"] = false;
             if (id == "RetailGroup")
@@ -135,7 +143,10 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
                 ctx["actions"]!["sync_extension"] = new JsonObject { ["enabled"] = true, ["reason"] = "AVAILABLE" };
             }
             ctx["operation"] = new JsonObject { ["current"] = new JsonObject { ["operation_type"] = "UPDATE", ["state"] = "PASS" } };
-            File.WriteAllText(Path.Combine(scratch, id + ".json"), ctx.ToJsonString());
+            File.WriteAllText(Path.Combine(scratch, id + ".json"),
+                ctx.ToJsonString(new JsonSerializerOptions {
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                }), new System.Text.UTF8Encoding(false));
         }
         File.WriteAllText(Path.Combine(scratch, "preferences.json"), """{"Language":"ru","Theme":"dark","StartWithWindows":false}""");
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = scratch };
@@ -154,6 +165,10 @@ if($Mode -ne 'START' -or $ProjectId -ne 'RetailGroup'){throw 'FIXTURE_OPERATION_
             Wait(() => GetForegroundWindow() == Window, "owned foreground");
             Shot(Path.Combine(evidence, "packaged-ru-dark-Home.png"));
             Page("NavProjectsButton", Localization.Get("NavProjects"));
+            var projectElements = Find("ProjectsList").FindAll(TreeScope.Descendants, Condition.TrueCondition);
+            Assert(projectElements.Cast<AutomationElement>().Any(x =>
+                x.Current.Name.Contains("RetailGroup — ТОЛЬКО ТЕСТ", StringComparison.Ordinal)),
+                "real packaged WPF preserves owner-provided Cyrillic and em dash, no U+FFFD");
             TabTo("ProjectsList"); Key(40); Key(40);
             Wait(() => Find("SelectedProjectText").Current.Name.Contains("RetailGroup"), "RetailGroup canonical selection");
             // Selecting a project refreshes context asynchronously. Focus must remain
