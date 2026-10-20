@@ -1,5 +1,5 @@
 ﻿param(
- [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
+ [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','SYNC_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
@@ -39,6 +39,9 @@ function Require-AdminOrRelaunch {
  if(Is-Admin){return}
  $argsList=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-Mode',$RequestedMode,'-WorkerRoot',$WorkerRoot,'-ProgramDataRoot',$ProgramDataRoot,'-ReaderName',$ReaderName,'-OperatorIdentity',$OperatorIdentity,'-RelayUrl',$RelayUrl)
  if(-not [string]::IsNullOrWhiteSpace($ProjectId)){$argsList+=@('-ProjectId',$ProjectId)}
+ if($RequestedMode -eq 'SYNC_EXTENSION'){
+  $argsList+=@('-ParticipantId',(Need $ParticipantId ParticipantId),'-ExtensionId',(Need $ExtensionId ExtensionId))
+ }
  if(-not [string]::IsNullOrWhiteSpace($TaskId)){$argsList+=@('-TaskId',$TaskId)}
  if(-not [string]::IsNullOrWhiteSpace($TaskGoal)){$argsList+=@('-TaskGoal',$TaskGoal)}
  if(-not [string]::IsNullOrWhiteSpace($ArtifactSelection)){$argsList+=@('-ArtifactSelection',$ArtifactSelection)}
@@ -356,6 +359,22 @@ function Get-RequestedSourceUpdateSelections {
  if($values.Count -gt 16){throw 'SOURCE_UPDATE_SELECTION_LIMIT_EXCEEDED'}
  $values
 }
+function Run-SyncExtension {
+ $project=Need $ProjectId ProjectId
+ $participant=Need $ParticipantId ParticipantId
+ $extension=Need $ExtensionId ExtensionId
+ if(Require-AdminOrRelaunch 'SYNC_EXTENSION'){return}
+ $r=Invoke-ObservedAction -OperationType SOURCE_UPDATE_QUICK_SYNC -RequestedAction 'One-command selected sync of a registered extension; no Main APPLY or session STOP' -TotalSteps 3 -Project $project -Participant $participant -Artifact $extension -Body {
+  param($op)
+  $null=Update-WorkerOperation -Operation $op -Message 'Check accepted identity, admission and source/target SHA256' -Step 1 -Total 3 -State RUNNING -ProgramDataRoot $ProgramDataRoot
+  $x=Sync-ExistingWorkerExtension -ProjectId $project -ParticipantId $participant -ExtensionId $extension -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+  $message=$(if($x.status -eq 'NO_CHANGE'){'Identical extension: skipped, no generation'}elseif($x.status -eq 'READY'){'Selected extension published and Source accepted'}else{'Selected source prepared/sealed; explicit recovery or admission action required'})
+  $state=$(if($x.status -eq 'WAITING_FOR_USER'){'WAITING_FOR_USER'}else{'PASS'})
+  $null=Update-WorkerOperation -Operation $op -Message $message -Step 3 -Total 3 -State $state -SafeDetails @{status=$x.status;generation_id=$x.generation_id;artifact_key=$x.artifact_key;source_snapshot_id=$x.source_snapshot_id} -ProgramDataRoot $ProgramDataRoot
+  $x
+ } -FinalStateResolver {param($x);[pscustomobject]@{state=$(if($x.status -eq 'WAITING_FOR_USER'){'WAITING_FOR_USER'}else{'PASS'});message=('Quick sync status: '+[string]$x.status)}}
+ Show-Value $r
+}
 function Run-PrepareSourceUpdate {
  $projectKey=Need $ProjectId ProjectId
  if(Require-AdminOrRelaunch 'PREPARE_SOURCE_UPDATE'){return}
@@ -663,6 +682,7 @@ function Invoke-CommandMode {
   'EDIT_PARTICIPANT' {Run-EditParticipant;break}
   'SET_MAIN' {Run-SetMain;break}
   'ADD_EXTENSION' {Run-AddExtension;break}
+  'SYNC_EXTENSION' {Run-SyncExtension;break}
   'DEACTIVATE' {Run-Deactivate;break}
   'PREPARE_SOURCE_UPDATE' {Run-PrepareSourceUpdate;break}
   'ACCEPT_SOURCE_UPDATE' {Run-AcceptSourceUpdate;break}

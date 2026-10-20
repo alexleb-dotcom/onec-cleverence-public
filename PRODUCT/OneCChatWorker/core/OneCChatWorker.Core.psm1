@@ -1350,6 +1350,7 @@ function Assert-SourceUpdateExpectedIdentity {
     foreach($item in $selected){if(-not $seen.Remove([string]$item.key)){throw 'SOURCE_UPDATE_ARTIFACT_MISMATCH'}}
 }
 
+
 function Prepare-SourceUpdate {
     param(
         [Parameter(Mandatory)][string]$ProjectId,[Parameter(Mandatory)][string[]]$Selections,
@@ -1751,6 +1752,216 @@ function Write-FingerprintInventory {
         Move-Item -LiteralPath $tmp -Destination $path -Force
     }
     [pscustomobject]@{state='PRESENT';relative_path=("Fingerprints/$name");sha256=Get-Sha256File $path}
+}
+
+# Q113: CLI convenience ONLY. Admission, sealed validation, publication and
+# recovery are owned by the existing selected Source update transaction.
+function Get-QuickSyncExtensionTree {
+    param([Parameter(Mandatory)][string]$Root)
+    $entry=Get-SourceUpdateAclEntry -Path $Root
+    if($entry -isnot [IO.DirectoryInfo]){throw 'QUICK_SYNC_SOURCE_NOT_DIRECTORY'}
+    $anchor=[string]$entry.FullName
+    $ancestor=[IO.Path]::GetFullPath($Root)
+    while($ancestor){
+        $candidate=Get-Item -LiteralPath $ancestor -Force -ErrorAction SilentlyContinue
+        if($candidate -and (($candidate.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)){throw 'QUICK_SYNC_ALIAS_REJECTED'}
+        $parent=[IO.Path]::GetDirectoryName($ancestor)
+        if([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $ancestor){break}
+        $ancestor=$parent
+    }
+    $todo=New-Object 'System.Collections.Generic.Stack[System.IO.DirectoryInfo]'
+    $todo.Push($entry)
+    $dirs=New-Object 'System.Collections.Generic.List[string]'
+    $files=New-Object 'System.Collections.Generic.List[object]'
+    $total=[int64]0
+    while($todo.Count -gt 0){
+        $dir=$todo.Pop()
+        if(($dir.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'QUICK_SYNC_ALIAS_REJECTED'}
+        foreach($child in @($dir.GetFileSystemInfos())){
+            if(($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'QUICK_SYNC_ALIAS_REJECTED'}
+            if(-not $child.FullName.StartsWith($anchor+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'QUICK_SYNC_TREE_ESCAPE'}
+            $relative=$child.FullName.Substring($anchor.Length+1).Replace('\','/')
+            if($child -is [IO.DirectoryInfo]){
+                $dirs.Add($relative)
+                $todo.Push($child)
+            }else{
+                if($files.Count -ge 100000){throw 'QUICK_SYNC_FILE_LIMIT'}
+                $f=[IO.FileInfo]$child
+                $total+=[int64]$f.Length
+                if($total -gt 1073741824){throw 'QUICK_SYNC_BYTE_LIMIT'}
+                $hash=[Security.Cryptography.SHA256]::Create()
+                $stream=$null
+                try{
+                    $stream=[IO.File]::Open($f.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+                    $digest=([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-','').ToLowerInvariant()
+                }finally{if($stream){$stream.Dispose()};$hash.Dispose()}
+                $files.Add([pscustomobject]@{relative=$relative;absolute=[string]$f.FullName;bytes=[int64]$f.Length;sha256=$digest})
+            }
+        }
+    }
+    [pscustomobject]@{root=$anchor;files=@($files|Sort-Object -Property relative);directories=@($dirs|Sort-Object -Property Length, {$_});bytes=$total}
+}
+function Assert-QuickSyncTreesEqual {
+    param([Parameter(Mandatory)]$Expected,[Parameter(Mandatory)]$Actual)
+    $left=@($Expected.files);$right=@($Actual.files)
+    if($left.Count -ne $right.Count -or [int64]$Expected.bytes -ne [int64]$Actual.bytes){throw 'QUICK_SYNC_SHA256_MISMATCH'}
+    for($i=0;$i -lt $left.Count;$i++){
+        if([string]$left[$i].relative -cne [string]$right[$i].relative -or [int64]$left[$i].bytes -ne [int64]$right[$i].bytes -or [string]$left[$i].sha256 -cne [string]$right[$i].sha256){throw 'QUICK_SYNC_SHA256_MISMATCH'}
+    }
+    $ld=@($Expected.directories|Sort-Object);$rd=@($Actual.directories|Sort-Object)
+    if($ld.Count -ne $rd.Count){throw 'QUICK_SYNC_DIRECTORY_MISMATCH'}
+    for($i=0;$i -lt $ld.Count;$i++){if([string]$ld[$i] -cne [string]$rd[$i]){throw 'QUICK_SYNC_DIRECTORY_MISMATCH'}}
+}
+# Only the selected canonical extension is verified, never either Main. The
+# accepted snapshot authenticates the fingerprint path/hash; its JSONL rows
+# authenticate each canonical relative file path, byte length and SHA-256.
+function Assert-QuickSyncCanonicalAccepted {
+    param(
+        [Parameter(Mandatory)]$Current,
+        [Parameter(Mandatory)]$Accepted,
+        [Parameter(Mandatory)][string]$ManifestPath,
+        [Parameter(Mandatory)][string]$ParticipantId,
+        [Parameter(Mandatory)][string]$ExtensionId
+    )
+    if([string]$Accepted.fingerprint_inventory_state -cne 'PRESENT'){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_REQUIRED'}
+    $fingerprintSha=[string]$Accepted.fingerprint_inventory_sha256
+    if($fingerprintSha -notmatch '^[a-f0-9]{64}$'){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'}
+    $prefix="Fingerprints/$ParticipantId.extension.$ExtensionId"
+    $legacy="$prefix.jsonl"
+    $versioned="$prefix.$fingerprintSha.jsonl"
+    $expectedRelative=[string]$Accepted.fingerprint_inventory_path
+    if($expectedRelative -cne $legacy -and $expectedRelative -cne $versioned){
+        throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+    }
+    if([int64]$Accepted.files -ne @($Current.files).Count -or [int64]$Accepted.bytes -ne [int64]$Current.bytes){
+        throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'
+    }
+    $path=Join-Path (Split-Path -Parent $ManifestPath) ($expectedRelative.Replace('/','\'))
+    if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_MISSING'}
+    $fp=Get-Item -LiteralPath $path -Force -ErrorAction Stop
+    if(($fp.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $fp.Length -gt 33554432){
+        throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+    }
+    if((Get-Sha256File $path) -cne [string]$Accepted.fingerprint_inventory_sha256){
+        throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_MISMATCH'
+    }
+    $lines=[IO.File]::ReadAllLines($path,(New-Object Text.UTF8Encoding($false,$true)))
+    $expected=New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+    foreach($line in $lines){
+        $r=$null
+        try{$r=$line|ConvertFrom-Json -ErrorAction Stop}catch{throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'}
+        if(-not $r -or [string]::IsNullOrEmpty([string]$r.path) -or
+           [string]$r.path -match '[\\:]|(^|/)\.\.?(/|$)|//' -or
+           [string]$r.sha256 -notmatch '^[a-f0-9]{64}$'){
+            throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+        }
+        $bytes=[int64]0
+        if(-not [int64]::TryParse([string]$r.size,[ref]$bytes) -or $bytes -lt 0){
+            throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'
+        }
+        if($expected.ContainsKey([string]$r.path)){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_INVALID'}
+        $expected.Add([string]$r.path,[pscustomobject]@{bytes=$bytes;sha256=[string]$r.sha256})
+    }
+    if($expected.Count -ne @($Current.files).Count){throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'}
+    $configFound=$false
+    foreach($file in @($Current.files)){
+        $acceptedFile=$null
+        if(-not $expected.TryGetValue([string]$file.relative,[ref]$acceptedFile) -or
+           [int64]$file.bytes -ne [int64]$acceptedFile.bytes -or
+           [string]$file.sha256 -cne [string]$acceptedFile.sha256){
+            throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'
+        }
+        if([string]$file.relative -ceq 'Configuration.xml'){
+            $configFound=$true
+            if([string]$file.sha256 -cne [string]$Accepted.configuration_xml_sha256){
+                throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'
+            }
+        }
+    }
+    if(-not $configFound){throw 'QUICK_SYNC_CANONICAL_INTEGRITY_FAILED'}
+}
+function Copy-QuickSyncExtensionTree {
+    param([Parameter(Mandatory)]$Source,[Parameter(Mandatory)][string]$Slot)
+    $dest=Get-SourceUpdateAclEntry -Path $Slot
+    if($dest -isnot [IO.DirectoryInfo]){throw 'QUICK_SYNC_SLOT_NOT_DIRECTORY'}
+    if(@($dest.GetFileSystemInfos()).Count){throw 'QUICK_SYNC_SLOT_NOT_EMPTY'}
+    foreach($relative in @($Source.directories|Sort-Object Length)){
+        $p=[IO.Path]::Combine([string]$dest.FullName,([string]$relative).Replace('/','\'))
+        $null=[IO.Directory]::CreateDirectory($p)
+    }
+    foreach($f in @($Source.files)){
+        $p=[IO.Path]::Combine([string]$dest.FullName,([string]$f.relative).Replace('/','\'))
+        $now=Get-SourceUpdateAclEntry -Path ([string]$f.absolute)
+        if($now -isnot [IO.FileInfo] -or (($now.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)){throw 'QUICK_SYNC_SOURCE_CHANGED'}
+        [IO.File]::Copy([string]$f.absolute,$p,$false)
+    }
+}
+function Sync-ExistingWorkerExtension {
+    param(
+        [Parameter(Mandatory)][string]$ProjectId,
+        [Parameter(Mandatory)][string]$ParticipantId,
+        [Parameter(Mandatory)][string]$ExtensionId,
+        [string]$WorkerRoot=$script:DefaultWorkerRoot,
+        [string]$ProgramDataRoot=$script:DefaultProgramDataRoot,
+        [string]$OperatorIdentity
+    )
+    if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
+    $pk=Assert-SafeId $ProjectId 'project_id'
+    $participant=Assert-SafeId $ParticipantId 'participant_id'
+    $ext=Assert-SafeId $ExtensionId 'extension_id'
+    $key="$participant|EXTENSION|$ext"
+    $paths=Get-SourceUpdatePaths -ProjectId $pk -WorkerRoot $WorkerRoot
+    if(Test-ProjectActiveAdmission -ProjectId $pk -ProgramDataRoot $ProgramDataRoot){throw 'QUICK_SYNC_ACTIVE_ADMISSION_STOP_REQUIRED'}
+    if((Get-SourceUpdateSummary -ProjectId $pk -WorkerRoot $WorkerRoot).status -ne 'NONE'){throw 'QUICK_SYNC_EXISTING_INCOMING_RECOVER_FIRST'}
+    if(Test-Path -LiteralPath $paths.promotion_path -PathType Leaf){throw 'QUICK_SYNC_PROMOTION_RECOVERY_REQUIRED'}
+    $catalog=Read-WorkerCatalog $WorkerRoot
+    $project=Find-Project $catalog $pk
+    if(-not $project){throw 'PROJECT_NOT_FOUND'}
+    $matches=@(Get-SourceUpdateCatalogRows $project|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($matches.Count -ne 1){throw 'QUICK_SYNC_EXTENSION_NOT_REGISTERED'}
+    $row=$matches[0]
+    $manifestPath=Get-ProjectManifestPath -ProjectId $pk -WorkerRoot $WorkerRoot
+    if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'QUICK_SYNC_ACCEPTED_MANIFEST_REQUIRED'}
+    $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $old=@(Get-ManifestArtifactRows $manifest|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($old.Count -ne 1){throw 'QUICK_SYNC_NEW_EXTENSION_USE_SELECTED_ADD'}
+    $priorPart=@($manifest.participants|Where-Object {$_.participant_id -ceq $participant -and $_.active -ne $false})
+    $priorExt=@();if($priorPart.Count -eq 1){$priorExt=@($priorPart[0].target.extensions|Where-Object {$_.extension_id -ceq $ext -and $_.active -ne $false})}
+    if($priorExt.Count -ne 1 -or [string]$old[0].canonical_path -cne [string]$row.canonical_path -or [string]$priorExt[0].source_path -cne [string]$row.source_path){throw 'QUICK_SYNC_SOURCE_IDENTITY_CHANGED'}
+    $fast=Get-FastProjectState -ProjectId $pk -WorkerRoot $WorkerRoot
+    if($fast.state -ne 'ACCEPTED'){throw ('QUICK_SYNC_BASE_NOT_ACCEPTED: '+[string]$fast.state)}
+    $source=[IO.Path]::GetFullPath([string]$row.source_path).TrimEnd('\')
+    $managed=[IO.Path]::GetFullPath([string]$paths.project_root).TrimEnd('\')
+    if($source.Equals($managed,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($managed+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'QUICK_SYNC_SOURCE_INSIDE_WORKER'}
+    Assert-OneCExportRoot $source
+    $canonical=Join-Path $paths.project_root ([string]$row.canonical_path).Replace('/','\')
+    $before=Get-QuickSyncExtensionTree -Root $source
+    $current=Get-QuickSyncExtensionTree -Root $canonical
+    $acceptedRows=@($manifest.accepted_snapshot.artifacts|Where-Object {$_.participant_id -ceq $participant -and $_.artifact_type -ceq 'EXTENSION' -and $_.artifact_id -ceq $ext})
+    if($acceptedRows.Count -ne 1){throw 'QUICK_SYNC_ACCEPTED_FINGERPRINT_REQUIRED'}
+    Assert-QuickSyncCanonicalAccepted -Current $current -Accepted $acceptedRows[0] -ManifestPath $manifestPath -ParticipantId $participant -ExtensionId $ext
+    $unchanged=$false
+    try{Assert-QuickSyncTreesEqual -Expected $before -Actual $current;$unchanged=$true}catch{
+        if($_.Exception.Message -notin @('QUICK_SYNC_SHA256_MISMATCH','QUICK_SYNC_DIRECTORY_MISMATCH')){throw}
+    }
+    if($unchanged){
+        return [pscustomobject]@{status='NO_CHANGE';project_id=$pk;artifact_key=$key;source_snapshot_id=$fast.source_snapshot_id;publication_generation=$fast.publication_generation;files=$before.files.Count;copied_content_bytes=0;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0;generation_id=$null}
+    }
+    $prepared=Prepare-SourceUpdate -ProjectId $pk -Selections @($key) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+    if([string]$prepared.status -ne 'PREPARED_WRITABLE' -or @($prepared.slots).Count -ne 1 -or [string]$prepared.slots[0].key -cne $key){throw 'QUICK_SYNC_PREPARE_IDENTITY_MISMATCH'}
+    # From here a failure deliberately leaves this EXACT generation for native
+    # inspect/recovery. Never auto CANCEL/STOP, overwrite or replay it.
+    Copy-QuickSyncExtensionTree -Source $before -Slot ([string]$prepared.slots[0].slot_path)
+    $afterSource=Get-QuickSyncExtensionTree -Root $source
+    $afterSlot=Get-QuickSyncExtensionTree -Root ([string]$prepared.slots[0].slot_path)
+    Assert-QuickSyncTreesEqual -Expected $before -Actual $afterSource
+    Assert-QuickSyncTreesEqual -Expected $before -Actual $afterSlot
+    if(Test-ProjectActiveAdmission -ProjectId $pk -ProgramDataRoot $ProgramDataRoot){throw 'QUICK_SYNC_ADMISSION_BECAME_ACTIVE_INCOMING_PRESERVED'}
+    $accepted=Accept-SourceUpdate -ProjectId $pk -ExpectedGenerationId ([string]$prepared.generation_id) -ExpectedArtifactKey @($key) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot -OperatorIdentity $OperatorIdentity
+    if([string]$accepted.status -notin @('READY','NO_CHANGE')){
+        return [pscustomobject]@{status='WAITING_FOR_USER';reason=[string]$accepted.reason;generation_id=[string]$prepared.generation_id;artifact_key=$key;publication_performed=$false;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
+    }
+    [pscustomobject]@{status=[string]$accepted.status;project_id=$pk;artifact_key=$key;source_snapshot_id=$accepted.source_snapshot_id;publication_generation=$accepted.publication_generation;generation_id=[string]$prepared.generation_id;files=$before.files.Count;source_bytes=[int64]$before.bytes;copied_to_incoming_bytes=[int64]$before.bytes;copied_content_bytes=$accepted.copied_content_bytes;main_content_bytes_read=0;main_hashed_bytes=0;main_copied_bytes=0}
 }
 
 function Copy-ArtifactSafely {
