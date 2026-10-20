@@ -27,6 +27,28 @@ Rec 'ps51_launcher_utf8_bom' ($launcherBytes.Length -ge 3 -and $launcherBytes[0]
 $lock=Read-RuntimeLock -PackageRoot $PackageRoot
 $policy=Get-Content -LiteralPath (Join-Path (Split-Path -Parent (Split-Path -Parent $PackageRoot)) 'TOOLS\SHAREABLE_BINARY_REVIEW_POLICY.json') -Raw -Encoding UTF8|ConvertFrom-Json
 $exe=Join-Path $PackageRoot 'control-center\publish\OneCArchitecture.ControlCenter.exe'
+$icon=Join-Path $project 'Assets\OneCOrbit.AppIcon.ico'
+Rec 'orbit_approved_icon_source_exists' (Test-Path -LiteralPath $icon -PathType Leaf) $icon
+$iconHash=(Get-FileHash -LiteralPath $icon -Algorithm SHA256).Hash.ToLowerInvariant()
+Rec 'orbit_approved_icon_exact_bytes' ($iconHash -eq 'eb85cbcbf76f4467871e4dbf753ab128bce1363735759796b7b7f59774accca1' -and (Get-Item -LiteralPath $icon).Length -eq 47783) $iconHash
+
+$brandPng=Join-Path $project 'Assets\OneCOrbit.BrandMark.256.png'
+Rec 'orbit_approved_256_frame_source_exists' (Test-Path -LiteralPath $brandPng -PathType Leaf) $brandPng
+$brandPngHash=(Get-FileHash -LiteralPath $brandPng -Algorithm SHA256).Hash.ToLowerInvariant()
+Rec 'orbit_approved_256_frame_exact_bytes' ($brandPngHash -eq 'd052b7937b81f2967af91a4ae595772fc20a5ebb5ea3d689343e7d687103f1a2' -and (Get-Item -LiteralPath $brandPng).Length -eq 21030) $brandPngHash
+$icoBytes=[IO.File]::ReadAllBytes($icon)
+Rec 'orbit_ico_seven_frames' ([BitConverter]::ToUInt16($icoBytes,4) -eq 7 -and $icoBytes[6+16*6] -eq 0 -and $icoBytes[6+16*6+1] -eq 0) ''
+$frameLen=[int][BitConverter]::ToUInt32($icoBytes,(6+16*6+8))
+$frameOffset=[int][BitConverter]::ToUInt32($icoBytes,(6+16*6+12))
+Rec 'orbit_256_frame_bounds' ($frameLen -eq 21030 -and $frameOffset -gt 0 -and ($frameOffset+$frameLen) -le $icoBytes.Length) ''
+$frame=New-Object byte[] $frameLen
+[Array]::Copy($icoBytes,$frameOffset,$frame,0,$frameLen)
+Rec 'orbit_256_png_byte_identical_to_ico_frame' ([Linq.Enumerable]::SequenceEqual([byte[]]$frame,[byte[]][IO.File]::ReadAllBytes($brandPng))) ''
+$brandAssetRows=@($policy.reviewed_binary_files|Where-Object {$_.path -in @('PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Assets/OneCOrbit.AppIcon.ico','PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Assets/OneCOrbit.BrandMark.256.png')})
+Rec 'orbit_assets_binary_review_pins' ($brandAssetRows.Count -eq 2 -and @($brandAssetRows|Where-Object {$_.sha256 -eq $iconHash -or $_.sha256 -eq $brandPngHash}).Count -eq 2) ''
+Rec 'orbit_exe_and_wpf_resource_contract' ($csproj -match '<ApplicationIcon>Assets\\OneCOrbit.AppIcon.ico</ApplicationIcon>' -and $csproj -match 'Resource Include="Assets\\OneCOrbit.AppIcon.ico"' -and $csproj -match 'Resource Include="Assets\\OneCOrbit.BrandMark.256.png"') ''
+Rec 'orbit_real_window_sidebar_and_tray_icon' ($xaml -match 'Icon="pack://application:,,,/OneCArchitecture.ControlCenter;component/Assets/OneCOrbit.BrandMark.256.png"' -and $xaml -match '<Image Source="pack://application:,,,/OneCArchitecture.ControlCenter;component/Assets/OneCOrbit.BrandMark.256.png"' -and $app -match 'ORBIT_APPROVED_ICON_EXE_MISSING' -and $app -match 'ExtractAssociatedIcon' -and $app -notmatch 'SystemIcons.Application') ''
+Rec 'orbit_shortcut_explicit_exe_icon' ($core -match 'IconLocation=\$destination' -and $core -match 'CONTROL_CENTER_SHORTCUT_ICON_MISMATCH') ''
 Rec 'dotnet_sdk_ready' (Test-Path -LiteralPath $DotnetPath -PathType Leaf) $DotnetPath
 Rec 'self_contained_single_file_win_x64' ($csproj -match '<TargetFramework>net10\.0-windows</TargetFramework>' -and $csproj -match '<RuntimeIdentifier>win-x64</RuntimeIdentifier>' -and $csproj -match '<SelfContained>true</SelfContained>' -and $csproj -match '<PublishSingleFile>true</PublishSingleFile>') ''
 Rec 'per_monitor_v2_dpi' ($csproj -match '<ApplicationManifest>app\.manifest</ApplicationManifest>' -and $csproj -match '<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>' -and $manifest -match 'longPathAware') ''
@@ -37,6 +59,15 @@ $lockHash=[string]$lock.components.'control-center/publish/OneCArchitecture.Cont
 Rec 'binary_hash_pinned_in_runtime_lock' ($exeHash -eq $lockHash) ($exeHash+' vs '+$lockHash)
 $policyRow=@($policy.reviewed_binary_files|Where-Object{$_.path -eq 'PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe'})|Select-Object -First 1
 Rec 'binary_shareable_policy_exact' ($null -ne $policyRow -and [string]$policyRow.sha256 -eq $exeHash) $(if($policyRow){[string]$policyRow.sha256}else{'missing'})
+Add-Type -AssemblyName System.Drawing
+$nativeIcon=[System.Drawing.Icon]::ExtractAssociatedIcon($exe)
+Rec 'orbit_native_exe_icon_present' ($null -ne $nativeIcon) ''
+if($nativeIcon){
+  $nativeBitmap=$nativeIcon.ToBitmap()
+  Rec 'orbit_native_exe_icon_has_pixels' ($nativeBitmap.Width -ge 16 -and $nativeBitmap.GetPixel([int]($nativeBitmap.Width/2),[int]($nativeBitmap.Height/2)).A -gt 0) ''
+  $nativeBitmap.Dispose()
+  $nativeIcon.Dispose()
+}
 $sig=Get-AuthenticodeSignature -LiteralPath $exe
 Rec 'unsigned_internal_pilot_classified' ($sig.Status -ne 'Valid' -and [string]$lock.control_center.signing_status -eq 'UNSIGNED_INTERNAL_PILOT') ([string]$sig.Status)
 Rec 'lock_no_service_webview_loopback_ps7' ($lock.control_center.service -eq $false -and $lock.control_center.loopback_listener -eq $false -and $lock.control_center.webview2 -eq $false -and $lock.control_center.powershell7_required -eq $false) ''

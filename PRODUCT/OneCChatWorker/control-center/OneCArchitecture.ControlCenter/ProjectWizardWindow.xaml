@@ -1,7 +1,7 @@
 <Window x:Class="OneCArchitecture.ControlCenter.ProjectWizardWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Style="{StaticResource {x:Type Window}}" Title="Add project" Width="680" Height="620" MinWidth="620" MinHeight="540"
+ Style="{StaticResource {x:Type Window}}" Icon="pack://application:,,,/OneCArchitecture.ControlCenter;component/Assets/OneCOrbit.BrandMark.256.png" Title="Add project" Width="680" Height="620" MinWidth="620" MinHeight="540"
  WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
  <ScrollViewer Background="{DynamicResource WindowBrush}" VerticalScrollBarVisibility="Auto">
   <Grid Margin="24">
