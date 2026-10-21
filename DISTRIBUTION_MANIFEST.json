@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 567,
+  "file_count": 570,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 12598,
-      "sha256": "4c45041653507c76e117d6fcd2543c42a3c6fdc4d89d0b737b677dcef33a23ac"
+      "size": 12954,
+      "sha256": "a355e842079aa56d0093f2727f3764c56fff8b1ce21d239b7271cb220a1859a4"
     },
     {
       "path": ".gitignore",
@@ -384,6 +384,11 @@
       "sha256": "449b91731439c5d3e4d82d6d1a1023ea43cd39d9cc8d21ccd2cfda676a3a7083"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/ORBIT_MIGRATION_PREFLIGHT.md",
+      "size": 5670,
+      "sha256": "02abd576975a30d4373cf8120ee8d08def281dd85e9d5009e4542aa411973294"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
       "size": 134843,
       "sha256": "d95fb6e955882da28fbf4f72d6f5560541a2c9bf014dbe722e026fa73de05d27"
@@ -659,6 +664,11 @@
       "sha256": "47200e6ce992236f821fed46ee0c9f54b429680ef21939d7b36532cbf6c088aa"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
+      "size": 10282,
+      "sha256": "2376fa36236e8c79917191dcd36c16b35aaab35ede98d4191d22f43c3671b02e"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/Q113_EXISTING_EXTENSION_QUICK_SYNC.md",
       "size": 4461,
       "sha256": "25dbef4082c2f145429099763da9cffcb77c05feab1626f758de916c00e86283"
@@ -812,6 +822,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_operator_acl_regression.ps1",
       "size": 14468,
       "sha256": "ddbd1890363c4bd0e22428707ee24504f69afd6a981690e85237d95f234733bb"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
+      "size": 12082,
+      "sha256": "0631a0550037bc3e5c935d2f57dc638389315aacbdfa5be4fd6ae236cdd2fd4e"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_package_core_bootstrap_regression.ps1",
@@ -2845,5 +2860,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "da639b8e9193f9d877cb9626d9867049e1b7801d7d4aef07ad8cd44079faf244"
+  "snapshot_digest": "2c13e47ce4a252550a35ca59a9e1e18b6a2a8a10f4c22ac14f57b4259811cbb2"
 }
