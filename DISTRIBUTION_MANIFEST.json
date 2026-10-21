@@ -520,13 +520,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/UX7_WORKSPACE_D0_SPEC.md",
-      "size": 6556,
-      "sha256": "54cad9bf5b535d862b889593adb5a19bcd69d6b9973485e0425ff5fefeff18a2"
+      "size": 10889,
+      "sha256": "95eac562e7f385bd639da4cb53ba4e55dd85f52e7bf83e47ba651164443fdc3c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/design-preview/orbit-workspace.html",
-      "size": 19944,
-      "sha256": "7441bf4aa0fb26057b5094c10ee1c2369fe1e5ea31169410f006b2b2efba806b"
+      "size": 25164,
+      "sha256": "75e9faf217a38c7aa429ab5faffe5d5990ea90a6a8da13d0c26e7c5c7ea8bde1"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
@@ -2925,5 +2925,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "a1759a3020d1ade2e4b54fc27083bb935fac607ee11dacb4d46e729b0e3ec9b3"
+  "snapshot_digest": "ab248ce081e44afdcbd1c739ba0045cb25c2ebf2acf97b20be15d4e571dff0a8"
 }

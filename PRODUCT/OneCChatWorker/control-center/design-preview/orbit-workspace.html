@@ -1,72 +1,145 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OneC Orbit Workspace — UX7-D0 (только макет)</title>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneC Orbit · UX7-D0-R · Проект в центре работы</title>
 <style>
-:root{font:14px "Segoe UI Variable Text","Segoe UI",sans-serif;color:#1a2a42;background:#f2f5fa}*{box-sizing:border-box}body{margin:0}
-.layout{max-width:1420px;min-height:100vh;margin:auto;display:grid;grid-template-columns:210px 1fr;background:#f8fafd;box-shadow:0 3px 40px #17335916}
-aside{background:#fff;border-right:1px solid #e3e9f2;padding:22px 14px;display:flex;flex-direction:column;gap:6px}.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:760;margin:0 8px 28px}.brand img{width:30px;height:30px}
-nav{display:grid;gap:5px}.nav{padding:12px 14px;text-align:left;border-radius:9px;color:#52627c;background:transparent;font-weight:600;width:100%}.nav:hover,.nav.active{background:#eaf2ff;color:#0964d8}
-button{border:0;font:inherit;cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #6ca8ff;outline-offset:3px}
-.foot{margin-top:auto;padding:15px 8px;color:#7d899b;font-size:12px;border-top:1px solid #ebeff6}.dot{display:inline-block;width:8px;height:8px;background:#19a064;border-radius:50%;margin-right:5px}
-main{padding:28px clamp(17px,3vw,42px)}.top{display:flex;justify-content:space-between;color:#78869b;margin-bottom:29px;font-size:12px}.tag{background:#e9eef7;border-radius:30px;padding:6px 10px;color:#556b87;font-weight:750}
-.page{display:none}.page.active{display:block}.heading{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:22px}.heading p{margin-top:7px}
-h1{font-size:28px;letter-spacing:-.6px;margin:0 0 5px}h2{font-size:18px;margin:0 0 14px}h3{font-size:16px;margin:0}p{margin:0;color:#718096;line-height:1.5}
-.primary,.secondary{border-radius:9px;padding:11px 17px;font-weight:700}.primary{color:white;background:#0867e8}.primary:hover{background:#0758c6}.secondary{background:white;border:1px solid #d8e2ef;color:#35465e}.primary:disabled,.secondary:disabled{opacity:.46;cursor:not-allowed}
-.grid3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:13px}.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:13px;margin-top:17px}
-.card{border:1px solid #e4eaf3;border-radius:14px;padding:19px;background:#fff;box-shadow:0 2px 7px #152b4b05}.project{min-height:177px;display:flex;flex-direction:column;gap:10px}.featured{background:linear-gradient(140deg,#edf5ff,#fff 72%);border-color:#d7e7ff}
-.name{font-size:19px;font-weight:750}.status{background:#e4f7ec;color:#1b8350;font-size:11px;font-weight:750;border-radius:25px;padding:5px 9px;display:inline-block}.status.warn{background:#fff2db;color:#a86d14}.bottom{margin-top:auto}.link{background:none;color:#065ed5;padding:7px 0;font-weight:700}
-.events{padding:0;list-style:none;margin:0}.events li{padding:12px 0;border-bottom:1px solid #eff2f7;display:flex;justify-content:space-between;gap:12px}.events li:last-child{border:0}.events small{color:#99a6b8}
-.quick{display:grid;gap:8px}.quick button{background:#f4f7fc;border:1px solid #edf1f7;border-radius:9px;padding:12px;text-align:left;color:#2b425c;font-weight:650}
-.list{width:100%;padding:16px;margin:8px 0;background:white;border:1px solid #e5eaf3;border-radius:10px;text-align:left;display:flex;justify-content:space-between;gap:12px}.list small{display:block;margin-top:4px;color:#718096}
-.tabs{display:flex;gap:22px;border-bottom:1px solid #e4e9f2;margin:26px 0 15px;overflow-x:auto}.tab{background:transparent;padding:0 0 14px;color:#748198;font-weight:650;white-space:nowrap;border-bottom:2px solid transparent}.tab.selected{color:#0765df;border-color:#0765df}
-.banner{padding:17px;background:#ebf8ef;border:1px solid #d6f0e1;border-radius:10px;margin-bottom:16px;color:#246847}.banner p{font-size:12px;color:#527e64}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metric{padding:15px;border:1px solid #e5eaf4;border-radius:10px}.metric small{display:block;color:#8995a6;margin-bottom:7px}
-.note{background:#edf4ff;color:#546d90;padding:13px 15px;border-radius:9px;margin-top:15px;font-size:12px}
-label{font-weight:650;display:block;margin-bottom:8px}input:not([type=checkbox]){width:100%;border:1px solid #cbd8e8;border-radius:8px;padding:12px;background:#fff;color:#293c55;font:inherit}.field{margin:14px 0}
-details{margin-top:18px;color:#506080}summary{cursor:pointer;font-weight:650}
-.overlay{display:none;position:fixed;inset:0;background:#12223888;align-items:center;justify-content:center;padding:16px}.overlay.open{display:flex}.dialog{width:min(700px,100%);max-height:95vh;overflow:auto;background:white;border-radius:16px;padding:28px;box-shadow:0 24px 100px #111c3760}
-.dialoghead{display:flex;justify-content:space-between}.close{background:transparent;font-size:23px;color:#7f90a8}
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:24px 0}.step{text-align:center;color:#8594a9;font-size:11px}.bubble{border-radius:50%;margin:0 auto 8px;width:31px;height:31px;background:#eef3fa;display:grid;place-items:center;font-weight:800}.step.current .bubble,.step.past .bubble{background:#0968e8;color:white}.step.current{color:#075dd4;font-weight:750}
-.stage{min-height:220px}.stage[hidden]{display:none}.footer{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:18px;border-top:1px solid #e5eaf2}.demo{font-size:12px;color:#8996a9;margin-top:26px}
-@media(max-width:920px){.layout{grid-template-columns:170px 1fr}.grid3{grid-template-columns:1fr 1fr}.featured{grid-column:span 2}.grid2{grid-template-columns:1fr}aside{padding:17px 10px}}
-@media(max-width:650px){.layout{display:block}aside{position:relative;display:flex;flex-direction:row;overflow:auto;padding:8px}.brand{margin:6px 12px}.foot{display:none}nav{display:flex}.nav{white-space:nowrap}.grid3{grid-template-columns:1fr}.featured{grid-column:span 1}.metrics{grid-template-columns:1fr}main{padding:18px}.heading{align-items:flex-start;flex-direction:column}}
-</style></head><body>
-<div class="layout"><aside><div class="brand"><img src="../OneCArchitecture.ControlCenter/Assets/OneCOrbit.BrandMark.256.png" alt=""><span>OneC Orbit</span></div>
-<nav aria-label="Основная навигация"><button class="nav active" data-view="overview">⌂ &nbsp; Обзор</button><button class="nav" data-view="projects">▣ &nbsp; Проекты</button><button class="nav" data-view="work">▷ &nbsp; Работа</button><button class="nav" data-view="history">◷ &nbsp; История</button><button class="nav" data-view="settings">⚙ &nbsp; Настройки</button></nav>
-<div class="foot"><span class="dot"></span>Офлайн-макет UX7-D0<br>Никаких подключений к 1С</div></aside>
-<main><div class="top"><span id="crumb">Главная / Обзор</span><span class="tag">ПРОТОТИП · НЕ ПРОДУКТ</span></div>
-<section class="page active" id="overview"><div class="heading"><div><h1>Ваше рабочее пространство</h1><p>Выберите проект или продолжите работу.</p></div><button class="primary" data-wizard>＋ Добавить проект</button></div>
-<h2>Проекты</h2><div class="grid3">
-<div class="card project featured"><div class="name">RetailGroup <span class="status">✓ Готово</span></div><p>Демонстрационный проект. Рабочее состояние условное.</p><div class="bottom"><button class="primary" data-view="work">Продолжить работу →</button></div></div>
-<div class="card project"><div class="name">NeoHim</div><div><span class="status">✓ Готово</span></div><div class="bottom"><button class="link" data-view="project">Открыть →</button></div></div>
-<div class="card project"><div class="name">Nendo</div><div><span class="status warn">! Требует внимания</span></div><div class="bottom"><button class="link" data-view="project">Подробнее →</button></div></div></div>
-<div class="grid2"><div class="card"><h2>Последние события</h2><ul class="events"><li>✓ Проект проверен <small>Демо</small></li><li>◦ Доступна история Source <small>Демо</small></li><li>✓ Параметры подтверждены <small>Демо</small></li></ul></div>
-<div class="card"><h2>Быстрые действия</h2><div class="quick"><button data-wizard>＋ Добавить проект</button><button data-view="project">▣ Пространство проекта</button><button data-view="settings">⚙ Обслуживание</button></div></div></div></section>
-<section class="page" id="projects"><div class="heading"><div><h1>Проекты</h1><p>Выберите проект и откройте его рабочее пространство.</p></div><button class="primary" data-wizard>＋ Добавить проект</button></div>
-<button class="list" data-view="project"><span><b>RetailGroup</b><small>Выбранный демонстрационный проект</small></span><span class="status">✓ Готово</span></button><button class="list" data-view="project"><span><b>NeoHim</b><small>Состояние демонстрационное</small></span><span class="status">✓ Готово</span></button><button class="list" data-view="project"><span><b>Nendo</b><small>Проверка необходима</small></span><span class="status warn">! Внимание</span></button></section>
-<section class="page" id="project"><button class="link" data-view="projects">← Все проекты</button><div style="margin:15px 0"><h1>RetailGroup <span class="status">✓ Готово</span></h1><p>Управление торговлей · демонстрационный контекст</p></div>
-<div class="tabs" role="tablist" aria-label="Разделы проекта"><button role="tab" aria-selected="true" class="tab selected" data-tab="status">Состояние</button><button role="tab" aria-selected="false" class="tab" data-tab="work">Работа</button><button role="tab" aria-selected="false" class="tab" data-tab="files">Файлы</button><button role="tab" aria-selected="false" class="tab" data-tab="extensions">Расширения</button><button role="tab" aria-selected="false" class="tab" data-tab="activity">История</button></div>
-<div class="card" id="project-panel"><div class="banner"><b>✓ Проект готов к работе</b><p>Иллюстративное состояние; канонический Worker в макете отсутствует.</p></div><div class="metrics"><div class="metric"><small>Source</small><b>Без замечаний</b></div><div class="metric"><small>Расширения</small><b>1 подключено</b></div><div class="metric"><small>Работа</small><b>Не запущена</b></div></div><div style="margin-top:18px"><button class="primary" data-view="work">Перейти к работе →</button></div></div></section>
-<section class="page" id="work"><div class="heading"><div><h1>Работа</h1><p>RetailGroup · выберите задачу. Операции Worker в макете отключены.</p></div></div><div class="card" style="max-width:760px"><div class="banner"><b>✓ Демонстрационное состояние</b><p>Настоящий Worker должен подтвердить проект, помощник и состояние сессии.</p></div><div class="field"><label for="task">Что нужно сделать?</label><input id="task" placeholder="Например: проверить изменения конфигурации"></div><button class="primary" disabled title="Действие в макете недоступно">Начать работу (в макете недоступно)</button><div class="note">Новый чат ChatGPT ≠ новая задача Worker. ACTIVE TASK + HELPER OFFLINE означает восстановление связи, а не STOP/START.</div></div></section>
-<section class="page" id="history"><div class="heading"><div><h1>История</h1><p>Не перегружаем обзор служебными событиями.</p></div></div><div class="card"><ul class="events"><li>✓ Проверка проекта <small>Демо</small></li><li>◦ История подключений <small>Демо</small></li></ul><details><summary>Технические сведения</summary><p>Доступны по запросу и только от канонического владельца данных.</p></details></div></section>
-<section class="page" id="settings"><div class="heading"><div><h1>Настройки и обслуживание</h1><p>Повседневные параметры отдельно от потенциально опасных операций.</p></div></div><div class="card"><h2>Система</h2><button class="list" disabled>Проверить целостность — только в работающем Orbit</button><button class="list" disabled>Обновить Orbit — после доверенного подтверждения выпуска</button><details><summary>Дополнительные технические действия</summary><p>Диагностика и восстановление остаются доступными, но не занимают главное окно.</p></details></div></section>
-<p class="demo">UX7-D0 · Только презентационный локальный HTML · названия/даты/статусы иллюстративны · без Worker, GitHub, network, установщика и доступа к проектным файлам.</p></main></div>
-<div class="overlay" id="wizard"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="wizard-title"><div class="dialoghead"><h1 id="wizard-title">Добавление проекта</h1><button class="close" id="close-wizard" aria-label="Закрыть">×</button></div><p>Четыре понятных этапа; ничего не создаётся.</p><div class="steps" id="steps"></div>
-<div class="stage" data-step="0"><h2>1. Основные сведения</h2><div class="field"><label for="project-name">Название проекта</label><input id="project-name" placeholder="Например: TradeDemo"></div><div class="field"><label for="project-system">Конфигурация 1С</label><input id="project-system" placeholder="Например: Управление торговлей"></div></div>
-<div class="stage" data-step="1" hidden><h2>2. Исходные файлы</h2><p>Выберите путь к XML-выгрузке. Макет не обращается к диску.</p><div class="field"><label for="project-path">Папка XML</label><input id="project-path" placeholder="C:\\Демо\\Конфигурация"></div><div class="field"><label><input type="checkbox" id="extension"> Добавить расширение позже или сейчас</label></div></div>
-<div class="stage" data-step="2" hidden><h2>3. Проверка</h2><div class="note">Проверка в макете не выполняется. Рабочее приложение должно получить подтверждённый результат от Worker и не показывать ложное «Готово».</div></div>
-<div class="stage" data-step="3" hidden><h2>4. Подтверждение</h2><p>Проверьте параметры перед созданием проекта.</p><div class="card" id="summary" aria-live="polite"></div><div class="note">Создание отключено: в макете нет канонической проверки и реальных операций.</div></div>
-<div class="footer"><button class="secondary" id="back">Отмена</button><span id="count" style="color:#7f8ca1">Шаг 1 из 4</span><button class="primary" id="next">Далее →</button></div></div></div>
+:root{font:14px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:#23324a;background:#edf2f8;color-scheme:light}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{border:0;cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #6ca9ff;outline-offset:2px}
+.shell{max-width:1440px;margin:auto;min-height:100vh;display:grid;grid-template-columns:220px minmax(0,1fr);background:#f8faff;box-shadow:0 8px 45px #152b4b16}
+aside{display:flex;flex-direction:column;padding:20px 13px;background:white;border-right:1px solid #e3eaf2;gap:6px}
+.brand{display:flex;align-items:center;gap:10px;padding:5px 11px 26px;font-size:17px;font-weight:750;letter-spacing:-.3px}.brand img{height:32px;width:32px}
+.nav{display:flex;align-items:center;width:100%;padding:13px 11px;text-align:left;background:transparent;color:#52647d;font-weight:650;border-radius:9px;gap:10px}.nav:hover,.nav.active{background:#e9f1ff;color:#095ccc}.nav span{width:22px;text-align:center;font-size:16px}
+.aside-foot{margin-top:auto;border-top:1px solid #e9eef5;padding:17px 10px 0;color:#596a81;font-size:12px;line-height:1.55}
+.content{padding:26px clamp(18px,3vw,45px) 35px;min-width:0}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:25px}.bread{color:#5d708c;font-size:13px}.demo{display:inline-flex;border-radius:30px;background:#fff0ce;color:#795600;font-size:11px;font-weight:750;padding:7px 11px;letter-spacing:.025em}
+.page{display:none}.page.active{display:block}h1{font-size:27px;letter-spacing:-.65px;line-height:1.2;margin:0 0 6px}h2{font-size:17px;line-height:1.3;margin:0 0 13px}p{margin:0;color:#5f7089;line-height:1.55}.muted{color:#65758b;font-size:12px}.heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:23px}.heading p{margin-top:6px}
+button.primary,button.secondary{border-radius:9px;padding:11px 15px;font-weight:700;line-height:1.25}button.primary{background:#075fd4;color:white}button.primary:hover:not(:disabled){background:#054eaf}button.secondary{border:1px solid #cdd9e9;background:#fff;color:#284464}button.secondary:hover:not(:disabled){background:#eef4fe}button:disabled{cursor:not-allowed;opacity:.58}
+.card{background:#fff;border:1px solid #dde5f0;border-radius:14px;padding:19px;box-shadow:0 2px 6px #1c315807}
+.two{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px}.title-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.project-icon{width:51px;height:51px;display:grid;place-items:center;border-radius:14px;background:#e4edfe;color:#1362cc;font-size:23px;font-weight:800}
+.status{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:6px 9px;font-size:11px;font-weight:730;background:#eef3f9;color:#425978}
+.status.good{background:#e6f6ed;color:#177344}.status.warn{background:#fff2dc;color:#925700}
+.status.block{background:#fceae8;color:#992d34}
+.project-actions{margin-top:19px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.scope{border-left:3px solid #0c69dc;background:#f0f5ff;border-radius:6px;padding:12px 14px;color:#3b587d;margin:14px 0;font-size:13px;line-height:1.5}
+.warning{background:#fff3e1;border:1px solid #efd3a3;border-radius:11px;padding:14px 16px;color:#77521e;margin-bottom:15px;font-size:13px;line-height:1.5}
+.warning.critical{background:#fcebea;border-color:#f0b8b5;color:#8a2d31}
+.warning p{color:inherit;margin-top:5px}
+.projectpicker{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.projectpicker label{font-size:12px;color:#506582;font-weight:690}.projectpicker select{min-width:155px;max-width:250px;border:1px solid #ccdaea;border-radius:9px;padding:10px 12px;background:#fff;color:#2c4362}
+.tabs{display:flex;gap:20px;overflow-x:auto;border-bottom:1px solid #dce5f1;margin:18px 0 15px}.tab{background:none;color:#596e8c;border-bottom:2px solid transparent;padding:0 0 12px;font-weight:680;white-space:nowrap}.tab.active{border-color:#0965e0;color:#095bc9}
+.main-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.textbutton{background:none;color:#075bbf;font-weight:700;padding:7px 0;text-align:left}
+.list{display:grid;gap:10px}.project-item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid #dde5f0;padding:17px;border-radius:11px;text-align:left;color:#273d5b}.project-item:hover{background:#eef5ff}.project-item strong{display:block;font-size:16px;margin-bottom:6px}.project-item small{color:#667993}
+.events{list-style:none;padding:0;margin:0}.events li{padding:11px 0;border-bottom:1px solid #e8eef6;color:#405572}.events li:last-child{border:0}
+.kicker{color:#526785;font-weight:750;margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.055em}
+details{margin-top:13px;border-top:1px solid #e5ecf4;padding-top:14px;color:#45627e}summary{cursor:pointer;font-weight:700}details p{margin-top:8px}
+.footnote{margin-top:25px;color:#576b85;font-size:12px}
+.overlay{display:none;position:fixed;inset:0;background:#172841a3;padding:17px;z-index:50;align-items:center;justify-content:center}.overlay.open{display:flex}
+.dialog{width:min(680px,100%);max-height:min(90vh,800px);display:flex;flex-direction:column;border-radius:16px;background:#fff;box-shadow:0 25px 65px #10213a60;overflow:hidden}
+.dialog-head{padding:20px 25px 13px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.dialog-head h1{font-size:23px}.close{background:transparent;color:#435979;font-size:23px}
+.stagecontainer{padding:0 25px;overflow:auto;flex:1;min-height:0}.progress{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:17px 0 24px}.step{text-align:center;font-size:11px;color:#637994;font-weight:620}.circle{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#ebf1f9;color:#3a536f;font-weight:750;margin:0 auto 7px}.step.current .circle,.step.past .circle{background:#0961d9;color:white}
+.stage[hidden]{display:none}.stage{padding-bottom:20px}.field{margin:16px 0}.field label{font-weight:710;display:block;margin:0 0 8px}.field input:not([type=checkbox]){width:100%;padding:12px 13px;background:white;border:1px solid #b9cadf;border-radius:9px;color:#273d58}.error{color:#a32835;font-size:12px;margin-top:5px;min-height:16px}.field input.invalid{border:2px solid #a32835}
+.dialog-foot{flex-shrink:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 25px;border-top:1px solid #dbe5f0;background:white}
+.review{display:grid;gap:7px;border:1px solid #e1e8f2;padding:14px;border-radius:9px;margin-top:13px}.review div{color:#344b68;font-size:13px}
+@media(max-width:950px){.shell{grid-template-columns:175px 1fr}aside{padding:17px 9px}.content{padding:22px}.two{grid-template-columns:1fr}}
+@media(max-width:620px){.shell{display:block}aside{flex-direction:row;align-items:center;flex-wrap:wrap;padding:8px}.brand{padding:5px 8px;margin:0;font-size:14px}.brand img{width:22px;height:22px}.nav{width:auto;white-space:nowrap;padding:9px}.nav span{display:none}.aside-foot{display:none}.content{padding:15px}.heading,.top{align-items:flex-start;flex-direction:column}.dialog{max-height:94vh}.dialog-head,.stagecontainer,.dialog-foot{padding-left:15px;padding-right:15px}.progress{margin-top:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside><div class="brand"><img src="../OneCArchitecture.ControlCenter/Assets/OneCOrbit.BrandMark.256.png" alt=""><span>OneC Orbit</span></div>
+<nav aria-label="Основная навигация">
+<button class="nav active" data-view="project"><span>◈</span>Мой проект</button>
+<button class="nav" data-view="projects"><span>▣</span>Все проекты</button>
+<button class="nav" data-view="settings"><span>⚙</span>Настройки</button>
+</nav><div class="aside-foot">Интерактивный офлайн-макет<br>Реальный Worker не подключён</div></aside>
+<main class="content">
+<div class="top"><span id="crumb" class="bread">Мой проект</span><span class="demo">СИНТЕТИЧЕСКИЕ СОСТОЯНИЯ · UX7-D0-R</span></div>
+<section class="page active" id="project">
+<div class="heading"><div><div class="kicker">Текущий контекст</div><h1 id="selected-title">RetailGroup</h1><p id="selected-description">Выбранный демонстрационный проект</p></div>
+<div class="projectpicker"><label for="picker">Перейти к проекту</label><select id="picker" aria-label="Выбрать проект"><option value="retail">RetailGroup</option><option value="neo">NeoHim</option><option value="nendo">Nendo</option></select></div></div>
+<div id="global-warning" class="warning" role="status" aria-live="polite">Демонстрационный пример: у другого проекта есть активная работа. Переход к нему не меняет задачу.</div>
+<div class="tabs" role="tablist" aria-label="Разделы выбранного проекта">
+<button class="tab active" role="tab" aria-selected="true" tabindex="0" data-tab="overview">Обзор</button>
+<button class="tab" role="tab" aria-selected="false" tabindex="-1" data-tab="source">Исходники</button>
+<button class="tab" role="tab" aria-selected="false" tabindex="-1" data-tab="extensions">Расширения</button>
+<button class="tab" role="tab" aria-selected="false" tabindex="-1" data-tab="history">История</button>
+</div>
+<div id="project-panel" class="card" role="tabpanel" tabindex="0" aria-live="polite"></div>
+</section>
+<section class="page" id="projects"><div class="heading"><div><h1>Все проекты</h1><p>Выберите проект, чтобы увидеть его состояние и доступное действие.</p></div><button class="primary" data-wizard>＋ Добавить проект</button></div>
+<div class="list" id="catalog">
+<button class="project-item" data-project="retail"><span><strong>RetailGroup</strong><small>Пример: нет активной задачи</small></span><span>Открыть →</span></button>
+<button class="project-item" data-project="neo"><span><strong>NeoHim</strong><small>Пример: есть активная задача</small></span><span>Открыть →</span></button>
+<button class="project-item" data-project="nendo"><span><strong>Nendo</strong><small>Пример: статус пока не подтверждён</small></span><span>Открыть →</span></button>
+</div></section>
+<section class="page" id="settings"><div class="heading"><div><h1>Настройки</h1><p>Язык, тема и запуск программы с Windows.</p></div></div>
+<div class="card"><h2>Обычные настройки</h2><p>В рабочем приложении здесь будут существующие настройки Orbit. В макете они не изменяются.</p>
+<details><summary>Обслуживание</summary><p>Проверка целостности, безопасное восстановление, выбранные операции Source и статус обновлений появятся только с каноническими разрешениями Worker.</p>
+<details><summary>Диагностика и подробности</summary><p>MCP, идентификаторы, хеши и квитанции остаются доступными по запросу, а не на главном экране.</p></details>
+</details><p class="scope">Установка обновления недоступна без подтверждённого источника доверия к выпуску.</p></div></section>
+<div class="footnote">UX7-D0-R · Прототип только для оценки навигации. Реальные файлы, проекты, доступ, пароль, Helper и обновления не затрагиваются.</div>
+</main></div>
+<div class="overlay" id="wizard"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+<div class="dialog-head"><div><h1 id="dialog-title">Добавление проекта</h1><p>Три шага. Создание в прототипе отключено.</p></div><button class="close" id="close" aria-label="Закрыть мастер">×</button></div>
+<div class="stagecontainer"><div class="progress" id="progress" aria-label="Этапы создания"></div>
+<section class="stage" data-stage="0"><h2>1. О проекте</h2>
+<div class="field"><label for="new-name">Название проекта *</label><input id="new-name" autocomplete="off" placeholder="Например: TradeDemo"><div class="error" id="error-name" aria-live="polite"></div></div>
+<div class="field"><label for="new-system">Конфигурация 1С *</label><input id="new-system" autocomplete="off" placeholder="Например: Управление торговлей"><div class="error" id="error-system" aria-live="polite"></div></div>
+</section>
+<section class="stage" data-stage="1" hidden><h2>2. Исходные файлы</h2><p>Путь нужен Worker для последующей проверки. Макет не читает диск.</p>
+<div class="field"><label for="new-source">Папка с XML-выгрузкой *</label><input id="new-source" placeholder="C:\Демо\Конфигурация"><div class="error" id="error-source" aria-live="polite"></div></div>
+<div class="field"><label><input type="checkbox" id="add-extension"> Добавить расширение сейчас (необязательно)</label></div>
+<div class="field" id="extension-field" hidden><label for="new-extension">Путь к расширению</label><input id="new-extension" placeholder="C:\Демо\Расширение"><div class="error" id="error-extension" aria-live="polite"></div></div>
+</section>
+<section class="stage" data-stage="2" hidden><h2>3. Проверить и подтвердить</h2><p>Значения для регистрации проекта:</p>
+<div class="review" id="review" aria-live="polite"></div>
+<div class="warning critical"><strong>Проверка Worker не выполнялась.</strong><p>В реальном приложении без канонической проверки создание запрещено. Здесь нельзя подтвердить путь, Source или статус проекта.</p></div>
+<div class="scope"><strong>Что изменится:</strong> только после явного подтверждения и проверки Worker будет создана запись проекта.<br><strong>Что останется:</strong> в этом макете все пользовательские файлы и проекты неизменны.</div>
+</section></div>
+<div class="dialog-foot"><button class="secondary" id="back">Отмена</button><span class="muted" id="step-count">Шаг 1 из 3</span><button class="primary" id="next">Далее →</button></div>
+</div></div>
 <script>
 "use strict";
-// Design-only local state. No persistence, fetch, XHR, filesystem, Worker or GitHub actions.
-const title={overview:"Главная / Обзор",projects:"Главная / Проекты",project:"Проекты / RetailGroup",work:"Работа / RetailGroup",history:"История",settings:"Настройки"};
-function showPage(page){if(!title[page])return;document.querySelectorAll(".page").forEach(e=>e.classList.toggle("active",e.id===page));document.querySelectorAll("nav [data-view]").forEach(e=>e.classList.toggle("active",e.dataset.view===page||(page==="project"&&e.dataset.view==="projects")));document.getElementById("crumb").textContent=title[page];scrollTo(0,0)}
-document.querySelectorAll("[data-view]").forEach(e=>e.addEventListener("click",()=>showPage(e.dataset.view)));
-const fragments={status:'<div class="banner"><b>✓ Демонстрационное состояние</b><p>Реальные статусы задаёт Worker.</p></div><button class="primary" data-work>Перейти к работе →</button>',work:'<h2>Работа</h2><p>Рабочий процесс открывается по отдельному действию.</p><button class="primary" data-work>Перейти к работе →</button>',files:'<h2>Файлы</h2><p>Нет доступа к реальному Source в демонстрации.</p>',extensions:'<h2>Расширения</h2><p>Отображаются только подтверждённые Worker расширения.</p>',activity:'<h2>История</h2><p>Нет загруженных данных. Демо не фабрикует реальные события.</p>'};
-document.querySelectorAll("[data-tab]").forEach(e=>e.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(t=>{t.classList.toggle("selected",t===e);t.setAttribute("aria-selected",String(t===e))});document.getElementById("project-panel").innerHTML=fragments[e.dataset.tab]}));document.addEventListener("click",e=>{if(e.target.closest("[data-work]"))showPage("work")});
-let step=0,lastFocus=null;const overlay=document.getElementById("wizard"),names=["О проекте","Файлы","Проверка","Подтверждение"];
-function update(){document.querySelectorAll("[data-step]").forEach(x=>x.hidden=Number(x.dataset.step)!==step);document.getElementById("steps").innerHTML=names.map((s,i)=>'<div class="step '+(i===step?'current':i<step?'past':'')+'"><span class="bubble">'+(i<step?'✓':i+1)+'</span>'+s+'</div>').join("");document.getElementById("back").textContent=step?"← Назад":"Отмена";const next=document.getElementById("next");next.disabled=step===3;next.textContent=step===3?"Создание недоступно":"Далее →";document.getElementById("count").textContent="Шаг "+(step+1)+" из 4";const v=id=>document.getElementById(id).value.trim()||"не указано";document.getElementById("summary").textContent="Название: "+v("project-name")+" · Конфигурация: "+v("project-system")+" · Папка: "+v("project-path")}
-function close(){overlay.classList.remove("open");if(lastFocus)lastFocus.focus()}
-document.querySelectorAll("[data-wizard]").forEach(e=>e.addEventListener("click",()=>{lastFocus=e;step=0;update();overlay.classList.add("open");document.getElementById("close-wizard").focus()}));document.getElementById("close-wizard").addEventListener("click",close);document.getElementById("back").addEventListener("click",()=>{if(!step)close();else{step--;update()}});document.getElementById("next").addEventListener("click",()=>{if(step<3){step++;update()}});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("open"))close()});
-</script></body></html>
+// D0-R: synthetic data only. No network, filesystem, storage, Worker, relay,
+// runas, installer, or process side effects.
+const sample={
+ retail:{id:"retail",name:"RetailGroup",description:"Пример: проект проверен, новой задачи ещё нет",kind:"READY",summary:"Проект готов (пример)",reason:"Последняя проверка: пример, 10:10; не является свидетельством Worker.",intent:"Начать новую задачу",warning:""},
+ neo:{id:"neo",name:"NeoHim",description:"Пример: задача уже выполняется",kind:"ACTIVE",summary:"Есть активная задача (пример)",reason:"Подключение показано условно. Новый START и CONTINUE в таком состоянии запрещены.",intent:"Открыть текущую работу",warning:"Активная задача привязана к NeoHim. Это демонстрационный факт, не действующий сеанс."},
+ nendo:{id:"nendo",name:"Nendo",description:"Пример: нет подтверждённого состояния",kind:"UNKNOWN",summary:"Текущее состояние не подтверждено",reason:"Нужна новая проверка Worker; зелёный статус и действия не показываются.",intent:"Обновить состояние",warning:"Состояние проекта не подтверждено. Ни запуск, ни восстановление здесь не разрешены."}
+};
+let selected="retail",tab="overview",stage=0,returnFocus=null;
+const $=id=>document.getElementById(id),escapeHtml=s=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+function show(view){for(const p of document.querySelectorAll(".page"))p.classList.toggle("active",p.id===view);for(const n of document.querySelectorAll(".nav")){let on=n.dataset.view===view;n.classList.toggle("active",on);n.setAttribute("aria-current",on?"page":"false");}$("crumb").textContent=view==="project"?"Мой проект":view==="projects"?"Все проекты":"Настройки";}
+function selectProject(id){if(!Object.hasOwn(sample,id))return;selected=id;$("picker").value=id;tab="overview";setTabs();render();show("project");}
+function setTabs(){document.querySelectorAll("[data-tab]").forEach(b=>{let on=b.dataset.tab===tab;b.classList.toggle("active",on);b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1;});}
+function render(){const x=sample[selected];$("selected-title").textContent=x.name;$("selected-description").textContent=x.description;
+const otherActive=selected!=="neo";$("global-warning").textContent=otherActive?"Демонстрационный пример: в NeoHim есть активная задача. Смена выбранного проекта её не переносит.":x.warning;$("global-warning").hidden=false;
+const badge=x.kind==="READY"?"good":x.kind==="ACTIVE"?"warn":"block";
+const title='<div class="title-row"><div class="project-icon" aria-hidden="true">◈</div><div><h2>'+escapeHtml(x.name)+'</h2><span class="status '+badge+'">'+escapeHtml(x.summary)+'</span><p class="muted">'+escapeHtml(x.reason)+'</p></div></div>';
+let content="";
+if(tab==="overview"){content=title+'<p>Реальное приложение должно получать состояние, временную отметку и право действия от UI_CONTEXT.</p><div class="project-actions"><button class="primary" disabled title="Нет подключения к Worker в макете">'+escapeHtml(x.intent)+' (демо)</button><button class="textbutton" data-view-details>Почему действие недоступно?</button></div><div class="scope" id="action-reason" hidden>В этом прототипе нет подтверждения Worker. Нельзя запускать или продолжать рабочий сеанс. После реальной интеграции действие будет зависеть от проверенного проекта и состояния задачи.</div>';}
+else if(tab==="source")content='<h2>Исходники · '+escapeHtml(x.name)+'</h2><p>Только принятые Source, предложения и проверенный источник состояния. Файлы напрямую не читаются.</p><div class="scope">«Открыть принятые исходники» появится только для канонически подтверждённого пути.</div>';
+else if(tab==="extensions")content='<h2>Расширения · '+escapeHtml(x.name)+'</h2><p>Выбранное расширение, его подтверждённая версия и результат синхронизации. Общий APPLY не заменяет проверку выбранного расширения.</p><div class="scope">Синхронизация в макете недоступна: нет owner-approved identity и receipt.</div>';
+else content='<h2>История · '+escapeHtml(x.name)+'</h2><p>Подтверждённые события проекта, сохранённые результаты и раскрываемая диагностика.</p><details><summary>Диагностика и подробности</summary><p>Нет загруженных событий Worker. Демонстрация не фабрикует MCP-историю.</p></details>';
+$("project-panel").innerHTML=content;}
+document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
+document.querySelectorAll("[data-project]").forEach(b=>b.addEventListener("click",()=>selectProject(b.dataset.project)));
+$("picker").addEventListener("change",()=>selectProject($("picker").value));
+document.querySelectorAll("[data-tab]").forEach(b=>{b.addEventListener("click",()=>{tab=b.dataset.tab;setTabs();render();});b.addEventListener("keydown",e=>{const tabs=[...document.querySelectorAll("[data-tab]")];let idx=tabs.indexOf(b);if(e.key==="ArrowRight")idx=(idx+1)%tabs.length;else if(e.key==="ArrowLeft")idx=(idx+tabs.length-1)%tabs.length;else if(e.key==="Home")idx=0;else if(e.key==="End")idx=tabs.length-1;else return;e.preventDefault();tabs[idx].focus();tabs[idx].click();});});
+document.addEventListener("click",e=>{if(e.target.closest("[data-view-details]")){const box=$("action-reason");if(box)box.hidden=!box.hidden;}});
+const wizard=$("wizard"),names=["О проекте","Исходные файлы","Проверка и подтверждение"];
+function values(){return{name:$("new-name").value.trim(),system:$("new-system").value.trim(),source:$("new-source").value.trim(),extension:$("add-extension").checked?$("new-extension").value.trim():""};}
+function validate(){const v=values();let errors=[];for(const [id,val]of [["name",v.name],["system",v.system],["source",v.source],["extension",$("add-extension").checked?v.extension:"ok"]]){const e=$("error-"+id),inp=$(id==="source"?"new-source":id==="extension"?"new-extension":"new-"+id);e.textContent="";inp.classList.remove("invalid");inp.removeAttribute("aria-invalid");if((stage===0&&["name","system"].includes(id)||stage===1&&["source","extension"].includes(id))&&!val){e.textContent="Обязательное поле";inp.classList.add("invalid");inp.setAttribute("aria-invalid","true");errors.push(inp);}}if(errors.length)errors[0].focus();return errors.length===0;}
+function displayStage(){for(const x of document.querySelectorAll("[data-stage]"))x.hidden=Number(x.dataset.stage)!==stage;$("progress").innerHTML=names.map((n,i)=>'<div class="step '+(i===stage?"current":i<stage?"past":"")+'"><span class="circle">'+(i<stage?"✓":i+1)+'</span>'+escapeHtml(n)+'</div>').join("");$("step-count").textContent="Шаг "+(stage+1)+" из 3";$("back").textContent=stage?"← Назад":"Отмена";$("next").textContent=stage===2?"Создание недоступно":"Далее →";$("next").disabled=stage===2;
+if(stage===2){const v=values();$("review").innerHTML=[["Проект",v.name],["Конфигурация",v.system],["Путь XML",v.source],["Расширение",v.extension||"Позже"]].map(([k,val])=>'<div><strong>'+escapeHtml(k)+':</strong> '+escapeHtml(val)+'</div>').join("");}
+else $(stage===0?"new-name":"new-source").focus();}
+function openWizard(trigger){returnFocus=trigger;stage=0;displayStage();wizard.classList.add("open");$("close").focus();}
+function closeWizard(){wizard.classList.remove("open");if(returnFocus)returnFocus.focus();}
+document.querySelectorAll("[data-wizard]").forEach(b=>b.addEventListener("click",()=>openWizard(b)));
+$("close").addEventListener("click",closeWizard);$("back").addEventListener("click",()=>{if(!stage)closeWizard();else{stage--;displayStage();}});
+$("next").addEventListener("click",()=>{if(stage<2&&validate()){stage++;displayStage();}});
+$("add-extension").addEventListener("change",()=>{$("extension-field").hidden=!$("add-extension").checked;});
+wizard.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();closeWizard();return;}if(e.key!=="Tab")return;const active=[...wizard.querySelectorAll("button:not(:disabled),input:not(:disabled)")].filter(el=>el.getClientRects().length);if(!active.length)return;const first=active[0],last=active[active.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
+$("picker").value=selected;show("project");render();
+</script>
+</body></html>

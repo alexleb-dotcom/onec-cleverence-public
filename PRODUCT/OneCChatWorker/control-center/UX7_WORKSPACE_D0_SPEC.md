@@ -99,3 +99,70 @@ disclosure and product updater entry only after trusted S2-L1B authority.
 Every later implementation has its own exact-head CI, screenshots and
 independent FA. The D0 preview is intended for operator design feedback and
 should **not** be treated as a deployable Control Center.
+
+---
+
+## D0-R revision — response to independent FA #120 (2026-10-22)
+
+**Status: REVISION FOR OPERATOR REVIEW, not an accepted WPF production contract.**
+Independent FA verdict for earlier D0 HEAD
+`e7fe1aaa06a6eedcee5497a3f3ae4cf813c1dd66`:
+`UX7_D0_DESIGN_FA_REVISE`. Report:
+https://github.com/alexleb-dotcom/private-onec-architecture-control/issues/120#issuecomment-6328461499.
+
+This section supersedes previous D0 navigation and wizard *concept*:
+- Prefer THREE first-level entries: **Мой проект / Все проекты / Настройки**.
+  The default view is one explicitly selected and owner-validated project,
+  not a duplicated global Home and Work dashboard. Zero or unverified projects
+  show a chooser; globally active work in another project remains a visible
+  owner-proven warning and cannot be rebound by UI selection.
+- Project has FOUR scoped tabs **Обзор / Исходники / Расширения / История**.
+  Owner-authorized current/new/continued task access belongs to the project
+  overview, not a global generic new-goal Work page. Existing Worker START,
+  CONTINUE, STOP, task, checkpoint, and SOURCE actions are preserved in
+  documented contextual destinations and must not be mapped to fake states.
+- Each project card and picker uses an actual *synthetic ID* in preview;
+  RetailGroup/NeoHim/Nendo now route to their distinct selected identity
+  and demonstrably different examples, not the shared RetailGroup screen.
+  This is ONLY client-side simulated navigation; later WPF must round-trip
+  selected identity in canonical UI_CONTEXT and discard stale responses.
+- ONE disabled preview CTA chosen for sample state: READY/no active task
+  `Начать новую задачу`; ACTIVE existing task
+  `Открыть текущую работу`; UNKNOWN/HOLD
+  `Обновить состояние`. No implementation may derive any positive status
+  or admission eligibility from these synthetic examples. Actual connected
+  readiness, status age/owner, project binding, relay freshness, task
+  continuation and recovery are Worker-owned facts.
+- THREE decision stages: identity, source input (optional extension reveal),
+  review plus explicit confirmation. Local required-field UX assertions
+  run before advancing, but never count as canonical Worker preflight.
+  In D0-R **final Create stays disabled**; no Source reads. Later D3 must
+  revalidate proposed fields via existing approved Worker interfaces, or
+  HOLD if no approved preflight exists. Changing input invalidates preflight.
+- No duplicated quick-action card or generic global Activity. Diagnostics,
+  Source repair and receipts remain discoverable under project/Settings
+  Maintenance and explicit details, with priority warning never buried.
+- D0-R improves sample text contrast and adds keyboard tab arrow/home/end,
+  modal Escape/Tab focus cycle and focus return. These browser behaviors
+  DO NOT prove actual WPF screen-reader/packaged keyboard, DPI, large
+  Cyrillic labels, nested dialog UAC, stale owner cases or process reality.
+
+**FA improvement ADOPT:** display owner-verification freshness after *real*
+context readback; prepare a reusable owner-scoped "Что изменится / Что
+останется" review panel before every guarded write; distinguish work-intent
+by Worker state, not three simultaneous equally prominent buttons.
+**TRY:** recent verified project picker after operator usage testing.
+**DEFER:** command palette; **REJECT:** automatic helper/source/update fix.
+
+**Separate P0 defect** #121, Draft PR #79, MUST remain an independent owner:
+interactive runas Helper admission currently fails from installed Orbit GUI
+for operator (manual console works), actual root cause is only *hypothesized*
+from source; do not use this concept to declare product Helper fixed. No
+restart, stop, credential capture or automatic re-admission.
+
+D0-R is a read-only standalone HTML navigation demonstration plus this design
+contract, with no Worker, app binary, installer, production data or helper
+modification. Operator design decision and a new independent bounded D1
+implementation review remain necessary. Pending CI acceleration PR #77
+passed its own exact-head FA #118 but has NOT received operator merge
+permission; no one should merge it as a consequence of this UX report.
