@@ -8,7 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>OneCArchitecture.ControlCenter</AssemblyName>
     <RootNamespace>OneCArchitecture.ControlCenter</RootNamespace>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>Assets\OneCOrbit.AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -20,4 +20,8 @@
     <DebugType>embedded</DebugType>
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\OneCOrbit.AppIcon.ico" />
+    <Resource Include="Assets\OneCOrbit.BrandMark.256.png" />
+  </ItemGroup>
 </Project>

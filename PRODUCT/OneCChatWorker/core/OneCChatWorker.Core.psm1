@@ -2729,9 +2729,11 @@ function Install-ControlCenterArtifact {
     $shortcut.TargetPath=$destination
     $shortcut.WorkingDirectory=(Split-Path -Parent $destination)
     $shortcut.Description='OneC Orbit'
+    $shortcut.IconLocation=$destination+',0'
     $shortcut.Save()
     $verify=$shell.CreateShortcut($shortcutPath)
     if([string]$verify.TargetPath -ne $destination){throw 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH'}
+    if(-not ([string]$verify.IconLocation).StartsWith($destination,[StringComparison]::OrdinalIgnoreCase)){throw 'CONTROL_CENTER_SHORTCUT_ICON_MISMATCH'}
     [pscustomobject]@{
         status='PASS'
         component=$copy

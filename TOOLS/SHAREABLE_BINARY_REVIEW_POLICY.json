@@ -25,13 +25,27 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
-      "sha256": "591b44c5b3059e6f60ba7504dac31ca09fd4202953f90f1182b476a5b24c07b9",
+      "sha256": "e1b1f4716ec794137cde51e909916d4a3353c7d3fd12c8fcca2a3545a97c51ab",
       "type_class": "executable/pe",
       "reason": "Exact hash-reviewed self-contained .NET 10 win-x64 WPF Control Center PE; bundled .NET runtime may contain loopback/private IPv4 literals. Only the bounded PRIVATE_NETWORK_IPV4 embedded finding is exempt; secrets, user paths, hostnames, keys, and tokens remain fail-closed.",
       "policy_id": "shareable-binary-review-v1",
       "allowed_embedded_findings": [
         "PRIVATE_NETWORK_IPV4"
       ]
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Assets/OneCOrbit.AppIcon.ico",
+      "sha256": "eb85cbcbf76f4467871e4dbf753ab128bce1363735759796b7b7f59774accca1",
+      "type_class": "binary/octet-stream",
+      "reason": "Operator-approved OneC Orbit seven-frame Windows ICO source. Exact SHA locked by #116 approval; EXE embeds this source for Windows icon, WPF and tray. Contains only 16/24/32/48/64/128/256 PNG image frames.",
+      "policy_id": "shareable-binary-review-v1"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Assets/OneCOrbit.BrandMark.256.png",
+      "sha256": "d052b7937b81f2967af91a4ae595772fc20a5ebb5ea3d689343e7d687103f1a2",
+      "type_class": "image/png",
+      "reason": "Exact 256px PNG frame byte-extracted (no redraw or resample) from operator-approved ICO SHA256 eb85cbcbf76f4467871e4dbf753ab128bce1363735759796b7b7f59774accca1. WPF navigation and window use this resource.",
+      "policy_id": "shareable-binary-review-v1"
     }
   ],
   "third_party_attribution_files": [
