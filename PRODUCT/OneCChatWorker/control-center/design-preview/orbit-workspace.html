@@ -28,7 +28,7 @@ button.primary,button.secondary{border-radius:9px;padding:11px 15px;font-weight:
 .projectpicker{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.projectpicker label{font-size:12px;color:#506582;font-weight:690}.projectpicker select{min-width:155px;max-width:250px;border:1px solid #ccdaea;border-radius:9px;padding:10px 12px;background:#fff;color:#2c4362}
 .tabs{display:flex;gap:20px;overflow-x:auto;border-bottom:1px solid #dce5f1;margin:18px 0 15px}.tab{background:none;color:#596e8c;border-bottom:2px solid transparent;padding:0 0 12px;font-weight:680;white-space:nowrap}.tab.active{border-color:#0965e0;color:#095bc9}
 .main-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.textbutton{background:none;color:#075bbf;font-weight:700;padding:7px 0;text-align:left}
-.list{display:grid;gap:10px}.project-item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid #dde5f0;padding:17px;border-radius:11px;text-align:left;color:#273d5b}.project-item:hover{background:#eef5ff}.project-item strong{display:block;font-size:16px;margin-bottom:6px}.project-item small{color:#667993}
+.list{display:grid;gap:10px}.project-item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid #dde5f0;padding:17px;border-radius:11px;text-align:left;color:#273d5b}.project-item:hover{background:#eef5ff}.project-item strong{display:block;font-size:16px;margin-bottom:6px}.project-item small{color:#526680}
 .events{list-style:none;padding:0;margin:0}.events li{padding:11px 0;border-bottom:1px solid #e8eef6;color:#405572}.events li:last-child{border:0}
 .kicker{color:#526785;font-weight:750;margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.055em}
 details{margin-top:13px;border-top:1px solid #e5ecf4;padding-top:14px;color:#45627e}summary{cursor:pointer;font-weight:700}details p{margin-top:8px}
@@ -36,7 +36,7 @@ details{margin-top:13px;border-top:1px solid #e5ecf4;padding-top:14px;color:#456
 .overlay{display:none;position:fixed;inset:0;background:#172841a3;padding:17px;z-index:50;align-items:center;justify-content:center}.overlay.open{display:flex}
 .dialog{width:min(680px,100%);max-height:min(90vh,800px);display:flex;flex-direction:column;border-radius:16px;background:#fff;box-shadow:0 25px 65px #10213a60;overflow:hidden}
 .dialog-head{padding:20px 25px 13px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.dialog-head h1{font-size:23px}.close{background:transparent;color:#435979;font-size:23px}
-.stagecontainer{padding:0 25px;overflow:auto;flex:1;min-height:0}.progress{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:17px 0 24px}.step{text-align:center;font-size:11px;color:#637994;font-weight:620}.circle{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#ebf1f9;color:#3a536f;font-weight:750;margin:0 auto 7px}.step.current .circle,.step.past .circle{background:#0961d9;color:white}
+.stagecontainer{padding:0 25px;overflow:auto;flex:1;min-height:0}.progress{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:17px 0 24px}.step{text-align:center;font-size:11px;color:#526780;font-weight:620}.circle{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#ebf1f9;color:#3a536f;font-weight:750;margin:0 auto 7px}.step.current .circle,.step.past .circle{background:#0961d9;color:white}
 .stage[hidden]{display:none}.stage{padding-bottom:20px}.field{margin:16px 0}.field label{font-weight:710;display:block;margin:0 0 8px}.field input:not([type=checkbox]){width:100%;padding:12px 13px;background:white;border:1px solid #b9cadf;border-radius:9px;color:#273d58}.error{color:#a32835;font-size:12px;margin-top:5px;min-height:16px}.field input.invalid{border:2px solid #a32835}
 .dialog-foot{flex-shrink:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 25px;border-top:1px solid #dbe5f0;background:white}
 .review{display:grid;gap:7px;border:1px solid #e1e8f2;padding:14px;border-radius:9px;margin-top:13px}.review div{color:#344b68;font-size:13px}
@@ -132,14 +132,28 @@ function values(){return{name:$("new-name").value.trim(),system:$("new-system").
 function validate(){const v=values();let errors=[];for(const [id,val]of [["name",v.name],["system",v.system],["source",v.source],["extension",$("add-extension").checked?v.extension:"ok"]]){const e=$("error-"+id),inp=$(id==="source"?"new-source":id==="extension"?"new-extension":"new-"+id);e.textContent="";inp.classList.remove("invalid");inp.removeAttribute("aria-invalid");if((stage===0&&["name","system"].includes(id)||stage===1&&["source","extension"].includes(id))&&!val){e.textContent="Обязательное поле";inp.classList.add("invalid");inp.setAttribute("aria-invalid","true");errors.push(inp);}}if(errors.length)errors[0].focus();return errors.length===0;}
 function displayStage(){for(const x of document.querySelectorAll("[data-stage]"))x.hidden=Number(x.dataset.stage)!==stage;$("progress").innerHTML=names.map((n,i)=>'<div class="step '+(i===stage?"current":i<stage?"past":"")+'"><span class="circle">'+(i<stage?"✓":i+1)+'</span>'+escapeHtml(n)+'</div>').join("");$("step-count").textContent="Шаг "+(stage+1)+" из 3";$("back").textContent=stage?"← Назад":"Отмена";$("next").textContent=stage===2?"Создание недоступно":"Далее →";$("next").disabled=stage===2;
 if(stage===2){const v=values();$("review").innerHTML=[["Проект",v.name],["Конфигурация",v.system],["Путь XML",v.source],["Расширение",v.extension||"Позже"]].map(([k,val])=>'<div><strong>'+escapeHtml(k)+':</strong> '+escapeHtml(val)+'</div>').join("");}
-else $(stage===0?"new-name":"new-source").focus();}
-function openWizard(trigger){returnFocus=trigger;stage=0;displayStage();wizard.classList.add("open");$("close").focus();}
-function closeWizard(){wizard.classList.remove("open");if(returnFocus)returnFocus.focus();}
+else $(stage===0?"new-name":"new-source").focus();
+if(stage===2)$("back").focus();}
+function resetWizardDraft(){
+  for(const id of ["new-name","new-system","new-source","new-extension"])$(id).value="";
+  $("add-extension").checked=false;
+  $("extension-field").hidden=true;
+  for(const id of ["name","system","source","extension"]){
+    $("error-"+id).textContent="";
+    const input=$(id==="name"?"new-name":id==="system"?"new-system":id==="source"?"new-source":"new-extension");
+    input.classList.remove("invalid");
+    input.removeAttribute("aria-invalid");
+  }
+  $("review").replaceChildren();
+  stage=0;
+}
+function openWizard(trigger){returnFocus=trigger;resetWizardDraft();wizard.classList.add("open");displayStage();}
+function closeWizard(){wizard.classList.remove("open");resetWizardDraft();if(returnFocus)returnFocus.focus();}
 document.querySelectorAll("[data-wizard]").forEach(b=>b.addEventListener("click",()=>openWizard(b)));
 $("close").addEventListener("click",closeWizard);$("back").addEventListener("click",()=>{if(!stage)closeWizard();else{stage--;displayStage();}});
 $("next").addEventListener("click",()=>{if(stage<2&&validate()){stage++;displayStage();}});
 $("add-extension").addEventListener("change",()=>{$("extension-field").hidden=!$("add-extension").checked;});
-wizard.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();closeWizard();return;}if(e.key!=="Tab")return;const active=[...wizard.querySelectorAll("button:not(:disabled),input:not(:disabled)")].filter(el=>el.getClientRects().length);if(!active.length)return;const first=active[0],last=active[active.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
+wizard.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();closeWizard();return;}if(e.key!=="Tab")return;const active=[...wizard.querySelectorAll("button:not(:disabled),input:not(:disabled)")].filter(el=>el.getClientRects().length);if(!active.length)return;const first=active[0],last=active[active.length-1];if(!active.includes(document.activeElement)){e.preventDefault();(e.shiftKey?last:first).focus();}else if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
 $("picker").value=selected;show("project");render();
 </script>
 </body></html>
