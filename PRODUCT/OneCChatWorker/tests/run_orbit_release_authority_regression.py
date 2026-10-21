@@ -112,4 +112,14 @@ with tempfile.TemporaryDirectory(prefix="orbit-authority-fixture-") as temp:
     require(not yes and why=="GIT_ANCESTRY_UNVERIFIED",f"reverse chain {why}")
     yes,why=mod.verify_git_ancestry(repo,dict(release_commit_sha="f"*40,main_commit_sha=new))
     require(not yes and why=="GIT_COMMIT_UNAVAILABLE",f"missing object {why}")
+    shallow = repo / ".git" / "shallow"
+    shallow.write_text(new + chr(10), encoding="ascii")
+    yes,why=mod.verify_git_ancestry(repo,dict(release_commit_sha=old,main_commit_sha=new))
+    require(not yes and why=="GIT_HISTORY_INCOMPLETE",f"shallow rejected {why}")
+    shallow.unlink()
+    grafts = repo / ".git" / "info" / "grafts"
+    grafts.write_text(new + chr(10), encoding="ascii")
+    yes,why=mod.verify_git_ancestry(repo,dict(release_commit_sha=old,main_commit_sha=new))
+    require(not yes and why=="GIT_HISTORY_OVERRIDE",f"graft rejected {why}")
+    grafts.unlink()
 print(f"ORBIT_RELEASE_AUTHORITY_OFFLINE_PASS checks={checks} network_calls=0 install_calls=0 production_access=false")

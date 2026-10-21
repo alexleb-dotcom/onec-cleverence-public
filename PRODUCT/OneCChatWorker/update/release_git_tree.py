@@ -137,15 +137,23 @@ def verify_tree(repo: Path, approval: dict | None, index_bytes: bytes | None):
         if any("/".join(path.split("/")[:i]) not in folders
                for path in files for i in range(1, len(path.split("/")))):
             return False, "TREE_SUBDIRECTORY_MISSING"
+        total_blob_bytes = 0
         def blob(oid):
+            nonlocal total_blob_bytes
+            size = _git(repo, "cat-file", "-s", oid)
+            if (size.returncode or not size.stdout.strip().isdigit()
+                    or int(size.stdout.strip()) > 134217728
+                    or total_blob_bytes + int(size.stdout.strip()) > 1073741824):
+                raise ValueError("Git blob size budget exceeded")
             res = _git(repo, "cat-file", "blob", oid)
             if res.returncode:
                 raise ValueError("blob unavailable")
             data = res.stdout
-            if len(data) > 134217728:
-                raise ValueError("blob too large")
+            if len(data) != int(size.stdout.strip()):
+                raise ValueError("blob size mismatch")
+            total_blob_bytes += len(data)
             if hashlib.sha1(b"blob " + str(len(data)).encode()
-                             + b"\x00" + data).hexdigest() != oid:
+                             + bytes([0]) + data).hexdigest() != oid:
                 raise ValueError("blob Git identity mismatch")
             return data
         manifest_raw = blob(files["DISTRIBUTION_MANIFEST.json"])

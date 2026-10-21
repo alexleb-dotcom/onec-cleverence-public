@@ -32,8 +32,11 @@ mutable HEAD, downloaded public key, downloaded digest, or manifest alone.
 5. The fixed repository's Git objects are verified *offline* against the
    signed exact main and exact release commits. Release must be an ancestor of
    the signed main. Shallow objects, missing commits, replacement refs and
-   grafts are rejected. Ancestry to a signed SHA alone does NOT show that SHA
-   was actually operator-approved protected main; the publisher must verify
+   grafts are rejected. Every signed-main ancestry-path commit object's
+   complete Git SHA-1 identity is recalculated with bounded count/size,
+   not inferred solely from merge-base. Ancestry to a signed SHA alone
+   does NOT show that SHA was actually operator-approved protected main;
+   the publisher must verify
    GitHub branch protection and origin identity **before signing**, with an
    independent auditable publication receipt and protected signing policy.
 6. All Git tree entries from the committed root and nested subdirectories are
@@ -45,7 +48,8 @@ mutable HEAD, downloaded public key, downloaded digest, or manifest alone.
    SHA256 digest of the entire inventory must equal BOTH the committed
    DISTRIBUTION_MANIFEST.json and the separately signed index digest.
    MANIFEST is not trusted alone; signature + Git object structure + all
-   contents are required together.
+   contents are required together. Individual blob reads are preflight
+   size-checked (128 MiB maximum), with an aggregate 1 GiB cap.
 7. verify_complete_release is the only composite PASS entry point in this
    prototype: signature -> Git ancestry -> exact tree + signed distribution
    digest. It returns no installer permission or side effects. S2-L1A

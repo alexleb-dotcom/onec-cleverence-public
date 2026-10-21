@@ -135,6 +135,22 @@ def verify_git_ancestry(repo: Path, approved: dict | None) -> tuple[bool, str]:
         is_ancestor = run("merge-base", "--is-ancestor", release, main)
         if is_ancestor.returncode != 0:
             return False, "GIT_ANCESTRY_UNVERIFIED"
+        chain = run("rev-list", "--ancestry-path", release + ".." + main)
+        if chain.returncode or len(chain.stdout) > 420000:
+            return False, "GIT_ANCESTRY_GRAPH_UNVERIFIED"
+        commits = [release] + chain.stdout.decode("ascii", "strict").splitlines()
+        if len(commits) > 10000 or main not in commits:
+            return False, "GIT_ANCESTRY_GRAPH_UNVERIFIED"
+        for sha in commits:
+            if not HEX40.fullmatch(sha):
+                return False, "GIT_ANCESTRY_OBJECT_INVALID"
+            length = run("cat-file", "-s", sha)
+            if length.returncode or not length.stdout.strip().isdigit() or int(length.stdout.strip()) > 1048576:
+                return False, "GIT_ANCESTRY_OBJECT_INVALID"
+            obj = run("cat-file", "commit", sha)
+            if (obj.returncode or hashlib.sha1(b"commit " + str(len(obj.stdout)).encode()
+                                                  + bytes([0]) + obj.stdout).hexdigest() != sha):
+                return False, "GIT_ANCESTRY_OBJECT_INVALID"
         return True, "SIGNED_MAIN_CONTAINS_RELEASE"
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
         return False, "GIT_PROOF_UNAVAILABLE"
