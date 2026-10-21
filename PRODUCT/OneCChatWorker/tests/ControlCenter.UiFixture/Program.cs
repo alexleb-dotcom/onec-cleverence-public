@@ -148,6 +148,42 @@ internal static class Program
             Check(fake.Calls[0].Args.TaskGoal!.Contains(Localization.Get("ReferenceAccessGoal")), "empty business task permits general reference access");
             Check(fake.Calls.All(c => c.Action == WorkerAction.Start), "no auto APPLY VERIFY REPAIR STOP CONTINUE UPDATE");
 
+            // FA #121: a restricted runas prompt can keep CONTINUE pending for
+            // arbitrary user time. Synthetic owner admits CONTINUE; deliberately
+            // invoke twice (simulating double click/Enter) before resolving a fake
+            // operation. Only one Worker call and one context reconciliation may run.
+            var canContinue = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            canContinue["actions"]!["continue"]!["enabled"] = true;
+            fake.ContextOverride = canContinue;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(Control<Button>(w, "ContinueButton").IsEnabled, "synthetic owner permits CONTINUE before pending prompt");
+            foreach (var exitCode in new[] { 0, 3 })
+            {
+                var pendingContinue = new TaskCompletionSource<WorkerCallResult>();
+                fake.PendingContinue = pendingContinue;
+                var before = fake.Calls.Count;
+                var reads = fake.ContextRequests.Count;
+                Call(w, "Continue_Click", w, new RoutedEventArgs());
+                Drain();
+                Check(!Control<Button>(w, "ContinueButton").IsEnabled &&
+                    !Control<Button>(w, "StartButton").IsEnabled &&
+                    !Control<Button>(w, "StopButton").IsEnabled,
+                    "pending CONTINUE disables competing admission actions " + exitCode);
+                Call(w, "Continue_Click", w, new RoutedEventArgs());
+                Drain();
+                Check(fake.Calls.Count == before + 1 &&
+                    fake.Calls.Last().Action == WorkerAction.Continue,
+                    "double click/Enter cannot start a second pending CONTINUE " + exitCode);
+                pendingContinue.SetResult(new(exitCode, null, "", exitCode == 0 ? "" : "fixture-cancelled"));
+                Drain(); Drain();
+                Check(fake.ContextRequests.Count == reads + 1,
+                    "each completed CONTINUE gets exactly one canonical readback " + exitCode);
+                Check(Control<Button>(w, "ContinueButton").IsEnabled,
+                    "pending CONTINUE unlocks after canonical readback " + exitCode);
+            }
+            fake.ContextOverride = null;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+
             // A pending old response must never enable actions for a new visible selection.
             var stale = new TaskCompletionSource<WorkerCallResult>();
             fake.Pending = stale;
@@ -416,6 +452,7 @@ internal sealed class FixtureWorker : IWorkerClient
     public bool Empty;
     public bool UpdatePassed;
     public TaskCompletionSource<WorkerCallResult>? Pending;
+    public TaskCompletionSource<WorkerCallResult>? PendingContinue;
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default)
     {
         ContextRequests.Add(projectId);
@@ -428,6 +465,11 @@ internal sealed class FixtureWorker : IWorkerClient
     public Task<WorkerCallResult> RunAsync(WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)
     {
         Calls.Add((action, args));
+        if (action == WorkerAction.Continue && PendingContinue is { } waiting)
+        {
+            PendingContinue = null;
+            return waiting.Task;
+        }
         if (action == WorkerAction.SyncExtension && SyncStatus is { } status && ContextOverride is { } ctx)
         {
             var now = DateTimeOffset.UtcNow;

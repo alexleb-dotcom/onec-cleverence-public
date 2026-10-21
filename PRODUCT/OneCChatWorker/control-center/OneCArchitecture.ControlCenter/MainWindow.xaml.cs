@@ -681,9 +681,19 @@ public partial class MainWindow : Window
 
     private async void Continue_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled) return;
-        var result = await _worker.RunAsync(WorkerAction.Continue, new());
-        await ShowActionResultAndRefresh("CONTINUE", result);
+        // runas may wait indefinitely for an interactive password prompt.
+        // Claim the same admission mutation gate as START before first await:
+        // duplicate mouse/Enter/Space events must not spawn a second prompt.
+        if (!_mutationsEnabled || !_contextReady || !ContinueButton.IsEnabled || _context is null) return;
+        _mutationsEnabled = false;
+        DisableActions(Localization.Get("ActionInProgress"));
+        try
+        {
+            var result = await _worker.RunAsync(WorkerAction.Continue, new());
+            await ShowActionResultAndRefresh("CONTINUE", result);
+        }
+        catch (Exception ex) { ShowContextFailure(-1, ex.ToString(), ""); }
+        finally { _mutationsEnabled = true; if (_contextReady && _context is not null) UpdateReadOnlyAvailability(_context); }
     }
 
     private async void Stop_Click(object sender, RoutedEventArgs e)

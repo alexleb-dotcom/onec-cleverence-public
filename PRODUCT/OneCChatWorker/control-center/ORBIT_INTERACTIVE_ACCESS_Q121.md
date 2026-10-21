@@ -52,14 +52,32 @@ test is STILL required in a specifically authorized disposable Windows
 session before acceptance. Do not run it on a working admission, live project
 or restricted account without operator approval.
 
-Current native fixture: project built with .NET 10, warnings=0 errors=0;
-all in-process `ControlCenter.UiFixture` checks PASS (202) including added
-launch assertions. However, separate packaged actual EXE keyboard input
-probe failed at `PACKAGED_ASSERT:keyboard input restricted to owned EXE`
-after successful packaged identity and initial focus assertions. This can be
-desktop/focus interference but **is not established as such**. Whole packed
-runner therefore FAIL/HOLD pending independent isolated-session retry; no
-selective claiming the overall WPF suite passed.
+FA #121 identified a fail-open user-interaction race in the original
+`MainWindow.Continue_Click`: it did not serialize its async Worker mutation
+while an interactive credential prompt was pending, so double click/Enter
+could create multiple native runas prompts. The new candidate explicitly
+requires `_contextReady`, canonical `ContinueButton.IsEnabled`, and claims
+`_mutationsEnabled=false` BEFORE awaiting Worker. All admission action
+buttons are disabled; after exactly one owner readback, the gate is released
+in `finally`. This mirrors guarded START; there is no automatic STOP/START,
+and an already active offline session cannot be reminted.
+
+A disposable fake IWorkerClient now holds CONTINUE on a
+`TaskCompletionSource<WorkerCallResult>`, deliberately invokes the handler
+twice before resolving and checks exactly one Worker CONTINUE call, no
+competing action, one owner readback, and lock restoration for success and a
+nonzero exit code. No real user credentials or helper processes are used.
+
+New local native Windows WPF fixture completed SUCCESS with 0 build errors and
+0 warnings; **all synthetic in-process cases and actual packaged EXE keyboard
+focus probes PASSED on the latest isolated run** (including the prior
+`PACKAGED_ASSERT:keyboard input restricted to owned EXE` assertion).
+This does NOT retroactively invalidate the previous failed packaged run,
+or prove it was mere desktop interference. It only provides fresh local
+positive evidence. The exact live runas password prompt, wrong password,
+non-interactive user account restrictions and confirmed Helper CONNECTED still
+require separate disposable operator-authorized test and independent FA.
+The PR remains Draft/HOLD even with green CI.
 
 ### FA-specific negative cases
 
