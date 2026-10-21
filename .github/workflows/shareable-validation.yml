@@ -204,6 +204,12 @@ jobs:
           $ErrorActionPreference='Stop'
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_migration_readonly_preflight_regression.ps1
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Run isolated updater image-in-use and tray-hidden fixture
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          python PRODUCT\OneCChatWorker\tests\run_orbit_update_image_lease_regression.py
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Run isolated real WPF usability fixtures
         shell: powershell
         run: |
