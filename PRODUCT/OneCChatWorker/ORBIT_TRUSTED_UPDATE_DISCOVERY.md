@@ -28,7 +28,12 @@ Independent decisions:
 - No approved index, invalid schema, digest mismatch or offline:
   RELEASE_UNKNOWN or HOLD; never UPDATE_DETECTED.
 - Exact valid index equals installed trusted counter/commit/SHA:
-  CURRENT.
+  CURRENT **only when the separately trusted installed full-distribution
+  snapshot SHA-256 also exactly matches the approved index snapshot identity**.
+  A different approved snapshot with identical counter/commit/EXE means
+  SAME_COUNTER_CONFLICT/HOLD, not CURRENT.
+- If the independently trusted installed distribution snapshot SHA-256 is
+  missing or malformed, HOLD: never claim CURRENT or UPDATE_DETECTED.
 - Newer approved counter + different immutable commit and GUI image,
   PLUS proven approved chain: UPDATE_DETECTED status only.
 - Active operation/admission: DEFERRED, no install.

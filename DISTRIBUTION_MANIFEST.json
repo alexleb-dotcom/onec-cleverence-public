@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_TRUSTED_UPDATE_DISCOVERY.md",
-      "size": 3163,
-      "sha256": "e876e73a72df8c213e52cde69ebea3461aed09c14f15f78a15cec6c1a310aa52"
+      "size": 3564,
+      "sha256": "aa48ebbc8360a5fede92bf54d5d161e9700afd110e828ec1501552220b54590e"
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_UPDATE_IMAGE_HANDOFF_PREFLIGHT.md",
@@ -845,8 +845,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_readonly_discovery_regression.py",
-      "size": 5375,
-      "sha256": "bb77deb80e6abc8ef28bf90ef16827a03c4075c20168e33e1d4520a33e4bccc2"
+      "size": 6642,
+      "sha256": "44298d1ebdf51043dd84f788d8be89d5600d3e33e984a0ad99f351494fe194eb"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_update_image_lease_regression.py",
@@ -940,8 +940,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/update/readonly_discovery.py",
-      "size": 6373,
-      "sha256": "8eee0664b7a9e433aee50ffe11b07843f1ce2b2e6880ddd62a9e29aadc424211"
+      "size": 6660,
+      "sha256": "2c1d822c78fd19c8126c0739d69fb365fc319ae0155d82be463438b3cb46f2ad"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -2890,5 +2890,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "04425557e248e07f15d9e89226b1c04652c344f8d3843265093d27f0a0872ef4"
+  "snapshot_digest": "a56d299d25ae07006edbf4cb15110a5c1a08068c4606470ae094d72e6660c42d"
 }

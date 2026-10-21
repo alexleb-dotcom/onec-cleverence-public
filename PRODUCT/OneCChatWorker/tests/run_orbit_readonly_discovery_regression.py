@@ -37,7 +37,10 @@ current = {
     "gui_exe_sha256": old_sha,
     "distribution_snapshot_sha256": "e" * 64,
 }
-latest = {**current, "release_commit_sha": new_commit, "release_counter": 12, "gui_exe_sha256": new_sha}
+latest = {
+    **current, "release_commit_sha": new_commit, "release_counter": 12,
+    "gui_exe_sha256": new_sha, "distribution_snapshot_sha256": "f" * 64,
+}
 
 
 def index(payload):
@@ -48,6 +51,7 @@ def index(payload):
 def evaluate(
     proposal=current, actual=old, known=old_sha,
     installed_commit=old_commit, installed_counter=11,
+    installed_snapshot="e" * 64,
     authority=True, tamper=False, operation_busy=False, release_chain_verified=True
 ):
     raw, valid = index(proposal)
@@ -56,6 +60,7 @@ def evaluate(
         installed_trusted_exe_sha=known,
         installed_trusted_release_commit=installed_commit,
         installed_trusted_release_counter=installed_counter,
+        installed_trusted_distribution_snapshot_sha=installed_snapshot,
         approved_index_bytes=raw + (b"x" if tamper else b""),
         approval_authority_digest=valid if authority else None,
         operation_busy=operation_busy,
@@ -73,6 +78,20 @@ def status(actual, want, reason=None):
 
 
 status(evaluate(), "CURRENT")
+# Reproduce independent FA's same-counter immutable snapshot equivocation.
+# Both approved payload bytes are independently pinned; this DOES NOT claim
+# that caller-computed digests would be an acceptable production trust source.
+snapshot_a = {**current, "distribution_snapshot_sha256": "a" * 64}
+snapshot_b = {**current, "distribution_snapshot_sha256": "b" * 64}
+status(evaluate(snapshot_a), "HOLD", "SAME_COUNTER_CONFLICT")
+status(evaluate(snapshot_b), "HOLD", "SAME_COUNTER_CONFLICT")
+status(evaluate(snapshot_a, installed_snapshot="a" * 64), "CURRENT")
+status(evaluate(snapshot_b, installed_snapshot="a" * 64), "HOLD", "SAME_COUNTER_CONFLICT")
+status(evaluate(snapshot_b, installed_snapshot="b" * 64), "CURRENT")
+status(evaluate(snapshot_a, installed_snapshot="b" * 64), "HOLD", "SAME_COUNTER_CONFLICT")
+status(evaluate(installed_snapshot=None), "HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
+status(evaluate(installed_snapshot="invalid"), "HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
+status(evaluate(latest, installed_snapshot=None), "HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
 status(evaluate(latest), "UPDATE_DETECTED")
 status(evaluate(latest, release_chain_verified=False), "HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED")
 status(evaluate(latest, operation_busy=True), "DEFERRED", "WORK_OR_ADMISSION_ACTIVE")

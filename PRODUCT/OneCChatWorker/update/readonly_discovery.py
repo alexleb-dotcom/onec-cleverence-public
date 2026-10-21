@@ -96,6 +96,7 @@ def discover(
     installed_trusted_exe_sha: str | None,
     installed_trusted_release_commit: str | None,
     installed_trusted_release_counter: int | None,
+    installed_trusted_distribution_snapshot_sha: str | None,
     approved_index_bytes: bytes | None,
     approval_authority_digest: str | None,
     operation_busy: bool = False,
@@ -109,6 +110,8 @@ def discover(
         return _blocked("HOLD", "INSTALLED_TRUST_ANCHOR_MISSING")
     if type(installed_trusted_release_counter) is not int or not 0 <= installed_trusted_release_counter <= 2**31 - 1:
         return _blocked("HOLD", "INSTALLED_RELEASE_COUNTER_UNVERIFIED")
+    if not _valid_sha(installed_trusted_distribution_snapshot_sha):
+        return _blocked("HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
     if current_exe_bytes is None:
         return _blocked("HOLD", "INSTALLED_IMAGE_UNAVAILABLE")
     if sha256_bytes(current_exe_bytes) != installed_trusted_exe_sha:
@@ -116,20 +119,22 @@ def discover(
 
     approved, reason = validate_approved_index(approved_index_bytes, approval_authority_digest)
     if approved is None:
-        return _blocked("RELEASE_UNKNOWN", reason, "MATCHES_PINNED_INSTALLED_IDENTITY")
+        return _blocked("RELEASE_UNKNOWN", reason, "MATCHES_PINNED_INSTALLED_EXE")
     commit = approved["release_commit_sha"]
     if approved["release_counter"] < installed_trusted_release_counter:
-        return Discovery("HOLD", "RELEASE_COUNTER_ROLLBACK", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
+        return Discovery("HOLD", "RELEASE_COUNTER_ROLLBACK", "MATCHES_PINNED_INSTALLED_EXE", commit)
     if approved["release_counter"] == installed_trusted_release_counter:
-        if commit != installed_trusted_release_commit or approved["gui_exe_sha256"] != installed_trusted_exe_sha:
-            return Discovery("HOLD", "SAME_COUNTER_CONFLICT", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
-        return Discovery("CURRENT", "APPROVED_RELEASE_MATCHES_INSTALLATION", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
+        if (commit != installed_trusted_release_commit
+                or approved["gui_exe_sha256"] != installed_trusted_exe_sha
+                or approved["distribution_snapshot_sha256"] != installed_trusted_distribution_snapshot_sha):
+            return Discovery("HOLD", "SAME_COUNTER_CONFLICT", "MATCHES_PINNED_INSTALLED_EXE", commit)
+        return Discovery("CURRENT", "APPROVED_RELEASE_MATCHES_INSTALLATION", "MATCHES_PINNED_INSTALLED_EXE", commit)
     if commit == installed_trusted_release_commit:
-        return Discovery("HOLD", "CHANGED_COUNTER_SAME_COMMIT", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
+        return Discovery("HOLD", "CHANGED_COUNTER_SAME_COMMIT", "MATCHES_PINNED_INSTALLED_EXE", commit)
     if approved["gui_exe_sha256"] == installed_trusted_exe_sha:
-        return Discovery("HOLD", "NEW_RELEASE_WITH_UNCHANGED_IMAGE_NEEDS_REVIEW", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
+        return Discovery("HOLD", "NEW_RELEASE_WITH_UNCHANGED_IMAGE_NEEDS_REVIEW", "MATCHES_PINNED_INSTALLED_EXE", commit)
     if not release_chain_verified:
-        return Discovery("HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
+        return Discovery("HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED", "MATCHES_PINNED_INSTALLED_EXE", commit)
     if operation_busy:
-        return Discovery("DEFERRED", "WORK_OR_ADMISSION_ACTIVE", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
-    return Discovery("UPDATE_DETECTED", "PINNED_APPROVED_RELEASE_DIFFERS", "MATCHES_PINNED_INSTALLED_IDENTITY", commit)
+        return Discovery("DEFERRED", "WORK_OR_ADMISSION_ACTIVE", "MATCHES_PINNED_INSTALLED_EXE", commit)
+    return Discovery("UPDATE_DETECTED", "PINNED_APPROVED_RELEASE_DIFFERS", "MATCHES_PINNED_INSTALLED_EXE", commit)
