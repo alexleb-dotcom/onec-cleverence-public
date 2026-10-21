@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 14195,
-      "sha256": "030e8b281142ece7dd13f3ac38a1a12702acf42b61ce72e615aebe7f757983ac"
+      "size": 14335,
+      "sha256": "9a2720e0f791c749dcef0defdf0fa10998bcccd3c5bd9bcfd8838862a2884d2e"
     },
     {
       "path": ".gitignore",
@@ -2915,5 +2915,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "7af55c3b41faf93223e3359199f233282441888fc630beaa545688f96d39d964"
+  "snapshot_digest": "22e92c6ecad38bb60ae7a5cf4915d5f85b0bb8315cef39f6f3791ba03d438b44"
 }

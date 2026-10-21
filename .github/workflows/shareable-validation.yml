@@ -257,7 +257,9 @@ jobs:
 
   public-full:
     name: Public Full
-    needs: [public-fast, public-ui, public-windows]
+    # Full independently validates the canonical snapshot and reports its own receipt.
+    # Run alongside UI/Windows after Fast instead of extending the critical path.
+    needs: public-fast
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
