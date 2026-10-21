@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 573,
+  "file_count": 576,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 13248,
-      "sha256": "959af834d01cd5c90945aa059ea5ae21245153bcb740e6e0df1fbc4fe60b7083"
+      "size": 13537,
+      "sha256": "3b2f3b723b891a5a27b333f9182688177d04c4a65323f243752ac06ed655827c"
     },
     {
       "path": ".gitignore",
@@ -387,6 +387,11 @@
       "path": "PRODUCT/OneCChatWorker/ORBIT_MIGRATION_PREFLIGHT.md",
       "size": 5670,
       "sha256": "02abd576975a30d4373cf8120ee8d08def281dd85e9d5009e4542aa411973294"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/ORBIT_TRUSTED_UPDATE_DISCOVERY.md",
+      "size": 4070,
+      "sha256": "8498139bc32d9902ed05c18d151851ce314b41d5d7b0c62a5d12880255b5b1b7"
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_UPDATE_IMAGE_HANDOFF_PREFLIGHT.md",
@@ -839,6 +844,11 @@
       "sha256": "0631a0550037bc3e5c935d2f57dc638389315aacbdfa5be4fd6ae236cdd2fd4e"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/run_orbit_readonly_discovery_regression.py",
+      "size": 7338,
+      "sha256": "1140d40d470a3b0388b9ccc41ccf6609be586bc52d907dbb3dc9d3133ad6b2ff"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_update_image_lease_regression.py",
       "size": 10385,
       "sha256": "388cf46d7ccec881bd5c62cdf3619a01386eb76e2c40606a8745f5acfa09ce8f"
@@ -927,6 +937,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/task-checkpoint-regression.mjs",
       "size": 17463,
       "sha256": "4c212f917f919c15d8f40a09419303a073f2bea4dafeded21aa065b2f38d45d9"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/update/readonly_discovery.py",
+      "size": 7024,
+      "sha256": "51ac37653d447c847ffa1c25f3e363985036f8c9f7ebf41a3a7f5f282aa0a51d"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -2875,5 +2890,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "f514604a5eca9e91d3b51720528b1ba8fb8a870535ea6d4e05adfbd307011c83"
+  "snapshot_digest": "27a32efa41c38e0da33541a3750ec7c45fc539125c3f9152e48c4ec7193ead69"
 }
