@@ -223,6 +223,13 @@ jobs:
           $env:PYTHONDONTWRITEBYTECODE='1'
           python PRODUCT\OneCChatWorker\tests\run_orbit_release_authority_regression.py
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Verify S2-L1B immutable Git tree and signed provenance
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:PYTHONDONTWRITEBYTECODE='1'
+          python PRODUCT\OneCChatWorker\tests\run_orbit_git_tree_regression.py
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Run isolated real WPF usability fixtures
         shell: powershell
         run: |

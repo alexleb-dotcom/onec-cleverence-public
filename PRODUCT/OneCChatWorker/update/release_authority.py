@@ -3,6 +3,7 @@
 from __future__ import annotations
 import hashlib
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -110,15 +111,20 @@ def verify_git_ancestry(repo: Path, approved: dict | None) -> tuple[bool, str]:
         return False, "COMMIT_INVALID"
     try:
         def run(*args):
-            return subprocess.run(["git", "-c", "core.alternateRefsCommand=", "-C", str(repo),
-                                   *args], capture_output=True, timeout=10, check=False)
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            env.update(GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0")
+            return subprocess.run(["git", "-C", str(repo), *args],
+                                  capture_output=True, timeout=30, check=False, env=env)
         # Reject shallow repositories, replacement refs, and legacy grafts.
         if run("rev-parse", "--is-shallow-repository").stdout.strip() != b"false":
             return False, "GIT_HISTORY_INCOMPLETE"
-        git_dir = run("rev-parse", "--absolute-git-dir")
+        git_dir = run("rev-parse", "--git-common-dir")
         if git_dir.returncode:
             return False, "GIT_REPO_UNAVAILABLE"
-        if (Path(git_dir.stdout.decode().strip()) / "info" / "grafts").exists():
+        common = Path(git_dir.stdout.decode().strip())
+        if not common.is_absolute():
+            common = repo / common
+        if (common / "info" / "grafts").exists():
             return False, "GIT_HISTORY_OVERRIDE"
         if run("for-each-ref", "--format=%(refname)", "refs/replace").stdout.strip():
             return False, "GIT_HISTORY_OVERRIDE"

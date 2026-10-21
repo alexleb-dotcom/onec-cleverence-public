@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 579,
+  "file_count": 581,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 13871,
-      "sha256": "c83503ded4aab120d023ed47cfea4737d86208785a326581b85940b8cc79733c"
+      "size": 14195,
+      "sha256": "030e8b281142ece7dd13f3ac38a1a12702acf42b61ce72e615aebe7f757983ac"
     },
     {
       "path": ".gitignore",
@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_RELEASE_AUTHORITY_S2_L1B.md",
-      "size": 2834,
-      "sha256": "2b35e3d54b35f5fb68a0eec04d49d6943ab766876396af24f77814cc418ab975"
+      "size": 5217,
+      "sha256": "71e5da9d765e440f1584f214cc8e639ca0e9d53fa13bdb06e94f91b8ad591717"
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_TRUSTED_UPDATE_DISCOVERY.md",
@@ -844,6 +844,11 @@
       "sha256": "ddbd1890363c4bd0e22428707ee24504f69afd6a981690e85237d95f234733bb"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/run_orbit_git_tree_regression.py",
+      "size": 6525,
+      "sha256": "f671e89e8b1bf792ce1e898a27ff2282d99ac1686b4f82d5f8e1de537ff0d21d"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
       "size": 12082,
       "sha256": "0631a0550037bc3e5c935d2f57dc638389315aacbdfa5be4fd6ae236cdd2fd4e"
@@ -955,8 +960,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/update/release_authority.py",
-      "size": 6637,
-      "sha256": "b33ef41570441db84808a7a56bdbdcf782d788765d04eb14146ca6084cfc41e9"
+      "size": 6872,
+      "sha256": "f53966a670fefa06aa3f60eebcec785aeb7ce5abf912c5014d732342ce196fc5"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/update/release_git_tree.py",
+      "size": 11000,
+      "sha256": "d0854276b72c58405ef7d225f4716c21e6e10a6f3e66b84f98a37f1fbe533860"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -2905,5 +2915,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "2915c9536f5e273d60d4a010e683f1312077dded84ee1b20dffbb0d8a4908d3f"
+  "snapshot_digest": "9f70619d7602133087181006807bbe2644a652c37cf864b18f2b9544e7bba4ca"
 }
