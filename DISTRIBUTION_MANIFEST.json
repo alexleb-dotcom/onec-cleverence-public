@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_RELEASE_AUTHORITY_S2_L1B.md",
-      "size": 5480,
-      "sha256": "0b88d35c559cd6155dfafdaf88a9ac7a23ef01a12f7d385f29b58085626e972b"
+      "size": 6571,
+      "sha256": "df7ee79b0157070b56e4257341a81672c69d932119d5a0f6f0f146b7a36b7961"
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_TRUSTED_UPDATE_DISCOVERY.md",
@@ -845,8 +845,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_git_tree_regression.py",
-      "size": 6525,
-      "sha256": "f671e89e8b1bf792ce1e898a27ff2282d99ac1686b4f82d5f8e1de537ff0d21d"
+      "size": 12757,
+      "sha256": "3c463f7845c9f6fde992c778c5f31869679b2d0848705e257b40b5c014f983da"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
@@ -960,13 +960,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/update/release_authority.py",
-      "size": 7906,
-      "sha256": "3fe7358d82b397ccb0c8d32cd715fc1ec85102f4ef07202e367fbc7208e75538"
+      "size": 8241,
+      "sha256": "5e50432e290c1c531a72bcf1e72ebe7bde55b06d72c16948f6ff2ac7048e8b85"
     },
     {
       "path": "PRODUCT/OneCChatWorker/update/release_git_tree.py",
-      "size": 11462,
-      "sha256": "648e2cb44067b0654320c0def0581e2c7f717b2f87d8b23b9cc59a0dc6737dad"
+      "size": 12250,
+      "sha256": "ed2b58643abc4770a8a3cfbe7f2e11b15bf0f566137bf540473af29b660786cf"
     },
     {
       "path": "PROFILES/BARCODE_INPUT_AND_CLASSIFICATION.md",
@@ -2915,5 +2915,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "fac1dbeac72fa428004cfbc142a77cd767916a6cd929f395beb4304544efe1bc"
+  "snapshot_digest": "7af55c3b41faf93223e3359199f233282441888fc630beaa545688f96d39d964"
 }

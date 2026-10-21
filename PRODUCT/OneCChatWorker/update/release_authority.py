@@ -112,12 +112,16 @@ def verify_git_ancestry(repo: Path, approved: dict | None) -> tuple[bool, str]:
     try:
         def run(*args):
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-            env.update(GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0")
+            env.update(GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0",
+                       GIT_NO_LAZY_FETCH="1", GIT_TERMINAL_PROMPT="0")
             return subprocess.run(["git", "-C", str(repo), *args],
                                   capture_output=True, timeout=30, check=False, env=env)
         # Reject shallow repositories, replacement refs, and legacy grafts.
         if run("rev-parse", "--is-shallow-repository").stdout.strip() != b"false":
             return False, "GIT_HISTORY_INCOMPLETE"
+        if (run("config", "--local", "--get", "extensions.partialClone").returncode == 0
+                or run("config", "--local", "--get-regexp", r"^remote\..*\.promisor$").returncode == 0):
+            return False, "GIT_PROMISOR_PARTIAL_REPOSITORY_FORBIDDEN"
         git_dir = run("rev-parse", "--git-common-dir")
         if git_dir.returncode:
             return False, "GIT_REPO_UNAVAILABLE"

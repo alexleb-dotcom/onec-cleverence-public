@@ -32,7 +32,10 @@ mutable HEAD, downloaded public key, downloaded digest, or manifest alone.
 5. The fixed repository's Git objects are verified *offline* against the
    signed exact main and exact release commits. Release must be an ancestor of
    the signed main. Shallow objects, missing commits, replacement refs and
-   grafts are rejected. Every signed-main ancestry-path commit object's
+   grafts, promisor/partial clones and missing local objects are rejected.
+   Both Git subprocess wrappers set GIT_NO_LAZY_FETCH=1 to prevent implicit
+   remote retrieval or object-store mutation; no configured origin can fill
+   gaps while verifying. Every signed-main ancestry-path commit object's
    complete Git SHA-1 identity is recalculated with bounded count/size,
    not inferred solely from merge-base. Ancestry to a signed SHA alone
    does NOT show that SHA was actually operator-approved protected main;
@@ -50,6 +53,12 @@ mutable HEAD, downloaded public key, downloaded digest, or manifest alone.
    MANIFEST is not trusted alone; signature + Git object structure + all
    contents are required together. Individual blob reads are preflight
    size-checked (128 MiB maximum), with an aggregate 1 GiB cap.
+   The canonical expected GUI EXE path is
+   PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe.
+   This must be a present ordinary blob, and its already verified SHA256
+   MUST equal the signed index gui_exe_sha256: signing contradictory GUI
+   identity can never yield provenance PASS. Windows reserved devices include
+   COM¹/²/³ and LPT¹/²/³ (including names with extensions) in every segment.
 7. verify_complete_release is the only composite PASS entry point in this
    prototype: signature -> Git ancestry -> exact tree + signed distribution
    digest. It returns no installer permission or side effects. S2-L1A
@@ -80,8 +89,13 @@ run_orbit_release_authority_regression.py: offline synthetic signatures,
 tampers, wrong/absent key, unsigned/counter rollback, missing Git commits,
 ancestry. run_orbit_git_tree_regression.py: signed end-to-end fake-release
 provenance, duplicate/missing pins, nested tree/blob modes, symlink,
-submodule, extra files, unapproved manifest, Windows path safety. Tests create
-only disposable fixture Git repositories; no user projects or installed
-EXE are accessed.
+submodule, extra files, unapproved manifest, Windows path safety, and
+independently signed but contradictory/missing GUI EXE identities.
+A non-shallow local file:// promisor clone fixture verifies that the required
+missing Git blob stays missing before and AFTER full/individual proof calls;
+no lazy-fetch, remote network, or repository object mutation is permitted.
+Real COM¹ Git-index mode fixtures and all six superscript device prefixes are
+checked without creating reserved Windows files. Tests create only disposable
+fixture Git repositories; no user projects or installed EXE are accessed.
 
 Any absent/truncated/malformed/untrusted/offline authority: fail closed.

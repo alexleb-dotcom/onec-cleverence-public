@@ -27,7 +27,10 @@ CONSTANTS = {
     "rule": RULE,
 }
 MANIFEST_KEYS = set(CONSTANTS) | {"file_count", "files", "snapshot_digest"}
-RESERVED = {"CON", "PRN", "AUX", "NUL"} | {f"{a}{n}" for a in ("COM", "LPT") for n in range(1, 10)}
+GUI_EXE_PATH = "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe"
+RESERVED = ({"CON", "PRN", "AUX", "NUL"}
+            | {f"{a}{n}" for a in ("COM", "LPT") for n in range(1, 10)}
+            | {f"{a}{sup}" for a in ("COM", "LPT") for sup in ("¹", "²", "³")})
 
 
 def _unique(pairs):
@@ -54,7 +57,8 @@ def _safe_path(path):
 
 def _git(repo, *args, input_bytes=None):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    env.update(GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0")
+    env.update(GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0",
+               GIT_NO_LAZY_FETCH="1", GIT_TERMINAL_PROMPT="0")
     return subprocess.run(["git", "-C", str(repo), *args], input=input_bytes,
                           capture_output=True, timeout=60, check=False, env=env)
 
@@ -79,8 +83,11 @@ def verify_tree(repo: Path, approval: dict | None, index_bytes: bytes | None):
         release = approval["release_commit_sha"]
         if type(release) is not str or not HEX40.fullmatch(release):
             return False, "TREE_COMMIT_INVALID"
-        # Tree/blob identity can be proven on a shallow clone. The composite
-        # verifier separately REQUIRES complete ancestry and rejects shallow.
+        # A shallow tree can be verified in isolation, but NO promisor remote
+        # is allowed: cat-file must never lazy-fetch or mutate the object store.
+        if (_git(repo, "config", "--local", "--get", "extensions.partialClone").returncode == 0
+                or _git(repo, "config", "--local", "--get-regexp", r"^remote\..*\.promisor$").returncode == 0):
+            return False, "TREE_PROMISOR_PARTIAL_REPOSITORY_FORBIDDEN"
         git_dir = _git(repo, "rev-parse", "--git-common-dir")
         if git_dir.returncode:
             return False, "TREE_GIT_HISTORY_OVERRIDE"
@@ -183,10 +190,14 @@ def verify_tree(repo: Path, approval: dict | None, index_bytes: bytes | None):
             expected[name] = row
         if set(files) != set(expected) | {"DISTRIBUTION_MANIFEST.json"}:
             return False, "TREE_FILE_SET_MISMATCH"
+        if GUI_EXE_PATH not in expected or GUI_EXE_PATH not in files:
+            return False, "TREE_GUI_EXE_MISSING"
         for name, item in expected.items():
             data = blob(files[name])
             if len(data) != item["size"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
                 return False, "TREE_BLOB_CONTENT_MISMATCH"
+        if expected[GUI_EXE_PATH]["sha256"] != index["gui_exe_sha256"]:
+            return False, "TREE_GUI_EXE_SHA256_MISMATCH"
         canonical = {**CONSTANTS, "file_count": len(rows),
                      "files": sorted(rows, key=lambda row: row["path"])}
         encoded = json.dumps(canonical, ensure_ascii=False, sort_keys=True,
