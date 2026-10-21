@@ -210,6 +210,12 @@ jobs:
           $ErrorActionPreference='Stop'
           python PRODUCT\OneCChatWorker\tests\run_orbit_update_image_lease_regression.py
           if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Verify trusted read-only release discovery decisions
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          python PRODUCT\OneCChatWorker\tests\run_orbit_readonly_discovery_regression.py
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
       - name: Run isolated real WPF usability fixtures
         shell: powershell
         run: |
