@@ -536,21 +536,40 @@ record(
         "persist_credentials_false_count": persist_false_count,
     },
 )
+workflow_jobs = {
+    name: public_workflow.split(f"  {name}:", 1)[1].split("\n  public-", 1)[0]
+    if f"  {name}:" in public_workflow else ""
+    for name in ("public-fast", "public-ui", "public-windows", "public-full")
+}
+all_jobs_present = all(bool(section) for section in workflow_jobs.values())
+all_downstream_fast_only = all(
+    re.search(r"(?m)^    needs: public-fast$", workflow_jobs[name])
+    for name in ("public-ui", "public-windows", "public-full")
+) if all_jobs_present else False
+full_evidence_intact = all(
+    token in workflow_jobs["public-full"]
+    for token in (
+        "validate_distribution_snapshot.py --root .",
+        "run_public_ci.py --mode FULL",
+        "public_execution_receipt.py",
+        "--receipt",
+    )
+)
 record(
     "public_workflow_exposes_fast_ui_windows_and_full_contexts",
-    "name: Public Fast" in public_workflow
-    and "name: Public UI" in public_workflow
-    and "name: Public Windows" in public_workflow
-    and "name: Public Full" in public_workflow
-    and public_workflow.count("needs: public-fast") >= 2
-    and "needs: [public-fast, public-ui, public-windows]" in public_workflow,
+    all_jobs_present
+    and all_downstream_fast_only
+    and not re.search(r"(?m)^    needs:", workflow_jobs["public-fast"])
+    and full_evidence_intact
+    and "name: Public Fast" in workflow_jobs["public-fast"]
+    and "name: Public UI" in workflow_jobs["public-ui"]
+    and "name: Public Windows" in workflow_jobs["public-windows"]
+    and "name: Public Full" in workflow_jobs["public-full"],
     {
-        "fast": "name: Public Fast" in public_workflow,
-        "ui": "name: Public UI" in public_workflow,
-        "windows": "name: Public Windows" in public_workflow,
-        "full": "name: Public Full" in public_workflow,
-        "fast_dependencies": public_workflow.count("needs: public-fast"),
-        "full_dependency": "needs: [public-fast, public-ui, public-windows]" in public_workflow,
+        "all_jobs_present": all_jobs_present,
+        "all_downstream_depend_on_fast_only": all_downstream_fast_only,
+        "full_has_snapshot_tests_and_receipt": full_evidence_intact,
+        "four_required_names": sorted(workflow_jobs),
     },
 )
 
