@@ -11,7 +11,9 @@ that the release commit is reachable from approved protected main.
 These authorities cannot be derived from arbitrary GitHub HEAD,
 a downloaded package or a locally editable receipt. Unauthenticated network
 input, absent authority, missing ancestry evidence, or missing installed pin
-means hold/unknown. A newer main commit is not itself an approved update.
+means hold/unknown for release status. Exception: independently provable
+local EXE drift remains REPAIR_REQUIRED even if a separate snapshot pin is
+missing. A newer main commit is not itself an approved update.
 
 Index schema ONEC_ORBIT_APPROVED_RELEASE_INDEX_V1:
 - exact repository alexleb-dotcom/onec-cleverence-public;
@@ -24,10 +26,13 @@ Index schema ONEC_ORBIT_APPROVED_RELEASE_INDEX_V1:
 
 Independent decisions:
 - Installed EXE differs from separately trusted installed EXE pin:
-  REPAIR_REQUIRED / LOCAL_IMAGE_DRIFT; never UPDATE_DETECTED.
+  REPAIR_REQUIRED / LOCAL_IMAGE_DRIFT, even if installed distribution
+  snapshot pin is missing; never UPDATE_DETECTED. If EXE bytes are
+  unavailable, HOLD/INSTALLED_IMAGE_UNAVAILABLE (no unproven repair claim).
 - No approved index, invalid schema, digest mismatch or offline:
   RELEASE_UNKNOWN or HOLD; never UPDATE_DETECTED.
-- Exact valid index equals installed trusted counter/commit/SHA:
+- Exact valid index equals installed trusted counter/commit/SHA AND
+  the separately supplied release Git ancestry proof is exactly true:
   CURRENT **only when the separately trusted installed full-distribution
   snapshot SHA-256 also exactly matches the approved index snapshot identity**.
   A different approved snapshot with identical counter/commit/EXE means
@@ -36,6 +41,8 @@ Independent decisions:
   missing or malformed, HOLD: never claim CURRENT or UPDATE_DETECTED.
 - Newer approved counter + different immutable commit and GUI image,
   PLUS proven approved chain: UPDATE_DETECTED status only.
+- Release chain absent/unproven: HOLD for CURRENT and UPDATE_DETECTED,
+  not just newer releases; exact byte-index digest alone is insufficient.
 - Active operation/admission: DEFERRED, no install.
 - Counter rollback, same-counter conflict, same-commit counter change,
   non-proven release ancestry: HOLD.

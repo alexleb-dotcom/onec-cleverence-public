@@ -78,6 +78,9 @@ def status(actual, want, reason=None):
 
 
 status(evaluate(), "CURRENT")
+status(evaluate(release_chain_verified=False), "HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED")
+status(evaluate(release_chain_verified=None), "HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED")
+status(evaluate(release_chain_verified=1), "HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED")
 # Reproduce independent FA's same-counter immutable snapshot equivocation.
 # Both approved payload bytes are independently pinned; this DOES NOT claim
 # that caller-computed digests would be an acceptable production trust source.
@@ -92,6 +95,10 @@ status(evaluate(snapshot_a, installed_snapshot="b" * 64), "HOLD", "SAME_COUNTER_
 status(evaluate(installed_snapshot=None), "HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
 status(evaluate(installed_snapshot="invalid"), "HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
 status(evaluate(latest, installed_snapshot=None), "HOLD", "INSTALLED_DISTRIBUTION_SNAPSHOT_UNVERIFIED")
+status(evaluate(actual=b"CORRUPTED", installed_snapshot=None), "REPAIR_REQUIRED", "LOCAL_IMAGE_DRIFT")
+status(evaluate(actual=b"CORRUPTED", installed_snapshot="invalid"), "REPAIR_REQUIRED", "LOCAL_IMAGE_DRIFT")
+status(evaluate(latest, actual=b"CORRUPTED", installed_snapshot=None), "REPAIR_REQUIRED", "LOCAL_IMAGE_DRIFT")
+status(evaluate(actual=None, installed_snapshot=None), "HOLD", "INSTALLED_IMAGE_UNAVAILABLE")
 status(evaluate(latest), "UPDATE_DETECTED")
 status(evaluate(latest, release_chain_verified=False), "HOLD", "IMMUTABLE_RELEASE_CHAIN_NOT_VERIFIED")
 status(evaluate(latest, operation_busy=True), "DEFERRED", "WORK_OR_ADMISSION_ACTIVE")
