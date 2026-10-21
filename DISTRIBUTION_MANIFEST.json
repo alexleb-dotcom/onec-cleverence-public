@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 570,
+  "file_count": 573,
   "files": [
     {
       "path": ".gitattributes",
@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 12954,
-      "sha256": "a355e842079aa56d0093f2727f3764c56fff8b1ce21d239b7271cb220a1859a4"
+      "size": 13248,
+      "sha256": "959af834d01cd5c90945aa059ea5ae21245153bcb740e6e0df1fbc4fe60b7083"
     },
     {
       "path": ".gitignore",
@@ -389,6 +389,11 @@
       "sha256": "02abd576975a30d4373cf8120ee8d08def281dd85e9d5009e4542aa411973294"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/ORBIT_UPDATE_IMAGE_HANDOFF_PREFLIGHT.md",
+      "size": 4639,
+      "sha256": "999d482c5fcb4568292fdaf703f5764cf9c8b56864cd06252a2de6a4d7f80922"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
       "size": 134843,
       "sha256": "d95fb6e955882da28fbf4f72d6f5560541a2c9bf014dbe722e026fa73de05d27"
@@ -669,6 +674,11 @@
       "sha256": "2376fa36236e8c79917191dcd36c16b35aaab35ede98d4191d22f43c3671b02e"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitUpdaterImageLease.ps1",
+      "size": 4029,
+      "sha256": "1b117095038d2ba1d92b8766d3172b6574aed725590e2de9ebd900df807b9fcf"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/tests/Q113_EXISTING_EXTENSION_QUICK_SYNC.md",
       "size": 4461,
       "sha256": "25dbef4082c2f145429099763da9cffcb77c05feab1626f758de916c00e86283"
@@ -827,6 +837,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
       "size": 12082,
       "sha256": "0631a0550037bc3e5c935d2f57dc638389315aacbdfa5be4fd6ae236cdd2fd4e"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_orbit_update_image_lease_regression.py",
+      "size": 10385,
+      "sha256": "388cf46d7ccec881bd5c62cdf3619a01386eb76e2c40606a8745f5acfa09ce8f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_package_core_bootstrap_regression.ps1",
@@ -2860,5 +2875,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "2c13e47ce4a252550a35ca59a9e1e18b6a2a8a10f4c22ac14f57b4259811cbb2"
+  "snapshot_digest": "f514604a5eca9e91d3b51720528b1ba8fb8a870535ea6d4e05adfbd307011c83"
 }
