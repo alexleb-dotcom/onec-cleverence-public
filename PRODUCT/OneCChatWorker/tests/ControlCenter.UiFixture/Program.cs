@@ -54,6 +54,37 @@ internal static class Program
                 _ => true, _ => throw new Exception("complete Orbit legacy probe")), "complete Orbit skips legacy probes");
             Check(!WorkerClient.NeedsMigration(@"C:\OneCOrbit", @"C:\ProgramData\OneCOrbit", "fake-launcher",
                 _ => throw new Exception("override probe"), _ => throw new Exception("override legacy probe")), "fake launcher override preserved");
+            // The real native Worker START/CONTINUE invokes runas.exe, which
+            // requires a visible console to ask for the restricted user's
+            // password. Verify launch semantics WITHOUT ever starting a
+            // process or touching operator credentials.
+            var commandClient = new WorkerClient();
+            foreach (var action in new[] { WorkerAction.Start, WorkerAction.Continue })
+            {
+                var psi = commandClient.CreateStartInfo(action,
+                    new(ProjectId: "synthetic", TaskId: "fake-task", TaskGoal: "fixture-only"), false);
+                Check(psi.UseShellExecute && !psi.CreateNoWindow &&
+                    psi.WindowStyle == System.Diagnostics.ProcessWindowStyle.Normal &&
+                    !psi.RedirectStandardOutput && !psi.RedirectStandardError &&
+                    psi.ArgumentList.Contains("-Mode") && psi.ArgumentList.Contains(action.ToString().ToUpperInvariant()) &&
+                    !psi.ArgumentList.Contains("-Json") &&
+                    !psi.ArgumentList.Any(a => a.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+                        a.Contains("savecred", StringComparison.OrdinalIgnoreCase)),
+                    "START/CONTINUE use visible interactive runas path without GUI credential capture " + action);
+            }
+            foreach (var action in new[] { WorkerAction.UiContext, WorkerAction.Verify, WorkerAction.Apply })
+            {
+                var psi = commandClient.CreateStartInfo(action, new(ProjectId: "synthetic"), false);
+                Check(!psi.UseShellExecute && psi.CreateNoWindow &&
+                    psi.WindowStyle == System.Diagnostics.ProcessWindowStyle.Hidden &&
+                    psi.RedirectStandardOutput && psi.RedirectStandardError &&
+                    psi.ArgumentList.Contains("-Json"),
+                    "ordinary Worker calls remain hidden/read-only JSON or bounded mutation " + action);
+            }
+            var elevatedStop = commandClient.CreateStartInfo(WorkerAction.Stop, new(), true);
+            Check(elevatedStop.UseShellExecute && !elevatedStop.CreateNoWindow &&
+                !elevatedStop.RedirectStandardOutput && !elevatedStop.RedirectStandardError &&
+                elevatedStop.Verb == "runas", "existing elevated stop UAC boundary unchanged");
             var preferences = new UiPreferences("ru", "dark", false);
             PreferencesStore.Save(preferences);
             Check(PreferencesStore.Load() == preferences && File.Exists(Path.Combine(orbitEvidence, "preferences", "preferences.json")), "isolated preference roundtrip");
