@@ -536,18 +536,24 @@ record(
         "persist_credentials_false_count": persist_false_count,
     },
 )
+# The active protect-main ruleset requires Public Fast and Public Full.
+# Public Full MUST aggregate UI, Windows and parallel Full Validation, or an
+# unrelated Windows/UI failure could become mergeable with a green Full.
 workflow_jobs = {
     name: public_workflow.split(f"  {name}:", 1)[1].split("\n  public-", 1)[0]
     if f"  {name}:" in public_workflow else ""
-    for name in ("public-fast", "public-ui", "public-windows", "public-full")
+    for name in (
+        "public-fast", "public-ui", "public-windows",
+        "public-full-validation", "public-full",
+    )
 }
 all_jobs_present = all(bool(section) for section in workflow_jobs.values())
-all_downstream_fast_only = all(
+parallel_after_fast = all(
     re.search(r"(?m)^    needs: public-fast$", workflow_jobs[name])
-    for name in ("public-ui", "public-windows", "public-full")
+    for name in ("public-ui", "public-windows", "public-full-validation")
 ) if all_jobs_present else False
 full_evidence_intact = all(
-    token in workflow_jobs["public-full"]
+    token in workflow_jobs["public-full-validation"]
     for token in (
         "validate_distribution_snapshot.py --root .",
         "run_public_ci.py --mode FULL",
@@ -555,21 +561,47 @@ full_evidence_intact = all(
         "--receipt",
     )
 )
+final_full_gate = workflow_jobs["public-full"]
+aggregate_requires_all = bool(re.search(
+    r"(?m)^    needs: \[public-fast, public-ui, public-windows, public-full-validation\]$",
+    final_full_gate,
+))
+aggregate_checks_outcomes = (
+    "if: ${{ always() }}" in final_full_gate
+    and all(name in final_full_gate for name in (
+        "needs.public-fast.result",
+        "needs.public-ui.result",
+        "needs.public-windows.result",
+        "needs.public-full-validation.result",
+        'test "$result" = success',
+        "REQUIRED_GATE_NOT_SUCCESS",
+    ))
+)
 record(
     "public_workflow_exposes_fast_ui_windows_and_full_contexts",
     all_jobs_present
-    and all_downstream_fast_only
+    and parallel_after_fast
     and not re.search(r"(?m)^    needs:", workflow_jobs["public-fast"])
     and full_evidence_intact
-    and "name: Public Fast" in workflow_jobs["public-fast"]
-    and "name: Public UI" in workflow_jobs["public-ui"]
-    and "name: Public Windows" in workflow_jobs["public-windows"]
-    and "name: Public Full" in workflow_jobs["public-full"],
+    and aggregate_requires_all
+    and aggregate_checks_outcomes
+    and all(
+        re.search(r"(?m)^    name: " + re.escape(title) + r"$", workflow_jobs[name])
+        for name, title in (
+            ("public-fast", "Public Fast"),
+            ("public-ui", "Public UI"),
+            ("public-windows", "Public Windows"),
+            ("public-full-validation", "Public Full Validation"),
+            ("public-full", "Public Full"),
+        )
+    ),
     {
         "all_jobs_present": all_jobs_present,
-        "all_downstream_depend_on_fast_only": all_downstream_fast_only,
+        "parallel_validation_after_fast": parallel_after_fast,
         "full_has_snapshot_tests_and_receipt": full_evidence_intact,
-        "four_required_names": sorted(workflow_jobs),
+        "required_full_aggregates_all_jobs": aggregate_requires_all,
+        "required_full_checks_each_success": aggregate_checks_outcomes,
+        "job_names": sorted(workflow_jobs),
     },
 )
 
