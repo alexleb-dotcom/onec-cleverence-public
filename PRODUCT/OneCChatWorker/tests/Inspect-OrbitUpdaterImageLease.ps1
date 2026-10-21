@@ -13,6 +13,7 @@ $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $reasons=New-Object 'System.Collections.Generic.List[string]'
 $observed=New-Object 'System.Collections.Generic.List[int]'
+$inventoryAttempted=$false
 function Hold([string]$Why) {
  if(-not $reasons.Contains($Why)){[void]$reasons.Add($Why)}
 }
@@ -62,7 +63,7 @@ try {
    Hold 'UNEXPECTED_IMAGE_BASENAME'
  }
  if($reasons.Count -eq 0){
-   if(ReparseAncestor $root -or ReparseAncestor $image){Hold 'REPARSE_PATH_FORBIDDEN'}
+   if ((ReparseAncestor $root) -or (ReparseAncestor $image)) { Hold 'REPARSE_PATH_FORBIDDEN' }
  }
  if($reasons.Count -eq 0 -and -not (Test-Path -LiteralPath $image -PathType Leaf)){
    Hold 'IMAGE_MISSING'
@@ -71,6 +72,7 @@ try {
    # Win32_Process includes tray-minimized and otherwise invisible WPF EXEs;
    # WM_CLOSE/visible windows are NOT a process shutdown attestation.
    $name=[IO.Path]::GetFileName($image).Replace("'","''")
+   $inventoryAttempted=$true
    $all=@(Get-CimInstance -ClassName Win32_Process -Filter ("Name='"+$name+"'") -ErrorAction Stop)
    foreach($process in $all){
      if([string]::IsNullOrWhiteSpace([string]$process.ExecutablePath)){
@@ -97,6 +99,7 @@ $sorted=@($observed.ToArray()|Sort-Object -Unique)
  update_invoked=$false
  process_terminated=$false
  worker_or_s4_touched=$false
+ process_inventory_attempted=$inventoryAttempted
  observed_instance_count=$sorted.Count
  observed_instance_pids=$sorted
  reasons=@($reasons.ToArray())

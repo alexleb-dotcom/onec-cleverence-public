@@ -82,6 +82,7 @@ def probe(image: Path, fixture: Path):
     assert val["update_invoked"] is False
     assert val["process_terminated"] is False
     assert val["worker_or_s4_touched"] is False
+    assert isinstance(val["process_inventory_attempted"], bool)
     return val
 
 
@@ -124,6 +125,55 @@ def main():
             require("IMAGE_MISSING" in missing["reasons"], "absent image hard block")
             unsafe = probe(exe, fixture / "elsewhere")
             require("IMAGE_OUTSIDE_FIXTURE" in unsafe["reasons"], "image must stay in fixture")
+            require(not unsafe["process_inventory_attempted"], "out-of-fixture must not enumerate PIDs")
+
+            # Real NTFS junction INSIDE a valid, non-reparse fixture root.
+            # Both junctions target a disposable folder with only a dummy EXE.
+            # The helper never invokes these fake binaries or inspects real roots.
+            target = fixture / "only-temporary-target"
+            target.mkdir()
+            fake_image = target / EXE_SOURCE.name
+            fake_image.write_bytes(b"NOT AN EXECUTABLE - REPARSE TEST ONLY")
+            image_link = fixture / "image-ancestor-junction"
+            root_link = fixture / "orbit-updater-lease-root-junction"
+
+            def quote_ps(path: Path):
+                return str(path).replace("'", "''")
+
+            def create_junction(link: Path):
+                subprocess.run([
+                    "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                    "-Command",
+                    f"New-Item -ItemType Junction -Path '{quote_ps(link)}' "
+                    f"-Target '{quote_ps(target)}' -ErrorAction Stop | Out-Null"
+                ], check=True, timeout=30)
+
+            def remove_junction(link: Path):
+                if link.exists() or link.is_symlink():
+                    # Native non-recursive unlink is essential: NEVER recurse into target.
+                    subprocess.run([
+                        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                        "-Command",
+                        f"[IO.Directory]::Delete('{quote_ps(link)}', $false)"
+                    ], check=True, timeout=30)
+
+            try:
+                create_junction(image_link)
+                image_alias = image_link / EXE_SOURCE.name
+                require(image_alias.is_file(), "image junction resolves to disposable dummy")
+                via_image_alias = probe(image_alias, fixture)
+                require("REPARSE_PATH_FORBIDDEN" in via_image_alias["reasons"], "image ancestor junction hard hold")
+                require(not via_image_alias["process_inventory_attempted"], "image alias stopped before process inventory")
+                require(via_image_alias["observed_instance_count"] == 0, "no image-alias inventory")
+                create_junction(root_link)
+                via_root_alias = probe(root_link / EXE_SOURCE.name, root_link)
+                require("REPARSE_PATH_FORBIDDEN" in via_root_alias["reasons"], "fixture root junction hard hold")
+                require(not via_root_alias["process_inventory_attempted"], "root alias stopped before process inventory")
+            finally:
+                remove_junction(root_link)
+                remove_junction(image_link)
+            require(fake_image.is_file(), "non-recursive junction cleanup preserved target")
+            require(not image_link.exists() and not root_link.exists(), "all junctions unlinked")
 
             for i in range(2):
                 proc = subprocess.Popen([str(exe)], cwd=fixture, env=env)
@@ -131,6 +181,7 @@ def main():
                 until(lambda p=proc: p.poll() is None and windows(p.pid))
             require(all(p.poll() is None for p in owned), "both WPF instances running")
             busy = probe(exe, fixture)
+            require(busy["process_inventory_attempted"], "valid image process inventory runs")
             require("IMAGE_IN_USE" in busy["reasons"], "two executable users block handoff")
             require(busy["observed_instance_count"] == 2, "two exact-image PIDs")
             require(set(busy["observed_instance_pids"]) == {p.pid for p in owned}, "exact owner PID identity")

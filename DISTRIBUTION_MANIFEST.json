@@ -390,8 +390,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/ORBIT_UPDATE_IMAGE_HANDOFF_PREFLIGHT.md",
-      "size": 4169,
-      "sha256": "3d91f4a02b1f6e5072a5440f2f7b240d478da99743916b8359e3bcd1dec8fcdb"
+      "size": 4639,
+      "sha256": "999d482c5fcb4568292fdaf703f5764cf9c8b56864cd06252a2de6a4d7f80922"
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
@@ -675,8 +675,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitUpdaterImageLease.ps1",
-      "size": 3916,
-      "sha256": "eeae10428e2e9102cee43c6e192077ab2e137258c62e33d7659407aa23f01409"
+      "size": 4029,
+      "sha256": "1b117095038d2ba1d92b8766d3172b6574aed725590e2de9ebd900df807b9fcf"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Q113_EXISTING_EXTENSION_QUICK_SYNC.md",
@@ -840,8 +840,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_update_image_lease_regression.py",
-      "size": 7306,
-      "sha256": "a673404e4d8070e481fa50eaf63c2b6cf67893c22b57b6b76d561db1b386aa6e"
+      "size": 10385,
+      "sha256": "388cf46d7ccec881bd5c62cdf3619a01386eb76e2c40606a8745f5acfa09ce8f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_package_core_bootstrap_regression.ps1",
@@ -2875,5 +2875,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "267f4eed95832d93005b507bf5f905d7db32d4405a5de6d88022d941c108677b"
+  "snapshot_digest": "f514604a5eca9e91d3b51720528b1ba8fb8a870535ea6d4e05adfbd307011c83"
 }
