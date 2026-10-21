@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 581,
+  "file_count": 583,
   "files": [
     {
       "path": ".gitattributes",
@@ -517,6 +517,16 @@
       "path": "PRODUCT/OneCChatWorker/control-center/UX5_A_ACCEPTANCE.md",
       "size": 4953,
       "sha256": "55d2eb1769ed75d38d7cc548fc422ecbaaca6eabe46ca277fce0d4b148d2c039"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/control-center/UX7_WORKSPACE_D0_SPEC.md",
+      "size": 6556,
+      "sha256": "54cad9bf5b535d862b889593adb5a19bcd69d6b9973485e0425ff5fefeff18a2"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/control-center/design-preview/orbit-workspace.html",
+      "size": 19944,
+      "sha256": "7441bf4aa0fb26057b5094c10ee1c2369fe1e5ea31169410f006b2b2efba806b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
@@ -2915,5 +2925,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6d7b6970adf6f62efc80288ce6863828e453e6e3115896cc6a31435262a0e48a"
+  "snapshot_digest": "a1759a3020d1ade2e4b54fc27083bb935fac607ee11dacb4d46e729b0e3ec9b3"
 }
