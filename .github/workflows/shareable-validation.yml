@@ -255,9 +255,11 @@ jobs:
             if(-not(Get-Command $name -ErrorAction SilentlyContinue)){throw ('SOURCE_UPDATE_COMMAND_MISSING:'+$name)}
           }
 
-  public-full:
-    name: Public Full
-    needs: [public-fast, public-ui, public-windows]
+  public-full-validation:
+    name: Public Full Validation
+    # Heavy independent FULL checks begin alongside UI/Windows after Fast.
+    # The REQUIRED "Public Full" context remains a final all-gates aggregate.
+    needs: public-fast
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -331,3 +333,25 @@ jobs:
             --mode FULL \
             --receipt "$RUNNER_TEMP/public-full-receipt.json"
           cat "$RUNNER_TEMP/public-full-receipt.json"
+
+  public-full:
+    name: Public Full
+    # The active protect-main ruleset requires Public Fast + Public Full.
+    # Do not allow a passing independent FULL runner to mask Windows/UI failure.
+    needs: [public-fast, public-ui, public-windows, public-full-validation]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require all independent gates to pass
+        shell: bash
+        env:
+          FAST_RESULT: ${{ needs.public-fast.result }}
+          UI_RESULT: ${{ needs.public-ui.result }}
+          WINDOWS_RESULT: ${{ needs.public-windows.result }}
+          FULL_RESULT: ${{ needs.public-full-validation.result }}
+        run: |
+          set -euo pipefail
+          for result in "$FAST_RESULT" "$UI_RESULT" "$WINDOWS_RESULT" "$FULL_RESULT"; do
+            test "$result" = success || { echo "REQUIRED_GATE_NOT_SUCCESS:$result"; exit 1; }
+          done

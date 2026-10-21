@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 14195,
-      "sha256": "030e8b281142ece7dd13f3ac38a1a12702acf42b61ce72e615aebe7f757983ac"
+      "size": 15254,
+      "sha256": "61c2d5176b92b2cf64c67d16ae73a8bc237cb0298272e0411e9c2968e1df484c"
     },
     {
       "path": ".gitignore",
@@ -2375,8 +2375,8 @@
     },
     {
       "path": "TESTS/run_distribution_privacy_regression.py",
-      "size": 32413,
-      "sha256": "7846fa741e36cb13fc917558fcecfc2c1479588ed2cdf7e5747bf716f730c745"
+      "size": 34264,
+      "sha256": "abd3fd5cf69a16fb9f32c517c9e59b9c111383f56300a3c9847418bd4e383022"
     },
     {
       "path": "TESTS/run_distribution_snapshot_path_collision_regression.py",
@@ -2915,5 +2915,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "7af55c3b41faf93223e3359199f233282441888fc630beaa545688f96d39d964"
+  "snapshot_digest": "6d7b6970adf6f62efc80288ce6863828e453e6e3115896cc6a31435262a0e48a"
 }
