@@ -117,4 +117,15 @@
   <data name="MigrationRequiredHelp" xml:space="preserve"><value>The legacy installation is retained. Arrange separately authorized downtime and a validated migration procedure. Migration is on hold.</value></data>
   <data name="OrbitPartialInstall" xml:space="preserve"><value>Incomplete OneC Orbit installation</value></data>
   <data name="OrbitPartialInstallHelp" xml:space="preserve"><value>An incomplete OneC Orbit installation was detected. Existing files are preserved and installation is blocked. Arrange authorized recovery before retrying.</value></data>
+  <data name="WorkspaceMine" xml:space="preserve"><value>My project</value></data>
+  <data name="WorkspaceAllProjects" xml:space="preserve"><value>All projects</value></data>
+  <data name="WorkspaceOverview" xml:space="preserve"><value>Overview</value></data>
+  <data name="WorkspaceSource" xml:space="preserve"><value>Source</value></data>
+  <data name="WorkspaceExtensions" xml:space="preserve"><value>Extensions</value></data>
+  <data name="WorkspaceHistory" xml:space="preserve"><value>History</value></data>
+  <data name="WorkspaceTools" xml:space="preserve"><value>Maintenance and diagnostics</value></data>
+  <data name="WorkspaceVerifiedAt" xml:space="preserve"><value>Worker verified:</value></data>
+  <data name="WorkspaceVerificationUnknown" xml:space="preserve"><value>Project status is not verified. Actions are unavailable.</value></data>
+  <data name="WorkspaceOtherTask" xml:space="preserve"><value>An active task belongs to another project:</value></data>
+  <data name="WorkspaceConnectionUnverified" xml:space="preserve"><value>A task is active; helper connection is not verified.</value></data>
 </root>

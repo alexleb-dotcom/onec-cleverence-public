@@ -106,6 +106,33 @@ internal static class Program
             list.SelectedIndex = 1; Drain();
             Check(fake.ContextRequests.Last() == "RetailGroup", "selection goes to canonical UI_CONTEXT ProjectId");
             Check(Control<Button>(w, "StartButton").IsEnabled, "second accepted project independent of first drift");
+            Call(w, "ShowPage", "Home");
+            Check(Control<FrameworkElement>(w, "ProjectTabs").Visibility == Visibility.Visible &&
+                Control<Button>(w, "NavWorkButton").Visibility == Visibility.Collapsed &&
+                Control<Button>(w, "NavActivityButton").Visibility == Visibility.Collapsed &&
+                Control<Button>(w, "NavMaintenanceButton").Visibility == Visibility.Collapsed &&
+                Control<Button>(w, "NavAdvancedButton").Visibility == Visibility.Collapsed,
+                "D1 primary sidebar contains only three destinations; selected project exposes four tabs");
+            foreach (var (page, present, hidden) in new[] {
+                ("Source", "MaintenanceGeneralPanel", "MaintenanceExtensionPanel"),
+                ("Extensions", "MaintenanceExtensionPanel", "MaintenanceGeneralPanel") })
+            {
+                var beforeNav = fake.Calls.Count;
+                Call(w, "ShowPage", page);
+                Check(Control<FrameworkElement>(w, present).Visibility == Visibility.Visible &&
+                    Control<FrameworkElement>(w, hidden).Visibility == Visibility.Collapsed &&
+                    fake.Calls.Count == beforeNav,
+                    "D1 scoped " + page + " routes without triggering Worker mutation");
+            }
+            Call(w, "ShowPage", "Activity");
+            Check(Control<FrameworkElement>(w, "ActivityPage").Visibility == Visibility.Visible &&
+                System.Windows.Automation.AutomationProperties.GetItemStatus(Control<Button>(w, "ProjectHistoryTab")) == "Selected",
+                "D1 History tab opens owner-provided activity without an independent primary nav");
+            Call(w, "ShowPage", "Settings");
+            Check(Control<FrameworkElement>(w, "ProjectTabs").Visibility == Visibility.Collapsed &&
+                Control<Button>(w, "SettingsMaintenanceButton").Tag as string == "Maintenance" &&
+                Control<Button>(w, "SettingsAdvancedButton").Tag as string == "Advanced",
+                "D1 project tabs hidden in Settings; legacy maintenance and diagnostics are discoverable");
             foreach (var page in new[] { "Home", "Projects", "Work", "Maintenance" })
             {
                 Call(w, "ShowPage", page);

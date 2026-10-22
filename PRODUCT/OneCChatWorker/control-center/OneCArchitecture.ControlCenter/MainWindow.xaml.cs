@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private bool _applyingContext;
     private bool _refreshAgain;
     private bool _contextReady;
+    private string _currentPage = "Home";
     private string? _selectedProjectId;
 
     private sealed record ProjectRow(string ProjectId, string DisplayName, string State, int Participants);
@@ -76,8 +77,15 @@ public partial class MainWindow : Window
     private void ApplyLocalization()
     {
         Title = Localization.Get("AppTitle");
-        NavHomeButton.Content = Localization.Get("NavHome");
-        NavProjectsButton.Content = Localization.Get("NavProjects");
+        NavHomeButton.Content = Localization.Get("WorkspaceMine");
+        ProjectOverviewTab.Content = Localization.Get("WorkspaceOverview");
+        ProjectSourceTab.Content = Localization.Get("WorkspaceSource");
+        ProjectExtensionsTab.Content = Localization.Get("WorkspaceExtensions");
+        ProjectHistoryTab.Content = Localization.Get("WorkspaceHistory");
+        SettingsToolsLabel.Text = Localization.Get("WorkspaceTools");
+        SettingsMaintenanceButton.Content = Localization.Get("NavMaintenance");
+        SettingsAdvancedButton.Content = Localization.Get("NavAdvanced");
+        NavProjectsButton.Content = Localization.Get("WorkspaceAllProjects");
         NavWorkButton.Content = Localization.Get("NavWork");
         NavActivityButton.Content = Localization.Get("NavActivity");
         NavMaintenanceButton.Content = Localization.Get("NavMaintenance");
@@ -132,7 +140,8 @@ public partial class MainWindow : Window
         CloseHintText.Text = Localization.Get("CloseHint");
         foreach (var button in ActionButtons().Select(p => p.Button).Concat(new[] {
             NavHomeButton, NavProjectsButton, NavWorkButton, NavActivityButton, NavMaintenanceButton,
-            NavSettingsButton, NavAdvancedButton, RefreshButton, HomeOpenSourceButton, HomeOpenOutputButton,
+            NavSettingsButton, NavAdvancedButton, ProjectOverviewTab, ProjectSourceTab, ProjectExtensionsTab, ProjectHistoryTab,
+            SettingsMaintenanceButton, SettingsAdvancedButton, RefreshButton, HomeOpenSourceButton, HomeOpenOutputButton,
             OpenSourceButton, OpenIncomingButton }))
             System.Windows.Automation.AutomationProperties.SetName(button, button.Content?.ToString() ?? "");
         System.Windows.Automation.AutomationProperties.SetName(ProjectsList, Localization.Get("NavProjects"));
@@ -200,6 +209,9 @@ public partial class MainWindow : Window
         _context = null;
         DisableActions(Localization.Get("UiContextReason"));
         UpdateHomeNavigation();
+        ProjectTabs.Visibility = Visibility.Collapsed;
+        WorkspaceNoticeText.Text = Localization.Get("WorkspaceVerificationUnknown");
+        LastUpdatedText.Text = Localization.Get("WorkspaceVerificationUnknown");
         SourceStateText.Text = McpStateText.Text = WorkStatusText.Text = Localization.Get("UnknownState");
         WorkDetailText.Text = Localization.Get("UiContextReason");
         var orbitPartial = raw.Contains("ORBIT_PARTIAL_INSTALL", StringComparison.Ordinal);
@@ -225,7 +237,10 @@ public partial class MainWindow : Window
     private void ApplyContext(JsonObject ctx)
     {
         ProductVersionText.Text = $"Control Center · Worker {Text(ctx, "product", "version") ?? "—"}";
-        LastUpdatedText.Text = $"{Localization.Get("UpdatedLabel")} {DateTime.Now:T}";
+        var verified = Text(ctx, "generated_utc");
+        LastUpdatedText.Text = DateTimeOffset.TryParse(verified, out var ownerTimestamp)
+            ? $"{Localization.Get("WorkspaceVerifiedAt")} {ownerTimestamp.ToLocalTime():g}"
+            : Localization.Get("WorkspaceVerificationUnknown");
         var helper = Text(ctx, "work", "helper", "status") ?? "OFFLINE";
         HelperBadge.Text = $"{Localization.Get("HelperLabel")} · {helper}";
 
@@ -245,6 +260,14 @@ public partial class MainWindow : Window
         var workProjectName = (Node(ctx, "projects") as JsonArray)?.OfType<JsonObject>()
             .FirstOrDefault(p => Text(p, "project_id") == workProjectId)?["display_name"]?.GetValue<string>() ?? workProjectId;
         var taskGoal = Text(ctx, "work", "task_goal");
+        var chosenProjectId = Text(ctx, "selected_project", "project_id");
+        UpdateProjectTabsVisibility();
+        WorkspaceNoticeText.Text = Bool(ctx, "work", "active") && !string.IsNullOrWhiteSpace(workProjectId)
+            && workProjectId != chosenProjectId
+            ? Localization.Get("WorkspaceOtherTask") + " " + (workProjectName ?? "")
+            : Bool(ctx, "work", "active") && helper != "CONNECTED"
+                ? Localization.Get("WorkspaceConnectionUnverified")
+                : "";
         HomeProjectText.Text = projectName;
         SelectedProjectText.Text = Localization.Get("SelectedProject") + ": " + projectName;
         HomeTaskText.Text = Bool(ctx, "work", "active")
@@ -576,8 +599,26 @@ public partial class MainWindow : Window
         System.Windows.Automation.AutomationProperties.SetHelpText(HomePrimaryButton, Localization.Get("HomeNavigationHelp"));
     }
 
+    // Only project-scoped pages expose tabs. A selected identity alone must not
+    // overlay settings, catalog, or technical recovery screens.
+    private void UpdateProjectTabsVisibility()
+    {
+        ProjectTabs.Visibility = _contextReady &&
+            !string.IsNullOrWhiteSpace(Text(_context, "selected_project", "project_id")) &&
+            _currentPage is "Home" or "Source" or "Extensions" or "Activity" or "Work"
+                ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void ShowPage(string name)
     {
+        _currentPage = name;
+        UpdateProjectTabsVisibility();
+        MaintenanceGeneralPanel.Visibility = name == "Extensions" ? Visibility.Collapsed : Visibility.Visible;
+        MaintenanceExtensionPanel.Visibility = name == "Source" ? Visibility.Collapsed : Visibility.Visible;
+        MaintenanceDiagnosticsPanel.Visibility = name is "Source" or "Extensions" ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var tab in new[] { ProjectOverviewTab, ProjectSourceTab, ProjectExtensionsTab, ProjectHistoryTab })
+            System.Windows.Automation.AutomationProperties.SetItemStatus(tab, tab.Tag?.ToString() == name ? "Selected" : "");
+
         foreach (var button in new[] { NavHomeButton, NavProjectsButton, NavWorkButton, NavActivityButton,
             NavMaintenanceButton, NavSettingsButton, NavAdvancedButton })
             System.Windows.Automation.AutomationProperties.SetItemStatus(button, button.Tag?.ToString() == name ? "Selected" : "");
@@ -586,15 +627,18 @@ public partial class MainWindow : Window
         FrameworkElement target = name switch
         {
             "Projects" => ProjectsPage, "Work" => WorkPage, "Activity" => ActivityPage,
+            "Source" or "Extensions" => MaintenancePage,
             "Maintenance" => MaintenancePage, "Settings" => SettingsPage, "Advanced" => AdvancedPage, _ => HomePage
         };
         target.Visibility = Visibility.Visible;
         PageTitle.Text = name switch
         {
-            "Projects" => Localization.Get("NavProjects"), "Work" => Localization.Get("NavWork"),
+            "Projects" => Localization.Get("WorkspaceAllProjects"), "Work" => Localization.Get("NavWork"),
+            "Source" => Localization.Get("WorkspaceSource"), "Extensions" => Localization.Get("WorkspaceExtensions"),
+            "Home" => Localization.Get("WorkspaceMine"),
             "Activity" => Localization.Get("NavActivity"), "Maintenance" => Localization.Get("NavMaintenance"),
             "Settings" => Localization.Get("NavSettings"), "Advanced" => Localization.Get("NavAdvanced"),
-            _ => Localization.Get("NavHome")
+            _ => Localization.Get("WorkspaceMine")
         };
     }
 

@@ -20,11 +20,11 @@
           <TextBlock x:Name="ProductVersionText" Text="Control Center" Foreground="{DynamicResource MutedTextBrush}" FontSize="13" TextWrapping="Wrap" Margin="8,0,8,24"/>
           <Button x:Name="NavHomeButton" Style="{StaticResource NavButton}" Content="Home" Tag="Home" Click="Nav_Click" AutomationProperties.Name="Home"/>
           <Button x:Name="NavProjectsButton" Style="{StaticResource NavButton}" Content="Projects" Tag="Projects" Click="Nav_Click" AutomationProperties.Name="Projects"/>
-          <Button x:Name="NavWorkButton" Style="{StaticResource NavButton}" Content="Work" Tag="Work" Click="Nav_Click" AutomationProperties.Name="Work"/>
-          <Button x:Name="NavActivityButton" Style="{StaticResource NavButton}" Content="MCP Activity" Tag="Activity" Click="Nav_Click" AutomationProperties.Name="MCP Activity"/>
-          <Button x:Name="NavMaintenanceButton" Style="{StaticResource NavButton}" Content="Maintenance" Tag="Maintenance" Click="Nav_Click" AutomationProperties.Name="Maintenance"/>
+          <Button x:Name="NavWorkButton" Visibility="Collapsed" Style="{StaticResource NavButton}" Content="Work" Tag="Work" Click="Nav_Click" AutomationProperties.Name="Work"/>
+          <Button x:Name="NavActivityButton" Visibility="Collapsed" Style="{StaticResource NavButton}" Content="MCP Activity" Tag="Activity" Click="Nav_Click" AutomationProperties.Name="MCP Activity"/>
+          <Button x:Name="NavMaintenanceButton" Visibility="Collapsed" Style="{StaticResource NavButton}" Content="Maintenance" Tag="Maintenance" Click="Nav_Click" AutomationProperties.Name="Maintenance"/>
           <Button x:Name="NavSettingsButton" Style="{StaticResource NavButton}" Content="Settings" Tag="Settings" Click="Nav_Click" AutomationProperties.Name="Settings"/>
-          <Button x:Name="NavAdvancedButton" Style="{StaticResource NavButton}" Content="Advanced" Tag="Advanced" Click="Nav_Click" AutomationProperties.Name="Advanced"/>
+          <Button x:Name="NavAdvancedButton" Visibility="Collapsed" Style="{StaticResource NavButton}" Content="Advanced" Tag="Advanced" Click="Nav_Click" AutomationProperties.Name="Advanced"/>
         </StackPanel>
         <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
           <TextBlock x:Name="CloseHintText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" FontSize="13" Margin="8,16"/>
@@ -33,12 +33,13 @@
     </Border>
 
     <Grid Grid.Column="1" Margin="24">
-      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-      <Grid Grid.Row="0" Margin="0,0,0,24">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Grid Grid.Row="0" Margin="0,0,0,14">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel>
           <TextBlock x:Name="PageTitle" Text="Home" Style="{StaticResource SectionText}"/>
           <TextBlock x:Name="SelectedProjectText" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,0"/>
+          <TextBlock x:Name="WorkspaceNoticeText" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Margin="0,6,0,0" AutomationProperties.LiveSetting="Polite"/>
           <TextBlock x:Name="LastUpdatedText" Style="{StaticResource CaptionText}" Margin="0,4,0,0"/>
         </StackPanel>
         <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="14" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12,7" Margin="0,0,10,0">
@@ -47,7 +48,15 @@
         <Button Grid.Column="2" VerticalAlignment="Center" x:Name="RefreshButton" Content="Refresh" Click="Refresh_Click" AutomationProperties.Name="Refresh current state"/>
       </Grid>
 
-      <Grid Grid.Row="1">
+      <!-- Project-scoped destinations, not global technical sections. -->
+      <StackPanel x:Name="ProjectTabs" Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16" Visibility="Collapsed" KeyboardNavigation.TabNavigation="Local">
+        <Button x:Name="ProjectOverviewTab" Tag="Home" Click="Nav_Click" Margin="0,0,8,0" Padding="13,9" AutomationProperties.Name="Project overview"/>
+        <Button x:Name="ProjectSourceTab" Tag="Source" Click="Nav_Click" Margin="0,0,8,0" Padding="13,9" AutomationProperties.Name="Project source"/>
+        <Button x:Name="ProjectExtensionsTab" Tag="Extensions" Click="Nav_Click" Margin="0,0,8,0" Padding="13,9" AutomationProperties.Name="Project extensions"/>
+        <Button x:Name="ProjectHistoryTab" Tag="Activity" Click="Nav_Click" Padding="13,9" AutomationProperties.Name="Project history"/>
+      </StackPanel>
+
+      <Grid Grid.Row="2">
         <!-- HOME: selected project, owner recommendation, safe navigation. -->
         <ScrollViewer x:Name="HomePage" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Stretch">
           <StackPanel Margin="0,0,8,0">
@@ -161,7 +170,7 @@
         <!-- MAINTENANCE -->
         <ScrollViewer x:Name="MaintenancePage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
           <StackPanel MaxWidth="820" HorizontalAlignment="Left">
-            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
+            <Border x:Name="MaintenanceGeneralPanel" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18">
               <StackPanel>
                 <TextBlock x:Name="GlobalWarningText" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,12"/>
                 <TextBlock x:Name="MaintenanceAvailabilityText" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -175,7 +184,7 @@
                 </WrapPanel>
               </StackPanel>
             </Border>
-            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
+            <Border x:Name="MaintenanceExtensionPanel" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
               <StackPanel>
                 <TextBlock x:Name="SourceUpdateTitleLabel" Text="Incoming Source update" FontWeight="SemiBold"/>
                 <TextBlock x:Name="SourceUpdateStatusText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}" Margin="0,7,0,12"/>
@@ -197,7 +206,7 @@
                 </Expander>
               </StackPanel>
             </Border>
-            <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
+            <Border x:Name="MaintenanceDiagnosticsPanel" CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
               <StackPanel><TextBlock x:Name="DiagnosticsLabel" Text="Diagnostics" FontWeight="SemiBold"/><TextBlock x:Name="DiagnosticsText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" Margin="0,8,0,0"/></StackPanel>
             </Border>
           </StackPanel>
@@ -219,6 +228,13 @@
               </ComboBox>
               <CheckBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="StartupCheckBox" Content="Start Control Center with Windows (operator choice)" Margin="0,18,0,0" Checked="StartupCheckBox_Changed" Unchecked="StartupCheckBox_Changed"/>
             </Grid>
+          </Border>
+          <Border CornerRadius="12" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="18" Margin="0,14,0,0">
+            <StackPanel>
+              <TextBlock x:Name="SettingsToolsLabel" Style="{StaticResource SectionText}" Margin="0,0,0,8"/>
+              <Button x:Name="SettingsMaintenanceButton" Tag="Maintenance" Click="Nav_Click" HorizontalAlignment="Left" MinWidth="160" Margin="0,4,0,4"/>
+              <Button x:Name="SettingsAdvancedButton" Tag="Advanced" Click="Nav_Click" HorizontalAlignment="Left" MinWidth="160" Margin="0,4,0,4"/>
+            </StackPanel>
           </Border>
         </StackPanel>
 
