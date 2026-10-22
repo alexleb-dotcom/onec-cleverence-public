@@ -125,12 +125,13 @@ jobs:
     name: Public Windows
     needs: public-fast
     runs-on: windows-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -144,6 +145,34 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '26.7.0'
+      - name: Verify zero-project archive bootstrap and rejection guards
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_install_journal_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_bootstrap_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Build exact-head offline Windows installer
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\installer\Build-Installer.ps1 -OutputRoot "$env:RUNNER_TEMP\orbit-package"
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Disposable native install bootstrap reopen and retain-data uninstall
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_installer_smoke.ps1 -BuildRoot "$env:RUNNER_TEMP\orbit-package" -EvidenceRoot "$env:RUNNER_TEMP\orbit-evidence"
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Preserve installer and exact-head installation evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: orbit-slice-a-windows
+          path: |
+            ${{ runner.temp }}/orbit-package/OneCOrbit-Setup.exe
+            ${{ runner.temp }}/orbit-package/build-receipt.json
+            ${{ runner.temp }}/orbit-evidence
+          if-no-files-found: warn
+          retention-days: 14
       - name: Run isolated selected catalog update regression
         shell: powershell
         run: |

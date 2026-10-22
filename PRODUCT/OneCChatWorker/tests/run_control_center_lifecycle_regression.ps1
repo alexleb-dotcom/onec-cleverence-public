@@ -1,4 +1,4 @@
-param([string]$PackageRoot=(Split-Path -Parent $PSScriptRoot))
+﻿param([string]$PackageRoot=(Split-Path -Parent $PSScriptRoot))
 $ErrorActionPreference='Stop'
 $project=Join-Path $PackageRoot 'control-center\OneCArchitecture.ControlCenter'
 $launcher=Get-Content -LiteralPath (Join-Path $PackageRoot 'OneCChatWorker.ps1') -Raw -Encoding UTF8
@@ -17,9 +17,9 @@ Rec 'no_generic_mode_parameter' (-not ($client -match 'string mode|RequestedMode
 Rec 'argumentlist_no_shell_concat' ($client -match 'ArgumentList\.Add' -and -not ($client -match 'cmd\.exe| -Command |ProcessStartInfo\("pwsh')) ''
 Rec 'source_update_args_are_fixed_typed' ($client -match 'ArtifactSelection' -and $client -match 'SelectedArtifactFullSafeImport' -and $main -match 'new\(ProjectId: projectId, ArtifactSelection: artifact\.Key\)') ''
 Rec 'mutations_enabled_after_readonly_gate' ($main -match '_mutationsEnabled = true') ''
-Rec 'wizard_fixed_sequence' ($main -match 'WorkerAction\.AddProject' -and $main -match 'WorkerAction\.AddParticipant' -and $main -match 'WorkerAction\.SetMain' -and $main -match 'WorkerAction\.AddExtension' -and $main -match 'WorkerAction\.Apply') ''
-Rec 'wizard_stop_on_failure' ($main -match 'if \(result\.ExitCode != 0\)' -and $main -match 'if \(ext\.ExitCode != 0\)') ''
-Rec 'worker_revalidates_main_path' ($launcher -match 'Set-WorkerMain' -and $wizard -match 'Configuration\.xml') ''
+Rec 'wizard_one_transaction' ($main -match 'WorkerAction\.BootstrapProject' -and -not ($main -match 'WorkerAction\.AddParticipant|WorkerAction\.SetMain|WorkerAction\.AddExtension')) ''
+Rec 'wizard_worker_result_readback' ($main -match 'ShowActionResultAndRefresh\("BOOTSTRAP_PROJECT"' -and $main -match 'result.ExitCode == 0') ''
+Rec 'worker_revalidates_archive' ($launcher -match 'New-OrbitBootstrapProject' -and $wizard -match 'OpenFileDialog' -and -not ($wizard -match 'File.Exists|Directory.Exists|FolderBrowserDialog')) ''
 Rec 'ascii_technical_ids' ($client -match 'c <= 127' -and $wizard -match 'c <= 127' -and $wizard -match 'SHA256') ''
 Rec 'no_password_capture' (-not (($client+$main+$wizard) -match 'PasswordBox|NetworkCredential|SecureString|OneCSourceReader password|savecred')) ''
 $close=$main.Substring($main.IndexOf('private void Window_Closing'))

@@ -13,6 +13,7 @@ using OneCArchitecture.ControlCenter;
 // screenshots, installed worker roots, real lifecycle operations or runtime imports.
 internal static class PackagedProbe
 {
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
@@ -46,7 +47,14 @@ internal static class PackagedProbe
     }
     static AutomationElement Find(string id) => Root.FindFirst(TreeScope.Descendants,
         new PropertyCondition(AutomationElement.AutomationIdProperty, id)) ?? throw new InvalidOperationException("CONTROL_MISSING:" + id);
-    static string FocusId => AutomationElement.FocusedElement?.Current.AutomationId ?? "";
+    static string FocusId
+    {
+        get { try { return AutomationElement.FocusedElement?.Current.AutomationId ?? ""; } catch (ElementNotAvailableException) { return ""; } }
+    }
+    static string FocusName
+    {
+        get { try { return AutomationElement.FocusedElement?.Current.Name ?? ""; } catch (ElementNotAvailableException) { return ""; } }
+    }
     static bool FocusWithin(string id)
     {
         var node = AutomationElement.FocusedElement;
@@ -63,7 +71,7 @@ internal static class PackagedProbe
         Assert(pid == Owned.Id, "keyboard input restricted to owned EXE");
         keybd_event(key, 0, 0, UIntPtr.Zero); keybd_event(key, 0, 2, UIntPtr.Zero);
         Thread.Sleep(120);
-        Trace.Add(new { key, focus = FocusId, focused_name = AutomationElement.FocusedElement?.Current.Name });
+        Trace.Add(new { key, focus = FocusId, focused_name = FocusName });
     }
     static void TabTo(string id)
     {
@@ -91,6 +99,134 @@ internal static class PackagedProbe
         }
         finally { SelectObject(target, previous); DeleteObject(bitmap); DeleteDC(target); ReleaseDC(Window, dc); }
     }
+    static IEnumerable<AutomationElement> OwnedWindows()
+    {
+        foreach(var top in AutomationElement.RootElement.FindAll(TreeScope.Children,
+            new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>())
+        {
+            yield return top;
+            foreach(var child in top.FindAll(TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window)).Cast<AutomationElement>())
+                if(child.Current.ProcessId == Owned.Id) yield return child;
+        }
+    }
+    static AutomationElement OwnedNativeDialog()
+    {
+        AutomationElement? found = null;
+        Wait(() => {
+            found = null;
+            foreach(var top in AutomationElement.RootElement.FindAll(TreeScope.Children,
+                new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>())
+            {
+                found = top.Current.ClassName == "#32770" ? top : top.FindFirst(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ClassNameProperty, "#32770"));
+                if(found is not null) break;
+            }
+            return found is not null;
+        }, "owned native dialog");
+        return found!;
+    }
+    static void ClickNativeOk(AutomationElement dialog)
+    {
+        var buttons = dialog.FindAll(TreeScope.Descendants,
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)).Cast<AutomationElement>().ToArray();
+        var ok = buttons.FirstOrDefault(x => x.Current.Name.Equals("OK", StringComparison.OrdinalIgnoreCase) || x.Current.Name == "ОК")
+            ?? buttons.FirstOrDefault(x => x.Current.AutomationId == "1")
+            ?? (buttons.Length == 1 ? buttons[0] : null)
+            ?? throw new InvalidOperationException("NATIVE_OK_BUTTON_MISSING");
+        var handle = new IntPtr(dialog.Current.NativeWindowHandle);
+        ((InvokePattern)ok.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        Wait(() => !IsWindow(handle), "native dialog closes");
+    }
+    static void PickArchive(string button, string archive)
+    {
+        var wizard = Root;
+        ((InvokePattern)Find(button).GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        var dialog = OwnedNativeDialog();
+        var edits = dialog.FindAll(TreeScope.Descendants,
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)).Cast<AutomationElement>().ToArray();
+        Console.WriteLine("NATIVE_EDITS " + string.Join(" | ", edits.Select(x => x.Current.AutomationId + ":" + x.Current.Name)));
+        var fileName = edits.FirstOrDefault(x => x.Current.AutomationId == "1148")
+            ?? edits.FirstOrDefault(x => x.Current.Name.StartsWith("File name", StringComparison.OrdinalIgnoreCase))
+            ?? edits.LastOrDefault(x => x.Current.IsEnabled && x.TryGetCurrentPattern(ValuePattern.Pattern, out _))
+            ?? throw new InvalidOperationException("NATIVE_FILE_NAME_EDIT_MISSING");
+        var handle = new IntPtr(dialog.Current.NativeWindowHandle);
+        SetForegroundWindow(handle);
+        Wait(() => { GetWindowThreadProcessId(GetForegroundWindow(), out var foregroundPid); return foregroundPid == Owned.Id; }, "owned file dialog foreground");
+        fileName.SetFocus();
+        ((ValuePattern)fileName.GetCurrentPattern(ValuePattern.Pattern)).SetValue(archive);
+        Console.WriteLine("NATIVE_FILENAME " + fileName.Current.AutomationId + " = " + ((ValuePattern)fileName.GetCurrentPattern(ValuePattern.Pattern)).Current.Value);
+        Key(13);
+        Wait(() => !IsWindow(handle), "native archive selection closes dialog");
+        Root = wizard;
+    }
+
+    public static int Installed(string exe, string evidence, bool firstRun, string? mainArchive = null, string? extensionArchive = null)
+    {
+        Directory.CreateDirectory(evidence);
+        var prefs = Path.Combine(evidence, "prefs"); Directory.CreateDirectory(prefs);
+        File.WriteAllText(Path.Combine(prefs, "preferences.json"), """{"Language":"en","Theme":"light","StartWithWindows":false}""");
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        psi.Environment["ONEC_CONTROL_CENTER_PREFERENCES_ROOT"] = prefs;
+        Owned = Process.Start(psi)!;
+        try
+        {
+            AutomationElement? dialog = null;
+            Wait(() => {
+                dialog = OwnedWindows().LastOrDefault(x => x.Current.NativeWindowHandle != 0 && x.FindFirst(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.AutomationIdProperty, firstRun ? "ProjectNameBox" : "RecommendationText")) is not null);
+                return dialog is not null;
+            }, firstRun ? "automatic installed first project wizard" : "installed project reopen");
+            Root = dialog!; Window = new IntPtr(Root.Current.NativeWindowHandle);
+            Shot(Path.Combine(evidence, firstRun ? "first-run-wizard.png" : "installed-readback.png"));
+            if (firstRun)
+            {
+                Assert(Find("BrowseMainButton").Current.IsEnabled, "MAIN archive picker enabled");
+                Assert(Find("ExtensionCheck").Current.IsEnabled, "optional extensions available");
+                if (mainArchive is null)
+                    ((InvokePattern)Find("CancelButton").GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                else
+                {
+                    ((ValuePattern)Find("ProjectNameBox").GetCurrentPattern(ValuePattern.Pattern)).SetValue("fixture");
+                    ((ValuePattern)Find("SystemNameBox").GetCurrentPattern(ValuePattern.Pattern)).SetValue("main");
+                    PickArchive("BrowseMainButton", mainArchive);
+                    ((TogglePattern)Find("ExtensionCheck").GetCurrentPattern(TogglePattern.Pattern)).Toggle();
+                    PickArchive("BrowseExtensionButton", extensionArchive!);
+                    ((InvokePattern)Find("CreateButton").GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                    var review = OwnedNativeDialog();
+                    Root = review; Window = new IntPtr(review.Current.NativeWindowHandle);
+                    Shot(Path.Combine(evidence, "wizard-review.png"));
+                    ClickNativeOk(review);
+                    var result = OwnedNativeDialog();
+                    Root = result; Window = new IntPtr(result.Current.NativeWindowHandle);
+                    Assert(result.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text))
+                        .Cast<AutomationElement>().Any(x => x.Current.Name.Contains("State confirmed by Worker", StringComparison.OrdinalIgnoreCase)),
+                        "wizard result requires accepted canonical Worker readback");
+                    Shot(Path.Combine(evidence, "wizard-result.png"));
+                    ClickNativeOk(result);
+                }
+            }
+            File.WriteAllText(Path.Combine(evidence, "result.json"), JsonSerializer.Serialize(new {
+                result="PASS", first_run=firstRun, native_archive_dialogs_and_wizard_publication=mainArchive is not null, actual_installed_exe_sha256=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(exe))).ToLowerInvariant(),
+                owner="real installed Worker", human_uac_consent="NOT_PROVED"
+            }));
+            return 0;
+        }
+        catch
+        {
+            foreach(var window in OwnedWindows())
+            {
+                Console.WriteLine("OWNED_WINDOW " + window.Current.Name);
+                Console.WriteLine(string.Join(" | ", window.FindAll(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text)).Cast<AutomationElement>().Select(x => x.Current.Name)));
+                Root=window; Window=new IntPtr(window.Current.NativeWindowHandle);
+                Shot(Path.Combine(evidence, "failure-" + window.Current.NativeWindowHandle + ".png"));
+            }
+            throw;
+        }
+        finally { if (!Owned.HasExited) { Owned.Kill(); Owned.WaitForExit(10000); } Owned.Dispose(); }
+    }
+
     public static int Run(string repository, string evidence)
     {
         Localization.SetLanguage("ru");

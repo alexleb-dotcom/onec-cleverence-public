@@ -9,7 +9,7 @@ internal enum WorkerAction
 {
     UiContext, Apply, Verify, Repair, Start, Continue, Stop, Update,
     AddProject, AddParticipant, SetMain, AddExtension,
-    PrepareSourceUpdate, AcceptSourceUpdate, CancelSourceUpdate, SyncExtension
+    PrepareSourceUpdate, AcceptSourceUpdate, CancelSourceUpdate, SyncExtension, BootstrapProject
 }
 
 internal sealed record WorkerActionArgs(
@@ -25,7 +25,8 @@ internal sealed record WorkerActionArgs(
     bool ReplaceExisting = false,
     bool SelectedArtifactFullSafeImport = false,
     string? ExpectedGenerationId = null,
-    string? ExpectedArtifactKey = null);
+    string? ExpectedArtifactKey = null,
+    string? UiInputPath = null);
 
 internal sealed record WorkerCallResult(int ExitCode, JsonObject? Json, string StandardOutput, string StandardError);
 
@@ -41,6 +42,7 @@ internal sealed class WorkerClient : IWorkerClient
         new Dictionary<WorkerAction, string>
         {
             [WorkerAction.UiContext] = "UI_CONTEXT",
+            [WorkerAction.BootstrapProject] = "BOOTSTRAP_PROJECT",
             [WorkerAction.Apply] = "APPLY",
             [WorkerAction.Verify] = "VERIFY",
             [WorkerAction.Repair] = "REPAIR",
@@ -64,10 +66,18 @@ internal sealed class WorkerClient : IWorkerClient
 
     public WorkerClient()
     {
+        JsonObject? install = null;
+        var configPath = Path.Combine(AppContext.BaseDirectory, "orbit-install.json");
+        if (File.Exists(configPath))
+        {
+            if (new FileInfo(configPath).Length > 8192) throw new InvalidOperationException("INSTALL_CONFIG_LIMIT");
+            install = JsonNode.Parse(File.ReadAllText(configPath)) as JsonObject;
+            if (install?["schema"]?.ToString() != "ORBIT_INSTALL_CONFIG_V1") throw new InvalidOperationException("INSTALL_CONFIG_INVALID");
+        }
         WorkerRoot = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_WORKER_ROOT")
-            ?? @"C:\OneCOrbit";
+            ?? install?["worker_root"]?.ToString() ?? @"C:\OneCOrbit";
         ProgramDataRoot = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_PROGRAM_DATA")
-            ?? @"C:\ProgramData\OneCOrbit";
+            ?? install?["program_data_root"]?.ToString() ?? @"C:\ProgramData\OneCOrbit";
         LauncherPath = Environment.GetEnvironmentVariable("ONEC_CONTROL_CENTER_LAUNCHER")
             ?? Path.Combine(WorkerRoot, "OneCChatWorker.ps1");
     }
@@ -96,8 +106,11 @@ internal sealed class WorkerClient : IWorkerClient
         if (!Modes.TryGetValue(action, out var mode))
             throw new InvalidOperationException("WORKER_ACTION_NOT_ALLOWLISTED");
 
-        var psi = new ProcessStartInfo("powershell.exe")
+        var systemDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        var powershell = Path.Combine(systemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+        var psi = new ProcessStartInfo(powershell)
         {
+            WorkingDirectory = systemDirectory,
             UseShellExecute = elevated,
             CreateNoWindow = !elevated,
             RedirectStandardOutput = !elevated,
@@ -122,6 +135,7 @@ internal sealed class WorkerClient : IWorkerClient
         AddIf(psi, "-ParticipantId", args.ParticipantId);
         AddIf(psi, "-ExtensionId", args.ExtensionId);
         AddIf(psi, "-SourcePath", args.SourcePath);
+        AddIf(psi, "-UiInputPath", args.UiInputPath);
         AddIf(psi, "-DisplayName", args.DisplayName);
         AddIf(psi, "-Role", args.Role);
         AddIf(psi, "-TaskId", args.TaskId);

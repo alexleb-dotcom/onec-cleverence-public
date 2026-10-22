@@ -1,5 +1,5 @@
 ﻿param(
- [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','SYNC_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
+ [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','BOOTSTRAP_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','SYNC_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
@@ -80,10 +80,13 @@ function Require-AdminOrRelaunch {
  if(-not [string]::IsNullOrWhiteSpace($ExpectedGenerationId)){$argsList+=@('-ExpectedGenerationId',$ExpectedGenerationId)}
  if(-not [string]::IsNullOrWhiteSpace($ExpectedArtifactKey)){$argsList+=@('-ExpectedArtifactKey',$ExpectedArtifactKey)}
  if($SelectedArtifactFullSafeImport){$argsList+='-SelectedArtifactFullSafeImport'}
+ if($UiInputPath){$argsList+=@('-UiInputPath',$UiInputPath)}
  if($SkipDependencies){$argsList+='-SkipDependencies'}
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
  if($Json){$argsList+='-Json'}
- $p=Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argsList -Wait -PassThru
+ $systemDirectory=[Environment]::GetFolderPath([Environment+SpecialFolder]::System)
+ $trustedPowerShell=Join-Path $systemDirectory 'WindowsPowerShell/v1.0/powershell.exe'
+ $p=Start-Process -FilePath $trustedPowerShell -WorkingDirectory $systemDirectory -Verb RunAs -ArgumentList $argsList -Wait -PassThru
  if($script:InGuidedMenu){
   if($p.ExitCode -ne 0){throw "ELEVATED_ACTION_FAILED: $RequestedMode exit=$($p.ExitCode)"}
   return $true
@@ -705,6 +708,10 @@ function Get-UiContext {
  foreach($action in @('accept_source_update','cancel_source_update')){
   $updateReasons[$action]=if(-not $selectedProject){'PROJECT_SELECTION_REQUIRED'}elseif($updateRecovery){'RECOVERY_REQUIRED'}elseif(-not $updateActive){'NO_SOURCE_UPDATE'}elseif($updateStage -notin @('PREPARED_WRITABLE','SEALED','SEALED_VALIDATED')){'SOURCE_UPDATE_STATE_INVALID'}elseif($action -eq 'accept_source_update' -and $updateStage -eq 'SEALED'){'SOURCE_UPDATE_STATE_INVALID'}elseif($action -eq 'accept_source_update' -and $updateStage -eq 'SEALED_VALIDATED' -and $sameProjectAdmission){'PROJECT_ADMISSION_ACTIVE'}else{'AVAILABLE'}
  }
+ $bootstrapDiagnostic=$null;$bootstrapDiagnosticPath=Join-Path $ProgramDataRoot 'operations/bootstrap-result.json'
+ if(Test-Path -LiteralPath $bootstrapDiagnosticPath -PathType Leaf){
+  try{if((Get-Item -LiteralPath $bootstrapDiagnosticPath).Length -le 16384){$candidate=Get-Content -LiteralPath $bootstrapDiagnosticPath -Raw -Encoding UTF8|ConvertFrom-Json;if($candidate.schema -eq 'ORBIT_BOOTSTRAP_RESULT_V1'){$bootstrapDiagnostic=[pscustomobject]@{status=$candidate.status;diagnostic_only=$true;error_class=$candidate.error_class;exception_type=$candidate.exception_type}}}}catch{}
+ }
  $state=[string]$guided.state
  $actions=[ordered]@{}
  $enabled=[ordered]@{
@@ -725,7 +732,7 @@ function Get-UiContext {
   schema='UI_CONTEXT_V1';generated_utc=(Get-Date).ToUniversalTime().ToString('o');bounded=$true;fast_only=$true;state_check_contract='FAST_STATE_CHECK_V1'
   product=[pscustomobject]@{version=$status.product_version;installed=$status.installed;integrity_status=$status.installed_integrity.status;update_status='NOT_CHECKED_NO_NETWORK_SIDE_EFFECT'}
   recommendation=[pscustomobject]@{state=$guided.state;action=$guided.recommended;reason=$guided.reason}
-  projects=$projectRows;selected_project=$selectedProject;actions=[pscustomobject]$actions
+  projects=$projectRows;selected_project=$selectedProject;actions=[pscustomobject]$actions;bootstrap_result=$bootstrapDiagnostic
   work=[pscustomobject]@{active=$(if($active){$true}else{$false});project_id=$(if($active){$active.project_id}else{$null});task_id=$(if($active){$active.task_id}else{$null});task_goal=$(if($active){$active.task_goal}else{$null});task_created_utc=$(if($active){$active.task_created_utc}else{$null});task_expires_utc=$(if($active){$active.task_expires_utc}else{$null});helper=$status.helper;checkpoint=$checkpoint;continuation_available=($guided.state -eq 'CONTINUE_AVAILABLE')}
   source=[pscustomobject]@{snapshot_id=$(if($selectedProject){$selectedProject.source_snapshot_id}else{$null});state=$(if($selectedProject){$selectedProject.fast_state}else{$null});artifacts=$sourceArtifacts;acquisition_owner='S82_1_EXTERNAL_XML_FULL_SAFE_IMPORT_V1';source_update=$sourceUpdate;deep_scan_performed=$false}
   output=$output;navigation=$navigation
@@ -747,6 +754,25 @@ function Invoke-CommandMode {
   'STATUS' {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot);break}
   'UI_CONTEXT' {Run-UiContext;break}
   'LIST' {Show-Value (Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing);break}
+  'BOOTSTRAP_PROJECT' {
+   if(Require-AdminOrRelaunch 'BOOTSTRAP_PROJECT'){break}
+   $bootstrapRequest=$null
+   try {
+   if((Get-Item -LiteralPath (Need $UiInputPath UiInputPath)).Length -gt 65536){throw 'BOOTSTRAP_REQUEST_LIMIT'}
+   $bootstrapRequest=Get-Content -LiteralPath $UiInputPath -Raw -Encoding UTF8|ConvertFrom-Json
+   if($bootstrapRequest.platform -ne 'ONEC'){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
+   $requireZero=$true
+   if($bootstrapRequest.PSObject.Properties.Name -contains 'require_zero_projects'){if($bootstrapRequest.require_zero_projects -isnot [bool]){throw 'BOOTSTRAP_REQUEST_INVALID'};$requireZero=$bootstrapRequest.require_zero_projects}
+   $bootstrapResult=New-OrbitBootstrapProject -RequireZeroProjects $requireZero -ProjectId $bootstrapRequest.project_id -DisplayName $bootstrapRequest.display_name -ParticipantId $bootstrapRequest.participant_id -Role $bootstrapRequest.role -MainArchive $bootstrapRequest.main_archive -ExtensionArchives @($bootstrapRequest.extension_archives) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
+    Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_RESULT_V1';diagnostic_only=$true;status=$bootstrapResult.status;project_id=$bootstrapRequest.project_id;ended_utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $ProgramDataRoot 'operations/bootstrap-result.json')
+    Show-Value $bootstrapResult
+   } catch {
+    $failure=$_
+    try{Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_RESULT_V1';diagnostic_only=$true;status='FAIL';error_class=(Error-Class $failure.Exception);exception_type=$failure.Exception.GetType().FullName;ended_utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $ProgramDataRoot 'operations/bootstrap-result.json')}catch{}
+    throw $failure
+   }
+   break
+  }
   'ADD_PROJECT' {Run-AddProject;break}
   'EDIT_PROJECT' {Run-EditProject;break}
   'ADD_PARTICIPANT' {Run-AddParticipant;break}
@@ -775,7 +801,7 @@ function Invoke-CommandMode {
 }
 
 $script:UiInputs=New-Object 'System.Collections.Generic.Queue[string]'
-if(-not [string]::IsNullOrWhiteSpace($UiInputPath)){
+if($Mode -ne 'BOOTSTRAP_PROJECT' -and -not [string]::IsNullOrWhiteSpace($UiInputPath)){
  if(-not(Test-Path -LiteralPath $UiInputPath -PathType Leaf)){throw "UI_INPUT_FILE_NOT_FOUND: $UiInputPath"}
  foreach($line in @(Get-Content -LiteralPath $UiInputPath -Encoding UTF8)){$script:UiInputs.Enqueue([string]$line)}
 }
@@ -1199,6 +1225,15 @@ function Get-GuidedContext {
  $recovery=if(Test-Path -LiteralPath $preferredCurrent -PathType Leaf){try{Get-OperationRecoveryClassification -ProgramDataRoot $ProgramDataRoot}catch{$null}}else{[pscustomobject]@{classification='NOT_STARTED';operation=$null}}
  if($recovery -and $recovery.classification -eq 'RECOVERY_REQUIRED'){
   return [pscustomobject]@{state='RECOVERY_REQUIRED';recommended='Recover safely';project=$null;participant=$null;reason='A previous operation was interrupted.';recovery=$recovery}
+ }
+ # A clean local project is independent of remote enrollment. Missing/corrupt
+ # catalogs still fail closed; recovery and migration holds take precedence.
+ $bootstrapCatalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot
+ if(@($bootstrapCatalog.projects).Count -eq 0){
+  foreach($evidence in @('runtime/active-admission.json','runtime/hosted-helper-state.json','runtime/hosted-helper-state.json.tmp')){
+   if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot $evidence)){return [pscustomobject]@{state='RECOVERY_REQUIRED';recommended='Recover safely';project=$null;participant=$null;reason='Existing admission or Helper evidence requires adjudication before first-project bootstrap.'}}
+  }
+  return [pscustomobject]@{state='NO_PROJECTS';recommended='Add local project';project=$null;participant=$null;reason='Create the first local project; remote enrollment remains a separate held step.'}
  }
  $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
  if(-not $secretReady){return [pscustomobject]@{state='REMOTE_AUTH_MISSING';recommended='Connect ChatGPT';project=$null;participant=$null;reason='Local ChatGPT enrollment is not configured.'}}

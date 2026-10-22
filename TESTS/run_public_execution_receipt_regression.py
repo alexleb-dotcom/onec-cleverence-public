@@ -185,7 +185,10 @@ def main() -> int:
 """
     if workflow.count(screenshot_step) > 1:
         raise AssertionError("isolated UX screenshot upload must not be duplicated")
-    if "actions/upload-artifact" in workflow.replace(screenshot_step, ""):
+    installer_step = '      - name: Preserve installer and exact-head installation evidence\n        if: ${{ always() }}\n        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4\n        with:\n          name: orbit-slice-a-windows\n          path: |\n            ${{ runner.temp }}/orbit-package/OneCOrbit-Setup.exe\n            ${{ runner.temp }}/orbit-package/build-receipt.json\n            ${{ runner.temp }}/orbit-evidence\n          if-no-files-found: warn\n          retention-days: 14\n'
+    if workflow.count(installer_step) != 1:
+        raise AssertionError("Slice A installer evidence must have exactly the bounded reviewed upload")
+    if "actions/upload-artifact" in workflow.replace(screenshot_step, "").replace(installer_step, ""):
         raise AssertionError("public receipt must remain in job output; artifact upload is not required")
     if "secrets." in workflow:
         raise AssertionError("public receipt workflow must not depend on secrets")
