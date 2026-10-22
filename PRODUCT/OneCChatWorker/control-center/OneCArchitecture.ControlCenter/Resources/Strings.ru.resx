@@ -135,4 +135,5 @@
   <data name="WorkspaceCheckConnection" xml:space="preserve"><value>Проверить подключение</value></data>
   <data name="WorkspaceOpenSavedWork" xml:space="preserve"><value>Перейти к продолжению</value></data>
   <data name="WorkspacePrepareNewTask" xml:space="preserve"><value>Подготовить новую задачу</value></data>
+  <data name="WorkspaceAdmissionPending" xml:space="preserve"><value>Выполняется запрос доступа</value></data>
 </root>
