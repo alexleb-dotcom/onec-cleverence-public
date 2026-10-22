@@ -96,16 +96,23 @@ internal sealed class WorkerClient : IWorkerClient
         if (!Modes.TryGetValue(action, out var mode))
             throw new InvalidOperationException("WORKER_ACTION_NOT_ALLOWLISTED");
 
+        // START/CONTINUE call native runas.exe inside the Worker; runas requires
+        // a visible, interactive Windows console to ask for the restricted
+        // restricted account credential. Never capture/store it in WPF.
+        // All non-interactive UI_CONTEXT/other actions keep their previous
+        // hidden redirected process boundary.
+        var interactiveAdmission = !elevated && (action is WorkerAction.Start or WorkerAction.Continue);
+        var redirected = !elevated && !interactiveAdmission;
         var psi = new ProcessStartInfo("powershell.exe")
         {
-            UseShellExecute = elevated,
-            CreateNoWindow = !elevated,
-            RedirectStandardOutput = !elevated,
-            RedirectStandardError = !elevated,
-            WindowStyle = ProcessWindowStyle.Hidden,
+            UseShellExecute = !redirected,
+            CreateNoWindow = redirected,
+            RedirectStandardOutput = redirected,
+            RedirectStandardError = redirected,
+            WindowStyle = interactiveAdmission ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden,
             Verb = elevated ? "runas" : ""
         };
-        if (!elevated)
+        if (redirected)
         {
             psi.StandardOutputEncoding = new UTF8Encoding(false, true);
             psi.StandardErrorEncoding = new UTF8Encoding(false);
@@ -116,7 +123,7 @@ internal sealed class WorkerClient : IWorkerClient
         Add(psi, "-Mode"); Add(psi, mode);
         Add(psi, "-WorkerRoot"); Add(psi, WorkerRoot);
         Add(psi, "-ProgramDataRoot"); Add(psi, ProgramDataRoot);
-        if (!elevated) Add(psi, "-Json");
+        if (redirected) Add(psi, "-Json");
 
         AddIf(psi, "-ProjectId", args.ProjectId);
         AddIf(psi, "-ParticipantId", args.ParticipantId);
@@ -148,10 +155,14 @@ internal sealed class WorkerClient : IWorkerClient
         try
         {
             using var process = Process.Start(psi) ?? throw new InvalidOperationException("WORKER_PROCESS_START_FAILED");
-            if (elevated)
+            if (!psi.RedirectStandardOutput)
             {
+                // Interactive admission output belongs to the password-console,
+                // not the GUI. Refresh the canonical UI_CONTEXT after exit;
+                // never infer successful connection from process ExitCode=0.
                 await process.WaitForExitAsync(token);
-                return new(process.ExitCode, null, "", "");
+                return new(process.ExitCode, null, "",
+                    process.ExitCode == 0 ? "" : "INTERACTIVE_WORKER_EXIT_" + process.ExitCode);
             }
 
             var stdoutTask = process.StandardOutput.ReadToEndAsync(token);

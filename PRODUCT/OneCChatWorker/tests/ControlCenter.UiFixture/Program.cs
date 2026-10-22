@@ -54,6 +54,37 @@ internal static class Program
                 _ => true, _ => throw new Exception("complete Orbit legacy probe")), "complete Orbit skips legacy probes");
             Check(!WorkerClient.NeedsMigration(@"C:\OneCOrbit", @"C:\ProgramData\OneCOrbit", "fake-launcher",
                 _ => throw new Exception("override probe"), _ => throw new Exception("override legacy probe")), "fake launcher override preserved");
+            // The real native Worker START/CONTINUE invokes runas.exe, which
+            // requires a visible console to ask for the restricted user's
+            // password. Verify launch semantics WITHOUT ever starting a
+            // process or touching operator credentials.
+            var commandClient = new WorkerClient();
+            foreach (var action in new[] { WorkerAction.Start, WorkerAction.Continue })
+            {
+                var psi = commandClient.CreateStartInfo(action,
+                    new(ProjectId: "synthetic", TaskId: "fake-task", TaskGoal: "fixture-only"), false);
+                Check(psi.UseShellExecute && !psi.CreateNoWindow &&
+                    psi.WindowStyle == System.Diagnostics.ProcessWindowStyle.Normal &&
+                    !psi.RedirectStandardOutput && !psi.RedirectStandardError &&
+                    psi.ArgumentList.Contains("-Mode") && psi.ArgumentList.Contains(action.ToString().ToUpperInvariant()) &&
+                    !psi.ArgumentList.Contains("-Json") &&
+                    !psi.ArgumentList.Any(a => a.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+                        a.Contains("savecred", StringComparison.OrdinalIgnoreCase)),
+                    "START/CONTINUE use visible interactive runas path without GUI credential capture " + action);
+            }
+            foreach (var action in new[] { WorkerAction.UiContext, WorkerAction.Verify, WorkerAction.Apply })
+            {
+                var psi = commandClient.CreateStartInfo(action, new(ProjectId: "synthetic"), false);
+                Check(!psi.UseShellExecute && psi.CreateNoWindow &&
+                    psi.WindowStyle == System.Diagnostics.ProcessWindowStyle.Hidden &&
+                    psi.RedirectStandardOutput && psi.RedirectStandardError &&
+                    psi.ArgumentList.Contains("-Json"),
+                    "ordinary Worker calls remain hidden/read-only JSON or bounded mutation " + action);
+            }
+            var elevatedStop = commandClient.CreateStartInfo(WorkerAction.Stop, new(), true);
+            Check(elevatedStop.UseShellExecute && !elevatedStop.CreateNoWindow &&
+                !elevatedStop.RedirectStandardOutput && !elevatedStop.RedirectStandardError &&
+                elevatedStop.Verb == "runas", "existing elevated stop UAC boundary unchanged");
             var preferences = new UiPreferences("ru", "dark", false);
             PreferencesStore.Save(preferences);
             Check(PreferencesStore.Load() == preferences && File.Exists(Path.Combine(orbitEvidence, "preferences", "preferences.json")), "isolated preference roundtrip");
@@ -73,7 +104,9 @@ internal static class Program
             Directory.CreateDirectory(output);
             var fake = new FixtureWorker();
             Localization.SetLanguage("ru"); ThemeService.Apply("dark");
-            var w = new MainWindow(fake, fixture: true);
+            var warnings = new List<(string Message, string Title)>();
+            var w = new MainWindow(fake, fixture: true,
+                showWarning: (message, title) => warnings.Add((message, title)));
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Call(w, "ShowContextFailure", 2, "MIGRATION_REQUIRED", "");
             Check(Control<TextBlock>(w, "RecommendationText").Text == Localization.Get("MigrationRequired") &&
@@ -116,6 +149,47 @@ internal static class Program
                 fake.Calls[0].Args.ProjectId == "RetailGroup", "typed START targets only selected RetailGroup (fake owner)");
             Check(fake.Calls[0].Args.TaskGoal!.Contains(Localization.Get("ReferenceAccessGoal")), "empty business task permits general reference access");
             Check(fake.Calls.All(c => c.Action == WorkerAction.Start), "no auto APPLY VERIFY REPAIR STOP CONTINUE UPDATE");
+
+            // FA #121: a restricted runas prompt can keep CONTINUE pending for
+            // arbitrary user time. Synthetic owner admits CONTINUE; deliberately
+            // invoke twice (simulating double click/Enter) before resolving a fake
+            // operation. Only one Worker call and one context reconciliation may run.
+            var canContinue = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            canContinue["actions"]!["continue"]!["enabled"] = true;
+            fake.ContextOverride = canContinue;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(Control<Button>(w, "ContinueButton").IsEnabled, "synthetic owner permits CONTINUE before pending prompt");
+            foreach (var exitCode in new[] { 0, 3 })
+            {
+                var pendingContinue = new TaskCompletionSource<WorkerCallResult>();
+                fake.PendingContinue = pendingContinue;
+                var before = fake.Calls.Count;
+                var reads = fake.ContextRequests.Count;
+                var warningCount = warnings.Count;
+                Call(w, "Continue_Click", w, new RoutedEventArgs());
+                Drain();
+                Check(!Control<Button>(w, "ContinueButton").IsEnabled &&
+                    !Control<Button>(w, "StartButton").IsEnabled &&
+                    !Control<Button>(w, "StopButton").IsEnabled,
+                    "pending CONTINUE disables competing admission actions " + exitCode);
+                Call(w, "Continue_Click", w, new RoutedEventArgs());
+                Drain();
+                Check(fake.Calls.Count == before + 1 &&
+                    fake.Calls.Last().Action == WorkerAction.Continue,
+                    "double click/Enter cannot start a second pending CONTINUE " + exitCode);
+                pendingContinue.SetResult(new(exitCode, null, "", exitCode == 0 ? "" : "fixture-cancelled"));
+                Drain(); Drain();
+                Check(fake.ContextRequests.Count == reads + 1,
+                    "each completed CONTINUE gets exactly one canonical readback " + exitCode);
+                Check(warnings.Count == warningCount + (exitCode == 0 ? 0 : 1) &&
+                    (exitCode == 0 || warnings[^1].Message.Contains(Localization.Get("ActionFailed"))) &&
+                    (exitCode == 0 || warnings[^1].Title == Localization.Get("AppTitle")),
+                    "pending CONTINUE success/cancel has exactly one user-visible warning notification " + exitCode);
+                Check(Control<Button>(w, "ContinueButton").IsEnabled,
+                    "pending CONTINUE unlocks after canonical readback " + exitCode);
+            }
+            fake.ContextOverride = null;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
 
             // A pending old response must never enable actions for a new visible selection.
             var stale = new TaskCompletionSource<WorkerCallResult>();
@@ -385,6 +459,7 @@ internal sealed class FixtureWorker : IWorkerClient
     public bool Empty;
     public bool UpdatePassed;
     public TaskCompletionSource<WorkerCallResult>? Pending;
+    public TaskCompletionSource<WorkerCallResult>? PendingContinue;
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default)
     {
         ContextRequests.Add(projectId);
@@ -397,6 +472,11 @@ internal sealed class FixtureWorker : IWorkerClient
     public Task<WorkerCallResult> RunAsync(WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)
     {
         Calls.Add((action, args));
+        if (action == WorkerAction.Continue && PendingContinue is { } waiting)
+        {
+            PendingContinue = null;
+            return waiting.Task;
+        }
         if (action == WorkerAction.SyncExtension && SyncStatus is { } status && ContextOverride is { } ctx)
         {
             var now = DateTimeOffset.UtcNow;

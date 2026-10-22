@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 581,
+  "file_count": 582,
   "files": [
     {
       "path": ".gitattributes",
@@ -419,6 +419,11 @@
       "sha256": "d9f9004a77e8aa5d3e710432332f07a67d1a0c20a7d5b6821c9494eb595ccc85"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/control-center/ORBIT_INTERACTIVE_ACCESS_Q121.md",
+      "size": 7788,
+      "sha256": "557a40373ca1fa1ef45124d3685bbeae7b632c4bda057e18c5f6d4a402efc58a"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/App.xaml",
       "size": 15402,
       "sha256": "3dd52cf720250c0390080c76ff81d12184c6b16fc9a4d1e77d002d618ba3e100"
@@ -455,8 +460,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 49156,
-      "sha256": "b699ecd9580650d5927aafbc95abe63c30f8d75991e93187a4b1a52e66e76a8d"
+      "size": 50201,
+      "sha256": "d7e306e21f4a63131005f67d6dbceb01c86a85a089ddd062b133d9b5db70313f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -505,8 +510,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/WorkerClient.cs",
-      "size": 9065,
-      "sha256": "0fc2a1583005df9305e24d5476fa2733a97eadb6d6ef93b54df980133908b650"
+      "size": 9991,
+      "sha256": "509520f917b0b3789b8a649f80d1653678cc9ea5325cf312b430eff49eb7b6dd"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/app.manifest",
@@ -675,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 34223,
-      "sha256": "47200e6ce992236f821fed46ee0c9f54b429680ef21939d7b36532cbf6c088aa"
+      "size": 39711,
+      "sha256": "b3cc24311834a4696a12768390e51105e1fafb44b5fe9b77ebb5332c985b0ff4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2915,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6d7b6970adf6f62efc80288ce6863828e453e6e3115896cc6a31435262a0e48a"
+  "snapshot_digest": "4f9d7a768518ca05ba13f5e615695be8d3e799fe5576674e1470f412f2ef171e"
 }

@@ -12,6 +12,7 @@ namespace OneCArchitecture.ControlCenter;
 public partial class MainWindow : Window
 {
     private readonly IWorkerClient _worker;
+    private readonly Action<string, string> _showWarning;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(4) };
     private UiPreferences _preferences;
     private JsonObject? _context;
@@ -30,9 +31,16 @@ public partial class MainWindow : Window
 
     public MainWindow() : this(new WorkerClient(), false) { }
 
-    internal MainWindow(IWorkerClient worker, bool fixture)
+    internal MainWindow(IWorkerClient worker, bool fixture, Action<string, string>? showWarning = null)
     {
         _worker = worker;
+        // The real application always displays its warning. Disposable UI
+        // fixtures inject a recorder instead of blocking headless Windows CI
+        // on a credential-cancellation MessageBox.
+        _showWarning = showWarning ?? ((message, title) =>
+        {
+            System.Windows.MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        });
         _preferences = fixture ? new() : PreferencesStore.Load();
         InitializeComponent();
         ApplyLocalization();
@@ -681,9 +689,19 @@ public partial class MainWindow : Window
 
     private async void Continue_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled) return;
-        var result = await _worker.RunAsync(WorkerAction.Continue, new());
-        await ShowActionResultAndRefresh("CONTINUE", result);
+        // runas may wait indefinitely for an interactive password prompt.
+        // Claim the same admission mutation gate as START before first await:
+        // duplicate mouse/Enter/Space events must not spawn a second prompt.
+        if (!_mutationsEnabled || !_contextReady || !ContinueButton.IsEnabled || _context is null) return;
+        _mutationsEnabled = false;
+        DisableActions(Localization.Get("ActionInProgress"));
+        try
+        {
+            var result = await _worker.RunAsync(WorkerAction.Continue, new());
+            await ShowActionResultAndRefresh("CONTINUE", result);
+        }
+        catch (Exception ex) { ShowContextFailure(-1, ex.ToString(), ""); }
+        finally { _mutationsEnabled = true; if (_contextReady && _context is not null) UpdateReadOnlyAvailability(_context); }
     }
 
     private async void Stop_Click(object sender, RoutedEventArgs e)
@@ -781,11 +799,9 @@ public partial class MainWindow : Window
     {
         _lastDiagnostic = Bound(string.Join(Environment.NewLine, new[] { result.StandardError, result.StandardOutput }.Where(x => !string.IsNullOrWhiteSpace(x))), 4000);
         AdvancedText.Text = _lastDiagnostic;
-        System.Windows.MessageBox.Show(
+        _showWarning(
             Localization.Get("ActionFailed") + ". " + Presentation.Outcome(result.StandardError) + " " + Localization.Get("ErrorDetails"),
-            Localization.Get("AppTitle"),
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
+            Localization.Get("AppTitle"));
     }
 
     private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
