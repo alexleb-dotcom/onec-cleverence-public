@@ -753,7 +753,9 @@ function Invoke-CommandMode {
    if((Get-Item -LiteralPath (Need $UiInputPath UiInputPath)).Length -gt 65536){throw 'BOOTSTRAP_REQUEST_LIMIT'}
    $bootstrapRequest=Get-Content -LiteralPath $UiInputPath -Raw -Encoding UTF8|ConvertFrom-Json
    if($bootstrapRequest.platform -ne 'ONEC'){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
-   Show-Value (New-OrbitBootstrapProject -ProjectId $bootstrapRequest.project_id -DisplayName $bootstrapRequest.display_name -ParticipantId $bootstrapRequest.participant_id -Role $bootstrapRequest.role -MainArchive $bootstrapRequest.main_archive -ExtensionArchives @($bootstrapRequest.extension_archives) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
+   $requireZero=$true
+   if($bootstrapRequest.PSObject.Properties.Name -contains 'require_zero_projects'){if($bootstrapRequest.require_zero_projects -isnot [bool]){throw 'BOOTSTRAP_REQUEST_INVALID'};$requireZero=$bootstrapRequest.require_zero_projects}
+   Show-Value (New-OrbitBootstrapProject -RequireZeroProjects $requireZero -ProjectId $bootstrapRequest.project_id -DisplayName $bootstrapRequest.display_name -ParticipantId $bootstrapRequest.participant_id -Role $bootstrapRequest.role -MainArchive $bootstrapRequest.main_archive -ExtensionArchives @($bootstrapRequest.extension_archives) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
    break
   }
   'ADD_PROJECT' {Run-AddProject;break}

@@ -996,29 +996,34 @@ public partial class MainWindow : Window
     }
 
     private bool _bootstrapOffered;
+    private bool _bootstrapInProgress;
 
     private async void AddProject_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled) return;
+        if (!_mutationsEnabled || _bootstrapInProgress) return;
         var wizard = new ProjectWizardWindow { Owner = this };
         if (wizard.ShowDialog() != true || wizard.Result is null) return;
         var w = wizard.Result;
 
+        _bootstrapInProgress = true;
         var requestPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "orbit-bootstrap-" + Guid.NewGuid().ToString("N") + ".json");
         try
         {
             var request = new { project_id = w.ProjectId, display_name = w.ProjectName,
                 participant_id = w.ParticipantId, role = w.Role, platform = "ONEC",
-                main_archive = w.MainPath, extension_archives = w.ExtensionArchives };
+                main_archive = w.MainPath, extension_archives = w.ExtensionArchives,
+                require_zero_projects = (_context?["projects"] as JsonArray)?.Count == 0 };
             await System.IO.File.WriteAllTextAsync(requestPath, System.Text.Json.JsonSerializer.Serialize(request));
             AddProjectButton.IsEnabled = false;
             var result = await _worker.RunAsync(WorkerAction.BootstrapProject, new(UiInputPath: requestPath), elevated: true);
             if (result.ExitCode == 0) _selectedProjectId = w.ProjectId;
             await ShowActionResultAndRefresh("BOOTSTRAP_PROJECT", result);
-            if (result.ExitCode == 0 && !_fixtureMode)
+            if (result.ExitCode == 0 && !_fixtureMode && _contextReady &&
+                Text(_context, "selected_project", "project_id") == w.ProjectId &&
+                Text(_context, "selected_project", "fast_state") == "ACCEPTED")
                 System.Windows.MessageBox.Show(Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Проект импортирован. Состояние подтверждено Worker." : "Project imported. State confirmed by Worker.", "OneC Orbit");
         }
-        finally { System.IO.File.Delete(requestPath); }
+        finally { _bootstrapInProgress = false; System.IO.File.Delete(requestPath); }
     }
 
     private async Task ShowActionResultAndRefresh(string action, WorkerCallResult result)

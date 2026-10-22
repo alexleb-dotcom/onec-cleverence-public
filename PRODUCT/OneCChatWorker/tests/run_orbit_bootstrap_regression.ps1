@@ -8,6 +8,8 @@ try {
   param($Root)
   function script:Test-IsAdministrator {$true}
   function script:Apply-ProjectAcl {param($ProjectRoot)}
+  function script:Set-SourceUpdateTreeAcl {param($Path,$OperatorIdentity,[switch]$Writable)}
+  function script:Protect-SourceUpdateMetadata {param($Path,$OperatorIdentity)}
   function Check($Value,$Name){if(-not $Value){throw ('ASSERTION_FAILED:'+ $Name)};Write-Host ('PASS '+$Name)}
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   function Zip($Name,$Entries){
@@ -35,6 +37,13 @@ try {
   Check ($fault -and @((Read-WorkerCatalog $recoverWorker).projects).Count -eq 0) 'interrupted promotion leaves no partial catalog project'
   $resumed=New-OrbitBootstrapProject -ProjectId recovery -DisplayName recovery -MainArchive $main -WorkerRoot $recoverWorker -ProgramDataRoot $data
   Check ($resumed.recovered -and $resumed.fast_state.state -eq 'ACCEPTED') 'retry resumes exact prepared promotion'
+  $driftWorker=Join-Path $Root 'drift-worker'
+  Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $driftWorker
+  try{New-OrbitBootstrapProject -ProjectId drift -DisplayName drift -MainArchive $main -WorkerRoot $driftWorker -ProgramDataRoot $data -FaultInjection AFTER_MOVE|Out-Null}catch{if($_.Exception.Message -ne 'BOOTSTRAP_TEST_FAULT_AFTER_MOVE'){throw}}
+  [IO.File]::WriteAllText((Join-Path $driftWorker 'drift/Participants/main/Target/Main/Configuration.xml'),'<Changed/>')
+  $held=$false
+  try{New-OrbitBootstrapProject -ProjectId drift -DisplayName drift -MainArchive $main -WorkerRoot $driftWorker -ProgramDataRoot $data|Out-Null}catch{$held=$_.Exception.Message -eq 'BOOTSTRAP_RECOVERY_SOURCE_DRIFT_HOLD'}
+  Check ($held -and @((Read-WorkerCatalog $driftWorker).projects).Count -eq 0) 'changed prepared Source is never published on recovery'
   $result=New-OrbitBootstrapProject -ProjectId fixture -DisplayName 'Проект / Project' -MainArchive $main -ExtensionArchives @($ext) -WorkerRoot $worker -ProgramDataRoot $data
   Check ($result.status -eq 'READY' -and $result.fast_state.state -eq 'ACCEPTED') 'MAIN plus EXTENSION accepted through real owner'
   $manifest=Get-Content -LiteralPath (Get-ProjectManifestPath fixture $worker) -Raw -Encoding UTF8|ConvertFrom-Json
@@ -43,5 +52,8 @@ try {
   Check (Test-Path -LiteralPath (Read-WorkerCatalog $worker).projects[0].participants[0].target.main.source_path) 'published source reference remains valid'
   $rejected=$false;try{New-OrbitBootstrapProject -ProjectId another -DisplayName another -MainArchive $main -WorkerRoot $worker -ProgramDataRoot $data}catch{$rejected=$_.Exception.Message -eq 'BOOTSTRAP_REQUIRES_CONFIRMED_ZERO_PROJECTS'}
   Check $rejected 'nonzero catalog never treated as zero'
+  $additional=New-OrbitBootstrapProject -ProjectId second -DisplayName second -MainArchive $main -WorkerRoot $worker -ProgramDataRoot $data -RequireZeroProjects $false
+  Check ($additional.status -eq 'READY' -and @((Read-WorkerCatalog $worker).projects).Count -eq 2) 'explicit Add Project retains existing catalog entries'
+
  } $scratch.path
 } finally {Remove-OneCTestScratch -Path $scratch.path|Out-Null}

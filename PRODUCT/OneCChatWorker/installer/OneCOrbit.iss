@@ -28,15 +28,22 @@ Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
 Source: "{#Payload}\*"; DestDir: "{app}\package"; Flags: recursesubdirs createallsubdirs
 Source: "SetupRuntime.ps1"; DestDir: "{app}"
 [UninstallDelete]
+Type: files; Name: "{app}\setup-runtime.log"
 Type: files; Name: "{app}\install-receipt.json"
 Type: files; Name: "{app}\install-intent.json"
 Type: files; Name: "{app}\install-journal.json"
 Type: files; Name: "{app}\install-journal.json.tmp"
 Type: files; Name: "{app}\setup-shortcut.lnk"
+Type: dirifempty; Name: "{group}"
 Type: dirifempty; Name: "{app}"
 [Messages]
 WelcomeLabel2=This setup installs the WPF interface and Worker runtime with zero projects. UAC is required for protected runtime and Source ownership. Existing and legacy installations require separately authorized recovery or migration. Projects are retained on uninstall. Remote Helper authorization remains a separate step.
 [Code]
+var RuntimeInstalled: Boolean;
+function GetCustomSetupExitCode(): Integer;
+begin
+  if RuntimeInstalled then Result := 0 else Result := 10;
+end;
 function WorkerRoot(Param: String): String;
 begin Result := ExpandConstant('{param:WORKERROOT|C:\OneCOrbit}'); end;
 function DataRoot(Param: String): String;
@@ -57,8 +64,11 @@ var ExitCode: Integer; Args: String;
 begin
   if CurStep = ssPostInstall then begin
     Args := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\SetupRuntime.ps1') + '" -Mode Install -AppRoot "' + ExpandConstant('{app}') + '" -WorkerRoot "' + WorkerRoot('') + '" -DataRoot "' + DataRoot('') + '" -ShortcutRoot "' + ExpandConstant('{group}') + '"';
-    if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Args, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
-      RaiseException('Runtime installation failed. Recovery state is retained; do not delete existing data.');
+    RuntimeInstalled := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Args, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+    Log('Runtime setup exit code: ' + IntToStr(ExitCode));
+    RuntimeInstalled := RuntimeInstalled and (ExitCode = 0) and FileExists(ExpandConstant('{app}\install-receipt.json'));
+    if not RuntimeInstalled then
+      RaiseException('Runtime installation failed. See setup-runtime.log; recovery state is retained.');
   end;
 end;
 function InitializeUninstall(): Boolean;

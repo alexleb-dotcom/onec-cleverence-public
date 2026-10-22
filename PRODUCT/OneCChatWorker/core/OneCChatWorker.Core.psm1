@@ -3272,9 +3272,24 @@ function Expand-OrbitXmlArchive {
     } finally {$stream.Dispose()}
 }
 
+function Assert-OrbitBootstrapPayload {
+    param([string]$ProjectRoot,[Parameter(Mandatory)]$Manifest)
+    foreach($artifact in @(Get-ManifestArtifactRows $Manifest)){
+        $target=Join-Path $ProjectRoot $artifact.canonical_path
+        Assert-OneCExportRoot $target
+        $digest=Get-TreeDigest $target
+        if($digest.sha256 -ne $artifact.tree_sha256 -or (Get-Sha256File (Join-Path $target 'Configuration.xml')) -ne $artifact.configuration_xml_sha256){throw 'BOOTSTRAP_RECOVERY_SOURCE_DRIFT_HOLD'}
+    }
+    foreach($artifact in $Manifest.accepted_snapshot.artifacts){
+        if($artifact.fingerprint_inventory_state -ne 'PRESENT'){throw 'BOOTSTRAP_FINGERPRINT_REQUIRED'}
+        $inventory=Join-Path (Join-Path $ProjectRoot 'ProjectManifest') $artifact.fingerprint_inventory_path
+        if((Get-Sha256File $inventory) -ne $artifact.fingerprint_inventory_sha256){throw 'BOOTSTRAP_FINGERPRINT_DRIFT_HOLD'}
+    }
+}
+
 function New-OrbitBootstrapProject {
     param([string]$ProjectId,[string]$DisplayName,[string]$ParticipantId='main',[string]$Role='ERP',
-          [string]$MainArchive,[string[]]$ExtensionArchives=@(),[string]$WorkerRoot,[string]$ProgramDataRoot,[ValidateSet('','AFTER_STAGE','AFTER_MOVE')][string]$FaultInjection='')
+          [string]$MainArchive,[string[]]$ExtensionArchives=@(),[string]$WorkerRoot,[string]$ProgramDataRoot,[ValidateSet('','AFTER_STAGE','AFTER_MOVE')][string]$FaultInjection='',[bool]$RequireZeroProjects=$true)
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     Assert-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
     Assert-SafeId $ProjectId 'project_id'|Out-Null
@@ -3287,7 +3302,9 @@ function New-OrbitBootstrapProject {
     if(-not $acquired){$mutex.Dispose();throw 'BOOTSTRAP_BUSY'}
     try {
         $catalog=Read-WorkerCatalog $WorkerRoot
-        if(@($catalog.projects).Count){throw 'BOOTSTRAP_REQUIRES_CONFIRMED_ZERO_PROJECTS'}
+        if($RequireZeroProjects -and @($catalog.projects).Count){throw 'BOOTSTRAP_REQUIRES_CONFIRMED_ZERO_PROJECTS'}
+        if(Find-Project $catalog $ProjectId){throw 'PROJECT_ALREADY_EXISTS'}
+        $baseCatalogSha=Get-CatalogHash $WorkerRoot
         if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'runtime/active-admission.json')){throw 'BOOTSTRAP_ADMISSION_HOLD'}
         $final=Join-Path $WorkerRoot $ProjectId
         $requestIdentity=Get-Sha256Text ($ProjectId+'|'+$DisplayName+'|'+$ParticipantId+'|'+$Role+'|'+$MainArchive+'|'+($ExtensionArchives -join '|'))
@@ -3297,9 +3314,11 @@ function New-OrbitBootstrapProject {
                 if(-not(Test-Path -LiteralPath $journalPath -PathType Leaf)){continue}
                 $journal=Get-Content -LiteralPath $journalPath -Raw -Encoding UTF8|ConvertFrom-Json
                 if($journal.schema -ne 'ORBIT_BOOTSTRAP_V1' -or $journal.state -ne 'PREPARED' -or $journal.project_id -ne $ProjectId){continue}
-                if($journal.final -ine $final -or $journal.request_identity -ne $requestIdentity){throw 'BOOTSTRAP_RECOVERY_REQUEST_MISMATCH'}
+                if($journal.final -ine $final -or $journal.request_identity -ne $requestIdentity -or $journal.base_catalog_sha256 -ne $baseCatalogSha){throw 'BOOTSTRAP_RECOVERY_REQUEST_MISMATCH'}
                 $stagedWorker=Join-Path $candidate.FullName 'worker'
                 if((Get-CatalogHash $stagedWorker) -ne $journal.catalog_sha256 -or (Get-Sha256File (Get-ProjectManifestPath $ProjectId $WorkerRoot)) -ne $journal.manifest_sha256){throw 'BOOTSTRAP_RECOVERY_DRIFT_HOLD'}
+                $recoveryManifest=Get-Content -LiteralPath (Get-ProjectManifestPath $ProjectId $WorkerRoot) -Raw -Encoding UTF8|ConvertFrom-Json
+                Assert-OrbitBootstrapPayload -ProjectRoot $final -Manifest $recoveryManifest
                 Write-WorkerCatalog (Read-WorkerCatalog $stagedWorker) $WorkerRoot
                 $journal.state='COMMITTED';Write-JsonAtomic $journal $journalPath
                 return [pscustomobject]@{status='READY';project_id=$ProjectId;recovered=$true;fast_state=(Get-FastProjectState $ProjectId $WorkerRoot)}
@@ -3311,8 +3330,12 @@ function New-OrbitBootstrapProject {
         $transaction=Join-Path $WorkerRoot ('.bootstrap-'+[guid]::NewGuid().ToString('N'))
         [IO.Directory]::CreateDirectory($transaction)|Out-Null
         Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_V1';project_id=$ProjectId;state='STAGING';final=$final} (Join-Path $transaction 'transaction.json')
+        $operator=[Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $installedState=Join-Path $ProgramDataRoot 'installed-state.json'
+        if(Test-Path -LiteralPath $installedState -PathType Leaf){$operator=[string](Get-Content -LiteralPath $installedState -Raw -Encoding UTF8|ConvertFrom-Json).operator_identity}
+        Protect-SourceUpdateMetadata -Path $transaction -OperatorIdentity $operator
         $stageWorker=Join-Path $transaction 'worker'
-        Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $stageWorker
+        Write-WorkerCatalog $catalog $stageWorker
         $main=Join-Path $transaction 'imports/main'
         Expand-OrbitXmlArchive $MainArchive $main
         New-WorkerProject $ProjectId $DisplayName $stageWorker|Out-Null
@@ -3329,7 +3352,7 @@ function New-OrbitBootstrapProject {
         $applied=Apply-WorkerProject -ProjectId $ProjectId -WorkerRoot $stageWorker
         if($applied.status -ne 'READY'){throw 'BOOTSTRAP_IMPORT_NOT_READY'}
         $next=Read-WorkerCatalog $stageWorker
-        $part=$next.projects[0].participants[0]
+        $part=(Find-Project $next $ProjectId).participants[0]
         $part.target.main.source_path=Join-Path $final ('Participants/'+$ParticipantId+'/Target/Main')
         foreach($ext in $part.target.extensions){$ext.source_path=Join-Path $final ('Participants/'+$ParticipantId+'/Target/Extensions/'+$ext.extension_id)}
         Write-WorkerCatalog $next $stageWorker
@@ -3341,14 +3364,19 @@ function New-OrbitBootstrapProject {
         $manifest.participants[0].target.main.source_path=$part.target.main.source_path
         foreach($ext in $manifest.participants[0].target.extensions){$ext.source_path=Join-Path $final $ext.canonical_path}
         Set-ManifestAcceptedSnapshot -Manifest $manifest -ManifestPath $mp -ProofBasis 'ONE_PASS_COPY_HASH' -FingerprintMap $fingerprints|Out-Null
+        foreach($artifact in @(Get-ManifestArtifactRows $manifest)){
+            Set-SourceUpdateTreeAcl -Path (Join-Path (Join-Path $stageWorker $ProjectId) $artifact.canonical_path) -OperatorIdentity $operator
+        }
+        Protect-SourceUpdateMetadata -Path (Join-Path (Join-Path $stageWorker $ProjectId) 'ProjectManifest') -OperatorIdentity $operator
         # Persist publication intent before the directory move. A crash here is
         # a visible recovery hold, never a catalog entry for a partial project.
-        Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_V1';project_id=$ProjectId;state='PREPARED';final=$final;catalog_sha256=(Get-CatalogHash $stageWorker);manifest_sha256=(Get-Sha256File $mp);request_identity=$requestIdentity} (Join-Path $transaction 'transaction.json')
+        Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_V1';project_id=$ProjectId;state='PREPARED';final=$final;catalog_sha256=(Get-CatalogHash $stageWorker);manifest_sha256=(Get-Sha256File $mp);request_identity=$requestIdentity;base_catalog_sha256=$baseCatalogSha} (Join-Path $transaction 'transaction.json')
         if($FaultInjection -eq 'AFTER_STAGE'){throw 'BOOTSTRAP_TEST_FAULT_AFTER_STAGE'}
         Move-Item -LiteralPath (Join-Path $stageWorker $ProjectId) -Destination $final
         if($FaultInjection -eq 'AFTER_MOVE'){throw 'BOOTSTRAP_TEST_FAULT_AFTER_MOVE'}
+        Assert-OrbitBootstrapPayload -ProjectRoot $final -Manifest $manifest
         # Compare again before the only live catalog commit.
-        if(@((Read-WorkerCatalog $WorkerRoot).projects).Count){throw 'BOOTSTRAP_CATALOG_CHANGED_RECOVERY_REQUIRED'}
+        if((Get-CatalogHash $WorkerRoot) -ne $baseCatalogSha){throw 'BOOTSTRAP_CATALOG_CHANGED_RECOVERY_REQUIRED'}
         Write-WorkerCatalog $next $WorkerRoot
         Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_V1';project_id=$ProjectId;state='COMMITTED';final=$final} (Join-Path $transaction 'transaction.json')
         [pscustomobject]@{status='READY';project_id=$ProjectId;transaction=$transaction;fast_state=(Get-FastProjectState $ProjectId $WorkerRoot);retained_imports=$true}

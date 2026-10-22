@@ -50,6 +50,7 @@ function Rollback {
     if($changed.Count){throw 'SETUP_ROLLBACK_CHANGED_FILE_RETAINED'}
 }
 $AppRoot=Assert-PlainPath $AppRoot
+Start-Transcript -LiteralPath (Join-Path $AppRoot 'setup-runtime.log') -Append|Out-Null
 if($Mode -eq 'Rollback'){
     if(Test-Path -LiteralPath $receiptPath){throw 'SETUP_COMMITTED_INSTALL_REQUIRES_UNINSTALL'}
     Rollback
@@ -101,6 +102,11 @@ if($Mode -eq 'Install'){
     $WorkerRoot=Assert-PlainPath $receipt.worker_root;$DataRoot=Assert-PlainPath $receipt.data_root
     if(Test-Path -LiteralPath (Join-Path $DataRoot 'runtime/active-admission.json')){throw 'SETUP_ACTIVE_ADMISSION_HOLD'}
     if(Test-Path -LiteralPath (Join-Path $DataRoot 'runtime/hosted-helper-state.json')){throw 'SETUP_HELPER_STATE_REQUIRES_ADJUDICATION'}
+    $image=Join-Path $DataRoot 'product/control-center/OneCArchitecture.ControlCenter.exe'
+    foreach($process in @(Get-Process -Name 'OneCArchitecture.ControlCenter' -ErrorAction SilentlyContinue)){
+        try{$processImage=$process.MainModule.FileName}catch{throw 'SETUP_IMAGE_PATH_UNVERIFIED_HOLD'}
+        if($processImage -ieq $image){throw 'SETUP_IMAGE_IN_USE_HOLD'}
+    }
     # Validate the complete removal plan before deleting the first owned file.
     foreach($file in $receipt.files){
         $path=Assert-PlainPath $file.path

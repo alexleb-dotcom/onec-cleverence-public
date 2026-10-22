@@ -7,9 +7,9 @@ $app=Join-Path $root 'app';$worker=Join-Path $root 'worker';$data=Join-Path $roo
 New-Item -ItemType Directory -Path $root|Out-Null
 New-Item -ItemType Directory -Force -Path $EvidenceRoot|Out-Null
 function Check($Value,$Name){if(-not $Value){throw ('INSTALL_SMOKE_ASSERT:'+ $Name)};Write-Host ('PASS '+$Name)}
-function RunProcess($Exe,$Arguments){
+function RunProcess($Exe,$Arguments,[int]$ExpectedExit=0){
  $start=New-Object Diagnostics.ProcessStartInfo;$start.FileName=$Exe;$start.Arguments=$Arguments;$start.UseShellExecute=$false;$start.CreateNoWindow=$true
- $process=[Diagnostics.Process]::Start($start);try{if(-not $process.WaitForExit(240000)){$process.Kill();throw 'SMOKE_PROCESS_TIMEOUT'};Check ($process.ExitCode -eq 0) ($Exe+' exit code')}finally{$process.Dispose()}
+ $process=[Diagnostics.Process]::Start($start);try{if(-not $process.WaitForExit(240000)){$process.Kill();throw 'SMOKE_PROCESS_TIMEOUT'};Check ($process.ExitCode -eq $ExpectedExit) ($Exe+' exit code')}finally{$process.Dispose()}
 }
 try {
  RunProcess (Join-Path $BuildRoot 'OneCOrbit-Setup.exe') ('/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="'+$app+'" /WORKERROOT="'+$worker+'" /DATAROOT="'+$data+'" /LOG="'+(Join-Path $EvidenceRoot 'install.log')+'"')
@@ -62,14 +62,17 @@ try {
  Copy-Item -LiteralPath (Join-Path $BuildRoot 'payload') -Destination (Join-Path $rollbackApp 'package') -Recurse
  $setupScript=Join-Path $PSScriptRoot '../installer/SetupRuntime.ps1'
  $rw=Join-Path $root 'rollback-worker';$rd=Join-Path $root 'rollback-data';$rs=Join-Path $root 'rollback-shortcuts'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $setupScript -Mode Install -AppRoot $rollbackApp -WorkerRoot $rw -DataRoot $rd -ShortcutRoot $rs -FaultInjection AFTER_RUNTIME 2>&1 | Out-File (Join-Path $EvidenceRoot 'rollback.log')
- Check ($LASTEXITCODE -ne 0) 'fault-injected install fails visibly'
+ RunProcess 'powershell.exe' ('-NoProfile -ExecutionPolicy Bypass -File "'+$setupScript+'" -Mode Install -AppRoot "'+$rollbackApp+'" -WorkerRoot "'+$rw+'" -DataRoot "'+$rd+'" -ShortcutRoot "'+$rs+'" -FaultInjection AFTER_RUNTIME') 1
  Check (-not(Test-Path -LiteralPath $rw) -and -not(Test-Path -LiteralPath $rd)) 'rollback leaves no owned runtime files'
  Check (-not(Get-LocalUser OneCSourceReader -ErrorAction SilentlyContinue)) 'rollback removes only transaction-owned reader'
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $setupScript -Mode Rollback -AppRoot $rollbackApp
  Check ($LASTEXITCODE -eq 0) 'interrupted journal recovery is idempotent'
  @{result='PASS';source_head=(& git rev-parse HEAD).Trim();build_receipt=(Get-Content -LiteralPath (Join-Path $BuildRoot 'build-receipt.json') -Raw|ConvertFrom-Json);keyboard_and_dpi='See existing real WPF RU/EN and DPI fixture artifacts';limitations=@('OS UAC human consent is not proved by elevated hosted runner.','Archive selection dialogs are not driven in this smoke; native wizard boot/cancel and real Worker import are separate checks.')}|ConvertTo-Json -Depth 15|Set-Content -LiteralPath (Join-Path $EvidenceRoot 'result.json') -Encoding UTF8
 } finally {
+ foreach($name in @('setup-runtime.log','install-intent.json','install-journal.json')){
+  $path=Join-Path $app $name
+  if(Test-Path -LiteralPath $path){Copy-Item -LiteralPath $path -Destination (Join-Path $EvidenceRoot $name) -Force}
+ }
  # Disposable hosted account only. No local operator execution is permitted.
  if(Get-LocalUser OneCSourceReader -ErrorAction SilentlyContinue){Remove-LocalUser OneCSourceReader}
 }

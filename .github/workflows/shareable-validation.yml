@@ -144,6 +144,32 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '26.7.0'
+      - name: Verify zero-project archive bootstrap and rejection guards
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_bootstrap_regression.ps1
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Build exact-head offline Windows installer
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\installer\Build-Installer.ps1 -OutputRoot "$env:RUNNER_TEMP\orbit-package"
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Disposable native install bootstrap reopen and retain-data uninstall
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_installer_smoke.ps1 -BuildRoot "$env:RUNNER_TEMP\orbit-package" -EvidenceRoot "$env:RUNNER_TEMP\orbit-evidence"
+          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
+      - name: Preserve installer and exact-head installation evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: orbit-slice-a-windows
+          path: |
+            ${{ runner.temp }}/orbit-package/OneCOrbit-Setup.exe
+            ${{ runner.temp }}/orbit-package/build-receipt.json
+            ${{ runner.temp }}/orbit-evidence
+          if-no-files-found: warn
+          retention-days: 14
       - name: Run isolated selected catalog update regression
         shell: powershell
         run: |
@@ -242,32 +268,6 @@ jobs:
           name: control-center-ux5-fixtures
           path: ${{ runner.temp }}/ux5-evidence/screenshots
           if-no-files-found: error
-          retention-days: 14
-      - name: Verify zero-project archive bootstrap and rejection guards
-        shell: powershell
-        run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_bootstrap_regression.ps1
-          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
-      - name: Build exact-head offline Windows installer
-        shell: powershell
-        run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\installer\Build-Installer.ps1 -OutputRoot "$env:RUNNER_TEMP\orbit-package"
-          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
-      - name: Disposable native install bootstrap reopen and retain-data uninstall
-        shell: powershell
-        run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File PRODUCT\OneCChatWorker\tests\run_orbit_installer_smoke.ps1 -BuildRoot "$env:RUNNER_TEMP\orbit-package" -EvidenceRoot "$env:RUNNER_TEMP\orbit-evidence"
-          if($LASTEXITCODE-ne0){exit $LASTEXITCODE}
-      - name: Preserve installer and exact-head installation evidence
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: orbit-slice-a-windows
-          path: |
-            ${{ runner.temp }}/orbit-package/OneCOrbit-Setup.exe
-            ${{ runner.temp }}/orbit-package/build-receipt.json
-            ${{ runner.temp }}/orbit-evidence
-          if-no-files-found: warn
           retention-days: 14
       - name: Import Core and verify zero-copy typed surface
         shell: powershell
