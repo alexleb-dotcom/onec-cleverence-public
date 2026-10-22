@@ -680,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 62361,
-      "sha256": "9a1402d9a10775c060b6bc311ac5f92d6840f295406e2011974d637062f3ae06"
+      "size": 62359,
+      "sha256": "757b44c2d4b5e9fb08e3b7dc68277bd599881484c5d60252e3485a4ff9c8a4ec"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "dd9e85c2191e02cdaa0eb7b1d93cb6bb00d3f6bb02ee4276f1b2ff195d4481eb"
+  "snapshot_digest": "e11e0fe16722aae379e4b6eb774986bd0e55768ec44da46b6a460c59df795d0d"
 }
