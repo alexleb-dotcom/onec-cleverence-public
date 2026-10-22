@@ -450,13 +450,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml",
-      "size": 22333,
-      "sha256": "2b090fe1511c5df3855e5a3bba15d92586e0a471f125c289f4570b88ae8ad5d1"
+      "size": 22081,
+      "sha256": "e802ac9f2325106c00e87a070f13053a748b138be9cc58f0b4fce52d1efd089d"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 53155,
-      "sha256": "61538c37214a5e6263d810c618630dc6233cd4f3102b9a38fd2139889ebe2e43"
+      "size": 52225,
+      "sha256": "e3741695c797799f8737ff27a0b8f460dda841c94028d8da520994d3bc583d98"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -485,13 +485,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 22405,
-      "sha256": "0af775491207542c09d47d8b77ea77c7541aacb6ea8f79c4ab4773b144cbbd7c"
+      "size": 22274,
+      "sha256": "c40a36072cb4b42eb98c1f489bb605c19d9be50b7a40c581995e97e683ad6b6f"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 29921,
-      "sha256": "7e022908f8b2efec026762d61ec5bee8032f0cc6830e821ade05367480638a4c"
+      "size": 29790,
+      "sha256": "777b82b794a083d3a9be8be544e09466fbc6f8ff57124f3cd2631d156e548d60"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "b93e6dc2bcc6d087b544710afc439e257aa3fcd7fa23ab648df9b229631b41d5"
+  "snapshot_digest": "a2e1838314dc6bb775267bfdded41e8431895268fe2933e337600757ee36570f"
 }
