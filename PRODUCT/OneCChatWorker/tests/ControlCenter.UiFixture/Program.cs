@@ -290,8 +290,16 @@ internal static class Program
             fake.Empty = true;
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Call(w, "ShowPage", "Projects");
-            Check(Control<TextBlock>(w, "ProjectsHintText").Text == Localization.Get("NoProjects"), "empty project list has explanation");
-            Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-empty-Projects.png"), 1);
+            // A request for selected RetailGroup may not accept a successful
+            // response that omits selected_project, even when the catalog is
+            // empty. The UI must remain UNKNOWN rather than treat it as a new
+            // authoritative no-project state.
+            Check(Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                !Control<Button>(w, "StartButton").IsEnabled &&
+                !Control<Button>(w, "ApplyButton").IsEnabled &&
+                !Control<Button>(w, "AddProjectButton").IsEnabled,
+                "missing selected project in catalog response fails closed");
+            Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-owner-id-missing-Projects.png"), 1);
             fake.Empty = false;
 
             foreach (var language in new[] { "ru", "en" })
