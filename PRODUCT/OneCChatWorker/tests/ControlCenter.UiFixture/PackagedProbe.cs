@@ -47,7 +47,14 @@ internal static class PackagedProbe
     }
     static AutomationElement Find(string id) => Root.FindFirst(TreeScope.Descendants,
         new PropertyCondition(AutomationElement.AutomationIdProperty, id)) ?? throw new InvalidOperationException("CONTROL_MISSING:" + id);
-    static string FocusId => AutomationElement.FocusedElement?.Current.AutomationId ?? "";
+    static string FocusId
+    {
+        get { try { return AutomationElement.FocusedElement?.Current.AutomationId ?? ""; } catch (ElementNotAvailableException) { return ""; } }
+    }
+    static string FocusName
+    {
+        get { try { return AutomationElement.FocusedElement?.Current.Name ?? ""; } catch (ElementNotAvailableException) { return ""; } }
+    }
     static bool FocusWithin(string id)
     {
         var node = AutomationElement.FocusedElement;
@@ -64,7 +71,7 @@ internal static class PackagedProbe
         Assert(pid == Owned.Id, "keyboard input restricted to owned EXE");
         keybd_event(key, 0, 0, UIntPtr.Zero); keybd_event(key, 0, 2, UIntPtr.Zero);
         Thread.Sleep(120);
-        Trace.Add(new { key, focus = FocusId, focused_name = AutomationElement.FocusedElement?.Current.Name });
+        Trace.Add(new { key, focus = FocusId, focused_name = FocusName });
     }
     static void TabTo(string id)
     {
@@ -91,6 +98,17 @@ internal static class PackagedProbe
             using var stream = File.Create(path); png.Save(stream);
         }
         finally { SelectObject(target, previous); DeleteObject(bitmap); DeleteDC(target); ReleaseDC(Window, dc); }
+    }
+    static IEnumerable<AutomationElement> OwnedWindows()
+    {
+        foreach(var top in AutomationElement.RootElement.FindAll(TreeScope.Children,
+            new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>())
+        {
+            yield return top;
+            foreach(var child in top.FindAll(TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window)).Cast<AutomationElement>())
+                if(child.Current.ProcessId == Owned.Id) yield return child;
+        }
     }
     static AutomationElement OwnedNativeDialog()
     {
@@ -151,10 +169,8 @@ internal static class PackagedProbe
         {
             AutomationElement? dialog = null;
             Wait(() => {
-                dialog = AutomationElement.RootElement.FindAll(TreeScope.Children,
-                    new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>()
-                    .FirstOrDefault(x => x.FindFirst(TreeScope.Descendants,
-                        new PropertyCondition(AutomationElement.AutomationIdProperty, firstRun ? "ProjectNameBox" : "RecommendationText")) is not null);
+                dialog = OwnedWindows().LastOrDefault(x => x.Current.NativeWindowHandle != 0 && x.FindFirst(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.AutomationIdProperty, firstRun ? "ProjectNameBox" : "RecommendationText")) is not null);
                 return dialog is not null;
             }, firstRun ? "automatic installed first project wizard" : "installed project reopen");
             Root = dialog!; Window = new IntPtr(Root.Current.NativeWindowHandle);
@@ -194,8 +210,7 @@ internal static class PackagedProbe
         }
         catch
         {
-            foreach(var window in AutomationElement.RootElement.FindAll(TreeScope.Children,
-                new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>())
+            foreach(var window in OwnedWindows())
             {
                 Console.WriteLine("OWNED_WINDOW " + window.Current.Name);
                 Console.WriteLine(string.Join(" | ", window.FindAll(TreeScope.Descendants,

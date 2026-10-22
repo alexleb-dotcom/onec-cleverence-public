@@ -1214,7 +1214,12 @@ function Get-GuidedContext {
  # A clean local project is independent of remote enrollment. Missing/corrupt
  # catalogs still fail closed; recovery and migration holds take precedence.
  $bootstrapCatalog=Read-WorkerCatalog -WorkerRoot $WorkerRoot
- if(@($bootstrapCatalog.projects).Count -eq 0){return [pscustomobject]@{state='NO_PROJECTS';recommended='Add local project';project=$null;participant=$null;reason='Create the first local project; remote enrollment remains a separate held step.'}}
+ if(@($bootstrapCatalog.projects).Count -eq 0){
+  foreach($evidence in @('runtime/active-admission.json','runtime/hosted-helper-state.json','runtime/hosted-helper-state.json.tmp')){
+   if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot $evidence)){return [pscustomobject]@{state='RECOVERY_REQUIRED';recommended='Recover safely';project=$null;participant=$null;reason='Existing admission or Helper evidence requires adjudication before first-project bootstrap.'}}
+  }
+  return [pscustomobject]@{state='NO_PROJECTS';recommended='Add local project';project=$null;participant=$null;reason='Create the first local project; remote enrollment remains a separate held step.'}
+ }
  $secretReady=Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'secrets\helper-secret.txt') -PathType Leaf
  if(-not $secretReady){return [pscustomobject]@{state='REMOTE_AUTH_MISSING';recommended='Connect ChatGPT';project=$null;participant=$null;reason='Local ChatGPT enrollment is not configured.'}}
  $helper=try{Get-HelperConnectionState -ProgramDataRoot $ProgramDataRoot}catch{$null}

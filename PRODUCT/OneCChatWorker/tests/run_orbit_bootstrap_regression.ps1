@@ -30,6 +30,20 @@ try {
   try{New-OrbitBootstrapProject -ProjectId rejected -DisplayName rejected -MainArchive $bad -WorkerRoot $worker -ProgramDataRoot $data|Out-Null;throw 'EXPECTED_FAILURE'}catch{if($_.Exception.Message -eq 'EXPECTED_FAILURE'){throw}}
   Check (@((Read-WorkerCatalog $worker).projects).Count -eq 0) 'failed XML import leaves zero registered projects'
   Check (-not(Test-Path -LiteralPath (Join-Path $worker 'rejected'))) 'failed import has no canonical project'
+  $runtime=Join-Path $data 'runtime';New-Item -ItemType Directory -Force -Path $runtime|Out-Null
+  foreach($evidence in @('hosted-helper-state.json','hosted-helper-state.json.tmp')){
+   $path=Join-Path $runtime $evidence;[IO.File]::WriteAllText($path,'{"fixture":"unadjudicated"}')
+   $held=$false
+   try{New-OrbitBootstrapProject -ProjectId held -DisplayName held -MainArchive $main -WorkerRoot $worker -ProgramDataRoot $data|Out-Null}catch{$held=$_.Exception.Message -eq 'BOOTSTRAP_HELPER_STATE_HOLD'}
+   Check ($held -and @((Read-WorkerCatalog $worker).projects).Count -eq 0) ('zero catalog does not bypass '+$evidence)
+   Remove-Item -LiteralPath $path
+  }
+  $operations=Join-Path $data 'operations';New-Item -ItemType Directory -Force -Path $operations|Out-Null
+  $operationPath=Join-Path $operations 'current-operation.json';[IO.File]::WriteAllText($operationPath,'{"state":"RUNNING"}')
+  $held=$false
+  try{New-OrbitBootstrapProject -ProjectId held -DisplayName held -MainArchive $main -WorkerRoot $worker -ProgramDataRoot $data|Out-Null}catch{$held=$_.Exception.Message -eq 'BOOTSTRAP_OPERATION_STATE_HOLD'}
+  Check ($held -and @((Read-WorkerCatalog $worker).projects).Count -eq 0) 'zero catalog does not bypass unadjudicated operation'
+  Remove-Item -LiteralPath $operationPath
   $recoverWorker=Join-Path $Root 'recover-worker'
   Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $recoverWorker
   $fault=$false

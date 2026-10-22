@@ -48,6 +48,11 @@ try {
  $before=(Get-FileHash -LiteralPath $payload -Algorithm SHA256).Hash
  # Unknown runtime data must survive uninstall.
  $unknown=Join-Path $data 'unknown-user-file.txt';[IO.File]::WriteAllText($unknown,'retain me')
+ $heldOperation=Join-Path $data 'operations/current-operation.json'
+ [IO.File]::WriteAllText($heldOperation,'{"state":"RUNNING"}')
+ RunProcess 'powershell.exe' ('-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $app 'SetupRuntime.ps1')+'" -Mode Uninstall -AppRoot "'+$app+'"') 1
+ Check (Test-Path -LiteralPath $launcher) 'unadjudicated operation holds uninstall before runtime removal'
+ Remove-Item -LiteralPath $heldOperation
  RunProcess (Join-Path $app 'unins000.exe') ('/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG="'+(Join-Path $EvidenceRoot 'uninstall.log')+'"')
  Check ((Get-FileHash -LiteralPath $payload -Algorithm SHA256).Hash -eq $before) 'uninstall retains MAIN fixture'
  Check (Test-Path -LiteralPath (Join-Path $worker ($projectKey+'/Participants/'+$participantKey+'/Target/Extensions/ext-1/Configuration.xml'))) 'uninstall retains EXTENSION fixture'

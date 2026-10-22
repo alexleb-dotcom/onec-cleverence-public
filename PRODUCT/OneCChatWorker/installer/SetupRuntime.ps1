@@ -101,7 +101,15 @@ if($Mode -eq 'Install'){
     if($receipt.schema -ne 'ORBIT_INSTALL_RECEIPT_V1'){throw 'SETUP_RECEIPT_INVALID'}
     $WorkerRoot=Assert-PlainPath $receipt.worker_root;$DataRoot=Assert-PlainPath $receipt.data_root
     if(Test-Path -LiteralPath (Join-Path $DataRoot 'runtime/active-admission.json')){throw 'SETUP_ACTIVE_ADMISSION_HOLD'}
-    if(Test-Path -LiteralPath (Join-Path $DataRoot 'runtime/hosted-helper-state.json')){throw 'SETUP_HELPER_STATE_REQUIRES_ADJUDICATION'}
+    foreach($evidence in @('runtime/hosted-helper-state.json','runtime/hosted-helper-state.json.tmp')){
+        if(Test-Path -LiteralPath (Join-Path $DataRoot $evidence)){throw 'SETUP_HELPER_STATE_REQUIRES_ADJUDICATION'}
+    }
+    $operationPath=Join-Path $DataRoot 'operations/current-operation.json'
+    if(Test-Path -LiteralPath $operationPath -PathType Leaf){
+        if((Get-Item -LiteralPath $operationPath).Length -gt 1048576){throw 'SETUP_OPERATION_STATE_REQUIRES_ADJUDICATION'}
+        $operation=Get-Content -LiteralPath $operationPath -Raw -Encoding UTF8|ConvertFrom-Json
+        if($operation.state -notin @('PASS','FAIL','CANCELLED','RECOVERED','WAITING_FOR_USER')){throw 'SETUP_OPERATION_STATE_REQUIRES_ADJUDICATION'}
+    }
     $image=Join-Path $DataRoot 'product/control-center/OneCArchitecture.ControlCenter.exe'
     foreach($process in @(Get-Process -Name 'OneCArchitecture.ControlCenter' -ErrorAction SilentlyContinue)){
         try{$processImage=$process.MainModule.FileName}catch{throw 'SETUP_IMAGE_PATH_UNVERIFIED_HOLD'}

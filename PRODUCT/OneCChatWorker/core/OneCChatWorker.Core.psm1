@@ -3306,6 +3306,15 @@ function New-OrbitBootstrapProject {
         if(Find-Project $catalog $ProjectId){throw 'PROJECT_ALREADY_EXISTS'}
         $baseCatalogSha=Get-CatalogHash $WorkerRoot
         if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'runtime/active-admission.json')){throw 'BOOTSTRAP_ADMISSION_HOLD'}
+        foreach($evidence in @('runtime/hosted-helper-state.json','runtime/hosted-helper-state.json.tmp')){
+            if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot $evidence)){throw 'BOOTSTRAP_HELPER_STATE_HOLD'}
+        }
+        $operationPath=Join-Path $ProgramDataRoot 'operations/current-operation.json'
+        if(Test-Path -LiteralPath $operationPath -PathType Leaf){
+            if((Get-Item -LiteralPath $operationPath).Length -gt 1048576){throw 'BOOTSTRAP_OPERATION_STATE_HOLD'}
+            $operation=Get-Content -LiteralPath $operationPath -Raw -Encoding UTF8|ConvertFrom-Json
+            if($operation.state -notin @('PASS','FAIL','CANCELLED','RECOVERED','WAITING_FOR_USER')){throw 'BOOTSTRAP_OPERATION_STATE_HOLD'}
+        }
         $final=Join-Path $WorkerRoot $ProjectId
         $requestIdentity=Get-Sha256Text ($ProjectId+'|'+$DisplayName+'|'+$ParticipantId+'|'+$Role+'|'+$MainArchive+'|'+($ExtensionArchives -join '|'))
         if(Test-Path -LiteralPath $final){

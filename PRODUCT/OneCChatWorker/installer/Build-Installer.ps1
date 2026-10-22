@@ -1,5 +1,6 @@
 ﻿param([Parameter(Mandatory)][string]$OutputRoot,[string]$DotnetPath='dotnet',[string]$IsccPath="${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")
 $ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
 $packageRoot=Split-Path -Parent $PSScriptRoot
 $OutputRoot=[IO.Path]::GetFullPath($OutputRoot)
 if(Test-Path -LiteralPath $OutputRoot){throw 'BUILD_OUTPUT_MUST_BE_NEW'}
