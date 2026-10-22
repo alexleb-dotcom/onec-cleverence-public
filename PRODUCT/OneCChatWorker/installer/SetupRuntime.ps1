@@ -45,7 +45,7 @@ function Rollback {
         }
     }
     $reader=Get-LocalUser OneCSourceReader -ErrorAction SilentlyContinue
-    if($reader -and $reader.Description -ceq ('OneC Orbit setup '+$journal.transaction_id)){Remove-LocalUser OneCSourceReader}
+    if($reader -and $reader.Description -ceq ('Orbit setup '+$journal.transaction_id)){Remove-LocalUser OneCSourceReader}
     EmptyDirectories $dr;EmptyDirectories $wr
     if($changed.Count){throw 'SETUP_ROLLBACK_CHANGED_FILE_RETAINED'}
 }

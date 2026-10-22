@@ -2799,7 +2799,7 @@ function Install-OneCChatWorker {
             try{$rng.GetBytes($bytes);$pw=ConvertTo-SecureString ('Aa1!'+[Convert]::ToBase64String($bytes)) -AsPlainText -Force}finally{$rng.Dispose();[Array]::Clear($bytes,0,$bytes.Length)}
         }else{$pw=Read-Host -Prompt "Set local password for $($script:ReaderName)" -AsSecureString}
         $transactionId=Get-Variable InstallTransactionId -Scope Script -ErrorAction SilentlyContinue
-        $description=if($transactionId -and $transactionId.Value){'OneC Orbit setup '+$transactionId.Value}else{'OneCChatWorker non-admin bounded source/output identity'}
+        $description=if($transactionId -and $transactionId.Value){'Orbit setup '+$transactionId.Value}else{'OneC bounded Source/Output reader'}
         New-LocalUser -Name $script:ReaderName -Password $pw -Description $description|Out-Null
     }
     $reader="$env:COMPUTERNAME\$($script:ReaderName)"

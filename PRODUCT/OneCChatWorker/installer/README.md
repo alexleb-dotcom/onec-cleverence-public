@@ -29,7 +29,7 @@ installer smoke on an operator machine.
 The first-run wizard opens only after a healthy installed `UI_CONTEXT_V1`
 explicitly confirms zero projects and authorizes adding a project. It collects
 project/system names, ONEC platform and a MAIN archive plus 0..15 extension ZIPs,
-shows review/confirmation, then delegates one transaction to Worker. The GUI
+shows review/confirmation, then delegates one transaction to Worker. Explicit Add Project also supports a nonempty catalog, preserving its existing entries; existing projects retain the normal global catalog-drift checks. The GUI
 does not inspect, extract, copy or hash Source payloads. Extensions receive
 stable technical IDs `ext-1` ... `ext-15` in selection order.
 
@@ -44,7 +44,7 @@ used to invent an empty accepted snapshot.
 Failed imports retain their `.bootstrap-*` transaction outside the project
 catalog. Retry can complete an interrupted prepared directory promotion only
 when the request identity, staged catalog and published manifest still match.
-Unknown or changed state is held for recovery. No generic recursive transaction
+Prepared Source and fingerprints are rehashed before recovery publication; their ACLs and transaction metadata use the existing Source-update sealing owner. Unknown or changed state is held for recovery. No generic recursive transaction
 purge is provided. Cancelling the wizard performs no Worker mutation.
 
 Setup journals intended owned-file hashes before publication. On failure it
