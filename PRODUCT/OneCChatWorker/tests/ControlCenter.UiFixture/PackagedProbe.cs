@@ -13,6 +13,7 @@ using OneCArchitecture.ControlCenter;
 // screenshots, installed worker roots, real lifecycle operations or runtime imports.
 internal static class PackagedProbe
 {
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
@@ -111,11 +112,9 @@ internal static class PackagedProbe
     {
         var ok = dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.AutomationIdProperty, "1"))
             ?? throw new InvalidOperationException("NATIVE_OK_BUTTON_MISSING");
+        var handle = new IntPtr(dialog.Current.NativeWindowHandle);
         ((InvokePattern)ok.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
-        Wait(() => {
-            try { _ = dialog.Current.Name; return false; }
-            catch (ElementNotAvailableException) { return true; }
-        }, "native dialog closes");
+        Wait(() => !IsWindow(handle), "native dialog closes");
     }
     static void PickArchive(string button, string archive)
     {
@@ -124,11 +123,19 @@ internal static class PackagedProbe
         var dialog = OwnedNativeDialog();
         var edits = dialog.FindAll(TreeScope.Descendants,
             new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)).Cast<AutomationElement>().ToArray();
-        var fileName = edits.FirstOrDefault(x => x.Current.AutomationId is "1148" or "1001")
+        Console.WriteLine("NATIVE_EDITS " + string.Join(" | ", edits.Select(x => x.Current.AutomationId + ":" + x.Current.Name)));
+        var fileName = edits.FirstOrDefault(x => x.Current.AutomationId == "1148")
+            ?? edits.FirstOrDefault(x => x.Current.Name.StartsWith("File name", StringComparison.OrdinalIgnoreCase))
             ?? edits.LastOrDefault(x => x.Current.IsEnabled && x.TryGetCurrentPattern(ValuePattern.Pattern, out _))
             ?? throw new InvalidOperationException("NATIVE_FILE_NAME_EDIT_MISSING");
+        var handle = new IntPtr(dialog.Current.NativeWindowHandle);
+        SetForegroundWindow(handle);
+        Wait(() => { GetWindowThreadProcessId(GetForegroundWindow(), out var foregroundPid); return foregroundPid == Owned.Id; }, "owned file dialog foreground");
+        fileName.SetFocus();
         ((ValuePattern)fileName.GetCurrentPattern(ValuePattern.Pattern)).SetValue(archive);
-        ClickNativeOk(dialog);
+        Console.WriteLine("NATIVE_FILENAME " + fileName.Current.AutomationId + " = " + ((ValuePattern)fileName.GetCurrentPattern(ValuePattern.Pattern)).Current.Value);
+        Key(13);
+        Wait(() => !IsWindow(handle), "native archive selection closes dialog");
         Root = wizard;
     }
 
