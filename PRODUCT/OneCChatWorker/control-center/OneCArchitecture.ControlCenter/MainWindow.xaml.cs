@@ -183,6 +183,14 @@ public partial class MainWindow : Window
                 ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
                 return;
             }
+            // A completed request is not proof that the returned JSON belongs
+            // to that project. Reject missing/foreign selected_project before
+            // any owner projection or action eligibility is accepted.
+            if (!OwnerResponseMatchesRequested(requestedProject, result.Json))
+            {
+                ShowContextFailure(2, "UI_CONTEXT_PROJECT_ID_MISMATCH", "");
+                return;
+            }
             // A poll begun before a mutation may finish after its fresh readback.
             // Keep the newer canonical projection instead of restoring an old generation.
             if (DateTimeOffset.TryParse(Text(_context, "generated_utc"), out var currentUtc) &&
@@ -396,12 +404,21 @@ public partial class MainWindow : Window
 
     private string RecommendationTitle(string state) => Presentation.Status(state);
 
+    internal static bool OwnerResponseMatchesRequested(string? requestedProject, JsonObject response) =>
+        string.IsNullOrWhiteSpace(requestedProject) ||
+        string.Equals(Text(response, "selected_project", "project_id"), requestedProject, StringComparison.Ordinal);
+
+    private bool VerifiedContextMatchesSelection(JsonObject? ctx) =>
+        _contextReady && ctx is not null &&
+        string.Equals(Text(ctx, "selected_project", "project_id"), _selectedProjectId, StringComparison.Ordinal);
+
     private void UpdateReadOnlyAvailability(JsonObject ctx)
     {
+        var trusted = VerifiedContextMatchesSelection(ctx);
         var source = Text(ctx, "navigation", "source_root");
         var output = Text(ctx, "navigation", "output_root");
-        HomeOpenSourceButton.IsEnabled = OpenSourceButton.IsEnabled = !string.IsNullOrWhiteSpace(source);
-        HomeOpenOutputButton.IsEnabled = !string.IsNullOrWhiteSpace(output);
+        HomeOpenSourceButton.IsEnabled = OpenSourceButton.IsEnabled = trusted && !string.IsNullOrWhiteSpace(source);
+        HomeOpenOutputButton.IsEnabled = trusted && !string.IsNullOrWhiteSpace(output);
 
         var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
         var sourceUpdateActive = updateStatus != "NONE";
@@ -409,7 +426,7 @@ public partial class MainWindow : Window
 
         foreach (var (button, key) in ActionButtons())
         {
-            button.IsEnabled = _mutationsEnabled && _contextReady && Bool(ctx, "actions", key, "enabled");
+            button.IsEnabled = _mutationsEnabled && trusted && Bool(ctx, "actions", key, "enabled");
             button.ToolTip = button.IsEnabled ? Localization.Get("ReadOnlyPreservation")
                 : !_contextReady ? Localization.Get("LoadingProject")
                 : !_mutationsEnabled ? Localization.Get("ActionInProgress")
@@ -430,7 +447,7 @@ public partial class MainWindow : Window
             : !_mutationsEnabled ? Localization.Get("ActionInProgress") : Localization.Get("SyncExtensionBlocked");
         SyncExtensionButton.ToolTip = SyncExtensionHelpText.Text;
         System.Windows.Automation.AutomationProperties.SetHelpText(SyncExtensionButton, SyncExtensionHelpText.Text);
-        OpenIncomingButton.IsEnabled = _contextReady && sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath);
+        OpenIncomingButton.IsEnabled = trusted && sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath);
         OpenIncomingButton.ToolTip = Localization.Get("IncomingUnavailable");
         HomeOpenSourceButton.ToolTip = OpenSourceButton.ToolTip = Localization.Get("SourceUnavailable");
         HomeOpenOutputButton.ToolTip = Localization.Get("OutputUnavailable");
@@ -776,27 +793,27 @@ public partial class MainWindow : Window
 
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) || !ApplyButton.IsEnabled) return;
         var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
         var result = await _worker.RunAsync(WorkerAction.Apply, new(ProjectId: projectId));
         await ShowActionResultAndRefresh("APPLY", result);
     }
 
     private async void Verify_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) || !VerifyButton.IsEnabled) return;
         var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
         var result = await _worker.RunAsync(WorkerAction.Verify, new(ProjectId: projectId));
         await ShowActionResultAndRefresh("VERIFY", result);
     }
 
     private async void Repair_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) || !RepairButton.IsEnabled) return;
         var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
         var result = await _worker.RunAsync(WorkerAction.Repair, new(ProjectId: projectId), elevated: true);
         await ShowActionResultAndRefresh("REPAIR", result);
     }
