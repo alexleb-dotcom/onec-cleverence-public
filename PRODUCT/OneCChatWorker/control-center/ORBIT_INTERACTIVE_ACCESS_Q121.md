@@ -79,6 +79,43 @@ non-interactive user account restrictions and confirmed Helper CONNECTED still
 require separate disposable operator-authorized test and independent FA.
 The PR remains Draft/HOLD even with green CI.
 
+## Windows hosted CI cancellation: root cause and bounded fix (2026-10-22)
+
+The exact-head GitHub run `39695880933` was retried for previously
+cancelled Windows checks but again terminated: on the Windows job's
+`Run isolated real WPF usability fixtures` step, the test log last said
+`PASS double click/Enter cannot start a second pending CONTINUE 3`,
+then emitted no progress for approximately 8m36s before
+`The operation was canceled`. Fast, UI and Full Validation were green;
+the final required Full aggregator correctly FAILED because Windows had
+`cancelled`. This must not be labelled product WPF PASS or accepted CI.
+
+Exact code reason: fixture held a fake `RunAsync(Continue)` promise and
+completed it with process exit=3. The application invoked
+`ShowActionResultAndRefresh` -> `ShowActionFailure` ->
+a synchronous modal `MessageBox.Show` on the test STA thread. The
+headless hosted runner has no operator to dismiss that modal, so the
+fixture never reached its assertion for one post-error canonical
+`UI_CONTEXT` readback.
+
+Bounded fix: the existing internal WPF constructor accepts an optional
+`Action<string,string> showWarning` notifier. The default **production**
+notifier still invokes the exact same Windows warning MessageBox; no
+business/error/authentication behavior is changed. Only isolated UI
+fixtures pass an in-memory recorder and assert one notification for
+exit=3, no notification for exit=0, one Worker CONTINUE call despite
+double click, one canonical readback, and correctly unlocked buttons.
+No unsafe environment-variable bypass, actual credentials, processes
+or live Worker action are used.
+
+Local evidence after fix: `ControlCenter.UiFixture` PASS **213 checks /
+93 snapshots**; isolated real-packaged WPF keyboard/focus probe PASS,
+runner exit=0, .NET build 0 warnings/0 errors. GitHub exact-head CI
+for the revised code and independent FA are still required.
+A true restricted-account runas prompt/credential cancellation/CONNECTED
+readback remains an independently authorized disposable test and
+production acceptance HOLD.
+
 ### FA-specific negative cases
 
 - START/CONTINUE first launch, visible runas prompt, wrong password,

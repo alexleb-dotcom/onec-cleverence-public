@@ -104,7 +104,9 @@ internal static class Program
             Directory.CreateDirectory(output);
             var fake = new FixtureWorker();
             Localization.SetLanguage("ru"); ThemeService.Apply("dark");
-            var w = new MainWindow(fake, fixture: true);
+            var warnings = new List<(string Message, string Title)>();
+            var w = new MainWindow(fake, fixture: true,
+                showWarning: (message, title) => warnings.Add((message, title)));
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Call(w, "ShowContextFailure", 2, "MIGRATION_REQUIRED", "");
             Check(Control<TextBlock>(w, "RecommendationText").Text == Localization.Get("MigrationRequired") &&
@@ -163,6 +165,7 @@ internal static class Program
                 fake.PendingContinue = pendingContinue;
                 var before = fake.Calls.Count;
                 var reads = fake.ContextRequests.Count;
+                var warningCount = warnings.Count;
                 Call(w, "Continue_Click", w, new RoutedEventArgs());
                 Drain();
                 Check(!Control<Button>(w, "ContinueButton").IsEnabled &&
@@ -178,6 +181,10 @@ internal static class Program
                 Drain(); Drain();
                 Check(fake.ContextRequests.Count == reads + 1,
                     "each completed CONTINUE gets exactly one canonical readback " + exitCode);
+                Check(warnings.Count == warningCount + (exitCode == 0 ? 0 : 1) &&
+                    (exitCode == 0 || warnings[^1].Message.Contains(Localization.Get("ActionFailed"))) &&
+                    (exitCode == 0 || warnings[^1].Title == Localization.Get("AppTitle")),
+                    "pending CONTINUE success/cancel has exactly one user-visible warning notification " + exitCode);
                 Check(Control<Button>(w, "ContinueButton").IsEnabled,
                     "pending CONTINUE unlocks after canonical readback " + exitCode);
             }
