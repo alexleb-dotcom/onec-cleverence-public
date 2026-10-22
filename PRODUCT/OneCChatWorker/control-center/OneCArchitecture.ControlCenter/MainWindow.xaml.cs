@@ -641,15 +641,48 @@ public partial class MainWindow : Window
         if (sender is System.Windows.Controls.Button b && b.Tag is string page) ShowPage(page);
     }
 
-    // Navigation only: eligibility and mutations remain exclusively owned by UI_CONTEXT.
+    // D2: UI_CONTEXT determines the owner-proven next navigation intent.
+    // This button may open a page or refresh UI_CONTEXT; it NEVER calls RunAsync.
+    internal static (string Destination, string LabelKey) OwnerHomeAction(
+        JsonObject? ctx, bool contextReady, string? selectedProjectId)
+    {
+        if (string.IsNullOrWhiteSpace(selectedProjectId)) return ("Projects", "ChooseProject");
+        if (!contextReady || ctx is null ||
+            Text(ctx, "selected_project", "project_id") != selectedProjectId)
+            return ("Refresh", "WorkspaceCheckStatus");
+
+        var active = Bool(ctx, "work", "active");
+        var taskProjectId = Text(ctx, "work", "project_id");
+        if (active && taskProjectId != selectedProjectId)
+            return ("Projects", "WorkspaceReviewOtherProject");
+        if (active)
+            return Text(ctx, "work", "helper", "status") == "CONNECTED"
+                ? ("Work", "WorkspaceOpenCurrentTask")
+                : ("Refresh", "WorkspaceCheckConnection");
+
+        if (Bool(ctx, "actions", "continue", "enabled") &&
+            Node(ctx, "work", "checkpoint") is JsonObject)
+            return ("Work", "WorkspaceOpenSavedWork");
+        if (Bool(ctx, "actions", "start", "enabled"))
+            return ("Work", "WorkspacePrepareNewTask");
+        return ("Refresh", "WorkspaceCheckStatus");
+    }
+
     private void UpdateHomeNavigation()
     {
-        var page = _contextReady && !string.IsNullOrWhiteSpace(Text(_context, "selected_project", "project_id"))
-            ? "Work" : "Projects";
-        HomePrimaryButton.Tag = page;
-        HomePrimaryButton.Content = Localization.Get(page == "Work" ? "NavWork" : "ChooseProject");
+        var intent = OwnerHomeAction(_context, _contextReady, _selectedProjectId);
+        HomePrimaryButton.Tag = intent.Destination;
+        HomePrimaryButton.Content = Localization.Get(intent.LabelKey);
         System.Windows.Automation.AutomationProperties.SetName(HomePrimaryButton, HomePrimaryButton.Content.ToString());
         System.Windows.Automation.AutomationProperties.SetHelpText(HomePrimaryButton, Localization.Get("HomeNavigationHelp"));
+    }
+
+    private async void HomePrimary_Click(object sender, RoutedEventArgs e)
+    {
+        // Refresh never opens or restarts Helper; Work navigation does not START.
+        var target = HomePrimaryButton.Tag as string;
+        if (target == "Refresh") await RefreshContextAsync();
+        else if (target is "Projects" or "Work") ShowPage(target);
     }
 
     // Only project-scoped pages expose tabs. A selected identity alone must not

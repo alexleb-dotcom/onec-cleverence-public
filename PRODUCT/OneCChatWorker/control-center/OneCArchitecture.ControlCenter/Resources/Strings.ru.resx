@@ -129,4 +129,10 @@
   <data name="WorkspaceOtherTask" xml:space="preserve"><value>Активная задача относится к другому проекту:</value></data>
   <data name="WorkspaceConnectionUnverified" xml:space="preserve"><value>Есть активная задача; подключение помощника не подтверждено.</value></data>
   <data name="WorkspaceVerificationPending" xml:space="preserve"><value>Состояние выбранного проекта проверяется. Предыдущие сведения больше не актуальны.</value></data>
+  <data name="WorkspaceCheckStatus" xml:space="preserve"><value>Проверить состояние</value></data>
+  <data name="WorkspaceReviewOtherProject" xml:space="preserve"><value>Все проекты</value></data>
+  <data name="WorkspaceOpenCurrentTask" xml:space="preserve"><value>Открыть текущую работу</value></data>
+  <data name="WorkspaceCheckConnection" xml:space="preserve"><value>Проверить подключение</value></data>
+  <data name="WorkspaceOpenSavedWork" xml:space="preserve"><value>Перейти к продолжению</value></data>
+  <data name="WorkspacePrepareNewTask" xml:space="preserve"><value>Подготовить новую задачу</value></data>
 </root>

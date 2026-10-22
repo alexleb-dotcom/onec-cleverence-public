@@ -44,6 +44,37 @@ internal static class Program
             if (args.Length == 3 && args[0] == "--packaged") return PackagedProbe.Run(args[1], args[2]);
             var orbitEvidence = args.Length == 1 ? args[0] : Path.Combine(Path.GetTempPath(), "onec-ui-fixture");
             Environment.SetEnvironmentVariable("ONEC_CONTROL_CENTER_PREFERENCES_ROOT", Path.Combine(orbitEvidence, "preferences"));
+            // D2 primary overview button is owner-derived NAVIGATION ONLY.
+            // These scenarios never invoke real Worker, runas, Source or S4.
+            Check(MainWindow.OwnerHomeAction(null, false, null) == ("Projects", "ChooseProject"),
+                "D2 no selected project opens catalog");
+            Check(MainWindow.OwnerHomeAction(null, false, "NeoHim") == ("Refresh", "WorkspaceCheckStatus"),
+                "D2 pending identity only offers read-only context refresh");
+            var d2Ready = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            Check(MainWindow.OwnerHomeAction(d2Ready, true, "RetailGroup") == ("Work", "WorkspacePrepareNewTask"),
+                "D2 allowed START leads to task preparation screen, never executes START");
+            Check(MainWindow.OwnerHomeAction(d2Ready, true, "NeoHim") == ("Refresh", "WorkspaceCheckStatus"),
+                "D2 wrong selected identity cannot borrow another project's action");
+            var d2Active = FixtureWorker.Context("RetailGroup", "RUNNING");
+            Check(MainWindow.OwnerHomeAction(d2Active, true, "RetailGroup") == ("Work", "WorkspaceOpenCurrentTask"),
+                "D2 connected active work opens current work rather than reminting");
+            Check(MainWindow.OwnerHomeAction(d2Active, true, "NeoHim") == ("Refresh", "WorkspaceCheckStatus"),
+                "D2 foreign owner project never authorizes cross-project navigation");
+            var d2Other = FixtureWorker.Context("NeoHim", "RUNNING");
+            Check(MainWindow.OwnerHomeAction(d2Other, true, "NeoHim") == ("Projects", "WorkspaceReviewOtherProject"),
+                "D2 matching selected NeoHim with active RetailGroup task routes to catalog");
+            var d2Offline = FixtureWorker.Context("RetailGroup", "ACTIVE_ADMISSION_OFFLINE");
+            Check(MainWindow.OwnerHomeAction(d2Offline, true, "RetailGroup") == ("Refresh", "WorkspaceCheckConnection"),
+                "D2 active admission with helper offline never starts or continues");
+            var d2Checkpoint = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            d2Checkpoint["actions"]!["start"]!["enabled"] = false;
+            d2Checkpoint["actions"]!["continue"] = new System.Text.Json.Nodes.JsonObject { ["enabled"] = true };
+            d2Checkpoint["work"]!["checkpoint"] = new System.Text.Json.Nodes.JsonObject { ["head_seq"] = 10 };
+            Check(MainWindow.OwnerHomeAction(d2Checkpoint, true, "RetailGroup") == ("Work", "WorkspaceOpenSavedWork"),
+                "D2 only verified eligible checkpoint yields continuation navigation");
+            var d2Hold = FixtureWorker.Context("NeoHim", "PROJECT_NEEDS_APPLY");
+            Check(MainWindow.OwnerHomeAction(d2Hold, true, "NeoHim") == ("Refresh", "WorkspaceCheckStatus"),
+                "D2 owner HOLD does not advertise START or CONTINUE");
             Check(StartupRegistration.ValueName == "OneC Orbit" &&
                 StartupRegistration.Quote(@"C:\Synthetic Orbit\Orbit.exe") == "\"C:\\Synthetic Orbit\\Orbit.exe\"", "Orbit Run value and quoted command");
             Check(!WorkerClient.NeedsMigration(@"C:\Synthetic\worker", @"C:\Synthetic\pd", null,
@@ -106,6 +137,14 @@ internal static class Program
             list.SelectedIndex = 1; Drain();
             Check(fake.ContextRequests.Last() == "RetailGroup", "selection goes to canonical UI_CONTEXT ProjectId");
             Check(Control<Button>(w, "StartButton").IsEnabled, "second accepted project independent of first drift");
+            Call(w, "ShowPage", "Home");
+            var beforeD2Nav = fake.Calls.Count;
+            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Work",
+                "D2 owner-enabled new task routes to Work without directly issuing START");
+            Control<Button>(w, "HomePrimaryButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Control<FrameworkElement>(w, "WorkPage").Visibility == Visibility.Visible &&
+                fake.Calls.Count == beforeD2Nav,
+                "D2 actual WPF primary click only navigates Work, never dispatches Worker");
             Call(w, "ShowPage", "Home");
             Check(Control<FrameworkElement>(w, "ProjectTabs").Visibility == Visibility.Visible &&
                 Control<Button>(w, "NavWorkButton").Visibility == Visibility.Collapsed &&
@@ -258,7 +297,9 @@ internal static class Program
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-offline-Work.png"), 1);
             Check(!Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "ContinueButton").IsEnabled,
                 "offline existing admission has no new START or CONTINUE");
-            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Work", "offline Home primary is navigation to owner-controlled Work");
+            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Refresh" &&
+                Control<Button>(w, "HomePrimaryButton").Content?.ToString() == Localization.Get("WorkspaceCheckConnection"),
+                "D2 offline active work only offers read-only connection recheck");
             Check(Control<TextBlock>(w, "RecommendationReasonText").Text.Contains(Localization.Get("OfflineRecoveryBlocked")), "offline recovery blocked reason rendered");
             Check(!Control<TextBlock>(w, "RecommendationReasonText").Text.Contains("Clear incomplete"), "offline never recommends clearing admission");
             fake.State = "RUNNING";
@@ -276,7 +317,14 @@ internal static class Program
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-error-Home.png"), 1);
             Check(!Control<Button>(w, "StartButton").IsEnabled && !Control<Button>(w, "StopButton").IsEnabled &&
                 !Control<Button>(w, "UpdateButton").IsEnabled, "failed refresh clears old action eligibility");
-            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Projects", "failed context clears stale Home destination");
+            Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Refresh" &&
+                Control<Button>(w, "HomePrimaryButton").Content?.ToString() == Localization.Get("WorkspaceCheckStatus"),
+                "D2 failed context only offers read-only refresh, no stale project action");
+            var beforeD2Refresh = fake.Calls.Count;
+            Control<Button>(w, "HomePrimaryButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Drain();
+            Check(fake.Calls.Count == beforeD2Refresh && !Control<Button>(w, "StartButton").IsEnabled,
+                "D2 actual primary refresh on failed context makes zero Worker mutations");
             Check(Control<TextBox>(w, "AdvancedText").Text.Contains("fixture diagnostic") &&
                 !Control<TextBlock>(w, "RecommendationReasonText").Text.Contains("fixture diagnostic"), "raw failure only Advanced");
             fake.Fail = false; fake.State = null;
