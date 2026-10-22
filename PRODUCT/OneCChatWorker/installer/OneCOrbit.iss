@@ -27,6 +27,13 @@ Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
 [Files]
 Source: "{#Payload}\*"; DestDir: "{app}\package"; Flags: recursesubdirs createallsubdirs
 Source: "SetupRuntime.ps1"; DestDir: "{app}"
+[UninstallDelete]
+Type: files; Name: "{app}\install-receipt.json"
+Type: files; Name: "{app}\install-intent.json"
+Type: files; Name: "{app}\install-journal.json"
+Type: files; Name: "{app}\install-journal.json.tmp"
+Type: files; Name: "{app}\setup-shortcut.lnk"
+Type: dirifempty; Name: "{app}"
 [Messages]
 WelcomeLabel2=This setup installs the WPF interface and Worker runtime with zero projects. UAC is required for protected runtime and Source ownership. Existing and legacy installations require separately authorized recovery or migration. Projects are retained on uninstall. Remote Helper authorization remains a separate step.
 [Code]

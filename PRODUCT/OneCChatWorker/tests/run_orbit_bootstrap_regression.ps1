@@ -28,6 +28,13 @@ try {
   try{New-OrbitBootstrapProject -ProjectId rejected -DisplayName rejected -MainArchive $bad -WorkerRoot $worker -ProgramDataRoot $data|Out-Null;throw 'EXPECTED_FAILURE'}catch{if($_.Exception.Message -eq 'EXPECTED_FAILURE'){throw}}
   Check (@((Read-WorkerCatalog $worker).projects).Count -eq 0) 'failed XML import leaves zero registered projects'
   Check (-not(Test-Path -LiteralPath (Join-Path $worker 'rejected'))) 'failed import has no canonical project'
+  $recoverWorker=Join-Path $Root 'recover-worker'
+  Write-WorkerCatalog ([pscustomobject]@{schema_version=1;projects=@()}) $recoverWorker
+  $fault=$false
+  try{New-OrbitBootstrapProject -ProjectId recovery -DisplayName recovery -MainArchive $main -WorkerRoot $recoverWorker -ProgramDataRoot $data -FaultInjection AFTER_MOVE|Out-Null}catch{$fault=$_.Exception.Message -eq 'BOOTSTRAP_TEST_FAULT_AFTER_MOVE'}
+  Check ($fault -and @((Read-WorkerCatalog $recoverWorker).projects).Count -eq 0) 'interrupted promotion leaves no partial catalog project'
+  $resumed=New-OrbitBootstrapProject -ProjectId recovery -DisplayName recovery -MainArchive $main -WorkerRoot $recoverWorker -ProgramDataRoot $data
+  Check ($resumed.recovered -and $resumed.fast_state.state -eq 'ACCEPTED') 'retry resumes exact prepared promotion'
   $result=New-OrbitBootstrapProject -ProjectId fixture -DisplayName 'Проект / Project' -MainArchive $main -ExtensionArchives @($ext) -WorkerRoot $worker -ProgramDataRoot $data
   Check ($result.status -eq 'READY' -and $result.fast_state.state -eq 'ACCEPTED') 'MAIN plus EXTENSION accepted through real owner'
   $manifest=Get-Content -LiteralPath (Get-ProjectManifestPath fixture $worker) -Raw -Encoding UTF8|ConvertFrom-Json

@@ -535,8 +535,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 250537,
-      "sha256": "e6e58d089b27ae786cbc739fdfc18e19b1d715a3cb0f4ad645bcd6fcb08607ca"
+      "size": 254628,
+      "sha256": "31ac368877e4d9d8db3024b89c00832d36c4f9dd6f8577f260c9df380a48e8fc"
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/Build-Installer.ps1",
@@ -545,13 +545,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/OneCOrbit.iss",
-      "size": 3171,
-      "sha256": "a40bcea6a20383a222704e44de517a7809a26201ebee2b48fb0bb4c8243f4313"
+      "size": 3462,
+      "sha256": "4dd969b25d9dd686656f75e006cc4d106a6e751718053861f9a0bf0cb758891b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/SetupRuntime.ps1",
-      "size": 6345,
-      "sha256": "33450f7fdab15e03dd2430cda9ce18956fe7ee545d05f233eb88dbe194ef86a7"
+      "size": 8553,
+      "sha256": "0f6336bdd20374882e1890fbe4fe2e323d6022c5a0b9f411c8b6b4a35047ca7c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/projects.example.json",
@@ -616,7 +616,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7920,
-      "sha256": "1b46d006f95b6600baad360b1060e68b87be8d570cc016a1c2bd97e4f98728d0"
+      "sha256": "3793a67d45314ba598e168a4615613ed9e822f3216c1cf6181bfa92356974b03"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -865,8 +865,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_bootstrap_regression.ps1",
-      "size": 3480,
-      "sha256": "6b596f4bf7d46ef350c54edb77a1960d7f8a2a300c3c671e66845beae6aba5f8"
+      "size": 4290,
+      "sha256": "700d00762addbfbb0eb22785caa67021d604fe9072cf6ac7e9249656e7ca5280"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_git_tree_regression.py",
@@ -2545,8 +2545,8 @@
     },
     {
       "path": "TESTS/run_public_execution_receipt_regression.py",
-      "size": 7244,
-      "sha256": "720ba82e71cbe88864ea063102ffed8c46997713429128a541e92a39ee74850b"
+      "size": 7946,
+      "sha256": "d11275fa170d4a2ddfded6ad93cecd6a7bbf4eaf7228f4cbc8fc080e1819152b"
     },
     {
       "path": "TESTS/run_real_reference_acceptance.py",
@@ -2945,5 +2945,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "4be59a2de6cf51eb1904066908c4ca6c2a7cf066c5ee3d2e519a4e753ccc1791"
+  "snapshot_digest": "6910a72b62f50fe907571397a1c9627a12b0db44018f7f699c2af3c77e25bb9c"
 }

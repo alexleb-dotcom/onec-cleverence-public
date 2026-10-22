@@ -304,8 +304,22 @@ function Test-ProductPackageIntegrity {
     [pscustomobject]@{status='PASS';product_version=$lock.product_version;components=$rows;lock_sha256=Get-Sha256File (Join-Path $PackageRoot 'runtime.lock.json')}
 }
 
+function Add-OrbitInstallFileIntent {
+    param([string]$Path,[string]$Sha256)
+    $variable=Get-Variable InstallJournalPath -Scope Script -ErrorAction SilentlyContinue
+    if(-not $variable -or -not $variable.Value){return}
+    $journalPath=[string]$variable.Value
+    if((Split-Path -Parent ([IO.Path]::GetFullPath($Path))) -ieq (Split-Path -Parent $journalPath)){return}
+    $journal=Get-Content -LiteralPath $journalPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $journal.files=@($journal.files|Where-Object {$_.path -ine $Path})+@([pscustomobject]@{path=[IO.Path]::GetFullPath($Path);sha256=$Sha256})
+    $temporary=$journalPath+'.tmp'
+    [IO.File]::WriteAllText($temporary,($journal|ConvertTo-Json -Depth 30),[Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temporary -Destination $journalPath -Force
+}
+
 function Copy-ProductComponent {
     param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Destination,[Parameter(Mandatory)][string]$ExpectedSha256)
+    Add-OrbitInstallFileIntent -Path $Destination -Sha256 $ExpectedSha256
     $sourceHash=Get-Sha256File $Source
     if($sourceHash -ne $ExpectedSha256){throw "PACKAGE_COMPONENT_HASH_MISMATCH: $Source"}
     $action='INSTALLED'
@@ -380,7 +394,11 @@ function Write-JsonAtomic {
     if(-not(Test-Path -LiteralPath $parent)){New-Item -ItemType Directory -Force -Path $parent|Out-Null}
     $tmp=$Path+'.tmp-'+[Guid]::NewGuid().ToString('N')
     $json=$Value|ConvertTo-Json -Depth 30
-    [IO.File]::WriteAllText($tmp,$json+[Environment]::NewLine,(New-Object Text.UTF8Encoding($false)))
+    $jsonBytes=[Text.UTF8Encoding]::new($false).GetBytes($json+[Environment]::NewLine)
+    $hash=[Security.Cryptography.SHA256]::Create()
+    try{$jsonSha=([BitConverter]::ToString($hash.ComputeHash($jsonBytes))).Replace('-','').ToLowerInvariant()}finally{$hash.Dispose()}
+    Add-OrbitInstallFileIntent -Path $Path -Sha256 $jsonSha
+    [IO.File]::WriteAllBytes($tmp,$jsonBytes)
     Move-Item -LiteralPath $tmp -Destination $Path -Force
 }
 
@@ -2570,6 +2588,7 @@ function Ensure-PinnedDependencies {
         if((Get-Sha256File $bundledNode) -ne [string]$nodeSpec.reference_sha256){throw 'BUNDLED_NODE_HASH_MISMATCH'}
         $nodePath=Join-Path $ProgramDataRoot 'product/dependencies/node.exe'
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $nodePath)|Out-Null
+        Add-OrbitInstallFileIntent -Path $nodePath -Sha256 ([string]$nodeSpec.reference_sha256)
         Copy-Item -LiteralPath $bundledNode -Destination $nodePath
     }
     $nodeExists=Test-Path -LiteralPath $nodePath -PathType Leaf
@@ -2613,7 +2632,7 @@ function Ensure-PinnedDependencies {
     $rgInstalled=Join-Path $runtime 'rg.exe'
     $rgCopyAction='INSTALLED'
     if(Test-Path -LiteralPath $rgInstalled -PathType Leaf){$rgCopyAction=if((Get-Sha256File $rgInstalled) -eq $rgHash){'REUSED'}else{'UPDATED'}}
-    if($rgCopyAction -ne 'REUSED'){Copy-Item -LiteralPath $rgPath -Destination $rgInstalled -Force}
+    if($rgCopyAction -ne 'REUSED'){Add-OrbitInstallFileIntent -Path $rgInstalled -Sha256 $rgHash;Copy-Item -LiteralPath $rgPath -Destination $rgInstalled -Force}
     if((Get-Sha256File $rgInstalled) -ne $rgHash){throw 'RG_INSTALLED_COPY_HASH_MISMATCH'}
     [pscustomobject]@{
         node=[pscustomobject]@{action=$nodeAction;version=$nodeVersion;sha256=$nodeHash;path=$nodePath}
@@ -2737,12 +2756,19 @@ function Install-ControlCenterArtifact {
     $shortcutPath=Get-ControlCenterStartMenuShortcutPath -ShortcutRoot $ShortcutRoot
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $shortcutPath)|Out-Null
     $shell=New-Object -ComObject WScript.Shell
-    $shortcut=$shell.CreateShortcut($shortcutPath)
+    $intent=Get-Variable InstallJournalPath -Scope Script -ErrorAction SilentlyContinue
+    $shortcutStage=if($intent -and $intent.Value){Join-Path (Split-Path -Parent $intent.Value) 'setup-shortcut.lnk'}else{$shortcutPath}
+    $shortcut=$shell.CreateShortcut($shortcutStage)
     $shortcut.TargetPath=$destination
     $shortcut.WorkingDirectory=(Split-Path -Parent $destination)
     $shortcut.Description='OneC Orbit'
     $shortcut.IconLocation=$destination+',0'
     $shortcut.Save()
+    if($shortcutStage -ne $shortcutPath){
+        Add-OrbitInstallFileIntent -Path $shortcutPath -Sha256 (Get-Sha256File $shortcutStage)
+        Copy-Item -LiteralPath $shortcutStage -Destination $shortcutPath
+        Remove-Item -LiteralPath $shortcutStage
+    }
     $verify=$shell.CreateShortcut($shortcutPath)
     if([string]$verify.TargetPath -ne $destination){throw 'CONTROL_CENTER_SHORTCUT_TARGET_MISMATCH'}
     if(-not ([string]$verify.IconLocation).StartsWith($destination,[StringComparison]::OrdinalIgnoreCase)){throw 'CONTROL_CENTER_SHORTCUT_ICON_MISMATCH'}
@@ -2772,7 +2798,9 @@ function Install-OneCChatWorker {
             $bytes=New-Object byte[] 48;$rng=[Security.Cryptography.RandomNumberGenerator]::Create()
             try{$rng.GetBytes($bytes);$pw=ConvertTo-SecureString ('Aa1!'+[Convert]::ToBase64String($bytes)) -AsPlainText -Force}finally{$rng.Dispose();[Array]::Clear($bytes,0,$bytes.Length)}
         }else{$pw=Read-Host -Prompt "Set local password for $($script:ReaderName)" -AsSecureString}
-        New-LocalUser -Name $script:ReaderName -Password $pw -Description 'OneCChatWorker non-admin bounded source/output identity'|Out-Null
+        $transactionId=Get-Variable InstallTransactionId -Scope Script -ErrorAction SilentlyContinue
+        $description=if($transactionId -and $transactionId.Value){'OneC Orbit setup '+$transactionId.Value}else{'OneCChatWorker non-admin bounded source/output identity'}
+        New-LocalUser -Name $script:ReaderName -Password $pw -Description $description|Out-Null
     }
     $reader="$env:COMPUTERNAME\$($script:ReaderName)"
     $lock=Read-RuntimeLock $PackageRoot
@@ -2791,6 +2819,7 @@ function Install-OneCChatWorker {
     $componentResults+=, (Copy-ProductComponent -Source (Join-Path $PackageRoot 'README.md') -Destination (Join-Path $ProgramDataRoot 'product\README.md') -ExpectedSha256 ([string]$lock.components.'README.md'))
     $controlCenter=Install-ControlCenterArtifact -PackageRoot $PackageRoot -ProgramDataRoot $ProgramDataRoot -RuntimeLock $lock -ShortcutRoot $ShortcutRoot
     $componentResults+=,$controlCenter.component
+    Add-OrbitInstallFileIntent -Path (Join-Path $ProgramDataRoot 'product/runtime.lock.json') -Sha256 (Get-Sha256File (Join-Path $PackageRoot 'runtime.lock.json'))
     Copy-Item -LiteralPath (Join-Path $PackageRoot 'runtime.lock.json') -Destination (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Force
 
     $catalogAction='REUSED'
@@ -3245,7 +3274,7 @@ function Expand-OrbitXmlArchive {
 
 function New-OrbitBootstrapProject {
     param([string]$ProjectId,[string]$DisplayName,[string]$ParticipantId='main',[string]$Role='ERP',
-          [string]$MainArchive,[string[]]$ExtensionArchives=@(),[string]$WorkerRoot,[string]$ProgramDataRoot)
+          [string]$MainArchive,[string[]]$ExtensionArchives=@(),[string]$WorkerRoot,[string]$ProgramDataRoot,[ValidateSet('','AFTER_STAGE','AFTER_MOVE')][string]$FaultInjection='')
     if(-not(Test-IsAdministrator)){throw 'ADMIN_REQUIRED'}
     Assert-InstallRootDisposition -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot
     Assert-SafeId $ProjectId 'project_id'|Out-Null
@@ -3253,13 +3282,30 @@ function New-OrbitBootstrapProject {
     if([string]::IsNullOrWhiteSpace($DisplayName) -or $DisplayName.Length -gt 120){throw 'BOOTSTRAP_NAME_REQUIRED'}
     if(@($ExtensionArchives).Count -gt 15){throw 'BOOTSTRAP_EXTENSION_LIMIT'}
     $mutex=New-Object Threading.Mutex($false,('Local\OneCOrbitBootstrap-'+(Get-Sha256Text ([IO.Path]::GetFullPath($WorkerRoot).ToLowerInvariant()))))
-    if(-not $mutex.WaitOne(0)){$mutex.Dispose();throw 'BOOTSTRAP_BUSY'}
+    $acquired=$false
+    try{$acquired=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$acquired=$true}
+    if(-not $acquired){$mutex.Dispose();throw 'BOOTSTRAP_BUSY'}
     try {
         $catalog=Read-WorkerCatalog $WorkerRoot
         if(@($catalog.projects).Count){throw 'BOOTSTRAP_REQUIRES_CONFIRMED_ZERO_PROJECTS'}
         if(Test-Path -LiteralPath (Join-Path $ProgramDataRoot 'runtime/active-admission.json')){throw 'BOOTSTRAP_ADMISSION_HOLD'}
         $final=Join-Path $WorkerRoot $ProjectId
-        if(Test-Path -LiteralPath $final){throw 'BOOTSTRAP_EXISTING_PATH_RECOVERY_REQUIRED'}
+        $requestIdentity=Get-Sha256Text ($ProjectId+'|'+$DisplayName+'|'+$ParticipantId+'|'+$Role+'|'+$MainArchive+'|'+($ExtensionArchives -join '|'))
+        if(Test-Path -LiteralPath $final){
+            foreach($candidate in @(Get-ChildItem -LiteralPath $WorkerRoot -Directory -Filter '.bootstrap-*')){
+                $journalPath=Join-Path $candidate.FullName 'transaction.json'
+                if(-not(Test-Path -LiteralPath $journalPath -PathType Leaf)){continue}
+                $journal=Get-Content -LiteralPath $journalPath -Raw -Encoding UTF8|ConvertFrom-Json
+                if($journal.schema -ne 'ORBIT_BOOTSTRAP_V1' -or $journal.state -ne 'PREPARED' -or $journal.project_id -ne $ProjectId){continue}
+                if($journal.final -ine $final -or $journal.request_identity -ne $requestIdentity){throw 'BOOTSTRAP_RECOVERY_REQUEST_MISMATCH'}
+                $stagedWorker=Join-Path $candidate.FullName 'worker'
+                if((Get-CatalogHash $stagedWorker) -ne $journal.catalog_sha256 -or (Get-Sha256File (Get-ProjectManifestPath $ProjectId $WorkerRoot)) -ne $journal.manifest_sha256){throw 'BOOTSTRAP_RECOVERY_DRIFT_HOLD'}
+                Write-WorkerCatalog (Read-WorkerCatalog $stagedWorker) $WorkerRoot
+                $journal.state='COMMITTED';Write-JsonAtomic $journal $journalPath
+                return [pscustomobject]@{status='READY';project_id=$ProjectId;recovered=$true;fast_state=(Get-FastProjectState $ProjectId $WorkerRoot)}
+            }
+            throw 'BOOTSTRAP_EXISTING_PATH_RECOVERY_REQUIRED'
+        }
         # A failed/interrupted transaction is retained outside the catalog. It is
         # safe to retry with a fresh generation; no unknown tree is ever deleted.
         $transaction=Join-Path $WorkerRoot ('.bootstrap-'+[guid]::NewGuid().ToString('N'))
@@ -3297,8 +3343,10 @@ function New-OrbitBootstrapProject {
         Set-ManifestAcceptedSnapshot -Manifest $manifest -ManifestPath $mp -ProofBasis 'ONE_PASS_COPY_HASH' -FingerprintMap $fingerprints|Out-Null
         # Persist publication intent before the directory move. A crash here is
         # a visible recovery hold, never a catalog entry for a partial project.
-        Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_V1';project_id=$ProjectId;state='PREPARED';final=$final;catalog_sha256=(Get-CatalogHash $stageWorker)} (Join-Path $transaction 'transaction.json')
+        Write-JsonAtomic @{schema='ORBIT_BOOTSTRAP_V1';project_id=$ProjectId;state='PREPARED';final=$final;catalog_sha256=(Get-CatalogHash $stageWorker);manifest_sha256=(Get-Sha256File $mp);request_identity=$requestIdentity} (Join-Path $transaction 'transaction.json')
+        if($FaultInjection -eq 'AFTER_STAGE'){throw 'BOOTSTRAP_TEST_FAULT_AFTER_STAGE'}
         Move-Item -LiteralPath (Join-Path $stageWorker $ProjectId) -Destination $final
+        if($FaultInjection -eq 'AFTER_MOVE'){throw 'BOOTSTRAP_TEST_FAULT_AFTER_MOVE'}
         # Compare again before the only live catalog commit.
         if(@((Read-WorkerCatalog $WorkerRoot).projects).Count){throw 'BOOTSTRAP_CATALOG_CHANGED_RECOVERY_REQUIRED'}
         Write-WorkerCatalog $next $WorkerRoot
