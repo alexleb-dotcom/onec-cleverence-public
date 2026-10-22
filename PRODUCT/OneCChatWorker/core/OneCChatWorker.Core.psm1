@@ -2715,6 +2715,7 @@ function Set-WorkerOperatorAcl {
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'helper\task-checkpoint-store.mjs') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\OneCChatWorker.Core.psm1') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\source-acquisition.mjs') -Identity $identity
+    Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product/dependencies/node.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\control-center\OneCArchitecture.ControlCenter.exe') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\README.md') -Identity $identity
     Protect-WorkerRuntimeFile -Path (Join-Path $ProgramDataRoot 'product\runtime.lock.json') -Identity $identity
@@ -3228,6 +3229,7 @@ function Invoke-SafeUninstall {
 function Expand-OrbitXmlArchive {
     param([string]$Archive,[string]$Destination)
     if([IO.Path]::GetExtension($Archive) -ine '.zip'){throw 'BOOTSTRAP_FORMAT_ZIP_XML_ONLY'}
+    Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $stream=[IO.File]::Open($Archive,'Open','Read','Read')
     try {

@@ -5,7 +5,7 @@ $scratch=New-OneCTestScratch -Purpose OrbitBootstrap
 $module=Import-Module (Join-Path $PackageRoot 'core/OneCChatWorker.Core.psm1') -Force -DisableNameChecking -PassThru
 try {
  & $module {
-  param($Root)
+  param($Root,$Package)
   function script:Test-IsAdministrator {$true}
   function script:Apply-ProjectAcl {param($ProjectRoot)}
   function script:Set-SourceUpdateTreeAcl {param($Path,$OperatorIdentity,[switch]$Writable)}
@@ -19,6 +19,8 @@ try {
   }
   $main=Zip main @{'Configuration.xml'='<Configuration name="main"/>'; 'CommonModules/Test/Ext/Module.bsl'='Procedure Test() Export EndProcedure'}
   $ext=Zip ext @{'Configuration.xml'='<Configuration name="extension"/>'}
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Package 'tests/run_orbit_zip_fresh_process.ps1') -Archive $main -Destination (Join-Path $Root 'fresh-zip-process') -PackageRoot $Package
+  Check ($LASTEXITCODE -eq 0) 'ZIP adapter works in a fresh PS5.1 process without fixture assembly preloading'
   foreach($bad in @('../escaped.xml','C:/escape.xml','x:ads.xml','CON.xml','trailing. /file.xml','Module.exe')){
    $path=Zip ([guid]::NewGuid().ToString('N')) @{'Configuration.xml'='<Configuration/>'; $bad='bad'}
    $rejected=$false;try{Expand-OrbitXmlArchive $path (Join-Path $Root ([guid]::NewGuid().ToString('N')))}catch{$rejected=$_.Exception.Message -like 'BOOTSTRAP_*'}
@@ -69,5 +71,5 @@ try {
   $additional=New-OrbitBootstrapProject -ProjectId second -DisplayName second -MainArchive $main -WorkerRoot $worker -ProgramDataRoot $data -RequireZeroProjects $false
   Check ($additional.status -eq 'READY' -and @((Read-WorkerCatalog $worker).projects).Count -eq 2) 'explicit Add Project retains existing catalog entries'
 
- } $scratch.path
+ } $scratch.path $PackageRoot
 } finally {Remove-OneCTestScratch -Path $scratch.path|Out-Null}

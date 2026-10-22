@@ -74,6 +74,11 @@ try {
  Check ($LASTEXITCODE -eq 0) 'interrupted journal recovery is idempotent'
  @{result='PASS';source_head=(& git rev-parse HEAD).Trim();build_receipt=(Get-Content -LiteralPath (Join-Path $BuildRoot 'build-receipt.json') -Raw|ConvertFrom-Json);keyboard_and_dpi='See existing real WPF RU/EN and DPI fixture artifacts';limitations=@('OS UAC human consent is not proved by elevated hosted runner.','Physical monitor DPI migration remains separate from RU/EN keyboard and DPI render fixtures.')}|ConvertTo-Json -Depth 15|Set-Content -LiteralPath (Join-Path $EvidenceRoot 'result.json') -Encoding UTF8
 } finally {
+ $bootstrapDiagnostic=Join-Path $data 'operations/bootstrap-result.json'
+ if(Test-Path -LiteralPath $bootstrapDiagnostic){
+  Copy-Item -LiteralPath $bootstrapDiagnostic -Destination (Join-Path $EvidenceRoot 'bootstrap-result.json') -Force
+  Write-Host (Get-Content -LiteralPath $bootstrapDiagnostic -Raw -Encoding UTF8)
+ }
  foreach($name in @('setup-runtime.log','install-intent.json','install-journal.json')){
   $path=Join-Path $app $name
   if(Test-Path -LiteralPath $path){Copy-Item -LiteralPath $path -Destination (Join-Path $EvidenceRoot $name) -Force}

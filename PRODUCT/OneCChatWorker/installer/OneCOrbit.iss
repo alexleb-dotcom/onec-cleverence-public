@@ -64,7 +64,7 @@ var ExitCode: Integer; Args: String;
 begin
   if CurStep = ssPostInstall then begin
     Args := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\SetupRuntime.ps1') + '" -Mode Install -AppRoot "' + ExpandConstant('{app}') + '" -WorkerRoot "' + WorkerRoot('') + '" -DataRoot "' + DataRoot('') + '" -ShortcutRoot "' + ExpandConstant('{group}') + '"';
-    RuntimeInstalled := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Args, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+    RuntimeInstalled := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Args, ExpandConstant('{sys}'), SW_HIDE, ewWaitUntilTerminated, ExitCode);
     Log('Runtime setup exit code: ' + IntToStr(ExitCode));
     RuntimeInstalled := RuntimeInstalled and (ExitCode = 0) and FileExists(ExpandConstant('{app}\install-receipt.json'));
     if not RuntimeInstalled then
@@ -74,6 +74,6 @@ end;
 function InitializeUninstall(): Boolean;
 var ExitCode: Integer;
 begin
-  Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\SetupRuntime.ps1') + '" -Mode Uninstall -AppRoot "' + ExpandConstant('{app}') + '"', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) and (ExitCode = 0);
+  Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\SetupRuntime.ps1') + '" -Mode Uninstall -AppRoot "' + ExpandConstant('{app}') + '"', ExpandConstant('{sys}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) and (ExitCode = 0);
   if not Result then MsgBox('Uninstall is on hold: active state, changed owned files or missing receipt requires recovery. Projects are retained.', mbError, MB_OK);
 end;

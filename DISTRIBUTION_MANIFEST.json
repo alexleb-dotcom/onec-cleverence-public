@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 589,
+  "file_count": 590,
   "files": [
     {
       "path": ".gitattributes",
@@ -405,8 +405,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 136893,
-      "sha256": "f1f195b42a7d10dcd19e6cc33e4a21e5f58adfee4d7475ee3a2d7301e910f281"
+      "size": 138423,
+      "sha256": "d83c6ce5f121e2779a234e1d36cacee0968dcd7493659e7eedfafd041828dfb0"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -505,8 +505,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/WorkerClient.cs",
-      "size": 9839,
-      "sha256": "73cdffe70b310ef96e5f93606a44cd45342da1055a113922f3a64d7db2aa3c5c"
+      "size": 10075,
+      "sha256": "e0ef382d14b0a92559837f04ac2ddf117bc950cc0fffe259bdbcb643651676be"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/app.manifest",
@@ -535,8 +535,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/core/OneCChatWorker.Core.psm1",
-      "size": 257614,
-      "sha256": "2eb971c2ca22135317b32ffdc4cdf436c21524bc2d1fc2702f747ca371850e82"
+      "size": 257780,
+      "sha256": "3f5a062a2c89bf638d6ecfd1e35d0fca6b4edb88a41ef9e1d6c44a479a64931b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/Build-Installer.ps1",
@@ -545,8 +545,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/OneCOrbit.iss",
-      "size": 3937,
-      "sha256": "05f1d953a638baffd8e0ae5d9e2abb201b7d9812b754624562beff4a26cd01d2"
+      "size": 3979,
+      "sha256": "5301ce2a766ee1951d5d2e21b83883e6daa7dd2200748c2d9ec9578fbb8a266a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/README.md",
@@ -621,7 +621,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7920,
-      "sha256": "5f444121fd08816e02d14e552138587dfeaa236f92c44d1ca5db34f430873e77"
+      "sha256": "aba15b2af245893b758e0542e13922453d76e00119c7762bb6f6882acef2b16c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -870,8 +870,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_bootstrap_regression.ps1",
-      "size": 6947,
-      "sha256": "6f369d1815e9ccd8c1710b97d0d22a65bcc4b2a3e21ed62ad1edd6707af47fb2"
+      "size": 7289,
+      "sha256": "ab14c1ff2044b4a64844e332cb0dee5a6cc744dd1a7e4407e45f47ec9338a78e"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_git_tree_regression.py",
@@ -885,8 +885,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_installer_smoke.ps1",
-      "size": 7633,
-      "sha256": "08e7385cf529ae61911fa9c9b16b50e5c98e24127d0cb3057d441624f16c3681"
+      "size": 7956,
+      "sha256": "e69847dc3ef664ee19c0e42f95733464577f8c7bd046eae80c3de899c2e8ef14"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
@@ -907,6 +907,11 @@
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_update_image_lease_regression.py",
       "size": 10385,
       "sha256": "388cf46d7ccec881bd5c62cdf3619a01386eb76e2c40606a8745f5acfa09ce8f"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/tests/run_orbit_zip_fresh_process.ps1",
+      "size": 535,
+      "sha256": "5a92f13427b700e973061d91b20f97b409dd6045bc3e22bf3c0b1ec038f25d31"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_package_core_bootstrap_regression.ps1",
@@ -2955,5 +2960,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "5e81442b443f832558017ac542edcd12a9a1192b64a531588efb0e88e1efe124"
+  "snapshot_digest": "941673caa1a4f94b9d851d4165cf99d587978b8e4752bbd2bc21ab31b1f0ddbe"
 }

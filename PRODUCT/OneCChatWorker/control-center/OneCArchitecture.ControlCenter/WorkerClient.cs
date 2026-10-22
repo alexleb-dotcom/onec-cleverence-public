@@ -106,8 +106,11 @@ internal sealed class WorkerClient : IWorkerClient
         if (!Modes.TryGetValue(action, out var mode))
             throw new InvalidOperationException("WORKER_ACTION_NOT_ALLOWLISTED");
 
-        var psi = new ProcessStartInfo("powershell.exe")
+        var systemDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        var powershell = Path.Combine(systemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+        var psi = new ProcessStartInfo(powershell)
         {
+            WorkingDirectory = systemDirectory,
             UseShellExecute = elevated,
             CreateNoWindow = !elevated,
             RedirectStandardOutput = !elevated,
