@@ -272,12 +272,7 @@ public partial class MainWindow : Window
         var taskGoal = Text(ctx, "work", "task_goal");
         var chosenProjectId = Text(ctx, "selected_project", "project_id");
         UpdateProjectTabsVisibility();
-        WorkspaceNoticeText.Text = Bool(ctx, "work", "active") && !string.IsNullOrWhiteSpace(workProjectId)
-            && workProjectId != chosenProjectId
-            ? Localization.Get("WorkspaceOtherTask") + " " + (workProjectName ?? "")
-            : Bool(ctx, "work", "active") && helper != "CONNECTED"
-                ? Localization.Get("WorkspaceConnectionUnverified")
-                : "";
+        WorkspaceNoticeText.Text = OwnerWorkspaceNotice(ctx);
         HomeProjectText.Text = projectName;
         SelectedProjectText.Text = Localization.Get("SelectedProject") + ": " + projectName;
         HomeTaskText.Text = Bool(ctx, "work", "active")
@@ -834,15 +829,39 @@ public partial class MainWindow : Window
         UpdateHomeNavigation();
     }
 
+    private string OwnerWorkspaceNotice(JsonObject ctx)
+    {
+        if (!Bool(ctx, "work", "active")) return "";
+        var taskProjectId = Text(ctx, "work", "project_id");
+        var selectedId = Text(ctx, "selected_project", "project_id");
+        if (!string.IsNullOrWhiteSpace(taskProjectId) && taskProjectId != selectedId)
+        {
+            var name = (Node(ctx, "projects") as JsonArray)?.OfType<JsonObject>()
+                .FirstOrDefault(p => Text(p, "project_id") == taskProjectId)?["display_name"]?.GetValue<string>()
+                ?? taskProjectId;
+            return Localization.Get("WorkspaceOtherTask") + " " + name;
+        }
+        return Text(ctx, "work", "helper", "status") != "CONNECTED"
+            ? Localization.Get("WorkspaceConnectionUnverified") : "";
+    }
+
     private void EndPendingAdmission()
     {
         _pendingAdmissionProjectId = null;
         ProjectsList.IsEnabled = true;
         _mutationsEnabled = true;
         if (VerifiedContextMatchesSelection(_context))
+        {
             UpdateReadOnlyAvailability(_context!);
+            // Remove the temporary admission banner, but restore genuine
+            // owner warnings rather than silently dropping them.
+            WorkspaceNoticeText.Text = OwnerWorkspaceNotice(_context!);
+        }
         else
+        {
             DisableActions(Localization.Get("UiContextReason"));
+            WorkspaceNoticeText.Text = Localization.Get("WorkspaceVerificationUnknown");
+        }
         UpdateHomeNavigation();
     }
 
