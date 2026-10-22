@@ -455,8 +455,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 59881,
-      "sha256": "e91aa61872df97055794f147a0433a05d00bc19ecf6e44ed3e5a2b63ed6735a9"
+      "size": 60610,
+      "sha256": "da501fa2e0c655a5f80fd035686554fdce4f15c439b7bd326e8befd414abf6c2"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6aefef8342b190491d143ee8a730b9ffa6cf4f97b64f92157b406e2a52750fbb"
+  "snapshot_digest": "83e01d225ab295d151e514746dc8bd497aec0400d95db28d1b3cb2cf0b113fd1"
 }
