@@ -539,7 +539,7 @@ internal static class Program
                 commandExit == 3 ? "FIXTURE_NONZERO" : "", commandExit == 1223 ? "UAC_CANCELLED" : ""));
             Drain();
             if (commandExit == 3)
-                Check(Control<TextBlock>(w, "AdvancedText").Text.Contains("FIXTURE_NONZERO"),
+                Check(Control<TextBox>(w, "AdvancedText").Text.Contains("FIXTURE_NONZERO"),
                     caseName + " nonzero warning retained without unattended modal dialog");
             Check(!timerRead.IsCompleted && !list.IsEnabled &&
                 fake.ContextRequests.Count == readsBefore &&
