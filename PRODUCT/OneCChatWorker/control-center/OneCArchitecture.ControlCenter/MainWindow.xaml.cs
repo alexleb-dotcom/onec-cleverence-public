@@ -460,6 +460,22 @@ public partial class MainWindow : Window
         GlobalWarningText.Text = "";
         HomeTaskText.Text = Localization.Get("UnknownState");
         HomeHelperText.Text = Localization.Get("UnknownState");
+        // The entire owner projection belongs to the previous project until
+        // a matching fresh UI_CONTEXT arrives. Hide old Output/Activity facts.
+        OutputStateText.Text = reason;
+        OutputSummaryText.Text = reason;
+        ActivitySummaryText.Text = reason;
+        ActivityList.ItemsSource = null;
+        SourceStateText.Text = reason;
+        SourceUpdateStatusText.Text = reason;
+        SourceArtifactCombo.ItemsSource = null;
+        SourceSyncResultText.Tag = null;
+        SourceSyncResultText.Text = "";
+        McpEpochText.Text = reason;
+        McpPolicyText.Text = reason;
+        OperationText.Text = reason;
+        DiagnosticsText.Text = reason;
+        AdvancedText.Text = "";
         McpStateText.Text = Localization.Get("UnknownState");
         McpUsageText.Text = Localization.Get("UnknownState");
         CheckpointStateText.Text = Localization.Get("UnknownState");
