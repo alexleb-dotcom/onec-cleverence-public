@@ -20,6 +20,9 @@ public partial class MainWindow : Window
     private bool _settingsInitializing;
     private bool _applyingContext;
     private bool _refreshAgain;
+    // Every overlapping caller awaits the same refresh drain, including the
+    // follow-up read requested after a START/CONTINUE admission result.
+    private TaskCompletionSource<bool>? _refreshCompletion;
     private bool _contextReady;
     private string _currentPage = "Home";
     private string? _selectedProjectId;
@@ -170,47 +173,80 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task RefreshContextAsync()
+    // A timer poll may already own GetContextAsync when a mutation finishes.
+    // Do not return a completed Task to the post-action caller: drain one
+    // additional canonical owner read before releasing the admission lease.
+    private Task RefreshContextAsync()
     {
-        if (_refreshing) { _refreshAgain = true; return; }
+        if (_refreshing)
+        {
+            _refreshAgain = true;
+            return _refreshCompletion!.Task;
+        }
         _refreshing = true;
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _refreshCompletion = completion;
+        _ = DrainContextRefreshAsync(completion);
+        return completion.Task;
+    }
+
+    private async Task DrainContextRefreshAsync(TaskCompletionSource<bool> completion)
+    {
         try
         {
-          do
-          {
-            _refreshAgain = false;
-            var requestedProject = _selectedProjectId;
-            var result = await _worker.GetContextAsync(requestedProject);
-            if (requestedProject != _selectedProjectId) { _refreshAgain = true; continue; }
-            if (result.ExitCode != 0 || result.Json is null)
+            do
             {
-                ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
-                return;
-            }
-            // A completed request is not proof that the returned JSON belongs
-            // to that project. Reject missing/foreign selected_project before
-            // any owner projection or action eligibility is accepted.
-            if (!OwnerResponseMatchesRequested(requestedProject, result.Json))
-            {
-                ShowContextFailure(2, "UI_CONTEXT_PROJECT_ID_MISMATCH", "");
-                return;
-            }
-            // A poll begun before a mutation may finish after its fresh readback.
-            // Keep the newer canonical projection instead of restoring an old generation.
-            if (DateTimeOffset.TryParse(Text(_context, "generated_utc"), out var currentUtc) &&
-                DateTimeOffset.TryParse(Text(result.Json, "generated_utc"), out var responseUtc) && responseUtc < currentUtc) return;
-            _context = result.Json;
-            _contextReady = true;
-            if (_selectedProjectId is null) _selectedProjectId = Text(result.Json, "selected_project", "project_id");
-            _lastDiagnostic = "";
-            ApplyContext(result.Json);
-          } while (_refreshAgain);
+                _refreshAgain = false;
+                try
+                {
+                    var requestedProject = _selectedProjectId;
+                    var result = await _worker.GetContextAsync(requestedProject);
+                    if (requestedProject != _selectedProjectId)
+                    {
+                        _refreshAgain = true;
+                        continue;
+                    }
+                    if (result.ExitCode != 0 || result.Json is null)
+                    {
+                        // A failing PRE-action poll must not consume an already
+                        // queued POST-action readback; only the last read owns HOLD.
+                        if (!_refreshAgain) ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
+                        continue;
+                    }
+                    if (!OwnerResponseMatchesRequested(requestedProject, result.Json))
+                    {
+                        if (!_refreshAgain) ShowContextFailure(2, "UI_CONTEXT_PROJECT_ID_MISMATCH", "");
+                        continue;
+                    }
+                    if (DateTimeOffset.TryParse(Text(_context, "generated_utc"), out var currentUtc) &&
+                        DateTimeOffset.TryParse(Text(result.Json, "generated_utc"), out var responseUtc) && responseUtc < currentUtc)
+                    {
+                        // A stale reply is never proof of post-action completion.
+                        // If this was the last pending read, keep actions disabled
+                        // instead of restoring the old owner START/CONTINUE rights.
+                        if (!_refreshAgain && _pendingAdmissionProjectId is not null)
+                            ShowContextFailure(2, "UI_CONTEXT_STALE_POST_ADMISSION", "");
+                        continue;
+                    }
+                    _context = result.Json;
+                    _contextReady = true;
+                    if (_selectedProjectId is null) _selectedProjectId = Text(result.Json, "selected_project", "project_id");
+                    _lastDiagnostic = "";
+                    ApplyContext(result.Json);
+                }
+                catch (Exception ex)
+                {
+                    // Early exceptions must not discard a queued newer read.
+                    if (!_refreshAgain) ShowContextFailure(-1, ex.ToString(), "");
+                }
+            } while (_refreshAgain);
         }
-        catch (Exception ex)
+        finally
         {
-            ShowContextFailure(-1, ex.ToString(), "");
+            _refreshing = false;
+            _refreshCompletion = null;
+            completion.TrySetResult(true);
         }
-        finally { _refreshing = false; }
     }
 
     private void ShowContextFailure(int exitCode, string? stderr, string? stdout)
