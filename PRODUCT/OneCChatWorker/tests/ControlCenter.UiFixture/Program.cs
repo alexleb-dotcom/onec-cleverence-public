@@ -211,6 +211,47 @@ internal static class Program
             Check(Control<Button>(w, "StartButton").IsEnabled && fake.Calls.Count == beforeSelectionCalls,
                 "fresh matched Worker context restores selected project, without new mutation");
 
+            // FA #122 P0: a successful request for NeoHim can return
+            // RetailGroup JSON. This is not an old request: it must be
+            // rejected by comparing the RESPONSE selected_project identity.
+            var foreignCalls = fake.Calls.Count;
+            fake.ContextOverride = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            Call(w, "ShowPage", "Projects");
+            list.SelectedIndex = 0; Drain();
+            Check(fake.ContextRequests.Last() == "NeoHim" &&
+                Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                Control<TextBlock>(w, "WorkspaceNoticeText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                !Control<TextBlock>(w, "SelectedProjectText").Text.Contains("RetailGroup") &&
+                !Control<Button>(w, "ApplyButton").IsEnabled &&
+                !Control<Button>(w, "VerifyButton").IsEnabled &&
+                !Control<Button>(w, "RepairButton").IsEnabled &&
+                !Control<Button>(w, "StartButton").IsEnabled,
+                "D1 returned foreign RetailGroup JSON for current NeoHim request fails closed");
+            Call(w, "Apply_Click", w, new RoutedEventArgs());
+            Call(w, "Verify_Click", w, new RoutedEventArgs());
+            Call(w, "Repair_Click", w, new RoutedEventArgs());
+            Drain();
+            Check(fake.Calls.Count == foreignCalls,
+                "D1 foreign response forbids all project-scoped Worker mutations");
+            fake.ContextOverride = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            fake.ContextOverride["selected_project"] = null;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(!Control<Button>(w, "ApplyButton").IsEnabled &&
+                Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationUnknown"),
+                "D1 missing selected_project response fails closed");
+            Check(!MainWindow.OwnerResponseMatchesRequested("Проект-Кириллица-01", FixtureWorker.Context("NeoHim")) &&
+                MainWindow.OwnerResponseMatchesRequested("Проект-Кириллица-01",
+                    new JsonObject { ["selected_project"] = new JsonObject { ["project_id"] = "Проект-Кириллица-01" } }),
+                "D1 exact owner ID check handles long Cyrillic and rejects foreign ID");
+            fake.ContextOverride = null;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(!Control<Button>(w, "StartButton").IsEnabled &&
+                Control<TextBlock>(w, "SelectedProjectText").Text.Contains("NeoHim"),
+                "D1 only exact matching NeoHim response restores verified owner projection");
+            list.SelectedIndex = 1; Drain();
+            Check(Control<Button>(w, "StartButton").IsEnabled && fake.Calls.Count == foreignCalls,
+                "D1 matching RetailGroup response restores permitted actions with zero replay");
+
             fake.State = "ACTIVE_ADMISSION_OFFLINE";
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Call(w, "ShowPage", "Work");
