@@ -64,10 +64,9 @@ Inno owns package files, uninstall registration and its own logs; runtime
 ownership and hashes are in `install-receipt.json`.
 
 Windows CI builds the installer, installs under disposable roots, verifies a
-real first-run WPF wizard, cancels it, imports MAIN + EXTENSION through real
-Worker, reopens the installed interface, uninstalls, verifies retained Source
+real first-run WPF wizard, selects MAIN + EXTENSION through native file
+dialogs and confirms the real Worker import, reopens the installed interface, uninstalls, verifies retained Source
 and no owned runtime-file leak, and tests rollback/journal replay. Artifacts:
 `orbit-slice-a-windows` and existing `control-center-ux5-fixtures` (RU/EN
-keyboard and DPI render fixtures). Human UAC consent, native archive-dialog
-selection, physical monitor DPI transitions and independent FA still require
+keyboard and DPI render fixtures). Human UAC consent, physical monitor DPI transitions and independent FA still require
 separate acceptance. A green hosted runner is not production migration approval.

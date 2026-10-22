@@ -405,8 +405,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/OneCChatWorker.ps1",
-      "size": 136002,
-      "sha256": "3d2d8452a731ac1d9d01af17ccf63776e528386147e03e4e405da4ea75640b8f"
+      "size": 136466,
+      "sha256": "3adf860f97afb1a65e2bdfd4073c3391a664c7b9ecc365d62c156c693140cac0"
     },
     {
       "path": "PRODUCT/OneCChatWorker/README.md",
@@ -550,8 +550,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/README.md",
-      "size": 4643,
-      "sha256": "28ccd43723feac4a69c2eb99dc9250f3d132ba1eb0b7bf4c7f25caa5a840f484"
+      "size": 4642,
+      "sha256": "5ef0d3ce19e92475261acc0c903bc6fe030fb86b8ef205e0cab1cf9be32d703b"
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/SetupRuntime.ps1",
@@ -621,7 +621,7 @@
     {
       "path": "PRODUCT/OneCChatWorker/runtime.lock.json",
       "size": 7920,
-      "sha256": "921038c7ac882d16cf2a04372889241a256857bdc594c3f2d3898f49e53f3ee0"
+      "sha256": "7bc22cfb41cf7cb4c8058914709852685e7290cd34da153cee32548ab44e689d"
     },
     {
       "path": "PRODUCT/OneCChatWorker/runtime/helper-https-pull.mjs",
@@ -695,13 +695,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/PackagedProbe.cs",
-      "size": 18164,
-      "sha256": "8002764bcebff9e96addf89329074af53274f06dd29d3294dbbef774f58b25d0"
+      "size": 22562,
+      "sha256": "bae7418acf5019b2518bacb73a437dad39e924feea35ceff97263fa787444157"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 62514,
-      "sha256": "ed676598aa07807430c44e8f4e9774eb2297a8f36fe238039dc19a55c1dd4c2a"
+      "size": 62654,
+      "sha256": "37548242d5753fa0da5dce9ba92603ef1190c3f6732b51ba073c654682615ebd"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -885,8 +885,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_installer_smoke.ps1",
-      "size": 7376,
-      "sha256": "042ee53eb695df3ecbdd1fe8b93a98965f4f540f0855ff02e8522eb4fd013865"
+      "size": 7200,
+      "sha256": "e752a402e01bf2a57ecc7bb83e5ea5f733ea0611f76cfa883958673c646725b4"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/run_orbit_migration_readonly_preflight_regression.ps1",
@@ -2955,5 +2955,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "60212c6f51277641b10957687bc34a23e8186ceb2c711a0451d29c039a86668e"
+  "snapshot_digest": "d716d47b5d11cdc0ae2e3ce753b2762925d13fa1a2ff45a69069c718986c763c"
 }
