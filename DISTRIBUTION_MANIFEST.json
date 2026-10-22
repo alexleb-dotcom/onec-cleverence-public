@@ -15,8 +15,8 @@
     },
     {
       "path": ".github/workflows/shareable-validation.yml",
-      "size": 16935,
-      "sha256": "b2b36e3f253baea65dc7cf34a422dfdd861506dea2a9c716d515e23e9b4a7a20"
+      "size": 17006,
+      "sha256": "c5c110e7819ca8a4165ec1a441351bf3551a69006321296f189194818b616d00"
     },
     {
       "path": ".gitignore",
@@ -540,8 +540,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/Build-Installer.ps1",
-      "size": 3671,
-      "sha256": "dc0907db331d5d36c4726ef20cf11682a89a8f96142a990613cb9279f00d7ca3"
+      "size": 3790,
+      "sha256": "f24a982cbc87bfd9bb7df83beebdf9e942981f9221f16c3326ca946ba9adf4ca"
     },
     {
       "path": "PRODUCT/OneCChatWorker/installer/OneCOrbit.iss",
@@ -2960,5 +2960,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "e433165dde0da6e297056dbe621fe5701a273174723a3e29df8cb3b5b52f2a75"
+  "snapshot_digest": "12bb9a94ec77199c19409e05b9ca69f315ad1e8abef43aa582f8224353bb68a9"
 }

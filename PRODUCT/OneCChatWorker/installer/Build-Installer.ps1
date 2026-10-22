@@ -37,4 +37,4 @@ $repo=Resolve-Path (Join-Path $packageRoot '../..')
 $head=(& git -C $repo rev-parse HEAD).Trim()
 $rows=@(Get-ChildItem -LiteralPath $OutputRoot -File -Filter '*.exe'|ForEach-Object{@{file=$_.Name;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}})
 $rows+=,@{file='GUI';sha256=(Get-FileHash -LiteralPath (Join-Path $publish 'OneCArchitecture.ControlCenter.exe') -Algorithm SHA256).Hash.ToLowerInvariant()}
-@{schema='ORBIT_BUILD_RECEIPT_V1';source_head=$head;files=$rows;unsigned_internal_pilot=$true}|ConvertTo-Json -Depth 10|Set-Content -LiteralPath (Join-Path $OutputRoot 'build-receipt.json') -Encoding UTF8
+@{schema='ORBIT_BUILD_RECEIPT_V1';source_head=$head;dotnet_sdk=(& $DotnetPath --version).Trim();inno_compiler=(Get-Item -LiteralPath $IsccPath).VersionInfo.ProductVersion;files=$rows;unsigned_internal_pilot=$true}|ConvertTo-Json -Depth 10|Set-Content -LiteralPath (Join-Path $OutputRoot 'build-receipt.json') -Encoding UTF8
