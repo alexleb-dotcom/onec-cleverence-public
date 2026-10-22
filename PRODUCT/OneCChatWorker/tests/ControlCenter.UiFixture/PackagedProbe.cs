@@ -128,7 +128,11 @@ internal static class PackagedProbe
     }
     static void ClickNativeOk(AutomationElement dialog)
     {
-        var ok = dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.AutomationIdProperty, "1"))
+        var buttons = dialog.FindAll(TreeScope.Descendants,
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)).Cast<AutomationElement>().ToArray();
+        var ok = buttons.FirstOrDefault(x => x.Current.Name.Equals("OK", StringComparison.OrdinalIgnoreCase) || x.Current.Name == "ОК")
+            ?? buttons.FirstOrDefault(x => x.Current.AutomationId == "1")
+            ?? (buttons.Length == 1 ? buttons[0] : null)
             ?? throw new InvalidOperationException("NATIVE_OK_BUTTON_MISSING");
         var handle = new IntPtr(dialog.Current.NativeWindowHandle);
         ((InvokePattern)ok.GetCurrentPattern(InvokePattern.Pattern)).Invoke();

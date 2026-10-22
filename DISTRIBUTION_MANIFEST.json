@@ -695,8 +695,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/PackagedProbe.cs",
-      "size": 24095,
-      "sha256": "f53c46f0f20250e0e9a668ec3153da71b49de6f28c5c414164fd5be1f5e1c00c"
+      "size": 24430,
+      "sha256": "ff684e61b7b3299adde535418def67b782b45fb9938652b38dad3f027d312090"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
@@ -2960,5 +2960,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "941673caa1a4f94b9d851d4165cf99d587978b8e4752bbd2bc21ab31b1f0ddbe"
+  "snapshot_digest": "e433165dde0da6e297056dbe621fe5701a273174723a3e29df8cb3b5b52f2a75"
 }
