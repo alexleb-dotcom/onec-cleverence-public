@@ -245,7 +245,7 @@ public partial class MainWindow : Window
                         result.Json["actions"]?["add_project"]?["enabled"]?.GetValue<bool>() == true)
                     {
                         _bootstrapOffered = true;
-                        Dispatcher.BeginInvoke(new Action(() => AddProject_Click(this, new RoutedEventArgs())));
+                        _ = Dispatcher.BeginInvoke(new Action(() => AddProject_Click(this, new RoutedEventArgs())));
                     }
                 }
                 catch (Exception ex)

@@ -40,7 +40,10 @@ WelcomeLabel2=This setup installs the WPF interface and Worker runtime with zero
 function WorkerRoot(Param: String): String;
 begin Result := ExpandConstant('{param:WORKERROOT|C:\OneCOrbit}'); end;
 function DataRoot(Param: String): String;
-begin Result := ExpandConstant('{param:DATAROOT|{commonappdata}\OneCOrbit}'); end;
+begin
+  Result := ExpandConstant('{param:DATAROOT|}');
+  if Result = '' then Result := ExpandConstant('{commonappdata}\OneCOrbit');
+end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';

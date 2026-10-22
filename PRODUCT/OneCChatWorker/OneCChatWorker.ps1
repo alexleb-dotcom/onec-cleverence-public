@@ -751,9 +751,9 @@ function Invoke-CommandMode {
   'BOOTSTRAP_PROJECT' {
    if(Require-AdminOrRelaunch 'BOOTSTRAP_PROJECT'){break}
    if((Get-Item -LiteralPath (Need $UiInputPath UiInputPath)).Length -gt 65536){throw 'BOOTSTRAP_REQUEST_LIMIT'}
-   $input=Get-Content -LiteralPath $UiInputPath -Raw -Encoding UTF8|ConvertFrom-Json
-   if($input.platform -ne 'ONEC'){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
-   Show-Value (New-OrbitBootstrapProject -ProjectId $input.project_id -DisplayName $input.display_name -ParticipantId $input.participant_id -Role $input.role -MainArchive $input.main_archive -ExtensionArchives @($input.extension_archives) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
+   $bootstrapRequest=Get-Content -LiteralPath $UiInputPath -Raw -Encoding UTF8|ConvertFrom-Json
+   if($bootstrapRequest.platform -ne 'ONEC'){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
+   Show-Value (New-OrbitBootstrapProject -ProjectId $bootstrapRequest.project_id -DisplayName $bootstrapRequest.display_name -ParticipantId $bootstrapRequest.participant_id -Role $bootstrapRequest.role -MainArchive $bootstrapRequest.main_archive -ExtensionArchives @($bootstrapRequest.extension_archives) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
    break
   }
   'ADD_PROJECT' {Run-AddProject;break}
@@ -784,7 +784,7 @@ function Invoke-CommandMode {
 }
 
 $script:UiInputs=New-Object 'System.Collections.Generic.Queue[string]'
-if(-not [string]::IsNullOrWhiteSpace($UiInputPath)){
+if($Mode -ne 'BOOTSTRAP_PROJECT' -and -not [string]::IsNullOrWhiteSpace($UiInputPath)){
  if(-not(Test-Path -LiteralPath $UiInputPath -PathType Leaf)){throw "UI_INPUT_FILE_NOT_FOUND: $UiInputPath"}
  foreach($line in @(Get-Content -LiteralPath $UiInputPath -Encoding UTF8)){$script:UiInputs.Enqueue([string]$line)}
 }

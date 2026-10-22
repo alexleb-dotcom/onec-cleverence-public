@@ -54,6 +54,20 @@ try {
  Check (Test-Path -LiteralPath $unknown) 'unknown file retained'
  foreach($file in $receipt.files){Check (-not(Test-Path -LiteralPath $file.path)) ('no owned runtime orphan '+$file.path)}
  Check (-not(Test-Path -LiteralPath (Join-Path $app 'package'))) 'no installer package orphan'
+ # Test deterministic rollback after the runtime has been written, then an
+ # explicit journal replay as recovery from an interrupted installer process.
+ Remove-LocalUser OneCSourceReader
+ $rollbackApp=Join-Path $root 'rollback-app'
+ New-Item -ItemType Directory -Path $rollbackApp|Out-Null
+ Copy-Item -LiteralPath (Join-Path $BuildRoot 'payload') -Destination (Join-Path $rollbackApp 'package') -Recurse
+ $setupScript=Join-Path $PSScriptRoot '../installer/SetupRuntime.ps1'
+ $rw=Join-Path $root 'rollback-worker';$rd=Join-Path $root 'rollback-data';$rs=Join-Path $root 'rollback-shortcuts'
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $setupScript -Mode Install -AppRoot $rollbackApp -WorkerRoot $rw -DataRoot $rd -ShortcutRoot $rs -FaultInjection AFTER_RUNTIME 2>&1 | Out-File (Join-Path $EvidenceRoot 'rollback.log')
+ Check ($LASTEXITCODE -ne 0) 'fault-injected install fails visibly'
+ Check (-not(Test-Path -LiteralPath $rw) -and -not(Test-Path -LiteralPath $rd)) 'rollback leaves no owned runtime files'
+ Check (-not(Get-LocalUser OneCSourceReader -ErrorAction SilentlyContinue)) 'rollback removes only transaction-owned reader'
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $setupScript -Mode Rollback -AppRoot $rollbackApp
+ Check ($LASTEXITCODE -eq 0) 'interrupted journal recovery is idempotent'
  @{result='PASS';source_head=(& git rev-parse HEAD).Trim();build_receipt=(Get-Content -LiteralPath (Join-Path $BuildRoot 'build-receipt.json') -Raw|ConvertFrom-Json);keyboard_and_dpi='See existing real WPF RU/EN and DPI fixture artifacts';limitations=@('OS UAC human consent is not proved by elevated hosted runner.','Archive selection dialogs are not driven in this smoke; native wizard boot/cancel and real Worker import are separate checks.')}|ConvertTo-Json -Depth 15|Set-Content -LiteralPath (Join-Path $EvidenceRoot 'result.json') -Encoding UTF8
 } finally {
  # Disposable hosted account only. No local operator execution is permitted.

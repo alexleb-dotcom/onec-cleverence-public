@@ -27,8 +27,8 @@ public partial class ProjectWizardWindow : Window
         WizardSystemLabel.Text = Localization.Get("WizardSystemName");
         WizardRoleLabel.Text = Localization.Get("WizardRole");
         WizardMainLabel.Text = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Основная конфигурация (.zip)" : "MAIN XML export (.zip)";
-        WizardExtensionLabel.Text = Localization.Get("WizardExtensionName");
-        WizardExtensionFolderLabel.Text = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Архивы расширений (.zip)" : "EXTENSION XML exports (.zip)";
+        WizardExtensionLabel.Text = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Платформа / формат" : "Platform / format";
+        WizardExtensionFolderLabel.Text = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Архивы исходников расширений (ZIP с Configuration.xml)" : "EXTENSION XML exports (.zip)";
         ExtensionCheck.Content = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Добавить расширения (до 15)" : "Add extensions (up to 15)";
         ExtensionNameBox.Text = "1C / ONEC — ZIP of XML; .cf / .cfe unsupported";
         ExtensionNameBox.IsReadOnly = true;
