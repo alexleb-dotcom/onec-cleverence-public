@@ -144,19 +144,51 @@ internal static class Program
             Check(fake.Calls[0].Args.TaskGoal!.Contains(Localization.Get("ReferenceAccessGoal")), "empty business task permits general reference access");
             Check(fake.Calls.All(c => c.Action == WorkerAction.Start), "no auto APPLY VERIFY REPAIR STOP CONTINUE UPDATE");
 
-            // A pending old response must never enable actions for a new visible selection.
+            // FA #122 regression: simulate a genuine owner-confirmed old-project
+            // header, then hold a previous poll while choosing another project.
+            // Header transition must remove stale owner claims in the SAME
+            // dispatcher turn, before a new UI_CONTEXT can finish.
+            Control<TextBlock>(w, "LastUpdatedText").Text = Localization.Get("WorkspaceVerifiedAt") + " 10:10";
+            Control<TextBlock>(w, "WorkspaceNoticeText").Text = Localization.Get("WorkspaceConnectionUnverified");
+            Control<TextBlock>(w, "GlobalWarningText").Text = Localization.Get("OtherProjectsWarning");
+            Control<TextBlock>(w, "HelperBadge").Text = "CONNECTED";
+            Control<TextBlock>(w, "HomeTaskText").Text = "RetailGroup old task";
+            var beforeSelectionCalls = fake.Calls.Count;
             var stale = new TaskCompletionSource<WorkerCallResult>();
             fake.Pending = stale;
             var refresh = (Task)Call(w, "RefreshContextAsync")!;
             list.SelectedIndex = 0;
-            Check(!Control<Button>(w, "StartButton").IsEnabled, "selection change disables stale action immediately");
+            Check(Control<TextBlock>(w, "SelectedProjectText").Text.Contains("NeoHim") &&
+                Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "WorkspaceNoticeText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "GlobalWarningText").Text.Length == 0,
+                "D1 switching project immediately clears previous owner time and warning while pending");
+            Check(!Control<TextBlock>(w, "HelperBadge").Text.Contains("CONNECTED") &&
+                !Control<TextBlock>(w, "HomeTaskText").Text.Contains("RetailGroup") &&
+                !Control<Button>(w, "StartButton").IsEnabled &&
+                fake.Calls.Count == beforeSelectionCalls,
+                "D1 pending identity invalidates previous Helper/task proof and forbids mutations");
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-loading-Projects.png"), 1);
             stale.SetResult(new(0, FixtureWorker.Context("RetailGroup"), "", ""));
             Pump(refresh);
             Check(fake.ContextRequests.Last() == "NeoHim" && !Control<Button>(w, "StartButton").IsEnabled,
                 "out of order context discarded and new project fetched");
             Check(Control<TextBlock>(w, "RecommendationText").Text == Localization.Get("SourceNeedsAttention"), "chosen drift recommendation honest");
-            list.SelectedIndex = 1; Drain();
+            var failedNewReadback = new TaskCompletionSource<WorkerCallResult>();
+            fake.Pending = failedNewReadback;
+            list.SelectedIndex = 1;
+            Check(Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "SelectedProjectText").Text.Contains("RetailGroup"),
+                "second project switch stays unverified throughout stalled context request");
+            failedNewReadback.SetResult(new(2, null, "", "fixture synthetic failure"));
+            Drain();
+            Check(Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                Control<TextBlock>(w, "WorkspaceNoticeText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                !Control<Button>(w, "StartButton").IsEnabled,
+                "failed owner readback remains UNKNOWN / actions disabled");
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(Control<Button>(w, "StartButton").IsEnabled && fake.Calls.Count == beforeSelectionCalls,
+                "fresh matched Worker context restores selected project, without new mutation");
 
             fake.State = "ACTIVE_ADMISSION_OFFLINE";
             Pump((Task)Call(w, "RefreshContextAsync")!);

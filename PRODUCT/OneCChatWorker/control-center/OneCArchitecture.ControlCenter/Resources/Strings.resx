@@ -128,4 +128,5 @@
   <data name="WorkspaceVerificationUnknown" xml:space="preserve"><value>Project status is not verified. Actions are unavailable.</value></data>
   <data name="WorkspaceOtherTask" xml:space="preserve"><value>An active task belongs to another project:</value></data>
   <data name="WorkspaceConnectionUnverified" xml:space="preserve"><value>A task is active; helper connection is not verified.</value></data>
+  <data name="WorkspaceVerificationPending" xml:space="preserve"><value>Checking the selected project. Previous project observations are no longer current.</value></data>
 </root>

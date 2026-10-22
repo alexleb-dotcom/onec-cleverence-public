@@ -208,10 +208,8 @@ public partial class MainWindow : Window
         _contextReady = false;
         _context = null;
         DisableActions(Localization.Get("UiContextReason"));
-        UpdateHomeNavigation();
+        ClearOwnerProjection(Localization.Get("WorkspaceVerificationUnknown"));
         ProjectTabs.Visibility = Visibility.Collapsed;
-        WorkspaceNoticeText.Text = Localization.Get("WorkspaceVerificationUnknown");
-        LastUpdatedText.Text = Localization.Get("WorkspaceVerificationUnknown");
         SourceStateText.Text = McpStateText.Text = WorkStatusText.Text = Localization.Get("UnknownState");
         WorkDetailText.Text = Localization.Get("UiContextReason");
         var orbitPartial = raw.Contains("ORBIT_PARTIAL_INSTALL", StringComparison.Ordinal);
@@ -451,12 +449,34 @@ public partial class MainWindow : Window
         ActionAvailabilityText.Text = MaintenanceAvailabilityText.Text = reason;
     }
 
+    // All globally visible owner facts belong to the OLD project until a
+    // matching UI_CONTEXT readback arrives. Clear them synchronously when
+    // changing the project identity, before the first asynchronous await.
+    private void ClearOwnerProjection(string reason)
+    {
+        LastUpdatedText.Text = reason;
+        WorkspaceNoticeText.Text = reason;
+        HelperBadge.Text = Localization.Get("HelperLabel") + ": " + Localization.Get("UnknownState");
+        GlobalWarningText.Text = "";
+        HomeTaskText.Text = Localization.Get("UnknownState");
+        HomeHelperText.Text = Localization.Get("UnknownState");
+        McpStateText.Text = Localization.Get("UnknownState");
+        McpUsageText.Text = Localization.Get("UnknownState");
+        CheckpointStateText.Text = Localization.Get("UnknownState");
+        CheckpointSummaryText.Text = "";
+        WorkCheckpointText.Text = Localization.Get("UnknownState");
+        SessionHelpText.Text = "";
+        UpdateHomeNavigation();
+        UpdateProjectTabsVisibility();
+    }
+
     private async void ProjectsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_applyingContext || ProjectsList.SelectedItem is not ProjectRow row || row.ProjectId == _selectedProjectId) return;
         _selectedProjectId = row.ProjectId;
         _contextReady = false;
         _context = null;
+        ClearOwnerProjection(Localization.Get("WorkspaceVerificationPending"));
         SelectedProjectText.Text = Localization.Get("SelectedProject") + ": " + row.DisplayName;
         HomeProjectText.Text = WorkStatusText.Text = row.DisplayName;
         RecommendationText.Text = WorkDetailText.Text = Localization.Get("LoadingProject");

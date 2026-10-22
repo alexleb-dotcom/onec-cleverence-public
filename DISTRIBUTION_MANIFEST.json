@@ -455,8 +455,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 52225,
-      "sha256": "e3741695c797799f8737ff27a0b8f460dda841c94028d8da520994d3bc583d98"
+      "size": 53232,
+      "sha256": "35bfbad711725d60bedeec0686ec0bbf141aea64425ef6c5995aaca0a8541777"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -485,13 +485,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 22274,
-      "sha256": "c40a36072cb4b42eb98c1f489bb605c19d9be50b7a40c581995e97e683ad6b6f"
+      "size": 22445,
+      "sha256": "4d0ad3c8bcd5bae2f7636f4edeeff66e15259a5eb14780ee73f1d39da404447c"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 29790,
-      "sha256": "777b82b794a083d3a9be8be544e09466fbc6f8ff57124f3cd2631d156e548d60"
+      "size": 30032,
+      "sha256": "b78c02597021271b05b9c21ece04271eadc4d0aa549ac3b0298a6ab7ea4be920"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -520,8 +520,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/UX7_D1_NATIVE_SHELL_HANDOFF.md",
-      "size": 4433,
-      "sha256": "d717ffaa72d03ba2b69a86072be2f81c5bb60a68c7e506e07bd06a13152067dc"
+      "size": 7157,
+      "sha256": "16f12207896000def308095ff5bac5399c2639373fa3fa1ba0a94d4a3067a2f8"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
@@ -680,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 36347,
-      "sha256": "671271e398f70faa6788cd6b477eed98ff3f594295c2765f03f629d21ea07f64"
+      "size": 39059,
+      "sha256": "2d77433eedb11616ce9f433fbffc627e5be433503bca8ab210c7d93d4f9488eb"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "a2e1838314dc6bb775267bfdded41e8431895268fe2933e337600757ee36570f"
+  "snapshot_digest": "9d26d29cb5164eef1932ba299decd5fd4f1d6c2b3732d0dea8fe81f6e538a6d5"
 }

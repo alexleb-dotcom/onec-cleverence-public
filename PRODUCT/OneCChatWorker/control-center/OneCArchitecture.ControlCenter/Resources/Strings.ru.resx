@@ -128,4 +128,5 @@
   <data name="WorkspaceVerificationUnknown" xml:space="preserve"><value>Состояние проекта не подтверждено. Действия недоступны.</value></data>
   <data name="WorkspaceOtherTask" xml:space="preserve"><value>Активная задача относится к другому проекту:</value></data>
   <data name="WorkspaceConnectionUnverified" xml:space="preserve"><value>Есть активная задача; подключение помощника не подтверждено.</value></data>
+  <data name="WorkspaceVerificationPending" xml:space="preserve"><value>Состояние выбранного проекта проверяется. Предыдущие сведения больше не актуальны.</value></data>
 </root>

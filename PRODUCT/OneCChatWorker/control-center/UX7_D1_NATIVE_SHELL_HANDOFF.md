@@ -70,3 +70,47 @@ D0R prototype is **not merged** or silently imported into D1.
 - Do not install or merge this WPF source change without terminal exact-head
   hosted 5/5 CI, independent bounded D1 FA and **separate** operator
   authorization for protected main/release.
+
+## D1 independent FA review — exact-head correction (2026-10-22)
+
+FA #122 returned `UX7_D1_NATIVE_WPF_SHELL_EXACT_HEAD_FA_REVISE`
+on previous SHA `e0bab5b4a9dc5c694208eac6135a86a51d352a2c`,
+despite terminal five-gate CI success. Independent FA reproduced an OWNER
+IDENTITY / FRESHNESS presentation defect: while asynchronous selection from
+RetailGroup to NeoHim was pending, global header still displayed the previous
+project's generated_utc "verified by Worker" time and active/helper warning
+beside the newly selected project name. The action gates correctly disabled
+mutations, but presented owner state as current for the wrong project.
+
+Correction in MainWindow.xaml.cs:
+- The `ProjectsList_SelectionChanged` handler atomically sets new selected
+  identity and clears old `_contextReady`/`_context`, then calls
+  `ClearOwnerProjection(WorkspaceVerificationPending)` BEFORE requesting
+  fresh `UI_CONTEXT` and before any await.
+- Explicit pending/unknown copy is RU/EN localized; previous verification
+  timestamp, owner/other-project warning, Helper badge, active task claim,
+  S4 usage and checkpoint projection are downgraded, never falsely bound
+  to new project. Actions continue disabled during the transition.
+- A failed/nonzero UI_CONTEXT readback now also calls
+  `ClearOwnerProjection(WorkspaceVerificationUnknown)`; only a matching
+  canonical successful Worker result can restore verified fields.
+- Existing RefreshContextAsync request-target comparison and stale response
+  rejection are preserved, as are all Worker mutation/admission boundaries.
+  This change never refreshes owner data by reading files directly.
+
+A new in-process native WPF adversarial fixture injects RetailGroup-era
+timestamp, active warning, Helper/Task state, holds a Worker context result,
+changes selected identity to NeoHim and asserts immediate clearing while
+the readback remains pending. It then delivers a stale RetailGroup readback
+and verifies that the requested NeoHim projection wins; switches back to
+RetailGroup, returns a nonzero error, verifies explicit UNKNOWN and disabled
+actions, then requires fresh confirmed context for recovery. No extra
+RunAsync or real Worker/Helper action occurs. Native isolated Windows
+runner PASS 205 assertions, 93 synthetic screenshots, plus legacy packaged
+EXE keyboard probe PASS. Packaged probe is still the **OLD** distribution
+EXE, not a rebuild containing this D1 correction.
+
+This correction is a NEW SHA and needs committed-blob canonical integrity,
+privacy, terminal five-gate hosted CI, independent D1 RECHECK verdict and
+a distinct operator-authorized protected merge/packaged release. Do not
+reuse the earlier FA REVISE or earlier successful old-head CI for acceptance.
