@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private bool _contextReady;
     private string _currentPage = "Home";
     private string? _selectedProjectId;
+    // Selected project is frozen while an external START/CONTINUE admission is pending.
+    private string? _pendingAdmissionProjectId;
 
     private sealed record ProjectRow(string ProjectId, string DisplayName, string State, int Participants);
     private sealed record ActivityRow(string Time, int Seq, string Operation, string Target, long Bytes, string Duration, string Outcome);
@@ -507,7 +509,21 @@ public partial class MainWindow : Window
 
     private async void ProjectsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_applyingContext || ProjectsList.SelectedItem is not ProjectRow row || row.ProjectId == _selectedProjectId) return;
+        if (_applyingContext) return;
+        if (_pendingAdmissionProjectId is { } pinnedId)
+        {
+            // Keyboard/mouse is blocked at the ListView; also reject synthetic
+            // or programmatic selection changes during the password prompt.
+            _applyingContext = true;
+            try
+            {
+                ProjectsList.SelectedItem = ProjectsList.Items.OfType<ProjectRow>()
+                    .FirstOrDefault(p => p.ProjectId == pinnedId);
+            }
+            finally { _applyingContext = false; }
+            return;
+        }
+        if (ProjectsList.SelectedItem is not ProjectRow row || row.ProjectId == _selectedProjectId) return;
         _selectedProjectId = row.ProjectId;
         _contextReady = false;
         _context = null;
@@ -672,6 +688,18 @@ public partial class MainWindow : Window
 
     private void UpdateHomeNavigation()
     {
+        if (_pendingAdmissionProjectId is { } pinnedId)
+        {
+            var message = Localization.Get("WorkspaceAdmissionPending");
+            HomePrimaryButton.Tag = "AdmissionPending";
+            HomePrimaryButton.Content = message;
+            HomePrimaryButton.IsEnabled = false;
+            WorkspaceNoticeText.Text = message + " · " + pinnedId;
+            System.Windows.Automation.AutomationProperties.SetName(HomePrimaryButton, message);
+            System.Windows.Automation.AutomationProperties.SetHelpText(HomePrimaryButton, message);
+            return;
+        }
+        HomePrimaryButton.IsEnabled = true;
         var intent = OwnerHomeAction(_context, _contextReady, _selectedProjectId);
         HomePrimaryButton.Tag = intent.Destination;
         HomePrimaryButton.Content = Localization.Get(intent.LabelKey);
@@ -793,29 +821,68 @@ public partial class MainWindow : Window
         Process.Start(psi);
     }
 
+    // GUI-only lease for an external credential prompt or in-flight Worker
+    // operation. Never collect a password or infer successful connection.
+    private void BeginPendingAdmission(string projectId)
+    {
+        if (_pendingAdmissionProjectId is not null || projectId != _selectedProjectId)
+            throw new InvalidOperationException("ADMISSION_PROJECT_IDENTITY_REQUIRED");
+        _pendingAdmissionProjectId = projectId;
+        _mutationsEnabled = false;
+        ProjectsList.IsEnabled = false;
+        DisableActions(Localization.Get("WorkspaceAdmissionPending"));
+        UpdateHomeNavigation();
+    }
+
+    private void EndPendingAdmission()
+    {
+        _pendingAdmissionProjectId = null;
+        ProjectsList.IsEnabled = true;
+        _mutationsEnabled = true;
+        if (VerifiedContextMatchesSelection(_context))
+            UpdateReadOnlyAvailability(_context!);
+        else
+            DisableActions(Localization.Get("UiContextReason"));
+        UpdateHomeNavigation();
+    }
+
     private async void Start_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || !_contextReady || !StartButton.IsEnabled || _context is null) return;
-        var projectId = Text(_context, "selected_project", "project_id");
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) ||
+            !StartButton.IsEnabled || !Bool(_context, "actions", "start", "enabled")) return;
+        var projectId = _selectedProjectId!;
         var goal = TaskGoalTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
-        if (string.IsNullOrWhiteSpace(goal)) goal = Localization.Get("ReferenceAccessGoal") + " · " + Text(_context, "selected_project", "display_name");
-        _mutationsEnabled = false;
-        DisableActions(Localization.Get("ActionInProgress"));
+        if (string.IsNullOrWhiteSpace(goal))
+            goal = Localization.Get("ReferenceAccessGoal") + " · " + Text(_context, "selected_project", "display_name");
+        BeginPendingAdmission(projectId);
         try
         {
-            var result = await _worker.RunAsync(WorkerAction.Start, new(ProjectId: projectId, TaskId: WorkerClient.CreateTaskId(goal), TaskGoal: goal));
+            var result = await _worker.RunAsync(WorkerAction.Start,
+                new(ProjectId: projectId, TaskId: WorkerClient.CreateTaskId(goal), TaskGoal: goal));
             await ShowActionResultAndRefresh("START", result);
         }
         catch (Exception ex) { ShowContextFailure(-1, ex.ToString(), ""); }
-        finally { _mutationsEnabled = true; if (_contextReady && _context is not null) UpdateReadOnlyAvailability(_context); }
+        finally { EndPendingAdmission(); }
     }
 
     private async void Continue_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled) return;
-        var result = await _worker.RunAsync(WorkerAction.Continue, new());
-        await ShowActionResultAndRefresh("CONTINUE", result);
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) ||
+            !ContinueButton.IsEnabled || !Bool(_context, "actions", "continue", "enabled") ||
+            Node(_context, "work", "checkpoint") is not JsonObject) return;
+        var projectId = _selectedProjectId!;
+        var taskProjectId = Text(_context, "work", "project_id");
+        if (!string.IsNullOrWhiteSpace(taskProjectId) && taskProjectId != projectId) return;
+        BeginPendingAdmission(projectId);
+        try
+        {
+            // Preserve Worker's canonical continuation target and never
+            // substitute START or synthesize a checkpoint in the GUI.
+            var result = await _worker.RunAsync(WorkerAction.Continue, new());
+            await ShowActionResultAndRefresh("CONTINUE", result);
+        }
+        catch (Exception ex) { ShowContextFailure(-1, ex.ToString(), ""); }
+        finally { EndPendingAdmission(); }
     }
 
     private async void Stop_Click(object sender, RoutedEventArgs e)
