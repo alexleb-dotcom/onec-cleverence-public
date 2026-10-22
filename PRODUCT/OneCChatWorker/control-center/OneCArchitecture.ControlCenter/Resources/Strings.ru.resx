@@ -117,4 +117,23 @@
   <data name="MigrationRequiredHelp" xml:space="preserve"><value>Прежняя установка сохранена. Нужны отдельно согласованные простой и проверенная процедура миграции. Миграция приостановлена.</value></data>
   <data name="OrbitPartialInstall" xml:space="preserve"><value>Неполная установка OneC Orbit</value></data>
   <data name="OrbitPartialInstallHelp" xml:space="preserve"><value>Обнаружена неполная установка OneC Orbit. Существующие файлы сохранены, установка заблокирована. Для восстановления требуется отдельное разрешение.</value></data>
+  <data name="WorkspaceMine" xml:space="preserve"><value>Мой проект</value></data>
+  <data name="WorkspaceAllProjects" xml:space="preserve"><value>Все проекты</value></data>
+  <data name="WorkspaceOverview" xml:space="preserve"><value>Обзор</value></data>
+  <data name="WorkspaceSource" xml:space="preserve"><value>Исходники</value></data>
+  <data name="WorkspaceExtensions" xml:space="preserve"><value>Расширения</value></data>
+  <data name="WorkspaceHistory" xml:space="preserve"><value>История</value></data>
+  <data name="WorkspaceTools" xml:space="preserve"><value>Обслуживание и диагностика</value></data>
+  <data name="WorkspaceVerifiedAt" xml:space="preserve"><value>Проверено Worker:</value></data>
+  <data name="WorkspaceVerificationUnknown" xml:space="preserve"><value>Состояние проекта не подтверждено. Действия недоступны.</value></data>
+  <data name="WorkspaceOtherTask" xml:space="preserve"><value>Активная задача относится к другому проекту:</value></data>
+  <data name="WorkspaceConnectionUnverified" xml:space="preserve"><value>Есть активная задача; подключение помощника не подтверждено.</value></data>
+  <data name="WorkspaceVerificationPending" xml:space="preserve"><value>Состояние выбранного проекта проверяется. Предыдущие сведения больше не актуальны.</value></data>
+  <data name="WorkspaceCheckStatus" xml:space="preserve"><value>Проверить состояние</value></data>
+  <data name="WorkspaceReviewOtherProject" xml:space="preserve"><value>Все проекты</value></data>
+  <data name="WorkspaceOpenCurrentTask" xml:space="preserve"><value>Открыть текущую работу</value></data>
+  <data name="WorkspaceCheckConnection" xml:space="preserve"><value>Проверить подключение</value></data>
+  <data name="WorkspaceOpenSavedWork" xml:space="preserve"><value>Перейти к продолжению</value></data>
+  <data name="WorkspacePrepareNewTask" xml:space="preserve"><value>Подготовить новую задачу</value></data>
+  <data name="WorkspaceAdmissionPending" xml:space="preserve"><value>Выполняется запрос доступа</value></data>
 </root>

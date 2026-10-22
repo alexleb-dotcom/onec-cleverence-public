@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 581,
+  "file_count": 582,
   "files": [
     {
       "path": ".gitattributes",
@@ -450,13 +450,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml",
-      "size": 20167,
-      "sha256": "4e9505ff3e30a72004359710e60426f88fbc54f1501e594c75aa0f6847e63ff4"
+      "size": 22928,
+      "sha256": "b1433d8956f6da720d47463e774e67fcc46bd31bcdb9474a527a5105e884bf86"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 49156,
-      "sha256": "b699ecd9580650d5927aafbc95abe63c30f8d75991e93187a4b1a52e66e76a8d"
+      "size": 62632,
+      "sha256": "bfc9f1498593cbd33fa6004adcf5c0178ce0263bd2ecd6c3e94d748061218b68"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -485,13 +485,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 21160,
-      "sha256": "5ffab2579dc5285c180526728b6256ea8d705c99b43e45e0aac870df8c5bc25c"
+      "size": 23155,
+      "sha256": "2aae720e2b6f101bb3d6ad0d212e873ec70988bdaa977d1ff9de1f42c457f6cd"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 28447,
-      "sha256": "a487941fa9a335e4d2b82989fc744ca749bbc78a725b9a6017991a9dd0bc8c2d"
+      "size": 30894,
+      "sha256": "2854293a7009a94587f294084ca21d603a2cc5fe62329917b52a50727bfdd298"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -517,6 +517,11 @@
       "path": "PRODUCT/OneCChatWorker/control-center/UX5_A_ACCEPTANCE.md",
       "size": 4953,
       "sha256": "55d2eb1769ed75d38d7cc548fc422ecbaaca6eabe46ca277fce0d4b148d2c039"
+    },
+    {
+      "path": "PRODUCT/OneCChatWorker/control-center/UX7_D1_NATIVE_SHELL_HANDOFF.md",
+      "size": 7157,
+      "sha256": "16f12207896000def308095ff5bac5399c2639373fa3fa1ba0a94d4a3067a2f8"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/publish/OneCArchitecture.ControlCenter.exe",
@@ -675,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 34223,
-      "sha256": "47200e6ce992236f821fed46ee0c9f54b429680ef21939d7b36532cbf6c088aa"
+      "size": 62359,
+      "sha256": "757b44c2d4b5e9fb08e3b7dc68277bd599881484c5d60252e3485a4ff9c8a4ec"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2915,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "6d7b6970adf6f62efc80288ce6863828e453e6e3115896cc6a31435262a0e48a"
+  "snapshot_digest": "e11e0fe16722aae379e4b6eb774986bd0e55768ec44da46b6a460c59df795d0d"
 }

@@ -12,6 +12,9 @@ namespace OneCArchitecture.ControlCenter;
 public partial class MainWindow : Window
 {
     private readonly IWorkerClient _worker;
+    // Only native fake-owner WPF fixture suppresses unattended OS modal warnings.
+    // Real Orbit keeps its existing visible warning dialog.
+    private readonly bool _fixtureMode;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(4) };
     private UiPreferences _preferences;
     private JsonObject? _context;
@@ -20,8 +23,14 @@ public partial class MainWindow : Window
     private bool _settingsInitializing;
     private bool _applyingContext;
     private bool _refreshAgain;
+    // Every overlapping caller awaits the same refresh drain, including the
+    // follow-up read requested after a START/CONTINUE admission result.
+    private TaskCompletionSource<bool>? _refreshCompletion;
     private bool _contextReady;
+    private string _currentPage = "Home";
     private string? _selectedProjectId;
+    // Selected project is frozen while an external START/CONTINUE admission is pending.
+    private string? _pendingAdmissionProjectId;
 
     private sealed record ProjectRow(string ProjectId, string DisplayName, string State, int Participants);
     private sealed record ActivityRow(string Time, int Seq, string Operation, string Target, long Bytes, string Duration, string Outcome);
@@ -33,6 +42,7 @@ public partial class MainWindow : Window
     internal MainWindow(IWorkerClient worker, bool fixture)
     {
         _worker = worker;
+        _fixtureMode = fixture;
         _preferences = fixture ? new() : PreferencesStore.Load();
         InitializeComponent();
         ApplyLocalization();
@@ -76,8 +86,15 @@ public partial class MainWindow : Window
     private void ApplyLocalization()
     {
         Title = Localization.Get("AppTitle");
-        NavHomeButton.Content = Localization.Get("NavHome");
-        NavProjectsButton.Content = Localization.Get("NavProjects");
+        NavHomeButton.Content = Localization.Get("WorkspaceMine");
+        ProjectOverviewTab.Content = Localization.Get("WorkspaceOverview");
+        ProjectSourceTab.Content = Localization.Get("WorkspaceSource");
+        ProjectExtensionsTab.Content = Localization.Get("WorkspaceExtensions");
+        ProjectHistoryTab.Content = Localization.Get("WorkspaceHistory");
+        SettingsToolsLabel.Text = Localization.Get("WorkspaceTools");
+        SettingsMaintenanceButton.Content = Localization.Get("NavMaintenance");
+        SettingsAdvancedButton.Content = Localization.Get("NavAdvanced");
+        NavProjectsButton.Content = Localization.Get("WorkspaceAllProjects");
         NavWorkButton.Content = Localization.Get("NavWork");
         NavActivityButton.Content = Localization.Get("NavActivity");
         NavMaintenanceButton.Content = Localization.Get("NavMaintenance");
@@ -87,6 +104,8 @@ public partial class MainWindow : Window
         WorkDetailsLabel.Text = Localization.Get("WorkRecovery");
         UpdateHomeNavigation();
         CurrentWorkLabel.Text = Localization.Get("CurrentWork");
+        HomeHelperLabel.Text = Localization.Get("HelperLabel");
+        System.Windows.Automation.AutomationProperties.SetName(HomeStatusStrip, Localization.Get("WorkspaceOverview"));
         RecommendedLabel.Text = Localization.Get("Recommended");
         McpTitleLabel.Text = Localization.Get("McpTitle");
         CheckpointTitleLabel.Text = Localization.Get("CheckpointTitle");
@@ -132,7 +151,8 @@ public partial class MainWindow : Window
         CloseHintText.Text = Localization.Get("CloseHint");
         foreach (var button in ActionButtons().Select(p => p.Button).Concat(new[] {
             NavHomeButton, NavProjectsButton, NavWorkButton, NavActivityButton, NavMaintenanceButton,
-            NavSettingsButton, NavAdvancedButton, RefreshButton, HomeOpenSourceButton, HomeOpenOutputButton,
+            NavSettingsButton, NavAdvancedButton, ProjectOverviewTab, ProjectSourceTab, ProjectExtensionsTab, ProjectHistoryTab,
+            SettingsMaintenanceButton, SettingsAdvancedButton, RefreshButton, HomeOpenSourceButton, HomeOpenOutputButton,
             OpenSourceButton, OpenIncomingButton }))
             System.Windows.Automation.AutomationProperties.SetName(button, button.Content?.ToString() ?? "");
         System.Windows.Automation.AutomationProperties.SetName(ProjectsList, Localization.Get("NavProjects"));
@@ -157,39 +177,80 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task RefreshContextAsync()
+    // A timer poll may already own GetContextAsync when a mutation finishes.
+    // Do not return a completed Task to the post-action caller: drain one
+    // additional canonical owner read before releasing the admission lease.
+    private Task RefreshContextAsync()
     {
-        if (_refreshing) { _refreshAgain = true; return; }
+        if (_refreshing)
+        {
+            _refreshAgain = true;
+            return _refreshCompletion!.Task;
+        }
         _refreshing = true;
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _refreshCompletion = completion;
+        _ = DrainContextRefreshAsync(completion);
+        return completion.Task;
+    }
+
+    private async Task DrainContextRefreshAsync(TaskCompletionSource<bool> completion)
+    {
         try
         {
-          do
-          {
-            _refreshAgain = false;
-            var requestedProject = _selectedProjectId;
-            var result = await _worker.GetContextAsync(requestedProject);
-            if (requestedProject != _selectedProjectId) { _refreshAgain = true; continue; }
-            if (result.ExitCode != 0 || result.Json is null)
+            do
             {
-                ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
-                return;
-            }
-            // A poll begun before a mutation may finish after its fresh readback.
-            // Keep the newer canonical projection instead of restoring an old generation.
-            if (DateTimeOffset.TryParse(Text(_context, "generated_utc"), out var currentUtc) &&
-                DateTimeOffset.TryParse(Text(result.Json, "generated_utc"), out var responseUtc) && responseUtc < currentUtc) return;
-            _context = result.Json;
-            _contextReady = true;
-            if (_selectedProjectId is null) _selectedProjectId = Text(result.Json, "selected_project", "project_id");
-            _lastDiagnostic = "";
-            ApplyContext(result.Json);
-          } while (_refreshAgain);
+                _refreshAgain = false;
+                try
+                {
+                    var requestedProject = _selectedProjectId;
+                    var result = await _worker.GetContextAsync(requestedProject);
+                    if (requestedProject != _selectedProjectId)
+                    {
+                        _refreshAgain = true;
+                        continue;
+                    }
+                    if (result.ExitCode != 0 || result.Json is null)
+                    {
+                        // A failing PRE-action poll must not consume an already
+                        // queued POST-action readback; only the last read owns HOLD.
+                        if (!_refreshAgain) ShowContextFailure(result.ExitCode, result.StandardError, result.StandardOutput);
+                        continue;
+                    }
+                    if (!OwnerResponseMatchesRequested(requestedProject, result.Json))
+                    {
+                        if (!_refreshAgain) ShowContextFailure(2, "UI_CONTEXT_PROJECT_ID_MISMATCH", "");
+                        continue;
+                    }
+                    if (DateTimeOffset.TryParse(Text(_context, "generated_utc"), out var currentUtc) &&
+                        DateTimeOffset.TryParse(Text(result.Json, "generated_utc"), out var responseUtc) && responseUtc < currentUtc)
+                    {
+                        // A stale reply is never proof of post-action completion.
+                        // If this was the last pending read, keep actions disabled
+                        // instead of restoring the old owner START/CONTINUE rights.
+                        if (!_refreshAgain && _pendingAdmissionProjectId is not null)
+                            ShowContextFailure(2, "UI_CONTEXT_STALE_POST_ADMISSION", "");
+                        continue;
+                    }
+                    _context = result.Json;
+                    _contextReady = true;
+                    if (_selectedProjectId is null) _selectedProjectId = Text(result.Json, "selected_project", "project_id");
+                    _lastDiagnostic = "";
+                    ApplyContext(result.Json);
+                }
+                catch (Exception ex)
+                {
+                    // Early exceptions must not discard a queued newer read.
+                    if (!_refreshAgain) ShowContextFailure(-1, ex.ToString(), "");
+                }
+            } while (_refreshAgain);
         }
-        catch (Exception ex)
+        finally
         {
-            ShowContextFailure(-1, ex.ToString(), "");
+            _refreshing = false;
+            _refreshCompletion = null;
+            completion.TrySetResult(true);
         }
-        finally { _refreshing = false; }
     }
 
     private void ShowContextFailure(int exitCode, string? stderr, string? stdout)
@@ -199,7 +260,8 @@ public partial class MainWindow : Window
         _contextReady = false;
         _context = null;
         DisableActions(Localization.Get("UiContextReason"));
-        UpdateHomeNavigation();
+        ClearOwnerProjection(Localization.Get("WorkspaceVerificationUnknown"));
+        ProjectTabs.Visibility = Visibility.Collapsed;
         SourceStateText.Text = McpStateText.Text = WorkStatusText.Text = Localization.Get("UnknownState");
         WorkDetailText.Text = Localization.Get("UiContextReason");
         var orbitPartial = raw.Contains("ORBIT_PARTIAL_INSTALL", StringComparison.Ordinal);
@@ -225,7 +287,10 @@ public partial class MainWindow : Window
     private void ApplyContext(JsonObject ctx)
     {
         ProductVersionText.Text = $"Control Center · Worker {Text(ctx, "product", "version") ?? "—"}";
-        LastUpdatedText.Text = $"{Localization.Get("UpdatedLabel")} {DateTime.Now:T}";
+        var verified = Text(ctx, "generated_utc");
+        LastUpdatedText.Text = DateTimeOffset.TryParse(verified, out var ownerTimestamp)
+            ? $"{Localization.Get("WorkspaceVerifiedAt")} {ownerTimestamp.ToLocalTime():g}"
+            : Localization.Get("WorkspaceVerificationUnknown");
         var helper = Text(ctx, "work", "helper", "status") ?? "OFFLINE";
         HelperBadge.Text = $"{Localization.Get("HelperLabel")} · {helper}";
 
@@ -245,6 +310,8 @@ public partial class MainWindow : Window
         var workProjectName = (Node(ctx, "projects") as JsonArray)?.OfType<JsonObject>()
             .FirstOrDefault(p => Text(p, "project_id") == workProjectId)?["display_name"]?.GetValue<string>() ?? workProjectId;
         var taskGoal = Text(ctx, "work", "task_goal");
+        UpdateProjectTabsVisibility();
+        WorkspaceNoticeText.Text = OwnerWorkspaceNotice(ctx);
         HomeProjectText.Text = projectName;
         SelectedProjectText.Text = Localization.Get("SelectedProject") + ": " + projectName;
         HomeTaskText.Text = Bool(ctx, "work", "active")
@@ -375,12 +442,21 @@ public partial class MainWindow : Window
 
     private string RecommendationTitle(string state) => Presentation.Status(state);
 
+    internal static bool OwnerResponseMatchesRequested(string? requestedProject, JsonObject response) =>
+        string.IsNullOrWhiteSpace(requestedProject) ||
+        string.Equals(Text(response, "selected_project", "project_id"), requestedProject, StringComparison.Ordinal);
+
+    private bool VerifiedContextMatchesSelection(JsonObject? ctx) =>
+        _contextReady && ctx is not null &&
+        string.Equals(Text(ctx, "selected_project", "project_id"), _selectedProjectId, StringComparison.Ordinal);
+
     private void UpdateReadOnlyAvailability(JsonObject ctx)
     {
+        var trusted = VerifiedContextMatchesSelection(ctx);
         var source = Text(ctx, "navigation", "source_root");
         var output = Text(ctx, "navigation", "output_root");
-        HomeOpenSourceButton.IsEnabled = OpenSourceButton.IsEnabled = !string.IsNullOrWhiteSpace(source);
-        HomeOpenOutputButton.IsEnabled = !string.IsNullOrWhiteSpace(output);
+        HomeOpenSourceButton.IsEnabled = OpenSourceButton.IsEnabled = trusted && !string.IsNullOrWhiteSpace(source);
+        HomeOpenOutputButton.IsEnabled = trusted && !string.IsNullOrWhiteSpace(output);
 
         var updateStatus = Text(ctx, "source", "source_update", "status") ?? "NONE";
         var sourceUpdateActive = updateStatus != "NONE";
@@ -388,7 +464,7 @@ public partial class MainWindow : Window
 
         foreach (var (button, key) in ActionButtons())
         {
-            button.IsEnabled = _mutationsEnabled && _contextReady && Bool(ctx, "actions", key, "enabled");
+            button.IsEnabled = _mutationsEnabled && trusted && Bool(ctx, "actions", key, "enabled");
             button.ToolTip = button.IsEnabled ? Localization.Get("ReadOnlyPreservation")
                 : !_contextReady ? Localization.Get("LoadingProject")
                 : !_mutationsEnabled ? Localization.Get("ActionInProgress")
@@ -409,7 +485,7 @@ public partial class MainWindow : Window
             : !_mutationsEnabled ? Localization.Get("ActionInProgress") : Localization.Get("SyncExtensionBlocked");
         SyncExtensionButton.ToolTip = SyncExtensionHelpText.Text;
         System.Windows.Automation.AutomationProperties.SetHelpText(SyncExtensionButton, SyncExtensionHelpText.Text);
-        OpenIncomingButton.IsEnabled = _contextReady && sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath);
+        OpenIncomingButton.IsEnabled = trusted && sourceUpdateActive && !string.IsNullOrWhiteSpace(slotPath);
         OpenIncomingButton.ToolTip = Localization.Get("IncomingUnavailable");
         HomeOpenSourceButton.ToolTip = OpenSourceButton.ToolTip = Localization.Get("SourceUnavailable");
         HomeOpenOutputButton.ToolTip = Localization.Get("OutputUnavailable");
@@ -428,12 +504,64 @@ public partial class MainWindow : Window
         ActionAvailabilityText.Text = MaintenanceAvailabilityText.Text = reason;
     }
 
+    // All globally visible owner facts belong to the OLD project until a
+    // matching UI_CONTEXT readback arrives. Clear them synchronously when
+    // changing the project identity, before the first asynchronous await.
+    private void ClearOwnerProjection(string reason)
+    {
+        LastUpdatedText.Text = reason;
+        WorkspaceNoticeText.Text = reason;
+        HelperBadge.Text = Localization.Get("HelperLabel") + ": " + Localization.Get("UnknownState");
+        GlobalWarningText.Text = "";
+        HomeTaskText.Text = Localization.Get("UnknownState");
+        HomeHelperText.Text = Localization.Get("UnknownState");
+        // The entire owner projection belongs to the previous project until
+        // a matching fresh UI_CONTEXT arrives. Hide old Output/Activity facts.
+        OutputStateText.Text = reason;
+        OutputSummaryText.Text = reason;
+        ActivitySummaryText.Text = reason;
+        ActivityList.ItemsSource = null;
+        SourceStateText.Text = reason;
+        SourceUpdateStatusText.Text = reason;
+        SourceArtifactCombo.ItemsSource = null;
+        SourceSyncResultText.Tag = null;
+        SourceSyncResultText.Text = "";
+        McpEpochText.Text = reason;
+        McpPolicyText.Text = reason;
+        OperationText.Text = reason;
+        DiagnosticsText.Text = reason;
+        AdvancedText.Text = "";
+        McpStateText.Text = Localization.Get("UnknownState");
+        McpUsageText.Text = Localization.Get("UnknownState");
+        CheckpointStateText.Text = Localization.Get("UnknownState");
+        CheckpointSummaryText.Text = "";
+        WorkCheckpointText.Text = Localization.Get("UnknownState");
+        SessionHelpText.Text = "";
+        UpdateHomeNavigation();
+        UpdateProjectTabsVisibility();
+    }
+
     private async void ProjectsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_applyingContext || ProjectsList.SelectedItem is not ProjectRow row || row.ProjectId == _selectedProjectId) return;
+        if (_applyingContext) return;
+        if (_pendingAdmissionProjectId is { } pinnedId)
+        {
+            // Keyboard/mouse is blocked at the ListView; also reject synthetic
+            // or programmatic selection changes during the password prompt.
+            _applyingContext = true;
+            try
+            {
+                ProjectsList.SelectedItem = ProjectsList.Items.OfType<ProjectRow>()
+                    .FirstOrDefault(p => p.ProjectId == pinnedId);
+            }
+            finally { _applyingContext = false; }
+            return;
+        }
+        if (ProjectsList.SelectedItem is not ProjectRow row || row.ProjectId == _selectedProjectId) return;
         _selectedProjectId = row.ProjectId;
         _contextReady = false;
         _context = null;
+        ClearOwnerProjection(Localization.Get("WorkspaceVerificationPending"));
         SelectedProjectText.Text = Localization.Get("SelectedProject") + ": " + row.DisplayName;
         HomeProjectText.Text = WorkStatusText.Text = row.DisplayName;
         RecommendationText.Text = WorkDetailText.Text = Localization.Get("LoadingProject");
@@ -565,19 +693,82 @@ public partial class MainWindow : Window
         if (sender is System.Windows.Controls.Button b && b.Tag is string page) ShowPage(page);
     }
 
-    // Navigation only: eligibility and mutations remain exclusively owned by UI_CONTEXT.
+    // D2: UI_CONTEXT determines the owner-proven next navigation intent.
+    // This button may open a page or refresh UI_CONTEXT; it NEVER calls RunAsync.
+    internal static (string Destination, string LabelKey) OwnerHomeAction(
+        JsonObject? ctx, bool contextReady, string? selectedProjectId)
+    {
+        if (string.IsNullOrWhiteSpace(selectedProjectId)) return ("Projects", "ChooseProject");
+        if (!contextReady || ctx is null ||
+            Text(ctx, "selected_project", "project_id") != selectedProjectId)
+            return ("Refresh", "WorkspaceCheckStatus");
+
+        var active = Bool(ctx, "work", "active");
+        var taskProjectId = Text(ctx, "work", "project_id");
+        if (active && taskProjectId != selectedProjectId)
+            return ("Projects", "WorkspaceReviewOtherProject");
+        if (active)
+            return Text(ctx, "work", "helper", "status") == "CONNECTED"
+                ? ("Work", "WorkspaceOpenCurrentTask")
+                : ("Refresh", "WorkspaceCheckConnection");
+
+        if (Bool(ctx, "actions", "continue", "enabled") &&
+            Node(ctx, "work", "checkpoint") is JsonObject)
+            return ("Work", "WorkspaceOpenSavedWork");
+        if (Bool(ctx, "actions", "start", "enabled"))
+            return ("Work", "WorkspacePrepareNewTask");
+        return ("Refresh", "WorkspaceCheckStatus");
+    }
+
     private void UpdateHomeNavigation()
     {
-        var page = _contextReady && !string.IsNullOrWhiteSpace(Text(_context, "selected_project", "project_id"))
-            ? "Work" : "Projects";
-        HomePrimaryButton.Tag = page;
-        HomePrimaryButton.Content = Localization.Get(page == "Work" ? "NavWork" : "ChooseProject");
+        if (_pendingAdmissionProjectId is { } pinnedId)
+        {
+            var message = Localization.Get("WorkspaceAdmissionPending");
+            HomePrimaryButton.Tag = "AdmissionPending";
+            HomePrimaryButton.Content = message;
+            HomePrimaryButton.IsEnabled = false;
+            WorkspaceNoticeText.Text = message + " · " + pinnedId;
+            System.Windows.Automation.AutomationProperties.SetName(HomePrimaryButton, message);
+            System.Windows.Automation.AutomationProperties.SetHelpText(HomePrimaryButton, message);
+            return;
+        }
+        HomePrimaryButton.IsEnabled = true;
+        var intent = OwnerHomeAction(_context, _contextReady, _selectedProjectId);
+        HomePrimaryButton.Tag = intent.Destination;
+        HomePrimaryButton.Content = Localization.Get(intent.LabelKey);
         System.Windows.Automation.AutomationProperties.SetName(HomePrimaryButton, HomePrimaryButton.Content.ToString());
         System.Windows.Automation.AutomationProperties.SetHelpText(HomePrimaryButton, Localization.Get("HomeNavigationHelp"));
     }
 
+    private async void HomePrimary_Click(object sender, RoutedEventArgs e)
+    {
+        // Refresh never opens or restarts Helper; Work navigation does not START.
+        var target = HomePrimaryButton.Tag as string;
+        if (target == "Refresh") await RefreshContextAsync();
+        else if (target is "Projects" or "Work") ShowPage(target);
+    }
+
+    // Only project-scoped pages expose tabs. A selected identity alone must not
+    // overlay settings, catalog, or technical recovery screens.
+    private void UpdateProjectTabsVisibility()
+    {
+        ProjectTabs.Visibility = _contextReady &&
+            !string.IsNullOrWhiteSpace(Text(_context, "selected_project", "project_id")) &&
+            _currentPage is "Home" or "Source" or "Extensions" or "Activity" or "Work"
+                ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void ShowPage(string name)
     {
+        _currentPage = name;
+        UpdateProjectTabsVisibility();
+        MaintenanceGeneralPanel.Visibility = name == "Extensions" ? Visibility.Collapsed : Visibility.Visible;
+        MaintenanceExtensionPanel.Visibility = name == "Source" ? Visibility.Collapsed : Visibility.Visible;
+        MaintenanceDiagnosticsPanel.Visibility = name is "Source" or "Extensions" ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var tab in new[] { ProjectOverviewTab, ProjectSourceTab, ProjectExtensionsTab, ProjectHistoryTab })
+            System.Windows.Automation.AutomationProperties.SetItemStatus(tab, tab.Tag?.ToString() == name ? "Selected" : "");
+
         foreach (var button in new[] { NavHomeButton, NavProjectsButton, NavWorkButton, NavActivityButton,
             NavMaintenanceButton, NavSettingsButton, NavAdvancedButton })
             System.Windows.Automation.AutomationProperties.SetItemStatus(button, button.Tag?.ToString() == name ? "Selected" : "");
@@ -586,15 +777,18 @@ public partial class MainWindow : Window
         FrameworkElement target = name switch
         {
             "Projects" => ProjectsPage, "Work" => WorkPage, "Activity" => ActivityPage,
+            "Source" or "Extensions" => MaintenancePage,
             "Maintenance" => MaintenancePage, "Settings" => SettingsPage, "Advanced" => AdvancedPage, _ => HomePage
         };
         target.Visibility = Visibility.Visible;
         PageTitle.Text = name switch
         {
-            "Projects" => Localization.Get("NavProjects"), "Work" => Localization.Get("NavWork"),
+            "Projects" => Localization.Get("WorkspaceAllProjects"), "Work" => Localization.Get("NavWork"),
+            "Source" => Localization.Get("WorkspaceSource"), "Extensions" => Localization.Get("WorkspaceExtensions"),
+            "Home" => Localization.Get("WorkspaceMine"),
             "Activity" => Localization.Get("NavActivity"), "Maintenance" => Localization.Get("NavMaintenance"),
             "Settings" => Localization.Get("NavSettings"), "Advanced" => Localization.Get("NavAdvanced"),
-            _ => Localization.Get("NavHome")
+            _ => Localization.Get("WorkspaceMine")
         };
     }
 
@@ -661,29 +855,92 @@ public partial class MainWindow : Window
         Process.Start(psi);
     }
 
+    // GUI-only lease for an external credential prompt or in-flight Worker
+    // operation. Never collect a password or infer successful connection.
+    private void BeginPendingAdmission(string projectId)
+    {
+        if (_pendingAdmissionProjectId is not null || projectId != _selectedProjectId)
+            throw new InvalidOperationException("ADMISSION_PROJECT_IDENTITY_REQUIRED");
+        _pendingAdmissionProjectId = projectId;
+        _mutationsEnabled = false;
+        ProjectsList.IsEnabled = false;
+        DisableActions(Localization.Get("WorkspaceAdmissionPending"));
+        UpdateHomeNavigation();
+    }
+
+    private string OwnerWorkspaceNotice(JsonObject ctx)
+    {
+        if (!Bool(ctx, "work", "active")) return "";
+        var taskProjectId = Text(ctx, "work", "project_id");
+        var selectedId = Text(ctx, "selected_project", "project_id");
+        if (!string.IsNullOrWhiteSpace(taskProjectId) && taskProjectId != selectedId)
+        {
+            var name = (Node(ctx, "projects") as JsonArray)?.OfType<JsonObject>()
+                .FirstOrDefault(p => Text(p, "project_id") == taskProjectId)?["display_name"]?.GetValue<string>()
+                ?? taskProjectId;
+            return Localization.Get("WorkspaceOtherTask") + " " + name;
+        }
+        return Text(ctx, "work", "helper", "status") != "CONNECTED"
+            ? Localization.Get("WorkspaceConnectionUnverified") : "";
+    }
+
+    private void EndPendingAdmission()
+    {
+        _pendingAdmissionProjectId = null;
+        ProjectsList.IsEnabled = true;
+        _mutationsEnabled = true;
+        if (VerifiedContextMatchesSelection(_context))
+        {
+            UpdateReadOnlyAvailability(_context!);
+            // Remove the temporary admission banner, but restore genuine
+            // owner warnings rather than silently dropping them.
+            WorkspaceNoticeText.Text = OwnerWorkspaceNotice(_context!);
+        }
+        else
+        {
+            DisableActions(Localization.Get("UiContextReason"));
+            WorkspaceNoticeText.Text = Localization.Get("WorkspaceVerificationUnknown");
+        }
+        UpdateHomeNavigation();
+    }
+
     private async void Start_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || !_contextReady || !StartButton.IsEnabled || _context is null) return;
-        var projectId = Text(_context, "selected_project", "project_id");
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) ||
+            !StartButton.IsEnabled || !Bool(_context, "actions", "start", "enabled")) return;
+        var projectId = _selectedProjectId!;
         var goal = TaskGoalTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
-        if (string.IsNullOrWhiteSpace(goal)) goal = Localization.Get("ReferenceAccessGoal") + " · " + Text(_context, "selected_project", "display_name");
-        _mutationsEnabled = false;
-        DisableActions(Localization.Get("ActionInProgress"));
+        if (string.IsNullOrWhiteSpace(goal))
+            goal = Localization.Get("ReferenceAccessGoal") + " · " + Text(_context, "selected_project", "display_name");
+        BeginPendingAdmission(projectId);
         try
         {
-            var result = await _worker.RunAsync(WorkerAction.Start, new(ProjectId: projectId, TaskId: WorkerClient.CreateTaskId(goal), TaskGoal: goal));
+            var result = await _worker.RunAsync(WorkerAction.Start,
+                new(ProjectId: projectId, TaskId: WorkerClient.CreateTaskId(goal), TaskGoal: goal));
             await ShowActionResultAndRefresh("START", result);
         }
         catch (Exception ex) { ShowContextFailure(-1, ex.ToString(), ""); }
-        finally { _mutationsEnabled = true; if (_contextReady && _context is not null) UpdateReadOnlyAvailability(_context); }
+        finally { EndPendingAdmission(); }
     }
 
     private async void Continue_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled) return;
-        var result = await _worker.RunAsync(WorkerAction.Continue, new());
-        await ShowActionResultAndRefresh("CONTINUE", result);
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) ||
+            !ContinueButton.IsEnabled || !Bool(_context, "actions", "continue", "enabled") ||
+            Node(_context, "work", "checkpoint") is not JsonObject) return;
+        var projectId = _selectedProjectId!;
+        var taskProjectId = Text(_context, "work", "project_id");
+        if (!string.IsNullOrWhiteSpace(taskProjectId) && taskProjectId != projectId) return;
+        BeginPendingAdmission(projectId);
+        try
+        {
+            // Preserve Worker's canonical continuation target and never
+            // substitute START or synthesize a checkpoint in the GUI.
+            var result = await _worker.RunAsync(WorkerAction.Continue, new());
+            await ShowActionResultAndRefresh("CONTINUE", result);
+        }
+        catch (Exception ex) { ShowContextFailure(-1, ex.ToString(), ""); }
+        finally { EndPendingAdmission(); }
     }
 
     private async void Stop_Click(object sender, RoutedEventArgs e)
@@ -696,27 +953,27 @@ public partial class MainWindow : Window
 
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) || !ApplyButton.IsEnabled) return;
         var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
         var result = await _worker.RunAsync(WorkerAction.Apply, new(ProjectId: projectId));
         await ShowActionResultAndRefresh("APPLY", result);
     }
 
     private async void Verify_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) || !VerifyButton.IsEnabled) return;
         var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
         var result = await _worker.RunAsync(WorkerAction.Verify, new(ProjectId: projectId));
         await ShowActionResultAndRefresh("VERIFY", result);
     }
 
     private async void Repair_Click(object sender, RoutedEventArgs e)
     {
-        if (!_mutationsEnabled || _context is null) return;
+        if (!_mutationsEnabled || !VerifiedContextMatchesSelection(_context) || !RepairButton.IsEnabled) return;
         var projectId = Text(_context, "selected_project", "project_id");
-        if (string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(projectId) || projectId != _selectedProjectId) return;
         var result = await _worker.RunAsync(WorkerAction.Repair, new(ProjectId: projectId), elevated: true);
         await ShowActionResultAndRefresh("REPAIR", result);
     }
@@ -781,6 +1038,7 @@ public partial class MainWindow : Window
     {
         _lastDiagnostic = Bound(string.Join(Environment.NewLine, new[] { result.StandardError, result.StandardOutput }.Where(x => !string.IsNullOrWhiteSpace(x))), 4000);
         AdvancedText.Text = _lastDiagnostic;
+        if (_fixtureMode) return; // Fake-owner regression records diagnostic; never block hosted CI with a modal.
         System.Windows.MessageBox.Show(
             Localization.Get("ActionFailed") + ". " + Presentation.Outcome(result.StandardError) + " " + Localization.Get("ErrorDetails"),
             Localization.Get("AppTitle"),
