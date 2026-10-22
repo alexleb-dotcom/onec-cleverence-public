@@ -153,6 +153,11 @@ internal static class Program
             Control<TextBlock>(w, "GlobalWarningText").Text = Localization.Get("OtherProjectsWarning");
             Control<TextBlock>(w, "HelperBadge").Text = "CONNECTED";
             Control<TextBlock>(w, "HomeTaskText").Text = "RetailGroup old task";
+            Control<TextBlock>(w, "OutputStateText").Text = "RetailGroup 8 tasks";
+            Control<TextBlock>(w, "OutputSummaryText").Text = "RetailGroup 2 proposals";
+            Control<TextBlock>(w, "ActivitySummaryText").Text = "RetailGroup 4 activities";
+            Control<TextBlock>(w, "McpEpochText").Text = "RetailGroup expiry";
+            Control<TextBlock>(w, "OperationText").Text = "RetailGroup operation";
             var beforeSelectionCalls = fake.Calls.Count;
             var stale = new TaskCompletionSource<WorkerCallResult>();
             fake.Pending = stale;
@@ -168,6 +173,15 @@ internal static class Program
                 !Control<Button>(w, "StartButton").IsEnabled &&
                 fake.Calls.Count == beforeSelectionCalls,
                 "D1 pending identity invalidates previous Helper/task proof and forbids mutations");
+            Call(w, "ShowPage", "Home");
+            Check(Control<TextBlock>(w, "OutputStateText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "OutputSummaryText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "ActivitySummaryText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "McpEpochText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                Control<TextBlock>(w, "OperationText").Text == Localization.Get("WorkspaceVerificationPending") &&
+                !Control<Button>(w, "StartButton").IsEnabled && fake.Calls.Count == beforeSelectionCalls,
+                "D1 pending project switch hides old Output/Activity on Home");
+            Call(w, "ShowPage", "Projects");
             Render((FrameworkElement)w.Content, Path.Combine(output, "ru-dark-loading-Projects.png"), 1);
             stale.SetResult(new(0, FixtureWorker.Context("RetailGroup"), "", ""));
             Pump(refresh);
@@ -182,10 +196,17 @@ internal static class Program
                 "second project switch stays unverified throughout stalled context request");
             failedNewReadback.SetResult(new(2, null, "", "fixture synthetic failure"));
             Drain();
+            Call(w, "ShowPage", "Home");
             Check(Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
                 Control<TextBlock>(w, "WorkspaceNoticeText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
                 !Control<Button>(w, "StartButton").IsEnabled,
                 "failed owner readback remains UNKNOWN / actions disabled");
+            Check(Control<TextBlock>(w, "OutputStateText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                Control<TextBlock>(w, "OutputSummaryText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                Control<TextBlock>(w, "ActivitySummaryText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                Control<TextBlock>(w, "McpEpochText").Text == Localization.Get("WorkspaceVerificationUnknown") &&
+                Control<TextBlock>(w, "OperationText").Text == Localization.Get("WorkspaceVerificationUnknown"),
+                "failed readback leaves Output/Activity/expiry/operation UNKNOWN");
             Pump((Task)Call(w, "RefreshContextAsync")!);
             Check(Control<Button>(w, "StartButton").IsEnabled && fake.Calls.Count == beforeSelectionCalls,
                 "fresh matched Worker context restores selected project, without new mutation");
