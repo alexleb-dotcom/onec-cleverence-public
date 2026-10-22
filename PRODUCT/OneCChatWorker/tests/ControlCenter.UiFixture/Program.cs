@@ -535,8 +535,12 @@ internal static class Program
             // timer consumes its Pending TCS. This is the real post-action read.
             var postReadback = new TaskCompletionSource<WorkerCallResult>();
             fake.Pending = postReadback;
-            pendingCommand.SetResult(new WorkerCallResult(commandExit, null, "", commandExit == 1223 ? "UAC_CANCELLED" : ""));
+            pendingCommand.SetResult(new WorkerCallResult(commandExit, null,
+                commandExit == 3 ? "FIXTURE_NONZERO" : "", commandExit == 1223 ? "UAC_CANCELLED" : ""));
             Drain();
+            if (commandExit == 3)
+                Check(Control<TextBlock>(w, "AdvancedText").Text.Contains("FIXTURE_NONZERO"),
+                    caseName + " nonzero warning retained without unattended modal dialog");
             Check(!timerRead.IsCompleted && !list.IsEnabled &&
                 fake.ContextRequests.Count == readsBefore &&
                 !Control<Button>(w, "HomePrimaryButton").IsEnabled,
