@@ -402,6 +402,7 @@ internal static class Program
                 Check(Control<Button>(w, "ContinueButton").ToolTip is string reason && !string.IsNullOrWhiteSpace(reason), "disabled action reason present " + language);
             }
             TestPendingAdmission(output);
+            TestOverlappingAdmissionRefresh();
             TestExtensionSync(output);
             var screenshots = Directory.EnumerateFiles(output, "*.png").Count();
             File.WriteAllText(Path.Combine(output, "result.json"), System.Text.Json.JsonSerializer.Serialize(new { result = "PASS", checks = _checks, screenshots, fixture_only = true, production_access = false }));
@@ -482,6 +483,109 @@ internal static class Program
         Call(w, "Continue_Click", w, new RoutedEventArgs()); Drain();
         Check(fake.Calls.Count == beforeCalls + 2,
             "D2C owner context with foreign task ID cannot dispatch unscoped CONTINUE");
+    }
+
+    // FA regression: a four-second timer poll is still in flight when a
+    // credential START/CONTINUE finishes. Only a *subsequent* owner read may
+    // unlock mutation eligibility, even when the old poll fails or is stale.
+    private static void TestOverlappingAdmissionRefresh()
+    {
+        foreach (var (caseName, continuation, commandExit, postOutcome, oldPollFails) in new[]
+        {
+            ("START_SUCCESS", false, 0, "RUNNING", false),
+            ("START_CANCELLED", false, 1223, "PROJECT_READY", false),
+            ("START_POST_READ_ERROR", false, 0, "ERROR", true),
+            ("CONTINUE_SUCCESS", true, 0, "RUNNING", false),
+            ("CONTINUE_NONZERO_FOREIGN", true, 3, "FOREIGN", false),
+            ("CONTINUE_MISSING_OWNER", true, 0, "MISSING", true)
+        })
+        {
+            var fake = new FixtureWorker();
+            var w = new MainWindow(fake, fixture: true);
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            var list = Control<ListView>(w, "ProjectsList");
+            list.SelectedIndex = 1; Drain();
+            var eligible = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+            if (continuation)
+            {
+                eligible["actions"]!["start"]!["enabled"] = false;
+                eligible["actions"]!["continue"]!["enabled"] = true;
+                eligible["work"]!["checkpoint"] = new JsonObject { ["head_seq"] = 42 };
+                eligible["work"]!["project_id"] = "RetailGroup";
+            }
+            fake.ContextOverride = eligible;
+            Pump((Task)Call(w, "RefreshContextAsync")!);
+            Check(Control<Button>(w, continuation ? "ContinueButton" : "StartButton").IsEnabled,
+                caseName + " starts from verified eligible owner state");
+            var delayedTimer = new TaskCompletionSource<WorkerCallResult>();
+            fake.Pending = delayedTimer;
+            var timerRead = (Task)Call(w, "RefreshContextAsync")!;
+            Check(!timerRead.IsCompleted, caseName + " timer GetContext is actually pending");
+            var readsBefore = fake.ContextRequests.Count;
+            var callsBefore = fake.Calls.Count;
+            var pendingCommand = new TaskCompletionSource<WorkerCallResult>();
+            fake.PendingAdmissionResult = pendingCommand;
+            Call(w, continuation ? "Continue_Click" : "Start_Click", w, new RoutedEventArgs()); Drain();
+            Check(fake.Calls.Count == callsBefore + 1 &&
+                fake.Calls.Last().Action == (continuation ? WorkerAction.Continue : WorkerAction.Start) &&
+                !list.IsEnabled && !Control<Button>(w, "StartButton").IsEnabled &&
+                !Control<Button>(w, "ContinueButton").IsEnabled,
+                caseName + " admission freezes exact owner during concurrent timer");
+            // Supply a second independently controlled response AFTER the old
+            // timer consumes its Pending TCS. This is the real post-action read.
+            var postReadback = new TaskCompletionSource<WorkerCallResult>();
+            fake.Pending = postReadback;
+            pendingCommand.SetResult(new WorkerCallResult(commandExit, null, "", commandExit == 1223 ? "UAC_CANCELLED" : ""));
+            Drain();
+            Check(!timerRead.IsCompleted && !list.IsEnabled &&
+                fake.ContextRequests.Count == readsBefore &&
+                !Control<Button>(w, "HomePrimaryButton").IsEnabled,
+                caseName + " completed worker does NOT release before canonical readback");
+            list.SelectedIndex = 0; Drain();
+            Check(list.SelectedItem is not null &&
+                list.SelectedItem.GetType().GetProperty("ProjectId")?.GetValue(list.SelectedItem)?.ToString() == "RetailGroup",
+                caseName + " programmed cross-project switch remains pinned during pending readback");
+            Call(w, continuation ? "Continue_Click" : "Start_Click", w, new RoutedEventArgs()); Drain();
+            Check(fake.Calls.Count == callsBefore + 1,
+                caseName + " repeated Enter/click cannot open second admission prompt");
+            var oldReply = oldPollFails ? new WorkerCallResult(2, null, "", "OLD_TIMER_FAILURE") :
+                new WorkerCallResult(0, (JsonObject)eligible.DeepClone(), "", "");
+            delayedTimer.SetResult(oldReply); Drain();
+            Check(!timerRead.IsCompleted && !list.IsEnabled &&
+                fake.ContextRequests.Count == readsBefore + 1 &&
+                !Control<Button>(w, "StartButton").IsEnabled &&
+                !Control<Button>(w, "ContinueButton").IsEnabled,
+                caseName + " even stale/failed timer reply must await real post-action owner read");
+            Call(w, continuation ? "Continue_Click" : "Start_Click", w, new RoutedEventArgs()); Drain();
+            Check(fake.Calls.Count == callsBefore + 1,
+                caseName + " no replay while post-action owner TCS is unresolved");
+            WorkerCallResult freshReply;
+            if (postOutcome == "ERROR") freshReply = new(2, null, "", "POST_ACTION_CONTEXT_UNAVAILABLE");
+            else
+            {
+                var fresh = FixtureWorker.Context(postOutcome == "FOREIGN" ? "NeoHim" : "RetailGroup",
+                    postOutcome == "RUNNING" ? "RUNNING" : "PROJECT_READY");
+                if (postOutcome == "MISSING") fresh["selected_project"] = null;
+                freshReply = new(0, fresh, "", "");
+            }
+            postReadback.SetResult(freshReply);
+            Pump(timerRead); Drain();
+            Check(list.IsEnabled && fake.Calls.Count == callsBefore + 1 &&
+                Control<Button>(w, "HomePrimaryButton").IsEnabled,
+                caseName + " unlocks only after post-action owner settles");
+            if (postOutcome is "ERROR" or "FOREIGN" or "MISSING")
+                Check(!Control<Button>(w, "StartButton").IsEnabled &&
+                    !Control<Button>(w, "ContinueButton").IsEnabled &&
+                    Control<TextBlock>(w, "LastUpdatedText").Text == Localization.Get("WorkspaceVerificationUnknown"),
+                    caseName + " invalid post-action owner is UNKNOWN/HOLD, never old START/CONTINUE");
+            else if (postOutcome == "RUNNING")
+                Check(!Control<Button>(w, "StartButton").IsEnabled &&
+                    !Control<Button>(w, "ContinueButton").IsEnabled,
+                    caseName + " fresh running task does not mint second START/CONTINUE");
+            else
+                Check(Control<Button>(w, "StartButton").IsEnabled && commandExit == 1223,
+                    caseName + " UAC cancellation restores fresh owner action without hidden replay");
+        }
     }
 
     private static JsonObject SyncContext()
