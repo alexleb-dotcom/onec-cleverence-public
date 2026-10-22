@@ -270,7 +270,6 @@ public partial class MainWindow : Window
         var workProjectName = (Node(ctx, "projects") as JsonArray)?.OfType<JsonObject>()
             .FirstOrDefault(p => Text(p, "project_id") == workProjectId)?["display_name"]?.GetValue<string>() ?? workProjectId;
         var taskGoal = Text(ctx, "work", "task_goal");
-        var chosenProjectId = Text(ctx, "selected_project", "project_id");
         UpdateProjectTabsVisibility();
         WorkspaceNoticeText.Text = OwnerWorkspaceNotice(ctx);
         HomeProjectText.Text = projectName;
