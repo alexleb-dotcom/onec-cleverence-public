@@ -455,8 +455,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 60610,
-      "sha256": "da501fa2e0c655a5f80fd035686554fdce4f15c439b7bd326e8befd414abf6c2"
+      "size": 62301,
+      "sha256": "664f378d41f42b35f1c762aacb9c9e035b6ff61b97763be915cff23525cacc9a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -680,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 55370,
-      "sha256": "ec33a0ab582357bc8c5e5eb47162a9f88fbcb2b0e8ae9485797d36480255e9db"
+      "size": 62085,
+      "sha256": "87324ef0a5ca6c0ac1f21b90da37135707ed7e5ec35cb94799cf1b1025800959"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "83e01d225ab295d151e514746dc8bd497aec0400d95db28d1b3cb2cf0b113fd1"
+  "snapshot_digest": "456c15aa659c20ead9803ba4b868dcca2602fb36ef27b589a70c0dda4bf4280a"
 }
