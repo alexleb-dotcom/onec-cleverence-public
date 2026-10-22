@@ -455,8 +455,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 56958,
-      "sha256": "13c52337682882f8966646ebf4d24e44eb07d8a4e75faddb74ccd21cf738bb57"
+      "size": 59881,
+      "sha256": "e91aa61872df97055794f147a0433a05d00bc19ecf6e44ed3e5a2b63ed6735a9"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -485,13 +485,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 23044,
-      "sha256": "a6870c378693aac67bf2dd593828cdfab32fe1dd9662bb279621f5aff5a4d672"
+      "size": 23155,
+      "sha256": "2aae720e2b6f101bb3d6ad0d212e873ec70988bdaa977d1ff9de1f42c457f6cd"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 30759,
-      "sha256": "9deebb250150345c8c4ed9a7c19e714ccc611598b0846d929ddc35185305f12a"
+      "size": 30894,
+      "sha256": "2854293a7009a94587f294084ca21d603a2cc5fe62329917b52a50727bfdd298"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -680,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 50198,
-      "sha256": "9899f09b8b9fe4f30d331fae742ef6bd37f10c128c62b32bdd03600334c20f7a"
+      "size": 55370,
+      "sha256": "ec33a0ab582357bc8c5e5eb47162a9f88fbcb2b0e8ae9485797d36480255e9db"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "7a1297af418f582ba57c8a982e0a9707292d05e542d06b92332f8e3a4858d110"
+  "snapshot_digest": "6aefef8342b190491d143ee8a730b9ffa6cf4f97b64f92157b406e2a52750fbb"
 }
