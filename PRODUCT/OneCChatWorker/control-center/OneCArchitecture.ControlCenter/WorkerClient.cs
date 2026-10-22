@@ -82,8 +82,31 @@ internal sealed class WorkerClient : IWorkerClient
           fileExists(Path.Combine(programDataRoot, "installed-state.json"))) &&
         (directoryExists(@"C:\OneCChatWorker") || directoryExists(@"C:\ProgramData\OneCChatWorker"));
 
+    // UI_CONTEXT is a read-only authority query. A hung helper must never hold
+    // the UI's single-flight admission readback indefinitely.
+    internal static readonly TimeSpan OwnerContextDeadline = TimeSpan.FromSeconds(25);
+
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default) =>
-        RunAsync(WorkerAction.UiContext, new(ProjectId: projectId), false, token);
+        ReadContextWithDeadlineAsync(
+            deadlineToken => RunAsync(WorkerAction.UiContext, new(ProjectId: projectId), false, deadlineToken),
+            OwnerContextDeadline, token);
+
+    // An unresponsive owner must return UNKNOWN/HOLD through the usual GUI
+    // failure path. No cached START/CONTINUE eligibility may be substituted.
+    internal static async Task<WorkerCallResult> ReadContextWithDeadlineAsync(
+        Func<CancellationToken, Task<WorkerCallResult>> read,
+        TimeSpan deadline, CancellationToken token = default)
+    {
+        if (deadline <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(deadline));
+        token.ThrowIfCancellationRequested();
+        using var bounded = CancellationTokenSource.CreateLinkedTokenSource(token);
+        bounded.CancelAfter(deadline);
+        try { return await read(bounded.Token).WaitAsync(bounded.Token); }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested && bounded.IsCancellationRequested)
+        {
+            return new(2, null, "", "UI_CONTEXT_TIMEOUT");
+        }
+    }
 
     internal ProcessStartInfo CreateStartInfo(WorkerAction action, WorkerActionArgs args, bool elevated)
     {
@@ -96,16 +119,23 @@ internal sealed class WorkerClient : IWorkerClient
         if (!Modes.TryGetValue(action, out var mode))
             throw new InvalidOperationException("WORKER_ACTION_NOT_ALLOWLISTED");
 
+        // START/CONTINUE call native runas.exe inside the Worker; runas requires
+        // a visible, interactive Windows console to ask for the restricted
+        // restricted account credential. Never capture/store it in WPF.
+        // All non-interactive UI_CONTEXT/other actions keep their previous
+        // hidden redirected process boundary.
+        var interactiveAdmission = !elevated && (action is WorkerAction.Start or WorkerAction.Continue);
+        var redirected = !elevated && !interactiveAdmission;
         var psi = new ProcessStartInfo("powershell.exe")
         {
-            UseShellExecute = elevated,
-            CreateNoWindow = !elevated,
-            RedirectStandardOutput = !elevated,
-            RedirectStandardError = !elevated,
-            WindowStyle = ProcessWindowStyle.Hidden,
+            UseShellExecute = !redirected,
+            CreateNoWindow = redirected,
+            RedirectStandardOutput = redirected,
+            RedirectStandardError = redirected,
+            WindowStyle = interactiveAdmission ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden,
             Verb = elevated ? "runas" : ""
         };
-        if (!elevated)
+        if (redirected)
         {
             psi.StandardOutputEncoding = new UTF8Encoding(false, true);
             psi.StandardErrorEncoding = new UTF8Encoding(false);
@@ -116,7 +146,7 @@ internal sealed class WorkerClient : IWorkerClient
         Add(psi, "-Mode"); Add(psi, mode);
         Add(psi, "-WorkerRoot"); Add(psi, WorkerRoot);
         Add(psi, "-ProgramDataRoot"); Add(psi, ProgramDataRoot);
-        if (!elevated) Add(psi, "-Json");
+        if (redirected) Add(psi, "-Json");
 
         AddIf(psi, "-ProjectId", args.ProjectId);
         AddIf(psi, "-ParticipantId", args.ParticipantId);
@@ -148,10 +178,16 @@ internal sealed class WorkerClient : IWorkerClient
         try
         {
             using var process = Process.Start(psi) ?? throw new InvalidOperationException("WORKER_PROCESS_START_FAILED");
-            if (elevated)
+            try
             {
+            if (!psi.RedirectStandardOutput)
+            {
+                // Interactive admission output belongs to the password-console,
+                // not the GUI. Refresh the canonical UI_CONTEXT after exit;
+                // never infer successful connection from process ExitCode=0.
                 await process.WaitForExitAsync(token);
-                return new(process.ExitCode, null, "", "");
+                return new(process.ExitCode, null, "",
+                    (elevated || process.ExitCode == 0) ? "" : "INTERACTIVE_WORKER_EXIT_" + process.ExitCode);
             }
 
             var stdoutTask = process.StandardOutput.ReadToEndAsync(token);
@@ -175,6 +211,16 @@ internal sealed class WorkerClient : IWorkerClient
                 try { json = JsonNode.Parse(stdout) as JsonObject; } catch { }
             }
             return new(process.ExitCode, json, stdout, stderr);
+            }
+            catch (OperationCanceledException) when (action == WorkerAction.UiContext)
+            {
+                // The deadline owns ONLY its read-only UI_CONTEXT subprocess.
+                // Never kill an interactive credential prompt or active task.
+                try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { /* exited concurrently */ }
+                catch (System.ComponentModel.Win32Exception) { /* best effort */ }
+                throw;
+            }
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
