@@ -95,6 +95,8 @@ public partial class MainWindow : Window
         WorkDetailsLabel.Text = Localization.Get("WorkRecovery");
         UpdateHomeNavigation();
         CurrentWorkLabel.Text = Localization.Get("CurrentWork");
+        HomeHelperLabel.Text = Localization.Get("HelperLabel");
+        System.Windows.Automation.AutomationProperties.SetName(HomeStatusStrip, Localization.Get("WorkspaceOverview"));
         RecommendedLabel.Text = Localization.Get("Recommended");
         McpTitleLabel.Text = Localization.Get("McpTitle");
         CheckpointTitleLabel.Text = Localization.Get("CheckpointTitle");

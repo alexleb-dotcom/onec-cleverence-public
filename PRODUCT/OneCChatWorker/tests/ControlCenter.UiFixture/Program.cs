@@ -138,6 +138,13 @@ internal static class Program
             Check(fake.ContextRequests.Last() == "RetailGroup", "selection goes to canonical UI_CONTEXT ProjectId");
             Check(Control<Button>(w, "StartButton").IsEnabled, "second accepted project independent of first drift");
             Call(w, "ShowPage", "Home");
+            Check(Control<Grid>(w, "HomeStatusStrip").ColumnDefinitions.Count == 3 &&
+                Control<TextBlock>(w, "SourceTitleLabel").Text == Localization.Get("SourceTitle") &&
+                Control<TextBlock>(w, "HomeHelperLabel").Text == Localization.Get("HelperLabel") &&
+                Control<TextBlock>(w, "CurrentWorkLabel").Text == Localization.Get("CurrentWork") &&
+                Control<Button>(w, "HomeDetailsButton").Tag as string == "Advanced",
+                "D2 concise overview has exactly one CTA plus three read-only status sections and secondary diagnostics");
+
             var beforeD2Nav = fake.Calls.Count;
             Check(Control<Button>(w, "HomePrimaryButton").Tag as string == "Work",
                 "D2 owner-enabled new task routes to Work without directly issuing START");
@@ -356,6 +363,9 @@ internal static class Program
                 Localization.SetLanguage(language); ThemeService.Apply(theme);
                 Call(w, "ApplyLocalization");
                 Pump((Task)Call(w, "RefreshContextAsync")!);
+                Check(Control<TextBlock>(w, "HomeHelperLabel").Text == Localization.Get("HelperLabel") &&
+                    System.Windows.Automation.AutomationProperties.GetName(Control<Grid>(w, "HomeStatusStrip")) == Localization.Get("WorkspaceOverview"),
+                    "D2 status strip native WPF automation and Helper label localized " + language + theme);
                 foreach (var background in new[] { "CardBrush", "CardAltBrush", "SelectionBrush", "HoverBrush" })
                     Check(Contrast(Brush("TextBrush"), Brush(background)) >= 4.5, language + " " + theme + " readable " + background);
                 Check(Contrast(Brush("MutedTextBrush"), Brush("CardAltBrush")) >= 4.5, theme + " disabled text contrast");
@@ -373,6 +383,10 @@ internal static class Program
                     var home = Control<ScrollViewer>(w, "HomePage");
                     Check(primary.ActualWidth >= 80 && primary.ActualHeight >= 36 && home.ViewportWidth > 500,
                         $"minimum Home retains readable content and primary target {language}{theme}{dpi}: width={primary.ActualWidth}, height={primary.ActualHeight}, viewport={home.ViewportWidth}");
+                    Check(Control<Grid>(w, "HomeStatusStrip").ActualWidth > 450 &&
+                        Control<TextBlock>(w, "HomeTaskText").TextWrapping == TextWrapping.Wrap &&
+                        Control<TextBlock>(w, "HomeProjectText").TextWrapping == TextWrapping.Wrap,
+                        "D2 owner status strip and long project/task names reflow at minimum viewport " + language + theme + dpi);
                     Check(System.Windows.Automation.AutomationProperties.GetItemStatus(Control<Button>(w, "NavHomeButton")) == "Selected",
                         "selected navigation exposed without Enter default action " + language + theme + dpi);
                     var wizard = new ProjectWizardWindow();
