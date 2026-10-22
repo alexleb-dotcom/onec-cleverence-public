@@ -135,4 +135,5 @@
   <data name="WorkspaceCheckConnection" xml:space="preserve"><value>Check connection</value></data>
   <data name="WorkspaceOpenSavedWork" xml:space="preserve"><value>Go to saved continuation</value></data>
   <data name="WorkspacePrepareNewTask" xml:space="preserve"><value>Prepare a new task</value></data>
+  <data name="WorkspaceAdmissionPending" xml:space="preserve"><value>Access request in progress</value></data>
 </root>
