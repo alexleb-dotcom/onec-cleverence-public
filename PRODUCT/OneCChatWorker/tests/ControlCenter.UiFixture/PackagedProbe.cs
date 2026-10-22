@@ -95,9 +95,14 @@ internal static class PackagedProbe
     {
         AutomationElement? found = null;
         Wait(() => {
-            found = AutomationElement.RootElement.FindAll(TreeScope.Children,
-                new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>()
-                .FirstOrDefault(x => x.Current.ClassName == "#32770");
+            found = null;
+            foreach(var top in AutomationElement.RootElement.FindAll(TreeScope.Children,
+                new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>())
+            {
+                found = top.Current.ClassName == "#32770" ? top : top.FindFirst(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ClassNameProperty, "#32770"));
+                if(found is not null) break;
+            }
             return found is not null;
         }, "owned native dialog");
         return found!;
