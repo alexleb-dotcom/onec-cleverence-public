@@ -401,6 +401,7 @@ internal static class Program
                 Check(row is not null && row.Focusable && list.SelectionMode == SelectionMode.Single, "keyboard-selectable project row");
                 Check(Control<Button>(w, "ContinueButton").ToolTip is string reason && !string.IsNullOrWhiteSpace(reason), "disabled action reason present " + language);
             }
+            TestPendingAdmission(output);
             TestExtensionSync(output);
             var screenshots = Directory.EnumerateFiles(output, "*.png").Count();
             File.WriteAllText(Path.Combine(output, "result.json"), System.Text.Json.JsonSerializer.Serialize(new { result = "PASS", checks = _checks, screenshots, fixture_only = true, production_access = false }));
@@ -408,6 +409,79 @@ internal static class Program
             return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+    }
+
+    // Hosted Windows only: no external password prompt, user account or process.
+    // A delayed fake Worker result models the whole credential/admission interval.
+    private static void TestPendingAdmission(string output)
+    {
+        var fake = new FixtureWorker();
+        var w = new MainWindow(fake, fixture: true);
+        Pump((Task)Call(w, "RefreshContextAsync")!);
+        var list = Control<ListView>(w, "ProjectsList");
+        list.SelectedIndex = 1; Drain();
+        Check(Control<Button>(w, "StartButton").IsEnabled,
+            "D2C canonical selected RetailGroup permits START before credential request");
+        var pendingStart = new TaskCompletionSource<WorkerCallResult>();
+        fake.PendingAdmissionResult = pendingStart;
+        var beforeCalls = fake.Calls.Count;
+        Call(w, "Start_Click", w, new RoutedEventArgs()); Drain();
+        Check(fake.Calls.Count == beforeCalls + 1 &&
+            fake.Calls.Last().Action == WorkerAction.Start &&
+            fake.Calls.Last().Args.ProjectId == "RetailGroup" &&
+            !list.IsEnabled && !Control<Button>(w, "StartButton").IsEnabled &&
+            !Control<Button>(w, "ContinueButton").IsEnabled &&
+            !Control<Button>(w, "HomePrimaryButton").IsEnabled &&
+            Control<Button>(w, "HomePrimaryButton").Tag as string == "AdmissionPending" &&
+            Control<TextBlock>(w, "WorkspaceNoticeText").Text.Contains("RetailGroup"),
+            "D2C pending START freezes project and changes primary CTA to disabled admission state");
+        var beforeReads = fake.ContextRequests.Count;
+        list.SelectedIndex = 0; Drain();
+        Check(list.SelectedItem is not null &&
+            list.SelectedItem.GetType().GetProperty("ProjectId")?.GetValue(list.SelectedItem)?.ToString() == "RetailGroup" &&
+            fake.ContextRequests.Count == beforeReads && fake.Calls.Count == beforeCalls + 1,
+            "D2C synthetic cross-project selection during START password prompt is rejected");
+        Call(w, "Continue_Click", w, new RoutedEventArgs()); Drain();
+        Check(fake.Calls.Count == beforeCalls + 1,
+            "D2C pending START cannot dispatch concurrent CONTINUE");
+        Render((FrameworkElement)w.Content, Path.Combine(output, "d2c-ru-pending-start.png"), 1, 904, 581);
+        pendingStart.SetResult(new WorkerCallResult(1223, null, "", "UAC_CANCELLED")); Drain();
+        Check(list.IsEnabled && Control<Button>(w, "HomePrimaryButton").IsEnabled &&
+            !Control<TextBlock>(w, "WorkspaceNoticeText").Text.Contains(Localization.Get("WorkspaceAdmissionPending")) &&
+            fake.Calls.Count == beforeCalls + 1,
+            "D2C cancellation releases UI lock and does not retry START");
+
+        var allowedContinue = FixtureWorker.Context("RetailGroup", "PROJECT_READY");
+        allowedContinue["actions"]!["start"]!["enabled"] = false;
+        allowedContinue["actions"]!["continue"]!["enabled"] = true;
+        allowedContinue["work"]!["checkpoint"] = new JsonObject { ["head_seq"] = 15 };
+        allowedContinue["work"]!["project_id"] = "RetailGroup";
+        fake.ContextOverride = allowedContinue;
+        Pump((Task)Call(w, "RefreshContextAsync")!);
+        Check(Control<Button>(w, "ContinueButton").IsEnabled,
+            "D2C same-project verified checkpoint permits explicit CONTINUE");
+        var pendingContinue = new TaskCompletionSource<WorkerCallResult>();
+        fake.PendingAdmissionResult = pendingContinue;
+        Call(w, "Continue_Click", w, new RoutedEventArgs()); Drain();
+        Check(!list.IsEnabled && !Control<Button>(w, "HomePrimaryButton").IsEnabled &&
+            fake.Calls.Count == beforeCalls + 2 && fake.Calls.Last().Action == WorkerAction.Continue,
+            "D2C pending CONTINUE freezes project and suppresses other mutations");
+        list.SelectedIndex = 0; Drain();
+        Check(list.SelectedItem is not null &&
+            list.SelectedItem.GetType().GetProperty("ProjectId")?.GetValue(list.SelectedItem)?.ToString() == "RetailGroup" &&
+            fake.Calls.Count == beforeCalls + 2,
+            "D2C CONTINUE rejects mid-prompt selection and never mints START");
+        pendingContinue.SetResult(new WorkerCallResult(0, null, "", "")); Drain();
+        Check(list.IsEnabled && Control<Button>(w, "HomePrimaryButton").IsEnabled &&
+            fake.Calls.Count == beforeCalls + 2,
+            "D2C completed CONTINUE releases pending admission without replay");
+
+        allowedContinue["work"]!["project_id"] = "NeoHim";
+        fake.ContextOverride = allowedContinue;
+        Pump((Task)Call(w, "RefreshContextAsync")!);
+        Call(w, "Continue_Click", w, new RoutedEventArgs()); Drain();
+        Check(fake.Calls.Count == beforeCalls + 2,
+            "D2C owner context with foreign task ID cannot dispatch unscoped CONTINUE");
     }
 
     private static JsonObject SyncContext()
@@ -576,6 +650,7 @@ internal sealed class FixtureWorker : IWorkerClient
     public bool Empty;
     public bool UpdatePassed;
     public TaskCompletionSource<WorkerCallResult>? Pending;
+    public TaskCompletionSource<WorkerCallResult>? PendingAdmissionResult;
     public Task<WorkerCallResult> GetContextAsync(string? projectId, CancellationToken token = default)
     {
         ContextRequests.Add(projectId);
@@ -588,6 +663,12 @@ internal sealed class FixtureWorker : IWorkerClient
     public Task<WorkerCallResult> RunAsync(WorkerAction action, WorkerActionArgs args, bool elevated = false, CancellationToken token = default)
     {
         Calls.Add((action, args));
+        if ((action is WorkerAction.Start or WorkerAction.Continue) &&
+            PendingAdmissionResult is { } pendingAdmission)
+        {
+            PendingAdmissionResult = null;
+            return pendingAdmission.Task;
+        }
         if (action == WorkerAction.SyncExtension && SyncStatus is { } status && ContextOverride is { } ctx)
         {
             var now = DateTimeOffset.UtcNow;
