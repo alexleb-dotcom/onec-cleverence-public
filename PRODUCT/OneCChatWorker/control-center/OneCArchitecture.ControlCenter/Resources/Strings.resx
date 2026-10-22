@@ -129,4 +129,10 @@
   <data name="WorkspaceOtherTask" xml:space="preserve"><value>An active task belongs to another project:</value></data>
   <data name="WorkspaceConnectionUnverified" xml:space="preserve"><value>A task is active; helper connection is not verified.</value></data>
   <data name="WorkspaceVerificationPending" xml:space="preserve"><value>Checking the selected project. Previous project observations are no longer current.</value></data>
+  <data name="WorkspaceCheckStatus" xml:space="preserve"><value>Check status</value></data>
+  <data name="WorkspaceReviewOtherProject" xml:space="preserve"><value>All projects</value></data>
+  <data name="WorkspaceOpenCurrentTask" xml:space="preserve"><value>Open current work</value></data>
+  <data name="WorkspaceCheckConnection" xml:space="preserve"><value>Check connection</value></data>
+  <data name="WorkspaceOpenSavedWork" xml:space="preserve"><value>Go to saved continuation</value></data>
+  <data name="WorkspacePrepareNewTask" xml:space="preserve"><value>Prepare a new task</value></data>
 </root>

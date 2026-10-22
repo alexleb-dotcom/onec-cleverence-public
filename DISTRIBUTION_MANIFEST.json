@@ -450,13 +450,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml",
-      "size": 22081,
-      "sha256": "e802ac9f2325106c00e87a070f13053a748b138be9cc58f0b4fce52d1efd089d"
+      "size": 22089,
+      "sha256": "9093faf2f318b4b3705198a6c94c2c2f228eeae71fcaa0a83e9e9d60b33543ba"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/MainWindow.xaml.cs",
-      "size": 55224,
-      "sha256": "6a1de46da3db6d9b94e381e1aec2d457f376f1aa4f0429d093d0d135d985b53d"
+      "size": 56774,
+      "sha256": "5aaecfc57158dedfc6c813f9ba8470c549c38c504d580e989700093786756d91"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/OneCArchitecture.ControlCenter.csproj",
@@ -485,13 +485,13 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.resx",
-      "size": 22445,
-      "sha256": "4d0ad3c8bcd5bae2f7636f4edeeff66e15259a5eb14780ee73f1d39da404447c"
+      "size": 23044,
+      "sha256": "a6870c378693aac67bf2dd593828cdfab32fe1dd9662bb279621f5aff5a4d672"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/Resources/Strings.ru.resx",
-      "size": 30032,
-      "sha256": "b78c02597021271b05b9c21ece04271eadc4d0aa549ac3b0298a6ab7ea4be920"
+      "size": 30759,
+      "sha256": "9deebb250150345c8c4ed9a7c19e714ccc611598b0846d929ddc35185305f12a"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/StartupRegistration.cs",
@@ -680,8 +680,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 44641,
-      "sha256": "76322c53f6d39fc292ed03041f443657d11c4c6d67870e8f2b1daa2e8b3378f2"
+      "size": 48819,
+      "sha256": "b56a6437fcafefd01eae2d99f4acbfda03ce784d62a12571508596000b347697"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2920,5 +2920,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "cccf16ce00548879df57b7c6e56ed9d327754881538bfc06b58821cf99a83ca3"
+  "snapshot_digest": "1318720af2ef703432c5c9986b170f7a786f1b23fbf63ebe2b4e83b04772447a"
 }

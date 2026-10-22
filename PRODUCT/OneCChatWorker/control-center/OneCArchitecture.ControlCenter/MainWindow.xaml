@@ -70,7 +70,7 @@
                 <TextBlock x:Name="RecommendedLabel" Style="{StaticResource CaptionText}"/>
                 <TextBlock x:Name="RecommendationText" Style="{StaticResource SectionText}" Margin="0,8,0,8"/>
                 <TextBlock x:Name="RecommendationReasonText" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/>
-                <Button x:Name="HomePrimaryButton" Style="{StaticResource PrimaryButton}" Content="Projects" Tag="Projects" Click="Nav_Click" HorizontalAlignment="Left" MinWidth="144" MinHeight="40" Margin="0,24,0,0"/>
+                <Button x:Name="HomePrimaryButton" Style="{StaticResource PrimaryButton}" Content="Projects" Tag="Projects" Click="HomePrimary_Click" HorizontalAlignment="Left" MinWidth="144" MinHeight="40" Margin="0,24,0,0"/>
               </StackPanel>
             </Border>
             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,16" Margin="0,8,0,0">
