@@ -8,10 +8,12 @@ namespace OneCArchitecture.ControlCenter;
 
 internal sealed record ProjectWizardResult(
     string ProjectId, string ProjectName, string ParticipantId, string SystemName, string Role,
-    string MainPath, string? ExtensionId, string? ExtensionName, string? ExtensionPath);
+    string MainPath, string? ExtensionId, string? ExtensionName, string? ExtensionPath,
+    string[] ExtensionArchives);
 
 public partial class ProjectWizardWindow : Window
 {
+    private string[] _extensionArchives = [];
     internal ProjectWizardResult? Result { get; private set; }
 
     public ProjectWizardWindow()
@@ -24,10 +26,13 @@ public partial class ProjectWizardWindow : Window
         WizardProjectLabel.Text = Localization.Get("WizardProjectName");
         WizardSystemLabel.Text = Localization.Get("WizardSystemName");
         WizardRoleLabel.Text = Localization.Get("WizardRole");
-        WizardMainLabel.Text = Localization.Get("WizardMainFolder");
+        WizardMainLabel.Text = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Основная конфигурация (.zip)" : "MAIN XML export (.zip)";
         WizardExtensionLabel.Text = Localization.Get("WizardExtensionName");
-        WizardExtensionFolderLabel.Text = Localization.Get("WizardExtensionFolder");
-        ExtensionCheck.Content = Localization.Get("WizardAddExtension");
+        WizardExtensionFolderLabel.Text = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Архивы расширений (.zip)" : "EXTENSION XML exports (.zip)";
+        ExtensionCheck.Content = Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Добавить расширения (до 15)" : "Add extensions (up to 15)";
+        ExtensionNameBox.Text = "1C / ONEC — ZIP of XML; .cf / .cfe unsupported";
+        ExtensionNameBox.IsReadOnly = true;
+        MainPathBox.IsReadOnly = ExtensionPathBox.IsReadOnly = true;
         BrowseMainButton.Content = BrowseExtensionButton.Content = Localization.Get("WizardBrowse");
         CancelButton.Content = Localization.Get("WizardCancel");
         CreateButton.Content = Localization.Get("WizardCreate");
@@ -35,12 +40,21 @@ public partial class ProjectWizardWindow : Window
     }
 
     private void BrowseMain_Click(object sender, RoutedEventArgs e) => BrowseInto(MainPathBox);
-    private void BrowseExtension_Click(object sender, RoutedEventArgs e) => BrowseInto(ExtensionPathBox);
+    private void BrowseExtension_Click(object sender, RoutedEventArgs e)
+    {
+        using var dlg = new Forms.OpenFileDialog { Filter = "1C XML export ZIP (*.zip)|*.zip", Multiselect = true, CheckFileExists = true };
+        if (dlg.ShowDialog() == Forms.DialogResult.OK)
+        {
+            if (dlg.FileNames.Length > 15) { System.Windows.MessageBox.Show("Maximum 15 extensions."); return; }
+            _extensionArchives = dlg.FileNames;
+            ExtensionPathBox.Text = string.Join("; ", dlg.FileNames);
+        }
+    }
 
     private static void BrowseInto(System.Windows.Controls.TextBox box)
     {
-        using var dlg = new Forms.FolderBrowserDialog { ShowNewFolderButton = false };
-        if (dlg.ShowDialog() == Forms.DialogResult.OK) box.Text = dlg.SelectedPath;
+        using var dlg = new Forms.OpenFileDialog { Filter = "1C XML export ZIP (*.zip)|*.zip", CheckFileExists = true };
+        if (dlg.ShowDialog() == Forms.DialogResult.OK) box.Text = dlg.FileName;
     }
 
     private void ExtensionCheck_Changed(object sender, RoutedEventArgs e)
@@ -64,30 +78,19 @@ public partial class ProjectWizardWindow : Window
             return;
         }
 
-        if (!Directory.Exists(mainPath) || !File.Exists(Path.Combine(mainPath, "Configuration.xml")))
-        {
-            System.Windows.MessageBox.Show(Localization.Get("WizardInvalidFolder"), "OneC Orbit");
-            return;
-        }
-
-        string? extId = null, extName = null, extPath = null;
-        if (ExtensionCheck.IsChecked == true)
-        {
-            extName = ExtensionNameBox.Text.Trim();
-            extPath = ExtensionPathBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(extName) || string.IsNullOrWhiteSpace(extPath) ||
-                !Directory.Exists(extPath) || !File.Exists(Path.Combine(extPath, "Configuration.xml")))
-            {
-                System.Windows.MessageBox.Show(Localization.Get("WizardExtensionRequired"), "OneC Orbit");
-                return;
-            }
-            extId = SafeId(extName, "ext");
-        }
+        // Only metadata is collected here. Worker validates and extracts archives.
+        if (!mainPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) return;
+        var archives = ExtensionCheck.IsChecked == true ? _extensionArchives : [];
+        if (ExtensionCheck.IsChecked == true && archives.Length == 0) return;
+        var review = $"{projectName} / {systemName} / ONEC\nMAIN: {mainPath}\n" +
+            string.Join("\n", archives.Select((p, i) => $"EXTENSION {i + 1}: {p}")) +
+            (Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "\n\nИмпорт проверит Worker. Требуется UAC. Продолжить?" : "\n\nWorker will validate imports. UAC is required. Continue?");
+        if (System.Windows.MessageBox.Show(review, "OneC Orbit — Review", MessageBoxButton.OKCancel) != MessageBoxResult.OK) return;
 
         Result = new(
             SafeId(projectName, "project"), projectName,
             SafeId(systemName, "main"), systemName, role, mainPath,
-            extId, extName, extPath);
+            null, null, null, archives);
         DialogResult = true;
     }
 

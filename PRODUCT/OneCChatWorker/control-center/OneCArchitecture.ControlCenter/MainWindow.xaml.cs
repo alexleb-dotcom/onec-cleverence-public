@@ -237,6 +237,16 @@ public partial class MainWindow : Window
                     if (_selectedProjectId is null) _selectedProjectId = Text(result.Json, "selected_project", "project_id");
                     _lastDiagnostic = "";
                     ApplyContext(result.Json);
+                    if (!_bootstrapOffered && !_fixtureMode && result.Json["schema"]?.ToString() == "UI_CONTEXT_V1" &&
+                        result.Json["product"]?["installed"]?.GetValue<bool>() == true &&
+                        Text(result.Json, "product", "integrity_status") == "PASS" &&
+                        Text(result.Json, "recommendation", "state") == "NO_PROJECTS" &&
+                        result.Json["projects"] is System.Text.Json.Nodes.JsonArray { Count: 0 } &&
+                        result.Json["actions"]?["add_project"]?["enabled"]?.GetValue<bool>() == true)
+                    {
+                        _bootstrapOffered = true;
+                        Dispatcher.BeginInvoke(new Action(() => AddProject_Click(this, new RoutedEventArgs())));
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -985,6 +995,8 @@ public partial class MainWindow : Window
         await ShowActionResultAndRefresh("UPDATE", result);
     }
 
+    private bool _bootstrapOffered;
+
     private async void AddProject_Click(object sender, RoutedEventArgs e)
     {
         if (!_mutationsEnabled) return;
@@ -992,39 +1004,21 @@ public partial class MainWindow : Window
         if (wizard.ShowDialog() != true || wizard.Result is null) return;
         var w = wizard.Result;
 
-        var steps = new (WorkerAction Action, WorkerActionArgs Args, string Name)[]
+        var requestPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "orbit-bootstrap-" + Guid.NewGuid().ToString("N") + ".json");
+        try
         {
-            (WorkerAction.AddProject, new(DisplayName: w.ProjectName, ProjectId: w.ProjectId), "ADD_PROJECT"),
-            (WorkerAction.AddParticipant, new(ProjectId: w.ProjectId, ParticipantId: w.ParticipantId, Role: w.Role), "ADD_PARTICIPANT"),
-            (WorkerAction.SetMain, new(ProjectId: w.ProjectId, ParticipantId: w.ParticipantId, SourcePath: w.MainPath), "SET_MAIN")
-        };
-        foreach (var step in steps)
-        {
-            var result = await _worker.RunAsync(step.Action, step.Args);
-            if (result.ExitCode != 0)
-            {
-                ShowActionFailure(step.Name, result);
-                await RefreshContextAsync();
-                return;
-            }
+            var request = new { project_id = w.ProjectId, display_name = w.ProjectName,
+                participant_id = w.ParticipantId, role = w.Role, platform = "ONEC",
+                main_archive = w.MainPath, extension_archives = w.ExtensionArchives };
+            await System.IO.File.WriteAllTextAsync(requestPath, System.Text.Json.JsonSerializer.Serialize(request));
+            AddProjectButton.IsEnabled = false;
+            var result = await _worker.RunAsync(WorkerAction.BootstrapProject, new(UiInputPath: requestPath), elevated: true);
+            if (result.ExitCode == 0) _selectedProjectId = w.ProjectId;
+            await ShowActionResultAndRefresh("BOOTSTRAP_PROJECT", result);
+            if (result.ExitCode == 0 && !_fixtureMode)
+                System.Windows.MessageBox.Show(Localization.CurrentCulture.TwoLetterISOLanguageName == "ru" ? "Проект импортирован. Состояние подтверждено Worker." : "Project imported. State confirmed by Worker.", "OneC Orbit");
         }
-
-        if (!string.IsNullOrWhiteSpace(w.ExtensionId) && !string.IsNullOrWhiteSpace(w.ExtensionPath))
-        {
-            var ext = await _worker.RunAsync(
-                WorkerAction.AddExtension,
-                new(ProjectId: w.ProjectId, ParticipantId: w.ParticipantId, ExtensionId: w.ExtensionId, SourcePath: w.ExtensionPath));
-            if (ext.ExitCode != 0)
-            {
-                ShowActionFailure("ADD_EXTENSION", ext);
-                await RefreshContextAsync();
-                return;
-            }
-        }
-
-        var apply = await _worker.RunAsync(WorkerAction.Apply, new(ProjectId: w.ProjectId));
-        _selectedProjectId = w.ProjectId;
-        await ShowActionResultAndRefresh("APPLY", apply);
+        finally { System.IO.File.Delete(requestPath); }
     }
 
     private async Task ShowActionResultAndRefresh(string action, WorkerCallResult result)

@@ -1,5 +1,5 @@
 ﻿param(
- [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','SYNC_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
+ [ValidateSet('MENU','PRECHECK','INSTALL','UPDATE','STATUS','UI_CONTEXT','LIST','ADD_PROJECT','BOOTSTRAP_PROJECT','EDIT_PROJECT','ADD_PARTICIPANT','EDIT_PARTICIPANT','SET_MAIN','ADD_EXTENSION','DEACTIVATE','SYNC_EXTENSION','PREPARE_SOURCE_UPDATE','ACCEPT_SOURCE_UPDATE','CANCEL_SOURCE_UPDATE','APPLY','VERIFY','REPAIR','START','CONTINUE','STOP','SETTINGS','DIAGNOSTICS','VIEW_CURRENT_OPERATION','VIEW_RECENT_OPERATIONS','VIEW_LOGS','EXPORT_DIAGNOSTICS','UNINSTALL')]
  [string]$Mode='MENU',
  [string]$ProjectId,[string]$ParticipantId,[string]$ExtensionId,[string]$SourcePath,[string]$DisplayName,[string]$Role,
  [ValidateSet('ONEC','CLEVERENCE')][string]$Platform='ONEC',[string]$TaskId,[string]$TaskGoal,[ValidateSet('PROJECT','PARTICIPANT','MAIN','EXTENSION')][string]$Kind='PROJECT',
@@ -80,6 +80,7 @@ function Require-AdminOrRelaunch {
  if(-not [string]::IsNullOrWhiteSpace($ExpectedGenerationId)){$argsList+=@('-ExpectedGenerationId',$ExpectedGenerationId)}
  if(-not [string]::IsNullOrWhiteSpace($ExpectedArtifactKey)){$argsList+=@('-ExpectedArtifactKey',$ExpectedArtifactKey)}
  if($SelectedArtifactFullSafeImport){$argsList+='-SelectedArtifactFullSafeImport'}
+ if($UiInputPath){$argsList+=@('-UiInputPath',$UiInputPath)}
  if($SkipDependencies){$argsList+='-SkipDependencies'}
  if($ConfirmUninstall){$argsList+='-ConfirmUninstall'}
  if($Json){$argsList+='-Json'}
@@ -747,6 +748,14 @@ function Invoke-CommandMode {
   'STATUS' {Show-StatusReadable (Get-WorkerStatus -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot);break}
   'UI_CONTEXT' {Run-UiContext;break}
   'LIST' {Show-Value (Read-WorkerCatalog -WorkerRoot $WorkerRoot -AllowMissing);break}
+  'BOOTSTRAP_PROJECT' {
+   if(Require-AdminOrRelaunch 'BOOTSTRAP_PROJECT'){break}
+   if((Get-Item -LiteralPath (Need $UiInputPath UiInputPath)).Length -gt 65536){throw 'BOOTSTRAP_REQUEST_LIMIT'}
+   $input=Get-Content -LiteralPath $UiInputPath -Raw -Encoding UTF8|ConvertFrom-Json
+   if($input.platform -ne 'ONEC'){throw 'PLATFORM_NOT_IMPLEMENTED_1C_FIRST'}
+   Show-Value (New-OrbitBootstrapProject -ProjectId $input.project_id -DisplayName $input.display_name -ParticipantId $input.participant_id -Role $input.role -MainArchive $input.main_archive -ExtensionArchives @($input.extension_archives) -WorkerRoot $WorkerRoot -ProgramDataRoot $ProgramDataRoot)
+   break
+  }
   'ADD_PROJECT' {Run-AddProject;break}
   'EDIT_PROJECT' {Run-EditProject;break}
   'ADD_PARTICIPANT' {Run-AddParticipant;break}

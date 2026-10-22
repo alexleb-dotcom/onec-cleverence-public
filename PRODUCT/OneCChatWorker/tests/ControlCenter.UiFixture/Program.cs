@@ -41,6 +41,7 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 3 && args[0] is "--first-run" or "--installed") return PackagedProbe.Installed(args[1], args[2], args[0] == "--first-run");
             if (args.Length == 3 && args[0] == "--packaged") return PackagedProbe.Run(args[1], args[2]);
             var orbitEvidence = args.Length == 1 ? args[0] : Path.Combine(Path.GetTempPath(), "onec-ui-fixture");
             Environment.SetEnvironmentVariable("ONEC_CONTROL_CENTER_PREFERENCES_ROOT", Path.Combine(orbitEvidence, "preferences"));

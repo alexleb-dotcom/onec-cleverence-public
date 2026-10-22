@@ -91,6 +91,41 @@ internal static class PackagedProbe
         }
         finally { SelectObject(target, previous); DeleteObject(bitmap); DeleteDC(target); ReleaseDC(Window, dc); }
     }
+    public static int Installed(string exe, string evidence, bool firstRun)
+    {
+        Directory.CreateDirectory(evidence);
+        var prefs = Path.Combine(evidence, "prefs"); Directory.CreateDirectory(prefs);
+        File.WriteAllText(Path.Combine(prefs, "preferences.json"), """{"Language":"en","Theme":"light","StartWithWindows":false}""");
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        psi.Environment["ONEC_CONTROL_CENTER_PREFERENCES_ROOT"] = prefs;
+        Owned = Process.Start(psi)!;
+        try
+        {
+            AutomationElement? dialog = null;
+            Wait(() => {
+                dialog = AutomationElement.RootElement.FindAll(TreeScope.Children,
+                    new PropertyCondition(AutomationElement.ProcessIdProperty, Owned.Id)).Cast<AutomationElement>()
+                    .FirstOrDefault(x => x.FindFirst(TreeScope.Descendants,
+                        new PropertyCondition(AutomationElement.AutomationIdProperty, firstRun ? "ProjectNameBox" : "RecommendationText")) is not null);
+                return dialog is not null;
+            }, firstRun ? "automatic installed first project wizard" : "installed project reopen");
+            Root = dialog!; Window = new IntPtr(Root.Current.NativeWindowHandle);
+            Shot(Path.Combine(evidence, firstRun ? "first-run-wizard.png" : "installed-readback.png"));
+            if (firstRun)
+            {
+                Assert(Find("BrowseMainButton").Current.IsEnabled, "MAIN archive picker enabled");
+                Assert(Find("ExtensionCheck").Current.IsEnabled, "optional extensions available");
+                ((InvokePattern)Find("CancelButton").GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+            }
+            File.WriteAllText(Path.Combine(evidence, "result.json"), JsonSerializer.Serialize(new {
+                result="PASS", first_run=firstRun, actual_installed_exe_sha256=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(exe))).ToLowerInvariant(),
+                owner="real installed Worker", human_uac_consent="NOT_PROVED"
+            }));
+            return 0;
+        }
+        finally { if (!Owned.HasExited) { Owned.Kill(); Owned.WaitForExit(10000); } Owned.Dispose(); }
+    }
+
     public static int Run(string repository, string evidence)
     {
         Localization.SetLanguage("ru");
