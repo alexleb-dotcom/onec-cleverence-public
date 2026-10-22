@@ -12,6 +12,9 @@ namespace OneCArchitecture.ControlCenter;
 public partial class MainWindow : Window
 {
     private readonly IWorkerClient _worker;
+    // Only native fake-owner WPF fixture suppresses unattended OS modal warnings.
+    // Real Orbit keeps its existing visible warning dialog.
+    private readonly bool _fixtureMode;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(4) };
     private UiPreferences _preferences;
     private JsonObject? _context;
@@ -39,6 +42,7 @@ public partial class MainWindow : Window
     internal MainWindow(IWorkerClient worker, bool fixture)
     {
         _worker = worker;
+        _fixtureMode = fixture;
         _preferences = fixture ? new() : PreferencesStore.Load();
         InitializeComponent();
         ApplyLocalization();
@@ -1034,6 +1038,7 @@ public partial class MainWindow : Window
     {
         _lastDiagnostic = Bound(string.Join(Environment.NewLine, new[] { result.StandardError, result.StandardOutput }.Where(x => !string.IsNullOrWhiteSpace(x))), 4000);
         AdvancedText.Text = _lastDiagnostic;
+        if (_fixtureMode) return; // Fake-owner regression records diagnostic; never block hosted CI with a modal.
         System.Windows.MessageBox.Show(
             Localization.Get("ActionFailed") + ". " + Presentation.Outcome(result.StandardError) + " " + Localization.Get("ErrorDetails"),
             Localization.Get("AppTitle"),
