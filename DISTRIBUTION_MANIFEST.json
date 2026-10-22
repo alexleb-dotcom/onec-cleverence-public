@@ -6,7 +6,7 @@
   "public_workflows": [
     ".github/workflows/shareable-validation.yml"
   ],
-  "file_count": 582,
+  "file_count": 583,
   "files": [
     {
       "path": ".gitattributes",
@@ -419,6 +419,11 @@
       "sha256": "d9f9004a77e8aa5d3e710432332f07a67d1a0c20a7d5b6821c9494eb595ccc85"
     },
     {
+      "path": "PRODUCT/OneCChatWorker/control-center/ORBIT_HELPER_INTEGRATION_Q124.md",
+      "size": 3875,
+      "sha256": "fb67d605a0ee72e10f4c6e1522f623fdf7d37b870f3ee3bfea6f031cbc9e62f6"
+    },
+    {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/App.xaml",
       "size": 15402,
       "sha256": "3dd52cf720250c0390080c76ff81d12184c6b16fc9a4d1e77d002d618ba3e100"
@@ -505,8 +510,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/WorkerClient.cs",
-      "size": 9065,
-      "sha256": "0fc2a1583005df9305e24d5476fa2733a97eadb6d6ef93b54df980133908b650"
+      "size": 11840,
+      "sha256": "bb01547b9f9b91bedd0d51735f00cc81da7bacce14cb01f2974582e5bf27a0c1"
     },
     {
       "path": "PRODUCT/OneCChatWorker/control-center/OneCArchitecture.ControlCenter/app.manifest",
@@ -680,8 +685,8 @@
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/ControlCenter.UiFixture/Program.cs",
-      "size": 62359,
-      "sha256": "757b44c2d4b5e9fb08e3b7dc68277bd599881484c5d60252e3485a4ff9c8a4ec"
+      "size": 66702,
+      "sha256": "87bc88f5cdd9928b8943a7fe803f744ada11481b3d98becf80c35969d1a496dc"
     },
     {
       "path": "PRODUCT/OneCChatWorker/tests/Inspect-OrbitMigrationReadOnly.ps1",
@@ -2920,5 +2925,5 @@
     }
   ],
   "rule": "This public manifest inventories only files present in SHAREABLE_CORE and their content digests. Private source identity and excluded internal paths are intentionally not published.",
-  "snapshot_digest": "e11e0fe16722aae379e4b6eb774986bd0e55768ec44da46b6a460c59df795d0d"
+  "snapshot_digest": "2ecb2edabd7dadb4227515fb69d6c70f91f7bb687eb58dd25552779ee8b727ae"
 }

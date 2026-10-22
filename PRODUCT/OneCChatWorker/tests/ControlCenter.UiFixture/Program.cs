@@ -85,6 +85,67 @@ internal static class Program
                 _ => true, _ => throw new Exception("complete Orbit legacy probe")), "complete Orbit skips legacy probes");
             Check(!WorkerClient.NeedsMigration(@"C:\OneCOrbit", @"C:\ProgramData\OneCOrbit", "fake-launcher",
                 _ => throw new Exception("override probe"), _ => throw new Exception("override legacy probe")), "fake launcher override preserved");
+            // Q124: only START/CONTINUE may surface the native Windows runas
+            // prompt. These checks inspect metadata; no process is started.
+            var transportClient = new WorkerClient();
+            foreach (var action in new[] { WorkerAction.Start, WorkerAction.Continue })
+            {
+                var psi = transportClient.CreateStartInfo(action,
+                    new(ProjectId: "synthetic", TaskId: "fixture-task", TaskGoal: "fixture"), false);
+                Check(psi.UseShellExecute && !psi.CreateNoWindow &&
+                    psi.WindowStyle == System.Diagnostics.ProcessWindowStyle.Normal &&
+                    !psi.RedirectStandardOutput && !psi.RedirectStandardError &&
+                    psi.ArgumentList.Contains("-Mode") &&
+                    psi.ArgumentList.Contains(action.ToString().ToUpperInvariant()) &&
+                    !psi.ArgumentList.Contains("-Json") &&
+                    !psi.ArgumentList.Any(a => a.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+                        a.Contains("savecred", StringComparison.OrdinalIgnoreCase)),
+                    "Q124 interactive visible admission with no captured credential " + action);
+            }
+            foreach (var action in new[] { WorkerAction.UiContext, WorkerAction.Verify, WorkerAction.Apply })
+            {
+                var psi = transportClient.CreateStartInfo(action, new(ProjectId: "synthetic"), false);
+                Check(!psi.UseShellExecute && psi.CreateNoWindow &&
+                    psi.WindowStyle == System.Diagnostics.ProcessWindowStyle.Hidden &&
+                    psi.RedirectStandardOutput && psi.RedirectStandardError &&
+                    psi.ArgumentList.Contains("-Json"),
+                    "Q124 non-interactive Worker transport unchanged " + action);
+            }
+            var elevatedStop = transportClient.CreateStartInfo(WorkerAction.Stop, new(), true);
+            Check(elevatedStop.UseShellExecute && !elevatedStop.CreateNoWindow &&
+                !elevatedStop.RedirectStandardOutput && !elevatedStop.RedirectStandardError &&
+                elevatedStop.Verb == "runas", "Q124 elevated STOP remains UAC");
+            Check(WorkerClient.OwnerContextDeadline > TimeSpan.FromSeconds(4) &&
+                WorkerClient.OwnerContextDeadline <= TimeSpan.FromSeconds(30),
+                "Q124 UI_CONTEXT watchdog is bounded independently of credential START");
+            // Cooperative cancellation and a deliberately noncooperative fake
+            // owner must both fail closed, with no JSON/authenticated owner.
+            var cooperativeTimeout = WorkerClient.ReadContextWithDeadlineAsync(
+                async ct =>
+                {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+                    return new WorkerCallResult(0, FixtureWorker.Context("RetailGroup", "PROJECT_READY"), "", "");
+                }, TimeSpan.FromMilliseconds(25)).GetAwaiter().GetResult();
+            Check(cooperativeTimeout.ExitCode != 0 && cooperativeTimeout.Json is null &&
+                cooperativeTimeout.StandardError == "UI_CONTEXT_TIMEOUT",
+                "Q124 cooperative timed-out context is explicit UNKNOWN/HOLD");
+            var unresponsiveOwner = new TaskCompletionSource<WorkerCallResult>();
+            var forcedTimeout = WorkerClient.ReadContextWithDeadlineAsync(
+                _ => unresponsiveOwner.Task, TimeSpan.FromMilliseconds(25)).GetAwaiter().GetResult();
+            Check(forcedTimeout.ExitCode != 0 && forcedTimeout.Json is null &&
+                forcedTimeout.StandardError == "UI_CONTEXT_TIMEOUT",
+                "Q124 noncooperative owner cannot indefinitely retain UI readback");
+            using var cancelledOwner = new CancellationTokenSource();
+            cancelledOwner.Cancel();
+            var propagatedCancellation = false;
+            try
+            {
+                WorkerClient.ReadContextWithDeadlineAsync(
+                    _ => Task.FromResult(new WorkerCallResult(0, null, "", "")),
+                    TimeSpan.FromSeconds(1), cancelledOwner.Token).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) { propagatedCancellation = true; }
+            Check(propagatedCancellation, "Q124 caller cancellation never masquerades as successful context");
             var preferences = new UiPreferences("ru", "dark", false);
             PreferencesStore.Save(preferences);
             Check(PreferencesStore.Load() == preferences && File.Exists(Path.Combine(orbitEvidence, "preferences", "preferences.json")), "isolated preference roundtrip");
